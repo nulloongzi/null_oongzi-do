@@ -1,0 +1,20 @@
+{
+    "name": "누룽지도",
+    "short_name": "누룽지도",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/528/528098.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/528/528098.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
