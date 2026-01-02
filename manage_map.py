@@ -8,14 +8,14 @@ import io
 # ==========================================
 # [설정] 사용자 정보 및 키 값
 # ==========================================
-# 1. 여기에 아까 복사한 '구글 시트 CSV 링크'를 따옴표 안에 붙여넣으세요!
-GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-YkZIHnfsO4WgqpCmmP0uSraojWi58SsqXCUEdzRF2R55DASVA5882JusD8BMa9gNaTe/pub?gid=97006888&single=true&output=csv"
+# 1. 여기에 구글 시트 CSV 링크를 다시 붙여넣어 주세요!
+GOOGLE_SHEET_URL = "여기에_구글시트_CSV_링크를_붙여넣으세요"
 
-# 2. 카카오 API 키 (기존 키 유지)
+# 2. 카카오 API 키
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
-# 3. 테스트 모드 (False로 두면 index.html 생성)
+# 3. 테스트 모드
 IS_TEST_MODE = False  
 # ==========================================
 
@@ -40,38 +40,38 @@ def update_map():
     
     if IS_TEST_MODE:
         html_file = "test.html"
-        print("🚧 [테스트 모드] test.html 파일을 생성합니다.")
     else:
         html_file = "index.html"
-        print("🚀 [배포 모드] index.html 파일을 덮어씁니다.")
 
-    # [1단계] 기존 데이터 로드 (API 호출 최소화용)
-    club_map = {} 
+    # [1단계] 기존 데이터는 '참고용(Cache)'으로만 불러옵니다.
+    # (여기에 없으면 새로 좌표를 따고, 시트에 없으면 과감히 버립니다)
+    cached_data = {} 
     if os.path.exists(json_file):
         with open(json_file, 'r', encoding='utf-8') as f:
-            existing_list = json.load(f)
-            for club in existing_list:
+            old_list = json.load(f)
+            for club in old_list:
+                # 이름과 주소가 모두 같아야 '같은 팀'으로 인식
                 key = (club['name'], club['address'])
-                club_map[key] = club
+                cached_data[key] = club
 
-    # [2단계] 구글 스프레드시트 데이터 가져오기 (핵심 변경 부분!)
-    print("☁️ 구글 스프레드시트에서 데이터 불러오는 중...")
+    # [2단계] 이번에 만들 '진짜 지도 데이터' (빈 통으로 시작)
+    new_club_map = {}
+
+    print("☁️ 구글 스프레드시트 동기화 중...")
     try:
         response = requests.get(GOOGLE_SHEET_URL)
-        response.raise_for_status() # 에러 체크
+        response.raise_for_status()
         
-        # 받아온 CSV 텍스트를 파싱
         decoded_content = response.content.decode('utf-8')
         csv_reader = csv.reader(io.StringIO(decoded_content))
-        
-        # 헤더 건너뛰기
-        next(csv_reader, None)
+        next(csv_reader, None) # 헤더 건너뛰기
         
         count = 0
+        new_count = 0
+        
         for row in csv_reader:
-            if len(row) < 4: continue # 데이터가 부족하면 패스
+            if len(row) < 4: continue 
             
-            # 구글 시트 열 순서대로 변수 저장 (B열=1번 인덱스부터 시작)
             # A:순번, B:팀명, C:대상, D:주소, E:시간, F:회비, G:인스타, H:링크
             name = row[1].strip()
             target = row[2].strip()
@@ -83,38 +83,43 @@ def update_map():
 
             if not name or not address: continue
 
-            count += 1
             key = (name, address)
             
-            # 이미 있는 팀이면 정보만 업데이트 (좌표 검색 X -> 속도 빠름)
-            if key in club_map:
-                existing = club_map[key]
-                existing['target'] = target
-                existing['schedule'] = schedule
-                existing['price'] = price
-                existing['insta'] = insta
-                existing['link'] = link
+            # [핵심 로직]
+            # 1. 예전 데이터(Cache)에 이 팀(이름+주소)이 있는가?
+            if key in cached_data:
+                # 있으면 좌표는 그대로 쓰고, 정보만 최신으로 업데이트
+                club = cached_data[key]
+                club['target'] = target
+                club['schedule'] = schedule
+                club['price'] = price
+                club['insta'] = insta
+                club['link'] = link
+                new_club_map[key] = club
             else:
-                # 새로운 팀이면 좌표 검색 (API 호출)
-                print(f"✨ 신규 팀 발견: {name} (좌표 검색 중...)")
+                # 2. 없으면(새 팀이거나 주소가 바뀜) -> 좌표 검색(API)
+                print(f"✨ 업데이트 감지: {name} (좌표 갱신 중...)")
                 lat, lng = get_location(address)
                 if lat and lng:
-                    club_map[key] = {
+                    new_club_map[key] = {
                         "name": name, "target": target, "address": address,
                         "schedule": schedule, "price": price, 
                         "insta": insta, "link": link,
                         "lat": lat, "lng": lng
                     }
-        print(f"✅ 구글 시트 데이터 {count}개 로드 성공!")
+                    new_count += 1
+            count += 1
+            
+        print(f"✅ 총 {count}개 팀 처리 완료 (신규/수정: {new_count}개)")
 
     except Exception as e:
-        print(f"❌ 구글 시트 로딩 실패! 링크를 확인하세요.\n에러 내용: {e}")
+        print(f"❌ 오류 발생: {e}")
         return
 
-    final_list = list(club_map.values())
+    # 딕셔너리를 리스트로 변환
+    final_list = list(new_club_map.values())
 
     # [2.5단계] 좌표 중복 분산 (Jittering)
-    print("📍 마커 위치 최적화 중...")
     adjusted_list = []
     clubs_by_coord = {}
     
@@ -142,11 +147,11 @@ def update_map():
                 
     final_list = adjusted_list
 
-    # JSON 저장 (백업용)
+    # JSON 저장 (최신 상태로 덮어쓰기)
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(final_list, f, ensure_ascii=False, indent=4)
 
-    # [3단계] PWA Manifest
+    # [3단계] Manifest 생성
     manifest_content = {
         "name": "누룽지도",
         "short_name": "누룽지도",
@@ -162,8 +167,8 @@ def update_map():
     with open(manifest_file, 'w', encoding='utf-8') as f:
         json.dump(manifest_content, f, ensure_ascii=False, indent=4)
 
-    # [4단계] HTML 생성 (최신 UI 반영)
-    print(f"🔄 지도({html_file}) 생성 중...")
+    # [4단계] HTML 생성
+    print(f"🔄 지도({html_file}) 굽는 중...")
     
     center_lat, center_lng = 37.5665, 126.9780 
     for club in final_list:
