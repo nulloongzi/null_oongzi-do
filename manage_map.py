@@ -9,7 +9,7 @@ import io
 # [설정] 사용자 정보 및 키 값
 # ==========================================
 # 1. 구글 시트 CSV 링크 (export?format=csv 확인 완료)
-GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1prZ-BYtQsi_zB-YbKubcMiU9vb6RO07ELJL4TvokCQ0/export?format=csv&gid=97006888"
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-YkZIHnfsO4WgqpCmmP0uSraojWi58SsqXCUEdzRF2R55DASVA5882JusD8BMa9gNaTe/pub?gid=97006888&single=true&output=csv"
 
 # 2. 카카오 API 키
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 

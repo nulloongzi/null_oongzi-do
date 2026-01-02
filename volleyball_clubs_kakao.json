@@ -8,7 +8,8 @@
         "insta": "gvt__official",
         "link": "",
         "lat": 37.5409675314785,
-        "lng": 127.100704228215
+        "lng": 127.100704228215,
+        "id": 0
     },
     {
         "name": "브이홀릭",
@@ -19,7 +20,8 @@
         "insta": "v_holic_2010",
         "link": "",
         "lat": 37.4073263996148,
-        "lng": 127.126612716157
+        "lng": 127.126612716157,
+        "id": 1
     },
     {
         "name": "H_B",
@@ -30,7 +32,8 @@
         "insta": "hb_volleyball_club",
         "link": "http://www.hb-volleyball.co.kr",
         "lat": 37.3073441859489,
-        "lng": 127.015667305962
+        "lng": 127.015667305962,
+        "id": 2
     },
     {
         "name": "H_B",
@@ -41,7 +44,8 @@
         "insta": "hb_volleyball_club",
         "link": "http://www.hb-volleyball.co.kr",
         "lat": 37.2518258783031,
-        "lng": 126.909629549921
+        "lng": 126.909629549921,
+        "id": 3
     },
     {
         "name": "동두천화목배구클럽",
@@ -52,7 +56,8 @@
         "insta": "ddc_voller",
         "link": "https://open.kakao.com/o/p10jZzWh",
         "lat": 37.9052629454328,
-        "lng": 127.043063227981
+        "lng": 127.043063227981,
+        "id": 4
     },
     {
         "name": "팀큐브",
@@ -63,7 +68,8 @@
         "insta": "teamcubevc",
         "link": "",
         "lat": 37.520125172379,
-        "lng": 127.044715764538
+        "lng": 127.044715764538,
+        "id": 5
     },
     {
         "name": "성북SVA",
@@ -74,7 +80,8 @@
         "insta": "kr_sports_plus",
         "link": "",
         "lat": 37.6085494620429,
-        "lng": 127.042324971736
+        "lng": 127.042324971736,
+        "id": 6
     },
     {
         "name": "라이크발리볼",
@@ -85,7 +92,8 @@
         "insta": "likevolleyball_team",
         "link": "",
         "lat": 37.4739644136398,
-        "lng": 126.651978806147
+        "lng": 126.651978806147,
+        "id": 7
     },
     {
         "name": "라이크발리볼",
@@ -96,7 +104,8 @@
         "insta": "likevolleyball_team",
         "link": "",
         "lat": 37.5795849502601,
-        "lng": 126.672802385687
+        "lng": 126.672802385687,
+        "id": 8
     },
     {
         "name": "JK배구클럽",
@@ -107,7 +116,8 @@
         "insta": "",
         "link": "https://m.cafe.daum.net/volleyballsok/IfzY/3333?searchView=Y",
         "lat": 37.3798358362533,
-        "lng": 126.787616614841
+        "lng": 126.787616614841,
+        "id": 9
     },
     {
         "name": "새로(CERO)",
@@ -118,7 +128,8 @@
         "insta": "cero_vc",
         "link": "",
         "lat": 37.5556127825867,
-        "lng": 127.174608361426
+        "lng": 127.174608361426,
+        "id": 10
     },
     {
         "name": "마산베스트",
@@ -129,7 +140,8 @@
         "insta": "masan_best",
         "link": "",
         "lat": 35.248323558591,
-        "lng": 128.602594607144
+        "lng": 128.602594607144,
+        "id": 11
     },
     {
         "name": "대구 NTC",
@@ -140,7 +152,8 @@
         "insta": "ntc_volleyball",
         "link": "",
         "lat": 35.8579351866729,
-        "lng": 128.494745397447
+        "lng": 128.494745397447,
+        "id": 12
     },
     {
         "name": "광명선우",
@@ -151,7 +164,8 @@
         "insta": "volleyball_sunwoo",
         "link": "",
         "lat": 37.4647085135351,
-        "lng": 126.869134235278
+        "lng": 126.869134235278,
+        "id": 13
     },
     {
         "name": "우리하모니",
@@ -162,7 +176,8 @@
         "insta": "harmony__volleyball",
         "link": "",
         "lat": 37.5326758132814,
-        "lng": 126.828972567552
+        "lng": 126.828972567552,
+        "id": 14
     },
     {
         "name": "FAV",
@@ -173,7 +188,8 @@
         "insta": "favclub.official",
         "link": "http://litt.ly/fav_volleyball",
         "lat": 37.6929835875228,
-        "lng": 126.736120374622
+        "lng": 126.736120374622,
+        "id": 15
     },
     {
         "name": "구미 거북클럽",
@@ -184,7 +200,8 @@
         "insta": "volleyball_gumi",
         "link": "https://m.cafe.naver.com/geobukclub.cafe?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAb21jcAOw3JBleHRuA2FlbQIxMQBzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAact0OTzvMhVFL7QPLtsO9AWmiWgTsYPFoXQoegc5zLSWZD2Xd0HgqvY9Fs8Sg_aem_zOfY0iLzVbb2vT-dMgNk2Q",
         "lat": 36.1147023025135,
-        "lng": 128.329775063006
+        "lng": 128.329775063006,
+        "id": 16
     },
     {
         "name": "강서VC",
@@ -195,7 +212,8 @@
         "insta": "gangseo.vc",
         "link": "",
         "lat": 37.5476142187642,
-        "lng": 126.857942163854
+        "lng": 126.857942163854,
+        "id": 17
     },
     {
         "name": "레드팡스",
@@ -206,7 +224,8 @@
         "insta": "",
         "link": "https://www.daangn.com/kr/group/%EB%B0%B0%EA%B5%AC%EB%8F%99%ED%98%B8%ED%9A%8C-%EB%A0%88%EB%93%9C%ED%8C%A1%EC%8A%A4-2wq9tjryem95/",
         "lat": 37.632255170053,
-        "lng": 127.066056635951
+        "lng": 127.066056635951,
+        "id": 18
     },
     {
         "name": "정무배구",
@@ -217,7 +236,8 @@
         "insta": "jeongmu_volley",
         "link": "",
         "lat": 35.8477726720349,
-        "lng": 127.074701125365
+        "lng": 127.074701125365,
+        "id": 19
     },
     {
         "name": "안성 넘버나인",
@@ -229,7 +249,8 @@
         "link": "https://www.youtube.com/@%EC%95%88%EC%84%B1%EB%84%98%EB%B2%84%EB%82%98%EC%9D%B89",
         "lat": 37.015078008763,
         "lng": 127.263020902801,
-        "angle": 0.0
+        "angle": 0.0,
+        "id": 20
     },
     {
         "name": "하이발리",
@@ -240,7 +261,8 @@
         "insta": "high.volley",
         "link": "",
         "lat": 37.7379799283829,
-        "lng": 126.726930320218
+        "lng": 126.726930320218,
+        "id": 21
     },
     {
         "name": "임팩트",
@@ -251,7 +273,8 @@
         "insta": "paju_impact",
         "link": "http://kko.to/7v33m3qZj",
         "lat": 37.8300288380237,
-        "lng": 126.781056138359
+        "lng": 126.781056138359,
+        "id": 22
     },
     {
         "name": "임팩트",
@@ -262,7 +285,8 @@
         "insta": "paju_impact",
         "link": "http://kko.to/7v33m3qZj",
         "lat": 37.7274642059342,
-        "lng": 126.745874918567
+        "lng": 126.745874918567,
+        "id": 23
     },
     {
         "name": "안성MVP",
@@ -273,7 +297,8 @@
         "insta": "mvp_official_2014",
         "link": "https://open.kakao.com/o/s8T9ZYWe",
         "lat": 37.0028098402492,
-        "lng": 127.15850296807
+        "lng": 127.15850296807,
+        "id": 24
     },
     {
         "name": "대구 두류배구회",
@@ -284,7 +309,8 @@
         "insta": "",
         "link": "https://open.kakao.com/o/sNOhf3Ah",
         "lat": 35.8545121028952,
-        "lng": 128.496514228915
+        "lng": 128.496514228915,
+        "id": 25
     },
     {
         "name": "DGZ",
@@ -296,7 +322,8 @@
         "link": "",
         "lat": 37.5027160069897,
         "lng": 126.940926768444,
-        "angle": 0.0
+        "angle": 0.0,
+        "id": 26
     },
     {
         "name": "여수에이스",
@@ -307,7 +334,8 @@
         "insta": "yeosu_ace_volleyball",
         "link": "",
         "lat": 34.7483267150984,
-        "lng": 127.684825674004
+        "lng": 127.684825674004,
+        "id": 27
     },
     {
         "name": "V.O.L",
@@ -319,7 +347,8 @@
         "link": "",
         "lat": 37.5027160069897,
         "lng": 126.940726768444,
-        "angle": 3.141592653589793
+        "angle": 3.141592653589793,
+        "id": 28
     },
     {
         "name": "레이더스",
@@ -331,7 +360,8 @@
         "link": "",
         "lat": 37.015078008763,
         "lng": 127.262820902801,
-        "angle": 3.141592653589793
+        "angle": 3.141592653589793,
+        "id": 29
     },
     {
         "name": "경주 더케이",
@@ -342,7 +372,8 @@
         "insta": "thek_vbc",
         "link": "pf.kakao.com/_xcTaxmn",
         "lat": 35.8849473288934,
-        "lng": 129.229737107908
+        "lng": 129.229737107908,
+        "id": 30
     },
     {
         "name": "원주 스마일 배구클럽",
@@ -353,7 +384,8 @@
         "insta": "smile.volleyball.club_",
         "link": "https://open.kakao.com/o/gTs0Mpse",
         "lat": 37.3338307104893,
-        "lng": 127.946303709594
+        "lng": 127.946303709594,
+        "id": 31
     },
     {
         "name": "우사모 SWVC",
@@ -364,7 +396,8 @@
         "insta": "swvc_volley",
         "link": "",
         "lat": 37.6526987118348,
-        "lng": 127.0184004627
+        "lng": 127.0184004627,
+        "id": 32
     },
     {
         "name": "NWN",
@@ -375,7 +408,8 @@
         "insta": "nowon_no.1_volleyball",
         "link": "https://m.cafe.daum.net/nowon-no.1/_rec?utm_source=ig&utm_medium=social&utm_content=link_in_bio",
         "lat": 37.6648178269709,
-        "lng": 127.054322233957
+        "lng": 127.054322233957,
+        "id": 33
     },
     {
         "name": "어나더레벨",
@@ -386,7 +420,8 @@
         "insta": "khp4949",
         "link": "https://open.kakao.com/o/g3dvQE4g",
         "lat": 36.4939039101709,
-        "lng": 127.250966962615
+        "lng": 127.250966962615,
+        "id": 34
     },
     {
         "name": "시흥 수요배구회 픽업게임",
@@ -397,7 +432,8 @@
         "insta": "volleyball_pickup_siheung",
         "link": "https://open.kakao.com/o/s2KVlj0h",
         "lat": 37.380779446634,
-        "lng": 126.78327876897
+        "lng": 126.78327876897,
+        "id": 35
     },
     {
         "name": "군포배구클럽",
@@ -408,7 +444,8 @@
         "insta": "gunpo_volleyball",
         "link": "https://open.kakao.com/o/g1qV2i3h",
         "lat": 37.3540356844596,
-        "lng": 126.936815220052
+        "lng": 126.936815220052,
+        "id": 36
     },
     {
         "name": "부산배구클럽",
@@ -419,7 +456,8 @@
         "insta": "volleyball_busan",
         "link": "https://open.kakao.com/o/suiGnD0",
         "lat": 35.2082050651349,
-        "lng": 129.006965137504
+        "lng": 129.006965137504,
+        "id": 37
     },
     {
         "name": "HB아카데미",
@@ -430,7 +468,8 @@
         "insta": "h_bacademy",
         "link": "https://m.blog.naver.com/rudejr2238",
         "lat": 37.6518477614279,
-        "lng": 127.038744954072
+        "lng": 127.038744954072,
+        "id": 38
     },
     {
         "name": "세종 맥스(Team Max)",
@@ -441,7 +480,8 @@
         "insta": "max_volleyball_",
         "link": "https://open.kakao.com/o/sT6CiRdf",
         "lat": 36.519724340798,
-        "lng": 127.236589788899
+        "lng": 127.236589788899,
+        "id": 39
     },
     {
         "name": "세종 맥스(Team Max)",
@@ -452,7 +492,8 @@
         "insta": "max_volleyball_",
         "link": "https://open.kakao.com/o/sT6CiRdf",
         "lat": 36.4877156432012,
-        "lng": 127.243231178402
+        "lng": 127.243231178402,
+        "id": 40
     },
     {
         "name": "세종 맥스(Team Max)",
@@ -463,6 +504,7 @@
         "insta": "max_volleyball_",
         "link": "https://open.kakao.com/o/sT6CiRdf",
         "lat": 36.523100478656,
-        "lng": 127.255014907693
+        "lng": 127.255014907693,
+        "id": 41
     }
 ]
