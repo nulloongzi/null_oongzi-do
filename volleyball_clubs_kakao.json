@@ -492,5 +492,16 @@
         "link": "https://open.kakao.com/o/sT6CiRdf",
         "lat": 36.521966008286,
         "lng": 127.254259672057
+    },
+    {
+        "name": "세종 맥스(Team Max)",
+        "target": "성인, 대학생, 선출가능",
+        "address": "세종특별자치시 세종로 941",
+        "schedule": "매주 목요일 18:30~21:00",
+        "price": "가입비 2만원 / 월회비 3만원 / 게스트 5천원",
+        "insta": "max_volleyball_",
+        "link": "https://open.kakao.com/o/sT6CiRdf",
+        "lat": 36.4877156432012,
+        "lng": 127.243231178402
     }
 ]
