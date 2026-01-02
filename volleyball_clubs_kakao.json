@@ -503,5 +503,27 @@
         "link": "https://open.kakao.com/o/sT6CiRdf",
         "lat": 36.4877156432012,
         "lng": 127.243231178402
+    },
+    {
+        "name": "세종 맥스(Team Max)",
+        "target": "성인, 대학생, 선출가능",
+        "address": "세종특별자치시 마음로 64",
+        "schedule": "매주 화요일 19:00~22:00",
+        "price": "가입비 2만원 / 월회비 3만원 / 게스트 5천원",
+        "insta": "max_volleyball_",
+        "link": "https://open.kakao.com/o/sT6CiRdf",
+        "lat": 36.5049740605534,
+        "lng": 127.235364128354
+    },
+    {
+        "name": "세종 맥스(Team Max)",
+        "target": "성인, 대학생, 선출가능",
+        "address": "세종특별자치시 아름동 804",
+        "schedule": "매주 일  9:00~12:00 (남) / 12:00~4:00 (여)",
+        "price": "가입비 2만원 / 월회비 3만원 / 게스트 5천원",
+        "insta": "max_volleyball_",
+        "link": "https://open.kakao.com/o/sT6CiRdf",
+        "lat": 36.523100478656,
+        "lng": 127.255014907693
     }
 ]
