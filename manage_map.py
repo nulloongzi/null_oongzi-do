@@ -8,8 +8,8 @@ import io
 # ==========================================
 # [설정] 사용자 정보 및 키 값
 # ==========================================
-# 1. 여기에 구글 시트 CSV 링크를 다시 붙여넣어 주세요!
-GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-YkZIHnfsO4WgqpCmmP0uSraojWi58SsqXCUEdzRF2R55DASVA5882JusD8BMa9gNaTe/pub?gid=97006888&single=true&output=csv"
+# 1. 구글 시트 CSV 링크 (export?format=csv 확인 완료)
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1prZ-BYtQsi_zB-YbKubcMiU9vb6RO07ELJL4TvokCQ0/export?format=csv&gid=97006888"
 
 # 2. 카카오 API 키
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
@@ -60,16 +60,14 @@ def update_map():
         
         decoded_content = response.content.decode('utf-8')
         csv_reader = csv.reader(io.StringIO(decoded_content))
-        next(csv_reader, None) # 헤더 건너뛰기
+        next(csv_reader, None) 
         
         count = 0
         new_count = 0
         
         for row in csv_reader:
-            # [수정됨] 데이터가 너무 짧은 줄은 무시 (최소 팀명, 타겟, 주소는 있어야 함)
             if len(row) < 4: continue 
             
-            # [수정됨] 안전하게 데이터 가져오기 (빈 칸이 있어도 에러 안 나게 처리)
             name = row[1].strip() if len(row) > 1 else ""
             target = row[2].strip() if len(row) > 2 else ""
             address = row[3].strip() if len(row) > 3 else ""
@@ -78,7 +76,6 @@ def update_map():
             insta = row[6].strip() if len(row) > 6 else ""
             link = row[7].strip() if len(row) > 7 else ""
 
-            # 필수 정보가 없으면 패스
             if not name or not address: continue
 
             key = (name, address)
@@ -139,6 +136,10 @@ def update_map():
                 adjusted_list.append(club)
                 
     final_list = adjusted_list
+
+    # [중요] 각 팀에 고유 ID(번호) 부여 - 이름이 같아도 구별하기 위함
+    for idx, club in enumerate(final_list):
+        club['id'] = idx 
 
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(final_list, f, ensure_ascii=False, indent=4)
@@ -349,7 +350,9 @@ def update_map():
             if (!club.lat || !club.lng) return;
             var latlng = new kakao.maps.LatLng(club.lat, club.lng);
             var marker = new kakao.maps.Marker({{ position: latlng }}); 
-            var labelContent = '<div class="label" onclick="triggerMarkerClick(\\'' + club.name + '\\')">' + club.name + '</div>';
+            
+            // [수정] triggerMarkerClick에 이름 대신 고유 ID(club.id) 전달
+            var labelContent = '<div class="label" onclick="triggerMarkerClick(' + club.id + ')">' + club.name + '</div>';
             
             var xAnc = 0.5; 
             var yAnc = 1;   
@@ -361,20 +364,24 @@ def update_map():
 
             markers.push({{ marker: marker, club: club, isVisible: true }});
             labelOverlays.push({{ overlay: labelOverlay, club: club }});
-            kakao.maps.event.addListener(marker, 'click', function() {{ openClubDetail(club.name); }});
+            
+            // [수정] 클릭 이벤트에서도 고유 ID 사용
+            kakao.maps.event.addListener(marker, 'click', function() {{ openClubDetail(club.id); }});
         }});
 
         clusterer.addMarkers(markers.map(m => m.marker));
         updateLabelVisibility();
 
-        function triggerMarkerClick(clubName) {{
-            var target = markers.find(m => m.club.name === clubName);
+        // [수정] ID로 마커 찾아서 클릭 트리거
+        function triggerMarkerClick(id) {{
+            var target = markers.find(m => m.club.id === id);
             if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
         }}
 
-        function openClubDetail(clubName) {{
+        // [수정] ID로 정확한 팀 정보 찾기
+        function openClubDetail(id) {{
             document.getElementById('topSearchInput').blur();
-            var club = clubs.find(c => c.name === clubName);
+            var club = clubs.find(c => c.id === id); 
             if (!club) return;
 
             var titleHtml = club.name;
