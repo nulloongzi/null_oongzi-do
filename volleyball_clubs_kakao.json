@@ -453,7 +453,7 @@
         "name": "부산배구클럽",
         "target": "성인, 대학생, 청소년, 선출가능",
         "address": "부산 북구 덕천2길 10",
-        "schedule": "매주 화요일 18시~21시",
+        "schedule": "매주 화요일 18:00~21:00",
         "price": "성인 월 2만원 (대학생 월 1.5만원, 고등학생 월 1만원)",
         "insta": "volleyball_busan",
         "link": "https://open.kakao.com/o/suiGnD0",
@@ -470,5 +470,27 @@
         "link": "https://m.blog.naver.com/rudejr2238",
         "lat": 37.6518477614279,
         "lng": 127.038744954072
+    },
+    {
+        "name": "세종 맥스(Team Max)",
+        "target": "성인, 대학생, 선출가능",
+        "address": "세종 마음로 284",
+        "schedule": "매주 화요일 19:00~22:00",
+        "price": "가입비 2만원 / 월회비 3만원 / 게스트 5천원",
+        "insta": "max_volleyball_",
+        "link": "https://open.kakao.com/o/sT6CiRdf",
+        "lat": 36.519724340798,
+        "lng": 127.236589788899
+    },
+    {
+        "name": "세종 맥스(Team Max)",
+        "target": "성인, 대학생, 선출가능",
+        "address": "세종특별자치시 바른3길 26-1",
+        "schedule": "매주 일  9:00~12:00 (남) / 12:00~4:00 (여)",
+        "price": "가입비 2만원 / 월회비 3만원 / 게스트 5천원",
+        "insta": "max_volleyball_",
+        "link": "https://open.kakao.com/o/sT6CiRdf",
+        "lat": 36.521966008286,
+        "lng": 127.254259672057
     }
 ]
