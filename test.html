@@ -67,7 +67,7 @@
             100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
         }
 
-        .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); padding: 20px 24px 50px 24px; transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); touch-action: none; }
+        .bottom-sheet { position: fixed; bottom: 0; left: 15px; right: 15px; width: auto; background: #fff; z-index: 200; border-radius: 24px; box-shadow: 0 5px 25px rgba(0,0,0,0.15); padding: 20px 24px 30px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); touch-action: none; margin-bottom: 20px; }
         .sheet-handle-area { width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; }
         .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
         .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -187,6 +187,7 @@
         var gpsImage = new kakao.maps.MarkerImage(gpsSvg, new kakao.maps.Size(44,44), {offset: new kakao.maps.Point(22,22)});
         var instaCssIcon = '<div class="instagram" title="인스타그램 보러가기"></div>';
         
+        // [수정됨] 카카오 공식 빨간 마커 주소 사용
         var urgentImageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
             urgentImageSize = new kakao.maps.Size(24, 35),
             urgentImageOption = {offset: new kakao.maps.Point(11, 35)};
@@ -198,8 +199,7 @@
             
             var marker;
             if (club.is_urgent) {
-                // [중요] 긴급 마커는 클러스터링 예외 처리를 위해 미리 지도에 올리지 않고 생성만 합니다.
-                // 대신 zIndex를 최상위로 둡니다.
+                // 긴급 마커는 클러스터링 제외 (항상 지도 위에 노출) 및 zIndex 최상위
                 marker = new kakao.maps.Marker({ position: latlng, image: urgentMarkerImage, zIndex: 9999 });
             } else {
                 marker = new kakao.maps.Marker({ position: latlng });
@@ -227,14 +227,13 @@
             kakao.maps.event.addListener(marker, 'click', function() { openClubDetail(club.id); });
         });
 
-        // [중요] 초기 로딩 시 클러스터링 처리
-        // 긴급 마커는 지도에 직접 표시(setMap), 일반 마커만 클러스터러에 추가
+        // 초기 로딩: 긴급 마커는 바로 지도에 표시, 일반 마커만 클러스터러에 추가
         var initialClusterMarkers = [];
         markers.forEach(function(item) {
             if (item.club.is_urgent) {
-                item.marker.setMap(map); // 긴급은 바로 지도에 꽂아버림 (클러스터링 안 됨)
+                item.marker.setMap(map); 
             } else {
-                initialClusterMarkers.push(item.marker); // 일반은 묶음 처리
+                initialClusterMarkers.push(item.marker); 
             }
         });
         clusterer.addMarkers(initialClusterMarkers);
@@ -274,6 +273,7 @@
             var sheet = document.getElementById('bottomSheet');
             sheet.style.transform = "translateY(0)"; 
 
+            // 줌 레벨 및 중앙 이동 (비율 0.13 적용)
             var targetLevel = 4;
             map.setLevel(targetLevel, {animate: true});
 
@@ -289,7 +289,7 @@
             map.panTo(newCenterLatLon);
         }
 
-        function closeBottomSheet() { document.getElementById('bottomSheet').style.transform = "translateY(110%)"; }
+        function closeBottomSheet() { document.getElementById('bottomSheet').style.transform = "translateY(120%)"; }
         document.getElementById('btnCopy').onclick = function() { copyAddress(document.getElementById('sheetAddressVal').value); };
         function copyAddress(addr) {
             if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(addr).then(() => { alert('주소가 복사되었습니다! 📋'); }); } 
@@ -321,8 +321,8 @@
             if (filterCount > 0) { document.getElementById('filterBadge').classList.add('active'); } 
             else { document.getElementById('filterBadge').classList.remove('active'); }
 
-            clusterer.clear(); // 기존 클러스터 비우기
-            var visibleMarkers = []; // 클러스터러에 넣을 일반 마커들
+            clusterer.clear();
+            var visibleMarkers = [];
             var bounds = new kakao.maps.LatLngBounds(); 
 
             markers.forEach(function(item) {
@@ -355,27 +355,21 @@
                 var keywordMatch = true;
                 if (keyword.length > 0) { if (!club.name.includes(keyword) && !club.address.includes(keyword)) { keywordMatch = false; } }
 
-                // [필터 결과 처리]
                 if (regionMatch && dayMatch && targetMatch && keywordMatch) { 
                     item.isVisible = true; 
                     
                     if (club.is_urgent) {
-                        // 긴급: 클러스터러에 안 넣고, 직접 지도에 표시
                         marker.setMap(map);
                     } else {
-                        // 일반: 클러스터러에 넣을 준비
                         visibleMarkers.push(marker);
-                        // 일반 마커는 클러스터러가 관리하므로 직접 setMap(null) 필요 없음 (클리어 때 날아감)
                     }
                     bounds.extend(marker.getPosition()); 
                 } else { 
                     item.isVisible = false; 
-                    // 탈락한 마커는 지도에서 지움
                     marker.setMap(null);
                 }
             });
             
-            // 일반 마커들만 묶음 처리
             clusterer.addMarkers(visibleMarkers);
             updateLabelVisibility();
 
