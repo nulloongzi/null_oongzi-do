@@ -8,7 +8,7 @@ import io
 # ==========================================
 # [설정] 사용자 정보 및 키 값
 # ==========================================
-# 1. 구글 시트 CSV 링크 (export?format=csv 확인 완료)
+# 1. 구글 시트 CSV 링크
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-YkZIHnfsO4WgqpCmmP0uSraojWi58SsqXCUEdzRF2R55DASVA5882JusD8BMa9gNaTe/pub?gid=97006888&single=true&output=csv"
 
 # 2. 카카오 API 키
@@ -109,7 +109,6 @@ def update_map():
 
     final_list = list(new_club_map.values())
 
-    # 좌표 중복 분산 (Jittering)
     adjusted_list = []
     clubs_by_coord = {}
     
@@ -137,7 +136,6 @@ def update_map():
                 
     final_list = adjusted_list
 
-    # [중요] 각 팀에 고유 ID(번호) 부여 - 이름이 같아도 구별하기 위함
     for idx, club in enumerate(final_list):
         club['id'] = idx 
 
@@ -351,7 +349,6 @@ def update_map():
             var latlng = new kakao.maps.LatLng(club.lat, club.lng);
             var marker = new kakao.maps.Marker({{ position: latlng }}); 
             
-            // [수정] triggerMarkerClick에 이름 대신 고유 ID(club.id) 전달
             var labelContent = '<div class="label" onclick="triggerMarkerClick(' + club.id + ')">' + club.name + '</div>';
             
             var xAnc = 0.5; 
@@ -365,25 +362,24 @@ def update_map():
             markers.push({{ marker: marker, club: club, isVisible: true }});
             labelOverlays.push({{ overlay: labelOverlay, club: club }});
             
-            // [수정] 클릭 이벤트에서도 고유 ID 사용
             kakao.maps.event.addListener(marker, 'click', function() {{ openClubDetail(club.id); }});
         }});
 
         clusterer.addMarkers(markers.map(m => m.marker));
         updateLabelVisibility();
 
-        // [수정] ID로 마커 찾아서 클릭 트리거
         function triggerMarkerClick(id) {{
             var target = markers.find(m => m.club.id === id);
             if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
         }}
 
-        // [수정] ID로 정확한 팀 정보 찾기
+        // [수정된 부분] 마커 클릭 시 적절한 줌 레벨과 오프셋 적용
         function openClubDetail(id) {{
             document.getElementById('topSearchInput').blur();
             var club = clubs.find(c => c.id === id); 
             if (!club) return;
 
+            // 1. 정보 채우기
             var titleHtml = club.name;
             if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
             document.getElementById('sheetTitle').innerHTML = titleHtml;
@@ -398,6 +394,26 @@ def update_map():
             
             var sheet = document.getElementById('bottomSheet');
             sheet.style.transform = "translateY(0)"; 
+
+            // 2. [줌 & 이동 로직]
+            // 먼저 줌 레벨을 설정합니다. (레벨 4 정도가 동네 보기 좋음)
+            var targetLevel = 4;
+            map.setLevel(targetLevel, {{animate: true}});
+
+            // 3. [오프셋 계산] 바텀시트 때문에 가려지는 부분을 고려하여 중심 이동
+            // (화면 높이의 25% 정도를 아래로 내림 -> 마커가 화면 중앙보다 약간 위에 위치하게 됨)
+            var moveLatLon = new kakao.maps.LatLng(club.lat, club.lng);
+            var projection = map.getProjection();
+            var centerPoint = projection.pointFromCoords(moveLatLon);
+            
+            // 화면 높이에 비례한 오프셋 (모바일/PC 모두 대응)
+            var offsetY = window.innerHeight * 0.25; 
+            
+            // 중심좌표를 아래로(Y값 증가) 이동시키면, 지도는 내려가고 마커는 올라감
+            var newCenterPoint = new kakao.maps.Point(centerPoint.x, centerPoint.y + offsetY);
+            var newCenterLatLon = projection.coordsFromPoint(newCenterPoint);
+            
+            map.panTo(newCenterLatLon);
         }}
 
         function closeBottomSheet() {{ document.getElementById('bottomSheet').style.transform = "translateY(110%)"; }}
@@ -434,6 +450,7 @@ def update_map():
 
             clusterer.clear();
             var visibleMarkers = [];
+            var bounds = new kakao.maps.LatLngBounds(); 
 
             markers.forEach(function(item) {{
                 var club = item.club; var marker = item.marker;
@@ -465,10 +482,21 @@ def update_map():
                 var keywordMatch = true;
                 if (keyword.length > 0) {{ if (!club.name.includes(keyword) && !club.address.includes(keyword)) {{ keywordMatch = false; }} }}
 
-                if (regionMatch && dayMatch && targetMatch && keywordMatch) {{ item.isVisible = true; visibleMarkers.push(marker); }} else {{ item.isVisible = false; }}
+                if (regionMatch && dayMatch && targetMatch && keywordMatch) {{ 
+                    item.isVisible = true; 
+                    visibleMarkers.push(marker);
+                    bounds.extend(marker.getPosition()); 
+                }} else {{ 
+                    item.isVisible = false; 
+                }}
             }});
+            
             clusterer.addMarkers(visibleMarkers);
             updateLabelVisibility();
+
+            if (visibleMarkers.length > 0) {{
+                map.setBounds(bounds);
+            }}
         }}
 
         const sheet = document.getElementById('bottomSheet');
