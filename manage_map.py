@@ -373,13 +373,11 @@ def update_map():
             if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
         }}
 
-        // [수정된 부분] 마커 클릭 시 적절한 줌 레벨과 오프셋 적용
         function openClubDetail(id) {{
             document.getElementById('topSearchInput').blur();
             var club = clubs.find(c => c.id === id); 
             if (!club) return;
 
-            // 1. 정보 채우기
             var titleHtml = club.name;
             if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
             document.getElementById('sheetTitle').innerHTML = titleHtml;
@@ -395,21 +393,18 @@ def update_map():
             var sheet = document.getElementById('bottomSheet');
             sheet.style.transform = "translateY(0)"; 
 
-            // 2. [줌 & 이동 로직]
-            // 먼저 줌 레벨을 설정합니다. (레벨 4 정도가 동네 보기 좋음)
+            // [수정된 부분] 줌 설정 및 오프셋 조정 (앱 모드 고려하여 비율 축소 0.25 -> 0.13)
             var targetLevel = 4;
             map.setLevel(targetLevel, {{animate: true}});
 
-            // 3. [오프셋 계산] 바텀시트 때문에 가려지는 부분을 고려하여 중심 이동
-            // (화면 높이의 25% 정도를 아래로 내림 -> 마커가 화면 중앙보다 약간 위에 위치하게 됨)
             var moveLatLon = new kakao.maps.LatLng(club.lat, club.lng);
             var projection = map.getProjection();
             var centerPoint = projection.pointFromCoords(moveLatLon);
             
-            // 화면 높이에 비례한 오프셋 (모바일/PC 모두 대응)
-            var offsetY = window.innerHeight * 0.25; 
+            // 화면 높이의 13% 정도만 아래로 이동 (앱의 긴 화면에서도 상단을 침범하지 않도록)
+            // Math.min을 사용하여 최대 150px 이상은 내려가지 않도록 안전장치 추가
+            var offsetY = Math.min(window.innerHeight * 0.13, 150); 
             
-            // 중심좌표를 아래로(Y값 증가) 이동시키면, 지도는 내려가고 마커는 올라감
             var newCenterPoint = new kakao.maps.Point(centerPoint.x, centerPoint.y + offsetY);
             var newCenterLatLon = projection.coordsFromPoint(newCenterPoint);
             
