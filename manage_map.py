@@ -187,7 +187,6 @@ def update_map():
         .bottom-sheet {{ position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); padding: 20px 24px 50px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }}
         .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: none; }}
         
-        /* 필터 시트 관련 CSS 복구 */
         .filter-sheet {{ position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }}
         .filter-sheet.active {{ transform: translateY(0); }}
         .fs-header {{ padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }}
@@ -286,7 +285,7 @@ def update_map():
         }});
 
         var clubs = {json.dumps(final_list, ensure_ascii=False)};
-        var markersData = []; // 필터링을 위해 전체 데이터를 담을 배열
+        var markersData = []; 
         var labelOverlays = []; 
 
         var defaultImageSrc = './marker_yellow.png'; 
@@ -298,7 +297,6 @@ def update_map():
         var defaultMarkerImage = new kakao.maps.MarkerImage(defaultImageSrc, imageSize, imageOption);
         var urgentMarkerImage = new kakao.maps.MarkerImage(urgentImageSrc, imageSize, imageOption);
 
-        // 내 위치 마커용 이미지
         var gpsSvg = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3e%3ccircle cx="50" cy="50" r="45" fill="rgba(66, 133, 244, 0.3)"/%3e%3ccircle cx="50" cy="50" r="25" fill="white"/%3e%3ccircle cx="50" cy="50" r="20" fill="%234285F4"/%3e%3c/svg%3e';
         var gpsImage = new kakao.maps.MarkerImage(gpsSvg, new kakao.maps.Size(44,44), {{offset: new kakao.maps.Point(22,22)}});
         var myMarker = null;
@@ -310,7 +308,6 @@ def update_map():
             var marker;
             if (club.is_urgent) {{
                 marker = new kakao.maps.Marker({{ position: latlng, image: urgentMarkerImage, zIndex: 9999 }});
-                // 긴급은 초기 setMap(map) 안함 (applyFilters에서 일괄 처리)
             }} else {{
                 marker = new kakao.maps.Marker({{ position: latlng, image: defaultMarkerImage }});
             }}
@@ -321,22 +318,17 @@ def update_map():
             
             kakao.maps.event.addListener(marker, 'click', function() {{ openDetail(club.id); }});
             
-            // 모든 데이터를 배열에 저장 (isVisible 기본값 true)
             markersData.push({{ marker: marker, overlay: customOverlay, club: club, isVisible: true }});
             labelOverlays.push({{ overlay: customOverlay, club: club }});
         }});
-
-        // 초기 필터 적용 (이 함수 안에서 마커 표시 및 클러스터링 수행)
-        applyFilters();
 
         function updateLabelVisibility() {{
             var level = map.getLevel(); 
             var showLabels = (level <= 5); 
             
             markersData.forEach(function(item) {{
-                if (!item.isVisible) return; // 필터로 숨겨진 건 패스
+                if (!item.isVisible) return; 
 
-                // 긴급은 항상 보임, 일반은 줌 레벨에 따라
                 if (item.club.is_urgent) {{
                     item.overlay.setMap(map);
                 }} else {{
@@ -381,9 +373,6 @@ def update_map():
             document.getElementById('bottomSheet').style.transform = "translateY(120%)";
         }}
         
-        // ==========================================
-        // [복구됨] 필터 및 검색 로직
-        // ==========================================
         var selectedFilters = {{ 'region': [], 'day': [], 'target': [] }};
 
         function openFilterSheet() {{ document.getElementById('filterSheet').style.transform = "translateY(0)"; }}
@@ -410,13 +399,12 @@ def update_map():
             if (filterCount > 0) {{ document.getElementById('filterBadge').classList.add('active'); }} 
             else {{ document.getElementById('filterBadge').classList.remove('active'); }}
 
-            clusterer.clear(); // 기존 클러스터 비우기
-            var visibleNormalMarkers = []; // 클러스터러에 넣을 일반 마커들
+            clusterer.clear(); 
+            var visibleNormalMarkers = []; 
 
             markersData.forEach(function(item) {{
                 var club = item.club;
                 
-                // 1. 지역 필터
                 var regionMatch = true;
                 if (selectedFilters.region.length > 0) {{
                     regionMatch = false;
@@ -429,7 +417,6 @@ def update_map():
                     }}
                 }}
                 
-                // 2. 요일 필터
                 var dayMatch = true;
                 if (selectedFilters.day.length > 0) {{
                     dayMatch = false;
@@ -438,7 +425,6 @@ def update_map():
                     else {{ for (var i = 0; i < selectedFilters.day.length; i++) {{ if (cleanSchedule.includes(selectedFilters.day[i])) dayMatch = true; }} }}
                 }}
                 
-                // 3. 타겟 필터
                 var targetMatch = true;
                 if (selectedFilters.target.length > 0) {{
                     targetMatch = false;
@@ -447,28 +433,24 @@ def update_map():
                     if (!hasSpecialFilter && club.target.includes("무관")) targetMatch = true;
                 }}
                 
-                // 4. 검색어 필터
                 var keywordMatch = true;
                 if (keyword.length > 0) {{ if (!club.name.includes(keyword) && !club.address.includes(keyword)) {{ keywordMatch = false; }} }}
 
-                // [최종 판단]
                 if (regionMatch && dayMatch && targetMatch && keywordMatch) {{ 
                     item.isVisible = true; 
                     if (club.is_urgent) {{
-                        item.marker.setMap(map); // 긴급은 바로 지도에
+                        item.marker.setMap(map); 
                     }} else {{
-                        visibleNormalMarkers.push(item.marker); // 일반은 모아서 클러스터러에
+                        visibleNormalMarkers.push(item.marker); 
                     }}
                 }} else {{ 
                     item.isVisible = false; 
-                    item.marker.setMap(null); // 지도에서 제거
-                    item.overlay.setMap(null); // 라벨도 제거
+                    item.marker.setMap(null); 
+                    item.overlay.setMap(null); 
                 }}
             }});
             
-            // 일반 마커 일괄 등록
             clusterer.addMarkers(visibleNormalMarkers);
-            // 라벨 표시 상태 갱신
             updateLabelVisibility();
         }}
 
@@ -481,7 +463,6 @@ def update_map():
             }}
         }}
 
-        // [복구됨] 내 위치 이동 로직
         function moveToMyLocation() {{
             if (navigator.geolocation) {{
                 navigator.geolocation.getCurrentPosition(function(position) {{
@@ -493,6 +474,10 @@ def update_map():
                 }});
             }} else {{ alert('위치 정보를 사용할 수 없습니다.'); }}
         }}
+
+        // [중요] 초기화 코드는 모든 변수와 함수가 정의된 맨 마지막에 호출해야 함
+        applyFilters();
+
     </script>
 </body>
 </html>
