@@ -5,17 +5,28 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>누룽지도</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/528/528098.png">
+
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; }
         #map { width: 100%; height: 100%; }
         :root { --white: #fff; --brand-color: #fac710; --urgent-color: #ff4757; --shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
+        .instagram { font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: transform 0.2s; }
+        .instagram:hover { transform: scale(1.1); }
+        .instagram:before { content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }
+        .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
+
         .search-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }
         .search-icon-box { width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }
         .main-search-input { flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; }
         .separator { width: 1px; height: 20px; background: #eee; margin: 0 5px; }
         .filter-btn-icon { width: 48px; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; color: #333; position: relative; }
+        .filter-btn-icon:active { opacity: 0.5; }
         .filter-badge { position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: #fac710; border-radius: 50%; display: none; }
         .filter-badge.active { display: block; }
         
@@ -31,8 +42,28 @@
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
 
         .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); padding: 20px 24px 50px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: none; }
+        .sheet-handle-area { width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; }
+        .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
         
+        .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }
+        
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .sheet-title { font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }
+        
+        .tag-box { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }
+        .tag.target { color: #0056b3; background: #e7f5ff; }
+
+        .info-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }
+        .info-icon { width: 20px; text-align: center; font-size: 16px; }
+        
+        .action-buttons { display: flex; gap: 12px; margin-top: 30px; }
+        .btn { flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-copy { background: #f1f3f5; color: #333; }
+        .btn-way { background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
+        a.insta-link { text-decoration: none; display: flex; align-items: center; }
+
         .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
         .filter-sheet.active { transform: translateY(0); }
         .fs-header { padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -47,8 +78,8 @@
         .fs-footer { padding: 10px 24px 10px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white; }
         .btn-reset { flex: 0.3; background: #f1f3f5; color: #555; }
         .btn-apply { flex: 1; background: #333; color: white; }
-        
-        .btn { padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; text-align: center; }
+        .fs-handle-area { width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }
+        .fs-handle { width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -108,13 +139,23 @@
             <div class="btn btn-reset" onclick="resetFilters()">초기화</div>
             <div class="btn btn-apply" onclick="applyFilters()">적용하기</div>
         </div>
+        <div class="fs-handle-area" id="filterHandle"><div class="fs-handle"></div></div>
     </div>
 
     <div id="bottomSheet" class="bottom-sheet">
-        <div id="urgentArea" class="urgent-banner"></div>
-        <h2 id="sheetTitle">팀 이름</h2>
-        <p id="sheetInfo">정보</p>
-        <div class="btn btn-apply" onclick="closeBottomSheet()">닫기</div>
+        <div class="sheet-handle-area" id="sheetHandle"><div class="sheet-handle"></div></div>
+        
+        <div id="urgentArea"></div>
+
+        <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
+        <div class="tag-box" id="sheetTags"></div>
+        <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
+        <div class="info-row"><span class="info-icon">⏰</span> <span id="sheetSchedule">-</span></div>
+        <div class="action-buttons">
+            <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
+            <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
+        </div>
+        <input type="hidden" id="sheetAddressVal">
     </div>
 
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=69f821ba943db5e3532ac90ea5ca1080&libraries=clusterer"></script>
@@ -146,6 +187,7 @@
         var gpsSvg = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3e%3ccircle cx="50" cy="50" r="45" fill="rgba(66, 133, 244, 0.3)"/%3e%3ccircle cx="50" cy="50" r="25" fill="white"/%3e%3ccircle cx="50" cy="50" r="20" fill="%234285F4"/%3e%3c/svg%3e';
         var gpsImage = new kakao.maps.MarkerImage(gpsSvg, new kakao.maps.Size(44,44), {offset: new kakao.maps.Point(22,22)});
         var myMarker = null;
+        var instaCssIcon = '<div class="instagram" title="인스타그램 보러가기"></div>';
 
         clubs.forEach(function(club) {
             if (!club.lat || !club.lng) return;
@@ -159,14 +201,19 @@
             }
             
             var labelClass = club.is_urgent ? 'label urgent' : 'label';
-            var content = '<div class="' + labelClass + '" onclick="openDetail(' + club.id + ')">' + club.name + '</div>';
+            var content = '<div class="' + labelClass + '" onclick="triggerMarkerClick(' + club.id + ')">' + club.name + '</div>';
             var customOverlay = new kakao.maps.CustomOverlay({ position: latlng, content: content, yAnchor: 1 });
             
-            kakao.maps.event.addListener(marker, 'click', function() { openDetail(club.id); });
+            kakao.maps.event.addListener(marker, 'click', function() { openClubDetail(club.id); });
             
             markersData.push({ marker: marker, overlay: customOverlay, club: club, isVisible: true });
             labelOverlays.push({ overlay: customOverlay, club: club });
         });
+
+        function triggerMarkerClick(id) {
+            var target = markersData.find(m => m.club.id === id);
+            if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
+        }
 
         function updateLabelVisibility() {
             var level = map.getLevel(); 
@@ -186,17 +233,31 @@
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
-        function openDetail(id) {
-            var club = clubs.find(c => c.id === id);
-            document.getElementById('sheetTitle').innerText = club.name;
-            document.getElementById('sheetInfo').innerText = club.schedule + " / " + club.price;
+        function openClubDetail(id) {
+            document.getElementById('topSearchInput').blur();
             
-            var banner = document.getElementById('urgentArea');
+            var club = clubs.find(c => c.id === id);
+            
+            var titleHtml = club.name;
+            if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
+            document.getElementById('sheetTitle').innerHTML = titleHtml;
+            
+            document.getElementById('sheetPrice').innerText = club.price || "회비 정보 없음";
+            document.getElementById('sheetSchedule').innerText = club.schedule || "일정 정보 없음";
+            document.getElementById('sheetAddressVal').value = club.address;
+            
+            var tagHtml = '<span class="tag target">' + club.target + '</span>';
+            if(club.link) tagHtml += '<a href="' + club.link + '" target="_blank" style="text-decoration:none"><span class="tag" style="background:#eee">🏠 홈페이지</span></a>';
+            document.getElementById('sheetTags').innerHTML = tagHtml;
+            
+            document.getElementById('btnWay').href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
+            
+            var urgentArea = document.getElementById('urgentArea');
             if (club.is_urgent && club.urgent_msg) {
-                banner.innerText = "🔥 " + club.urgent_msg;
-                banner.style.display = 'block';
+                urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
+                urgentArea.style.display = 'block';
             } else {
-                banner.style.display = 'none';
+                urgentArea.style.display = 'none';
             }
             
             document.getElementById('bottomSheet').style.transform = "translateY(0)";
@@ -219,86 +280,29 @@
             document.getElementById('bottomSheet').style.transform = "translateY(120%)";
         }
         
-        var selectedFilters = { 'region': [], 'day': [], 'target': [] };
-
-        function openFilterSheet() { document.getElementById('filterSheet').style.transform = "translateY(0)"; }
-        function closeFilterSheet() { document.getElementById('filterSheet').style.transform = "translateY(-100%)"; }
-
-        function toggleFilter(category, value, element) {
-            var index = selectedFilters[category].indexOf(value);
-            if (index === -1) { selectedFilters[category].push(value); element.classList.add('selected'); } 
-            else { selectedFilters[category].splice(index, 1); element.classList.remove('selected'); }
+        document.getElementById('btnCopy').onclick = function() { copyAddress(document.getElementById('sheetAddressVal').value); };
+        function copyAddress(addr) {
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(addr).then(() => { alert('주소가 복사되었습니다! 📋'); }); } 
+            else { var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }
         }
 
-        function resetFilters() {
-            selectedFilters = { 'region': [], 'day': [], 'target': [] };
-            document.querySelectorAll('.chip').forEach(el => el.classList.remove('selected'));
-            document.getElementById('topSearchInput').value = ""; 
-            applyFilters();
-        }
+        const sheet = document.getElementById('bottomSheet');
+        const handleArea = document.getElementById('sheetHandle');
+        let startY = 0; let currentY = 0; let isDragging = false;
 
-        function applyFilters() {
-            closeFilterSheet();
-            var keyword = document.getElementById('topSearchInput').value.trim();
-            var filterCount = selectedFilters.region.length + selectedFilters.day.length + selectedFilters.target.length;
-            
-            if (filterCount > 0) { document.getElementById('filterBadge').classList.add('active'); } 
-            else { document.getElementById('filterBadge').classList.remove('active'); }
+        function bHandleStart(e) { startY = e.touches ? e.touches[0].clientY : e.clientY; isDragging = true; sheet.style.transition = 'none'; }
+        function bHandleMove(e) { if (!isDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); currentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = currentY - startY; if (deltaY > 0) { sheet.style.transform = `translateY(${deltaY}px)`; } }
+        function bHandleEnd(e) { if (!isDragging) return; isDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : currentY; if (!e.touches && currentY === 0) endY = startY; const deltaY = endY - startY; sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY > 50) { closeBottomSheet(); } else { sheet.style.transform = "translateY(0)"; } currentY = 0; startY = 0; }
+        handleArea.addEventListener('touchstart', bHandleStart, {passive: true}); handleArea.addEventListener('touchmove', bHandleMove, {passive: false}); handleArea.addEventListener('touchend', bHandleEnd); handleArea.addEventListener('mousedown', bHandleStart); window.addEventListener('mousemove', bHandleMove); window.addEventListener('mouseup', bHandleEnd);
 
-            clusterer.clear(); 
-            var visibleNormalMarkers = []; 
+        const filterSheet = document.getElementById('filterSheet');
+        const filterHandle = document.getElementById('filterHandle');
+        let fStartY = 0; let fCurrentY = 0; let fIsDragging = false;
 
-            markersData.forEach(function(item) {
-                var club = item.club;
-                
-                var regionMatch = true;
-                if (selectedFilters.region.length > 0) {
-                    regionMatch = false;
-                    for (var i = 0; i < selectedFilters.region.length; i++) {
-                        var r = selectedFilters.region[i];
-                        if (r === "충청" && (club.address.startsWith("충남") || club.address.startsWith("충북") || club.address.startsWith("대전") || club.address.startsWith("세종"))) regionMatch = true;
-                        else if (r === "전라" && (club.address.startsWith("전남") || club.address.startsWith("전북") || club.address.startsWith("광주"))) regionMatch = true;
-                        else if (r === "경상" && (club.address.startsWith("경남") || club.address.startsWith("경북") || club.address.startsWith("대구") || club.address.startsWith("부산") || club.address.startsWith("울산"))) regionMatch = true;
-                        else if (club.address.startsWith(r)) regionMatch = true;
-                    }
-                }
-                
-                var dayMatch = true;
-                if (selectedFilters.day.length > 0) {
-                    dayMatch = false;
-                    var cleanSchedule = club.schedule.replace(/요일/g, "");
-                    if (cleanSchedule.includes("매일")) dayMatch = true;
-                    else { for (var i = 0; i < selectedFilters.day.length; i++) { if (cleanSchedule.includes(selectedFilters.day[i])) dayMatch = true; } }
-                }
-                
-                var targetMatch = true;
-                if (selectedFilters.target.length > 0) {
-                    targetMatch = false;
-                    var hasSpecialFilter = selectedFilters.target.some(t => ["여성전용", "남성전용", "선출가능", "6인제"].includes(t));
-                    for (var i = 0; i < selectedFilters.target.length; i++) { if (club.target.includes(selectedFilters.target[i])) targetMatch = true; }
-                    if (!hasSpecialFilter && club.target.includes("무관")) targetMatch = true;
-                }
-                
-                var keywordMatch = true;
-                if (keyword.length > 0) { if (!club.name.includes(keyword) && !club.address.includes(keyword)) { keywordMatch = false; } }
-
-                if (regionMatch && dayMatch && targetMatch && keywordMatch) { 
-                    item.isVisible = true; 
-                    if (club.is_urgent) {
-                        item.marker.setMap(map); 
-                    } else {
-                        visibleNormalMarkers.push(item.marker); 
-                    }
-                } else { 
-                    item.isVisible = false; 
-                    item.marker.setMap(null); 
-                    item.overlay.setMap(null); 
-                }
-            });
-            
-            clusterer.addMarkers(visibleNormalMarkers);
-            updateLabelVisibility();
-        }
+        function fHandleStart(e) { fStartY = e.touches ? e.touches[0].clientY : e.clientY; fIsDragging = true; filterSheet.style.transition = 'none'; }
+        function fHandleMove(e) { if (!fIsDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); fCurrentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = fCurrentY - fStartY; if (deltaY < 0) { filterSheet.style.transform = `translateY(${deltaY}px)`; } }
+        function fHandleEnd(e) { if (!fIsDragging) return; fIsDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : fCurrentY; if (!e.touches && fCurrentY === 0) endY = fStartY; const deltaY = endY - fStartY; filterSheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY < -50) { closeFilterSheet(); } else { filterSheet.style.transform = "translateY(0)"; } fCurrentY = 0; fStartY = 0; }
+        filterHandle.addEventListener('touchstart', fHandleStart, {passive: true}); filterHandle.addEventListener('touchmove', fHandleMove, {passive: false}); filterHandle.addEventListener('touchend', fHandleEnd); filterHandle.addEventListener('mousedown', fHandleStart); window.addEventListener('mousemove', fHandleMove); window.addEventListener('mouseup', fHandleEnd);
 
         function toggleFilterSheet() {
             var sheet = document.getElementById('filterSheet');
@@ -321,7 +325,6 @@
             } else { alert('위치 정보를 사용할 수 없습니다.'); }
         }
 
-        // [중요] 초기화 코드는 모든 변수와 함수가 정의된 맨 마지막에 호출해야 함
         applyFilters();
 
     </script>
