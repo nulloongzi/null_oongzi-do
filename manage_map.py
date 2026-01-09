@@ -401,6 +401,8 @@ def update_map():
 
             clusterer.clear(); 
             var visibleNormalMarkers = []; 
+            // [추가] 지도 범위 재설정을 위한 Bounds 객체 생성
+            var bounds = new kakao.maps.LatLngBounds();
 
             markersData.forEach(function(item) {{
                 var club = item.club;
@@ -443,6 +445,8 @@ def update_map():
                     }} else {{
                         visibleNormalMarkers.push(item.marker); 
                     }}
+                    // [추가] 검색된 마커 위치를 Bounds에 추가
+                    bounds.extend(item.marker.getPosition());
                 }} else {{ 
                     item.isVisible = false; 
                     item.marker.setMap(null); 
@@ -452,6 +456,11 @@ def update_map():
             
             clusterer.addMarkers(visibleNormalMarkers);
             updateLabelVisibility();
+
+            // [추가] 검색 결과가 있으면 지도 범위 재설정 (검색어가 있거나 필터가 있을 때만 동작)
+            if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) {{
+                map.setBounds(bounds);
+            }}
         }}
 
         function toggleFilterSheet() {{
@@ -475,7 +484,6 @@ def update_map():
             }} else {{ alert('위치 정보를 사용할 수 없습니다.'); }}
         }}
 
-        // [중요] 초기화 코드는 모든 변수와 함수가 정의된 맨 마지막에 호출해야 함
         applyFilters();
 
     </script>
