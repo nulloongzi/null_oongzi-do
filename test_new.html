@@ -30,12 +30,11 @@
         .filter-badge { position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: #fac710; border-radius: 50%; display: none; }
         .filter-badge.active { display: block; }
         
-        /* [수정됨] 긴급 구인 티커 디자인 (연한 빨간색 + 투명도) */
         .urgent-ticker-bar {
             position: absolute; top: 70px; left: 15px; right: 15px; z-index: 18;
             height: 40px; 
-            background: rgba(255, 245, 245, 0.95); /* 연한 붉은색 + 투명도 */
-            border: 1px solid rgba(255, 71, 87, 0.3); /* 은은한 붉은 테두리 */
+            background: rgba(255, 245, 245, 0.95); 
+            border: 1px solid rgba(255, 71, 87, 0.3);
             border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08);
             display: none; align-items: center; padding: 0 12px; overflow: hidden;
         }
@@ -46,7 +45,6 @@
             height: 40px; line-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
             font-size: 14px; font-weight: 600; cursor: pointer; color: #333; 
         }
-        /* 팀 이름 강조 색상 (진한 빨강) */
         .ticker-item b { color: #d63031; margin-right: 5px; }
 
         .fab-group { position: absolute; bottom: 30px; right: 15px; z-index: 20; display: flex; flex-direction: column; gap: 12px; }
@@ -255,11 +253,11 @@
             if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
         }
 
-        // [수정됨] 줌 레벨에 따른 라벨 표시 로직 (긴급: ~12레벨, 일반: ~5레벨)
+        // [수정됨] 줌 레벨에 따른 라벨 표시 로직 (긴급: ~8레벨, 일반: ~5레벨)
         function updateLabelVisibility() {
             var level = map.getLevel(); 
             var showNormalLabels = (level <= 5); 
-            var showUrgentLabels = (level <= 12); // 긴급은 넓은 범위까지 허용, 전국뷰(13+)에선 숨김
+            var showUrgentLabels = (level <= 8); // 레벨 8 이하에서만 보임
 
             markers.forEach(function(item) {
                 if (!item.isVisible) return; 
@@ -318,7 +316,6 @@
             else { var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }
         }
 
-        // [티커 중복 제거 로직 유지]
         var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
         var uniqueTickerList = [];
         var processedTeams = {};
