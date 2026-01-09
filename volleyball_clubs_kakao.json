@@ -38,8 +38,8 @@
         "lat": 37.3073441859489,
         "lng": 127.015667305962,
         "id": 2,
-        "is_urgent": true,
-        "urgent_msg": "회원 모집! 선출과 비선출이 함께 운동하는 곳!"
+        "is_urgent": false,
+        "urgent_msg": ""
     },
     {
         "name": "H_B",
@@ -52,8 +52,8 @@
         "lat": 37.2518258783031,
         "lng": 126.909629549921,
         "id": 3,
-        "is_urgent": true,
-        "urgent_msg": "회원 모집! 선출과 비선출이 함께 운동하는 곳!"
+        "is_urgent": false,
+        "urgent_msg": ""
     },
     {
         "name": "동두천화목배구클럽",
@@ -504,8 +504,8 @@
         "lat": 37.380779446634,
         "lng": 126.78327876897,
         "id": 35,
-        "is_urgent": true,
-        "urgent_msg": "매주 신청 받습니다! 즐겁게 같이 배구해요!"
+        "is_urgent": false,
+        "urgent_msg": ""
     },
     {
         "name": "군포배구클럽",

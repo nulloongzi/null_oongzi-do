@@ -13,20 +13,15 @@
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; }
-        
         #map { width: 100%; height: 100%; }
-        
         :root { --white: #fff; --brand-color: #fac710; --urgent-color: #ff4757; --shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
         .instagram { font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: transform 0.2s; }
         .instagram:hover { transform: scale(1.1); }
         .instagram:before { content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }
         .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
 
-        .search-container {
-            position: absolute; top: 15px; left: 15px; right: 15px;
-            z-index: 20; display: flex; background: white; border-radius: 12px;
-            box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px;
-        }
+        .search-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }
         .search-icon-box { width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }
         .main-search-input { flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; }
         .separator { width: 1px; height: 20px; background: #eee; margin: 0 5px; }
@@ -34,11 +29,57 @@
         .filter-btn-icon:active { opacity: 0.5; }
         .filter-badge { position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: #fac710; border-radius: 50%; display: none; }
         .filter-badge.active { display: block; }
+        
+        .urgent-ticker-bar {
+            position: absolute; top: 70px; left: 15px; right: 15px; z-index: 18;
+            height: 40px; 
+            background: rgba(255, 245, 245, 0.95); 
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            display: none; align-items: center; padding: 0 12px; overflow: hidden;
+        }
+        .ticker-icon { font-size: 18px; margin-right: 10px; animation: pulse 1.5s infinite; }
+        .ticker-content { flex: 1; height: 100%; position: relative; overflow: hidden; }
+        .ticker-list { list-style: none; margin: 0; padding: 0; position: absolute; width: 100%; top: 0; left: 0; transition: top 0.5s ease-in-out; }
+        .ticker-item { 
+            height: 40px; line-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            font-size: 14px; font-weight: 600; cursor: pointer; color: #333; 
+        }
+        .ticker-item b { color: #d63031; margin-right: 5px; }
 
         .fab-group { position: absolute; bottom: 30px; right: 15px; z-index: 20; display: flex; flex-direction: column; gap: 12px; }
-        .fab-btn { width: 48px; height: 48px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s; font-size: 20px; text-decoration: none; color: #333; }
+        .fab-btn { width: 48px; height: 48px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; text-decoration: none; color: #333; transition: transform 0.2s; }
         .fab-btn:active { transform: scale(0.95); }
         .fab-report { background: #fac710; color: #000; }
+        
+        .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
+        .label:hover { z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }
+        
+        .label.urgent { background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
+
+        .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); padding: 20px 24px 50px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .sheet-handle-area { width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; }
+        .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
+        
+        .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }
+        
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .sheet-title { font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }
+        
+        .tag-box { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }
+        .tag.target { color: #0056b3; background: #e7f5ff; }
+
+        .info-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }
+        .info-icon { width: 20px; text-align: center; font-size: 16px; }
+        
+        .action-buttons { display: flex; gap: 12px; margin-top: 30px; }
+        .btn { flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-copy { background: #f1f3f5; color: #333; }
+        .btn-way { background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
+        a.insta-link { text-decoration: none; display: flex; align-items: center; }
 
         .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
         .filter-sheet.active { transform: translateY(0); }
@@ -56,36 +97,6 @@
         .btn-apply { flex: 1; background: #333; color: white; }
         .fs-handle-area { width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }
         .fs-handle { width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }
-
-        .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-40px); transition: z-index 0.1s, transform 0.1s; }
-        .label:hover { z-index: 10000 !important; transform: translateY(-42px) scale(1.05); }
-        
-        .label.urgent { background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
-        }
-
-        .bottom-sheet { position: fixed; bottom: 0; left: 15px; right: 15px; width: auto; background: #fff; z-index: 200; border-radius: 24px; box-shadow: 0 5px 25px rgba(0,0,0,0.15); padding: 20px 24px 30px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); touch-action: none; margin-bottom: 20px; }
-        .sheet-handle-area { width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; }
-        .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
-        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .sheet-title { font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }
-        .tag-box { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }
-        .tag.target { color: #0056b3; background: #e7f5ff; }
-        
-        .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }
-
-        .info-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }
-        .info-icon { width: 20px; text-align: center; font-size: 16px; }
-        .action-buttons { display: flex; gap: 12px; margin-top: 30px; }
-        .btn { flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.98); }
-        .btn-copy { background: #f1f3f5; color: #333; }
-        .btn-way { background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
-        a.insta-link { text-decoration: none; display: flex; align-items: center; }
     </style>
 </head>
 <body>
@@ -95,15 +106,19 @@
         <div class="search-icon-box">🔎</div>
         <input type="text" id="topSearchInput" class="main-search-input" placeholder="팀명, 지역으로 검색..." onkeyup="applyFilters()">
         <div class="separator"></div>
-        <div class="filter-btn-icon" onclick="openFilterSheet()" title="상세 필터">
-            <span style="font-size:20px;">⚙️</span>
-            <div id="filterBadge" class="filter-badge"></div>
+        <div class="filter-btn-icon" onclick="openFilterSheet()">⚙️<div id="filterBadge" class="filter-badge"></div></div>
+    </div>
+
+    <div id="urgentTicker" class="urgent-ticker-bar">
+        <div class="ticker-icon">🔥</div>
+        <div class="ticker-content">
+            <ul id="tickerList" class="ticker-list"></ul>
         </div>
     </div>
 
     <div class="fab-group">
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
-        <div class="fab-btn" onclick="moveToMyLocation()" title="내 위치로">📍</div>
+        <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
 
     <div id="filterSheet" class="filter-sheet">
@@ -172,6 +187,7 @@
         var mapContainer = document.getElementById('map'), 
             mapOption = { center: new kakao.maps.LatLng(37.5409675314785, 127.100704228215), level: 8 }; 
         var map = new kakao.maps.Map(mapContainer, mapOption); 
+        
         var clusterer = new kakao.maps.MarkerClusterer({
             map: map, averageCenter: true, minLevel: 6,
             styles: [{
@@ -179,19 +195,22 @@
             }]
         });
 
-        var clubs = [{"name": "GVT", "target": "성인, 대학생", "address": "서울특별시 광진구 아차산로70길 35", "schedule": "매주 토요일 13:00~17:00", "price": "월 3만원 (학생 2만원) / 게스트 1만원", "insta": "gvt__official", "link": "", "lat": 37.5409675314785, "lng": 127.100704228215, "id": 0, "is_urgent": false, "urgent_msg": "남자부 모집중입니다. 함께 즐겁게 실력향상할 인원 모집합니다."}, {"name": "브이홀릭", "target": "성인, 대학생", "address": "경기도 성남시 분당구 양현로 262", "schedule": "매주 화/금 19:00~22:00 / 일 14:00~18:00", "price": "월 4만원 / 게스트 1만원", "insta": "v_holic_2010", "link": "", "lat": 37.4073263996148, "lng": 127.126612716157, "id": 1, "is_urgent": false, "urgent_msg": ""}, {"name": "H_B", "target": "성인, 대학생 (선출가능)", "address": "경기도 수원시 장안구 수일로233번길 15", "schedule": "매주 수요일 18:00~22:00", "price": "월 2만원 / 게스트 8천원 (싸다싸!)", "insta": "hb_volleyball_club", "link": "http://www.hb-volleyball.co.kr", "lat": 37.3073441859489, "lng": 127.015667305962, "id": 2, "is_urgent": false, "urgent_msg": ""}, {"name": "H_B", "target": "성인, 대학생 (선출가능)", "address": "경기도 화성시 매송면 매송로 41", "schedule": "매주 토요일 18:00~22:00", "price": "월 2만원 / 게스트 8천원 (싸다싸!)", "insta": "hb_volleyball_club", "link": "http://www.hb-volleyball.co.kr", "lat": 37.2518258783031, "lng": 126.909629549921, "id": 3, "is_urgent": false, "urgent_msg": ""}, {"name": "동두천화목배구클럽", "target": "성인, 대학생, 청소년", "address": "경기도 동두천시 어수로 4", "schedule": "매주 월/수/금 19:30~22:00", "price": "월 1만원", "insta": "ddc_voller", "link": "https://open.kakao.com/o/p10jZzWh", "lat": 37.9052629454328, "lng": 127.043063227981, "id": 4, "is_urgent": false, "urgent_msg": ""}, {"name": "팀큐브", "target": "성인, 대학생, (여성전용, 6인제)", "address": "서울 강남구 삼성로135길 42", "schedule": "매주 월 19:00~21:00 / 수 19:00~21:00", "price": "월 6.5만원(주2회 11만원) / 게스트 2.5만원", "insta": "teamcubevc", "link": "", "lat": 37.520125172379, "lng": 127.044715764538, "id": 5, "is_urgent": false, "urgent_msg": ""}, {"name": "성북SVA", "target": "성인, 대학생, 청소년", "address": "서울 성북구 화랑로13길 144", "schedule": "매주 화/목 19:00~22:00", "price": "월 8만원", "insta": "kr_sports_plus", "link": "", "lat": 37.6085494620429, "lng": 127.042324971736, "id": 6, "is_urgent": false, "urgent_msg": ""}, {"name": "라이크발리볼", "target": "성인, 대학생", "address": "인천 미추홀구 석정로 165", "schedule": "매주 토요일 : 12:30~16:30", "price": "월 3만원 / 게스트 1만원", "insta": "likevolleyball_team", "link": "", "lat": 37.4739644136398, "lng": 126.651978806147, "id": 7, "is_urgent": false, "urgent_msg": ""}, {"name": "라이크발리볼", "target": "성인, 대학생", "address": "인천 서구 한중로 25", "schedule": "매주 수요일 : 18:00~21:00", "price": "월 3만원 / 게스트 1만원", "insta": "likevolleyball_team", "link": "", "lat": 37.5795849502601, "lng": 126.672802385687, "id": 8, "is_urgent": false, "urgent_msg": ""}, {"name": "JK배구클럽", "target": "성인, 대학생", "address": "경기 시흥시 장곡로 10", "schedule": "매주 일요일 : 10:00~13:00", "price": "회비3만 / 게스트비 없음", "insta": "", "link": "https://m.cafe.daum.net/volleyballsok/IfzY/3333?searchView=Y", "lat": 37.3798358362533, "lng": 126.787616614841, "id": 9, "is_urgent": false, "urgent_msg": ""}, {"name": "새로(CERO)", "target": "성인, 대학생", "address": "서울 강동구 상일로12길 56", "schedule": "매주 토요일 14:00~17:00", "price": "월 4만원 / 게스트 1만원", "insta": "cero_vc", "link": "", "lat": 37.5556127825867, "lng": 127.174608361426, "id": 10, "is_urgent": false, "urgent_msg": ""}, {"name": "마산베스트", "target": "성인, 대학생", "address": "경남 창원시 마산회원구 팔용로 280", "schedule": "매주 화/목 19:00~21:00", "price": "월3만원", "insta": "masan_best", "link": "", "lat": 35.248323558591, "lng": 128.602594607144, "id": 11, "is_urgent": false, "urgent_msg": ""}, {"name": "대구 NTC", "target": "성인, 대학생, (선출가능, 군미필 상관x)", "address": "대구 달서구 계대동문로3길 46", "schedule": "매주 월/수/목 18:30~21:30", "price": "월3만원 / 게스트비 x", "insta": "ntc_volleyball", "link": "", "lat": 35.8579351866729, "lng": 128.494745397447, "id": 12, "is_urgent": false, "urgent_msg": ""}, {"name": "광명선우", "target": "무관", "address": "경기 광명시 가림로 18 하안북초등학교", "schedule": "매주 일요일 13:00~17:00", "price": "월 2만원 / 게스트 1만원", "insta": "volleyball_sunwoo", "link": "", "lat": 37.4647085135351, "lng": 126.869134235278, "id": 13, "is_urgent": false, "urgent_msg": ""}, {"name": "우리하모니", "target": "성인, 대학생 (여성전용)", "address": "서울 양천구 남부순환로 380", "schedule": "매주 토요일 14:00~18:00", "price": "월 3만원 / 게스트 1만원", "insta": "harmony__volleyball", "link": "", "lat": 37.5326758132814, "lng": 126.828972567552, "id": 14, "is_urgent": false, "urgent_msg": ""}, {"name": "FAV", "target": "성인, 대학생", "address": "경기도 고양시 일산 서구 송포백송길 70-1", "schedule": "매주 월/화/수/목/금 19: 40~21:30", "price": "성인 월 기준 - 주 1회 14만원, 주 2~3회 19만원", "insta": "favclub.official", "link": "http://litt.ly/fav_volleyball", "lat": 37.6929835875228, "lng": 126.736120374622, "id": 15, "is_urgent": false, "urgent_msg": ""}, {"name": "구미 거북클럽", "target": "성인, 대학생, 무관 (선출가능)", "address": "경북 구미시 형곡로14길 5-20", "schedule": "매주 화 18:30~21:30 / 토 14:00~17:30", "price": "월 2만원", "insta": "volleyball_gumi", "link": "https://m.cafe.naver.com/geobukclub.cafe?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAb21jcAOw3JBleHRuA2FlbQIxMQBzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAact0OTzvMhVFL7QPLtsO9AWmiWgTsYPFoXQoegc5zLSWZD2Xd0HgqvY9Fs8Sg_aem_zOfY0iLzVbb2vT-dMgNk2Q", "lat": 36.1147023025135, "lng": 128.329775063006, "id": 16, "is_urgent": false, "urgent_msg": ""}, {"name": "강서VC", "target": "성인, 대학생", "address": "서울 강서구 등촌로39길 71", "schedule": "매주 수 18:00~21:00 / 토 15:00~18:00", "price": "분기 8만원(학생 5만원) / 게스트 1만원", "insta": "gangseo.vc", "link": "", "lat": 37.5476142187642, "lng": 126.857942163854, "id": 17, "is_urgent": false, "urgent_msg": ""}, {"name": "레드팡스", "target": "성인", "address": "서울 노원구 섬밭로 181", "schedule": "매주 목 18:00~21:00 / 일 16:30~19:30", "price": "월 3만원 / 게스트 8천원", "insta": "", "link": "https://www.daangn.com/kr/group/%EB%B0%B0%EA%B5%AC%EB%8F%99%ED%98%B8%ED%9A%8C-%EB%A0%88%EB%93%9C%ED%8C%A1%EC%8A%A4-2wq9tjryem95/", "lat": 37.632255170053, "lng": 127.066056635951, "id": 18, "is_urgent": false, "urgent_msg": ""}, {"name": "정무배구", "target": "무관", "address": "전북 전주시 덕진구 만성북4길 10", "schedule": "매주 수/목 19:00~21:00", "price": "주1회 월 5만원, 주2회 월 7만원", "insta": "jeongmu_volley", "link": "", "lat": 35.8477726720349, "lng": 127.074701125365, "id": 19, "is_urgent": false, "urgent_msg": ""}, {"name": "안성 넘버나인", "target": "성인, 대학생", "address": "경기 안성시 비룡로 78", "schedule": "매주 수요일 19:00~21:40", "price": "", "insta": "anseong_no9_volleyballclub", "link": "https://www.youtube.com/@%EC%95%88%EC%84%B1%EB%84%98%EB%B2%84%EB%82%98%EC%9D%B89", "lat": 37.015078008763, "lng": 127.263020902801, "angle": 0.0, "id": 20, "is_urgent": false, "urgent_msg": ""}, {"name": "하이발리", "target": "성인", "address": "경기 파주시 다율로30", "schedule": "매주 수요일 19:00~21:00", "price": "월 4만원 / 게스트 1만원", "insta": "high.volley", "link": "", "lat": 37.7379799283829, "lng": 126.726930320218, "id": 21, "is_urgent": false, "urgent_msg": ""}, {"name": "임팩트", "target": "성인, 대학생, 청소년", "address": "경기 파주시 월롱면 휴암로 434", "schedule": "매주 목요일 19:00~22:00", "price": "월 2만원 / 게스트 5천원", "insta": "paju_impact", "link": "http://kko.to/7v33m3qZj", "lat": 37.8300288380237, "lng": 126.781056138359, "id": 22, "is_urgent": false, "urgent_msg": ""}, {"name": "임팩트", "target": "성인, 대학생, 청소년", "address": "경기 파주시 해솔로 60", "schedule": "매주 토요일 13:00~17:00", "price": "월 2만원 / 게스트 5천원", "insta": "paju_impact", "link": "http://kko.to/7v33m3qZj", "lat": 37.7274642059342, "lng": 126.745874918567, "id": 23, "is_urgent": false, "urgent_msg": ""}, {"name": "안성MVP", "target": "성인", "address": "경기 안성시 공도읍 기업단지로 57", "schedule": "매주 화/목 19:00~21:30", "price": "월 3만원", "insta": "mvp_official_2014", "link": "https://open.kakao.com/o/s8T9ZYWe", "lat": 37.0028098402492, "lng": 127.15850296807, "id": 24, "is_urgent": false, "urgent_msg": ""}, {"name": "대구 두류배구회", "target": "성인, 대학생, 청소년, 무관", "address": "대구 달서구 서당로 30", "schedule": "매주 일요일 09:00~13:00", "price": "회비 남:월 2만원, 여:월 1만원 (가입비 3만원)", "insta": "", "link": "https://open.kakao.com/o/sNOhf3Ah", "lat": 35.8545121028952, "lng": 128.496514228915, "id": 25, "is_urgent": false, "urgent_msg": ""}, {"name": "DGZ", "target": "성인", "address": "서울 동작구 장승배기로10가길 35", "schedule": "매주 일요일 9:30~14:20 (남녀 2시간씩)", "price": "월 4만원 / 게스트 1만원 (현재 무료)", "insta": "dgz_volleyball_club", "link": "", "lat": 37.5027160069897, "lng": 126.940926768444, "angle": 0.0, "id": 26, "is_urgent": false, "urgent_msg": ""}, {"name": "여수에이스", "target": "성인", "address": "전남 여수시 웅천북4로 9", "schedule": "매주 화/금 18:30~21:40", "price": "월 2만원 / 게스트 1만원", "insta": "yeosu_ace_volleyball", "link": "", "lat": 34.7483267150984, "lng": 127.684825674004, "id": 27, "is_urgent": false, "urgent_msg": ""}, {"name": "V.O.L", "target": "성인, 대학생", "address": "서울 동작구 장승배기로10가길 35", "schedule": "매주 수 18:30~21:30 / 토 12:30~18:00", "price": "월 4만원 / 게스트 1만원", "insta": "v.o.l_volleyball", "link": "", "lat": 37.5027160069897, "lng": 126.940726768444, "angle": 3.141592653589793, "id": 28, "is_urgent": false, "urgent_msg": ""}, {"name": "레이더스", "target": "성인", "address": "경기 안성시 비룡로 78", "schedule": "매주 화/금 19:00~21:30", "price": "30세 미만 월 1만원, 30세 이상 월 2만원 / 게스트비 없음", "insta": "raiders_volleyball_team", "link": "", "lat": 37.015078008763, "lng": 127.262820902801, "angle": 3.141592653589793, "id": 29, "is_urgent": false, "urgent_msg": ""}, {"name": "경주 더케이", "target": "성인, 대학생", "address": "경북 경주시 광중2길 28", "schedule": "매주 화/목 18:00", "price": "월 3.5만원 (연납 3만원) / 1회체험비 무료", "insta": "thek_vbc", "link": "pf.kakao.com/_xcTaxmn", "lat": 35.8849473288934, "lng": 129.229737107908, "id": 30, "is_urgent": false, "urgent_msg": ""}, {"name": "원주 스마일 배구클럽", "target": "무관", "address": "강원 원주시 남원로 551", "schedule": "매주 화 18:00~22:00 / 토 13:00~16:00", "price": "월 성인 2.5만원, 대학생1.5만원 / 게스트비 5천원", "insta": "smile.volleyball.club_", "link": "https://open.kakao.com/o/gTs0Mpse", "lat": 37.3338307104893, "lng": 127.946303709594, "id": 31, "is_urgent": false, "urgent_msg": ""}, {"name": "우사모 SWVC", "target": "성인, 대학생", "address": "서울 도봉구 우이천로 432", "schedule": "매주 일요일 13:00~18:00", "price": "월 4만원(학생 및 무직은 3만원) / 게스트 1만원", "insta": "swvc_volley", "link": "", "lat": 37.6526987118348, "lng": 127.0184004627, "id": 32, "is_urgent": false, "urgent_msg": ""}, {"name": "NWN", "target": "성인, 대학생", "address": "서울 노원구 한글비석로 566", "schedule": "매주 수 18:30-21:30 / 토 15:00-19:00", "price": "월 3만원 / 게스트 1만원", "insta": "nowon_no.1_volleyball", "link": "https://m.cafe.daum.net/nowon-no.1/_rec?utm_source=ig&utm_medium=social&utm_content=link_in_bio", "lat": 37.6648178269709, "lng": 127.054322233957, "id": 33, "is_urgent": false, "urgent_msg": ""}, {"name": "어나더레벨", "target": "무관", "address": "세종특별자치시 다정남로 91", "schedule": "매주 수요일 19:00 ~ 21:30", "price": "신규 첫달 6만 / 월 3만 / 게스트1회무료(2회 1만원)", "insta": "khp4949", "link": "https://open.kakao.com/o/g3dvQE4g", "lat": 36.4939039101709, "lng": 127.250966962615, "id": 34, "is_urgent": false, "urgent_msg": ""}, {"name": "시흥 수요배구회 픽업게임", "target": "성인, 대학생", "address": "경기 시흥시 장곡로54번길 14", "schedule": "매주 수요일 17:50~20:50", "price": "없음", "insta": "volleyball_pickup_siheung", "link": "https://open.kakao.com/o/s2KVlj0h", "lat": 37.380779446634, "lng": 126.78327876897, "id": 35, "is_urgent": false, "urgent_msg": ""}, {"name": "군포배구클럽", "target": "성인, 대학생", "address": "경기 군포시 산본로 267", "schedule": "매주 일요일 10:00~16:00", "price": "월 2.5만원 / 게스트 1만원", "insta": "gunpo_volleyball", "link": "https://open.kakao.com/o/g1qV2i3h", "lat": 37.3540356844596, "lng": 126.936815220052, "id": 36, "is_urgent": false, "urgent_msg": ""}, {"name": "부산배구클럽", "target": "성인, 대학생, 청소년, 선출가능", "address": "부산 북구 덕천2길 10", "schedule": "매주 화요일 18:00~21:00", "price": "성인 월 2만원 (대학생 월 1.5만원, 고등학생 월 1만원)", "insta": "volleyball_busan", "link": "https://open.kakao.com/o/suiGnD0", "lat": 35.2082050651349, "lng": 129.006965137504, "id": 37, "is_urgent": false, "urgent_msg": ""}, {"name": "HB아카데미", "target": "무관", "address": "서울 도봉구 노해로 273", "schedule": "매주 월 17:00-18:30 / 일 15:00-16:30 / 일 16:30-18:00", "price": "1회 무료체험 / 학생 12만원 / 성인 14만원 / 개인레슨 문의", "insta": "h_bacademy", "link": "https://m.blog.naver.com/rudejr2238", "lat": 37.6518477614279, "lng": 127.038744954072, "id": 38, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 마음로 284", "schedule": "매주 화요일 19:00~22:00", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.519724340798, "lng": 127.236589788899, "id": 39, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 세종로 941", "schedule": "매주 목요일 18:30~21:00", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.4877156432012, "lng": 127.243231178402, "id": 40, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 아름동 804", "schedule": "매주 일  9:00~12:00 (남) / 12:00~4:00 (여)", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.523100478656, "lng": 127.255014907693, "id": 41, "is_urgent": false, "urgent_msg": ""}, {"name": "순천배구클럽", "target": "성인, 대학생", "address": "전남 순천시 북정2길 20", "schedule": "매주 화요일 18:30~22:00", "price": "월 3.5만원", "insta": "heooooooeh", "link": "", "lat": 34.9646430183578, "lng": 127.483992847829, "id": 42, "is_urgent": false, "urgent_msg": ""}, {"name": "순천배구클럽", "target": "성인, 대학생", "address": "전남 순천시 순광로 15", "schedule": "매주 금요일 18:30~21:30", "price": "월 3.5만원", "insta": "heooooooeh", "link": "", "lat": 34.9560628875777, "lng": 127.522478978541, "id": 43, "is_urgent": false, "urgent_msg": ""}, {"name": "목포하나클럽", "target": "성인, 대학생", "address": "전남 목포시 남악1로16번길 25", "schedule": "매주 월/수/금 18:30~21:40", "price": "월 3만원 / 게스트 비용 없음", "insta": "mokpo_hana_vc", "link": "", "lat": 34.8080460089449, "lng": 126.449995234402, "id": 44, "is_urgent": false, "urgent_msg": ""}, {"name": "하이원배구동호회", "target": "성인", "address": "경기 하남시 아리수로 600", "schedule": "매주 화/수/목 10:00~12:00", "price": "월 1만원", "insta": "", "link": "https://www.daangn.com/kr/community/%ED%95%98%EB%82%A8%EC%8B%9C-%EC%97%AC%EC%9E%90-%EB%B0%B0%EA%B5%AC-%EB%8F%99%ED%98%B8%ED%9A%8C-54tne9r282sz/", "lat": 37.5657002161617, "lng": 127.193906244378, "id": 45, "is_urgent": false, "urgent_msg": ""}];
+        var clubs = [{"name": "GVT", "target": "성인, 대학생", "address": "서울특별시 광진구 아차산로70길 35", "schedule": "매주 토요일 13:00~17:00", "price": "월 3만원 (학생 2만원) / 게스트 1만원", "insta": "gvt__official", "link": "", "lat": 37.5409675314785, "lng": 127.100704228215, "id": 0, "is_urgent": true, "urgent_msg": "🔹 남자부 모집중‼ 게스트 환영‼ 🔹"}, {"name": "브이홀릭", "target": "성인, 대학생", "address": "경기도 성남시 분당구 양현로 262", "schedule": "매주 화/금 19:00~22:00 / 일 14:00~18:00", "price": "월 4만원 / 게스트 1만원", "insta": "v_holic_2010", "link": "", "lat": 37.4073263996148, "lng": 127.126612716157, "id": 1, "is_urgent": false, "urgent_msg": ""}, {"name": "H_B", "target": "성인, 대학생 (선출가능)", "address": "경기도 수원시 장안구 수일로233번길 15", "schedule": "매주 수요일 18:00~22:00", "price": "월 2만원 / 게스트 8천원 (싸다싸!)", "insta": "hb_volleyball_club", "link": "http://www.hb-volleyball.co.kr", "lat": 37.3073441859489, "lng": 127.015667305962, "id": 2, "is_urgent": false, "urgent_msg": ""}, {"name": "H_B", "target": "성인, 대학생 (선출가능)", "address": "경기도 화성시 매송면 매송로 41", "schedule": "매주 토요일 18:00~22:00", "price": "월 2만원 / 게스트 8천원 (싸다싸!)", "insta": "hb_volleyball_club", "link": "http://www.hb-volleyball.co.kr", "lat": 37.2518258783031, "lng": 126.909629549921, "id": 3, "is_urgent": false, "urgent_msg": ""}, {"name": "동두천화목배구클럽", "target": "성인, 대학생, 청소년", "address": "경기도 동두천시 어수로 4", "schedule": "매주 월/수/금 19:30~22:00", "price": "월 1만원", "insta": "ddc_voller", "link": "https://open.kakao.com/o/p10jZzWh", "lat": 37.9052629454328, "lng": 127.043063227981, "id": 4, "is_urgent": false, "urgent_msg": ""}, {"name": "팀큐브", "target": "성인, 대학생, (여성전용, 6인제)", "address": "서울 강남구 삼성로135길 42", "schedule": "매주 월 19:00~21:00 / 수 19:00~21:00", "price": "월 6.5만원(주2회 11만원) / 게스트 2.5만원", "insta": "teamcubevc", "link": "", "lat": 37.520125172379, "lng": 127.044715764538, "id": 5, "is_urgent": false, "urgent_msg": ""}, {"name": "성북SVA", "target": "성인, 대학생, 청소년", "address": "서울 성북구 화랑로13길 144", "schedule": "매주 화/목 19:00~22:00", "price": "월 8만원", "insta": "kr_sports_plus", "link": "", "lat": 37.6085494620429, "lng": 127.042324971736, "id": 6, "is_urgent": false, "urgent_msg": ""}, {"name": "라이크발리볼", "target": "성인, 대학생", "address": "인천 미추홀구 석정로 165", "schedule": "매주 토요일 : 12:30~16:30", "price": "월 3만원 / 게스트 1만원", "insta": "likevolleyball_team", "link": "", "lat": 37.4739644136398, "lng": 126.651978806147, "id": 7, "is_urgent": false, "urgent_msg": ""}, {"name": "라이크발리볼", "target": "성인, 대학생", "address": "인천 서구 한중로 25", "schedule": "매주 수요일 : 18:00~21:00", "price": "월 3만원 / 게스트 1만원", "insta": "likevolleyball_team", "link": "", "lat": 37.5795849502601, "lng": 126.672802385687, "id": 8, "is_urgent": false, "urgent_msg": ""}, {"name": "JK배구클럽", "target": "성인, 대학생", "address": "경기 시흥시 장곡로 10", "schedule": "매주 일요일 : 10:00~13:00", "price": "회비3만 / 게스트비 없음", "insta": "", "link": "https://m.cafe.daum.net/volleyballsok/IfzY/3333?searchView=Y", "lat": 37.3798358362533, "lng": 126.787616614841, "id": 9, "is_urgent": false, "urgent_msg": ""}, {"name": "새로(CERO)", "target": "성인, 대학생", "address": "서울 강동구 상일로12길 56", "schedule": "매주 토요일 14:00~17:00", "price": "월 4만원 / 게스트 1만원", "insta": "cero_vc", "link": "", "lat": 37.5556127825867, "lng": 127.174608361426, "id": 10, "is_urgent": false, "urgent_msg": ""}, {"name": "마산베스트", "target": "성인, 대학생", "address": "경남 창원시 마산회원구 팔용로 280", "schedule": "매주 화/목 19:00~21:00", "price": "월3만원", "insta": "masan_best", "link": "", "lat": 35.248323558591, "lng": 128.602594607144, "id": 11, "is_urgent": false, "urgent_msg": ""}, {"name": "대구 NTC", "target": "성인, 대학생, (선출가능, 군미필 상관x)", "address": "대구 달서구 계대동문로3길 46", "schedule": "매주 월/수/목 18:30~21:30", "price": "월3만원 / 게스트비 x", "insta": "ntc_volleyball", "link": "", "lat": 35.8579351866729, "lng": 128.494745397447, "id": 12, "is_urgent": false, "urgent_msg": ""}, {"name": "광명선우", "target": "무관", "address": "경기 광명시 가림로 18 하안북초등학교", "schedule": "매주 일요일 13:00~17:00", "price": "월 2만원 / 게스트 1만원", "insta": "volleyball_sunwoo", "link": "", "lat": 37.4647085135351, "lng": 126.869134235278, "id": 13, "is_urgent": false, "urgent_msg": ""}, {"name": "우리하모니", "target": "성인, 대학생 (여성전용)", "address": "서울 양천구 남부순환로 380", "schedule": "매주 토요일 14:00~18:00", "price": "월 3만원 / 게스트 1만원", "insta": "harmony__volleyball", "link": "", "lat": 37.5326758132814, "lng": 126.828972567552, "id": 14, "is_urgent": false, "urgent_msg": ""}, {"name": "FAV", "target": "성인, 대학생", "address": "경기도 고양시 일산 서구 송포백송길 70-1", "schedule": "매주 월/화/수/목/금 19: 40~21:30", "price": "성인 월 기준 - 주 1회 14만원, 주 2~3회 19만원", "insta": "favclub.official", "link": "http://litt.ly/fav_volleyball", "lat": 37.6929835875228, "lng": 126.736120374622, "id": 15, "is_urgent": false, "urgent_msg": ""}, {"name": "구미 거북클럽", "target": "성인, 대학생, 무관 (선출가능)", "address": "경북 구미시 형곡로14길 5-20", "schedule": "매주 화 18:30~21:30 / 토 14:00~17:30", "price": "월 2만원", "insta": "volleyball_gumi", "link": "https://m.cafe.naver.com/geobukclub.cafe?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAb21jcAOw3JBleHRuA2FlbQIxMQBzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAact0OTzvMhVFL7QPLtsO9AWmiWgTsYPFoXQoegc5zLSWZD2Xd0HgqvY9Fs8Sg_aem_zOfY0iLzVbb2vT-dMgNk2Q", "lat": 36.1147023025135, "lng": 128.329775063006, "id": 16, "is_urgent": false, "urgent_msg": ""}, {"name": "강서VC", "target": "성인, 대학생", "address": "서울 강서구 등촌로39길 71", "schedule": "매주 수 18:00~21:00 / 토 15:00~18:00", "price": "분기 8만원(학생 5만원) / 게스트 1만원", "insta": "gangseo.vc", "link": "", "lat": 37.5476142187642, "lng": 126.857942163854, "id": 17, "is_urgent": false, "urgent_msg": ""}, {"name": "레드팡스", "target": "성인", "address": "서울 노원구 섬밭로 181", "schedule": "매주 목 18:00~21:00 / 일 16:30~19:30", "price": "월 3만원 / 게스트 8천원", "insta": "", "link": "https://www.daangn.com/kr/group/%EB%B0%B0%EA%B5%AC%EB%8F%99%ED%98%B8%ED%9A%8C-%EB%A0%88%EB%93%9C%ED%8C%A1%EC%8A%A4-2wq9tjryem95/", "lat": 37.632255170053, "lng": 127.066056635951, "id": 18, "is_urgent": false, "urgent_msg": ""}, {"name": "정무배구", "target": "무관", "address": "전북 전주시 덕진구 만성북4길 10", "schedule": "매주 수/목 19:00~21:00", "price": "주1회 월 5만원, 주2회 월 7만원", "insta": "jeongmu_volley", "link": "", "lat": 35.8477726720349, "lng": 127.074701125365, "id": 19, "is_urgent": false, "urgent_msg": ""}, {"name": "안성 넘버나인", "target": "성인, 대학생", "address": "경기 안성시 비룡로 78", "schedule": "매주 수요일 19:00~21:40", "price": "", "insta": "anseong_no9_volleyballclub", "link": "https://www.youtube.com/@%EC%95%88%EC%84%B1%EB%84%98%EB%B2%84%EB%82%98%EC%9D%B89", "lat": 37.015078008763, "lng": 127.263020902801, "angle": 0.0, "id": 20, "is_urgent": false, "urgent_msg": ""}, {"name": "하이발리", "target": "성인", "address": "경기 파주시 다율로30", "schedule": "매주 수요일 19:00~21:00", "price": "월 4만원 / 게스트 1만원", "insta": "high.volley", "link": "", "lat": 37.7379799283829, "lng": 126.726930320218, "id": 21, "is_urgent": false, "urgent_msg": ""}, {"name": "임팩트", "target": "성인, 대학생, 청소년", "address": "경기 파주시 월롱면 휴암로 434", "schedule": "매주 목요일 19:00~22:00", "price": "월 2만원 / 게스트 5천원", "insta": "paju_impact", "link": "http://kko.to/7v33m3qZj", "lat": 37.8300288380237, "lng": 126.781056138359, "id": 22, "is_urgent": false, "urgent_msg": ""}, {"name": "임팩트", "target": "성인, 대학생, 청소년", "address": "경기 파주시 해솔로 60", "schedule": "매주 토요일 13:00~17:00", "price": "월 2만원 / 게스트 5천원", "insta": "paju_impact", "link": "http://kko.to/7v33m3qZj", "lat": 37.7274642059342, "lng": 126.745874918567, "id": 23, "is_urgent": false, "urgent_msg": ""}, {"name": "안성MVP", "target": "성인", "address": "경기 안성시 공도읍 기업단지로 57", "schedule": "매주 화/목 19:00~21:30", "price": "월 3만원", "insta": "mvp_official_2014", "link": "https://open.kakao.com/o/s8T9ZYWe", "lat": 37.0028098402492, "lng": 127.15850296807, "id": 24, "is_urgent": false, "urgent_msg": ""}, {"name": "대구 두류배구회", "target": "성인, 대학생, 청소년, 무관", "address": "대구 달서구 서당로 30", "schedule": "매주 일요일 09:00~13:00", "price": "회비 남:월 2만원, 여:월 1만원 (가입비 3만원)", "insta": "", "link": "https://open.kakao.com/o/sNOhf3Ah", "lat": 35.8545121028952, "lng": 128.496514228915, "id": 25, "is_urgent": false, "urgent_msg": ""}, {"name": "DGZ", "target": "성인", "address": "서울 동작구 장승배기로10가길 35", "schedule": "매주 일요일 9:30~14:20 (남녀 2시간씩)", "price": "월 4만원 / 게스트 1만원 (현재 무료)", "insta": "dgz_volleyball_club", "link": "", "lat": 37.5027160069897, "lng": 126.940926768444, "angle": 0.0, "id": 26, "is_urgent": false, "urgent_msg": ""}, {"name": "여수에이스", "target": "성인", "address": "전남 여수시 웅천북4로 9", "schedule": "매주 화/금 18:30~21:40", "price": "월 2만원 / 게스트 1만원", "insta": "yeosu_ace_volleyball", "link": "", "lat": 34.7483267150984, "lng": 127.684825674004, "id": 27, "is_urgent": false, "urgent_msg": ""}, {"name": "V.O.L", "target": "성인, 대학생", "address": "서울 동작구 장승배기로10가길 35", "schedule": "매주 수 18:30~21:30 / 토 12:30~18:00", "price": "월 4만원 / 게스트 1만원", "insta": "v.o.l_volleyball", "link": "", "lat": 37.5027160069897, "lng": 126.940726768444, "angle": 3.141592653589793, "id": 28, "is_urgent": false, "urgent_msg": ""}, {"name": "레이더스", "target": "성인", "address": "경기 안성시 비룡로 78", "schedule": "매주 화/금 19:00~21:30", "price": "30세 미만 월 1만원, 30세 이상 월 2만원 / 게스트비 없음", "insta": "raiders_volleyball_team", "link": "", "lat": 37.015078008763, "lng": 127.262820902801, "angle": 3.141592653589793, "id": 29, "is_urgent": false, "urgent_msg": ""}, {"name": "경주 더케이", "target": "성인, 대학생", "address": "경북 경주시 광중2길 28", "schedule": "매주 화/목 18:00", "price": "월 3.5만원 (연납 3만원) / 1회체험비 무료", "insta": "thek_vbc", "link": "pf.kakao.com/_xcTaxmn", "lat": 35.8849473288934, "lng": 129.229737107908, "id": 30, "is_urgent": false, "urgent_msg": ""}, {"name": "원주 스마일 배구클럽", "target": "무관", "address": "강원 원주시 남원로 551", "schedule": "매주 화 18:00~22:00 / 토 13:00~16:00", "price": "월 성인 2.5만원, 대학생1.5만원 / 게스트비 5천원", "insta": "smile.volleyball.club_", "link": "https://open.kakao.com/o/gTs0Mpse", "lat": 37.3338307104893, "lng": 127.946303709594, "id": 31, "is_urgent": false, "urgent_msg": ""}, {"name": "우사모 SWVC", "target": "성인, 대학생", "address": "서울 도봉구 우이천로 432", "schedule": "매주 일요일 13:00~18:00", "price": "월 4만원(학생 및 무직은 3만원) / 게스트 1만원", "insta": "swvc_volley", "link": "", "lat": 37.6526987118348, "lng": 127.0184004627, "id": 32, "is_urgent": false, "urgent_msg": ""}, {"name": "NWN", "target": "성인, 대학생", "address": "서울 노원구 한글비석로 566", "schedule": "매주 수 18:30-21:30 / 토 15:00-19:00", "price": "월 3만원 / 게스트 1만원", "insta": "nowon_no.1_volleyball", "link": "https://m.cafe.daum.net/nowon-no.1/_rec?utm_source=ig&utm_medium=social&utm_content=link_in_bio", "lat": 37.6648178269709, "lng": 127.054322233957, "id": 33, "is_urgent": false, "urgent_msg": ""}, {"name": "어나더레벨", "target": "무관", "address": "세종특별자치시 다정남로 91", "schedule": "매주 수요일 19:00 ~ 21:30", "price": "신규 첫달 6만 / 월 3만 / 게스트1회무료(2회 1만원)", "insta": "khp4949", "link": "https://open.kakao.com/o/g3dvQE4g", "lat": 36.4939039101709, "lng": 127.250966962615, "id": 34, "is_urgent": false, "urgent_msg": ""}, {"name": "시흥 수요배구회 픽업게임", "target": "성인, 대학생", "address": "경기 시흥시 장곡로54번길 14", "schedule": "매주 수요일 17:50~20:50", "price": "없음", "insta": "volleyball_pickup_siheung", "link": "https://open.kakao.com/o/s2KVlj0h", "lat": 37.380779446634, "lng": 126.78327876897, "id": 35, "is_urgent": false, "urgent_msg": ""}, {"name": "군포배구클럽", "target": "성인, 대학생", "address": "경기 군포시 산본로 267", "schedule": "매주 일요일 10:00~16:00", "price": "월 2.5만원 / 게스트 1만원", "insta": "gunpo_volleyball", "link": "https://open.kakao.com/o/g1qV2i3h", "lat": 37.3540356844596, "lng": 126.936815220052, "id": 36, "is_urgent": false, "urgent_msg": ""}, {"name": "부산배구클럽", "target": "성인, 대학생, 청소년, 선출가능", "address": "부산 북구 덕천2길 10", "schedule": "매주 화요일 18:00~21:00", "price": "성인 월 2만원 (대학생 월 1.5만원, 고등학생 월 1만원)", "insta": "volleyball_busan", "link": "https://open.kakao.com/o/suiGnD0", "lat": 35.2082050651349, "lng": 129.006965137504, "id": 37, "is_urgent": false, "urgent_msg": ""}, {"name": "HB아카데미", "target": "무관", "address": "서울 도봉구 노해로 273", "schedule": "매주 월 17:00-18:30 / 일 15:00-16:30 / 일 16:30-18:00", "price": "1회 무료체험 / 학생 12만원 / 성인 14만원 / 개인레슨 문의", "insta": "h_bacademy", "link": "https://m.blog.naver.com/rudejr2238", "lat": 37.6518477614279, "lng": 127.038744954072, "id": 38, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 마음로 284", "schedule": "매주 화요일 19:00~22:00", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.519724340798, "lng": 127.236589788899, "id": 39, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 세종로 941", "schedule": "매주 목요일 18:30~21:00", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.4877156432012, "lng": 127.243231178402, "id": 40, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 아름동 804", "schedule": "매주 일  9:00~12:00 (남) / 12:00~4:00 (여)", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.523100478656, "lng": 127.255014907693, "id": 41, "is_urgent": false, "urgent_msg": ""}, {"name": "순천배구클럽", "target": "성인, 대학생", "address": "전남 순천시 북정2길 20", "schedule": "매주 화요일 18:30~22:00", "price": "월 3.5만원", "insta": "heooooooeh", "link": "", "lat": 34.9646430183578, "lng": 127.483992847829, "id": 42, "is_urgent": false, "urgent_msg": ""}, {"name": "순천배구클럽", "target": "성인, 대학생", "address": "전남 순천시 순광로 15", "schedule": "매주 금요일 18:30~21:30", "price": "월 3.5만원", "insta": "heooooooeh", "link": "", "lat": 34.9560628875777, "lng": 127.522478978541, "id": 43, "is_urgent": false, "urgent_msg": ""}, {"name": "목포하나클럽", "target": "성인, 대학생", "address": "전남 목포시 남악1로16번길 25", "schedule": "매주 월/수/금 18:30~21:40", "price": "월 3만원 / 게스트 비용 없음", "insta": "mokpo_hana_vc", "link": "", "lat": 34.8080460089449, "lng": 126.449995234402, "id": 44, "is_urgent": false, "urgent_msg": ""}, {"name": "하이원배구동호회", "target": "성인", "address": "경기 하남시 아리수로 600", "schedule": "매주 화/수/목 10:00~12:00", "price": "월 1만원", "insta": "", "link": "https://www.daangn.com/kr/community/%ED%95%98%EB%82%A8%EC%8B%9C-%EC%97%AC%EC%9E%90-%EB%B0%B0%EA%B5%AC-%EB%8F%99%ED%98%B8%ED%9A%8C-54tne9r282sz/", "lat": 37.5657002161617, "lng": 127.193906244378, "id": 45, "is_urgent": false, "urgent_msg": ""}];
         var markers = []; 
-        var labelOverlays = [];
-        var myMarker = null;
+        var labelOverlays = []; 
+
+        var defaultImageSrc = './marker_yellow.png'; 
+        var urgentImageSrc = './marker_red.png'; 
+        var imageSize = new kakao.maps.Size(40, 53); 
+        var imageOption = {offset: new kakao.maps.Point(20, 53)}; 
+        
+        var defaultMarkerImage = new kakao.maps.MarkerImage(defaultImageSrc, imageSize, imageOption);
+        var urgentMarkerImage = new kakao.maps.MarkerImage(urgentImageSrc, imageSize, imageOption);
+
         var gpsSvg = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3e%3ccircle cx="50" cy="50" r="45" fill="rgba(66, 133, 244, 0.3)"/%3e%3ccircle cx="50" cy="50" r="25" fill="white"/%3e%3ccircle cx="50" cy="50" r="20" fill="%234285F4"/%3e%3c/svg%3e';
         var gpsImage = new kakao.maps.MarkerImage(gpsSvg, new kakao.maps.Size(44,44), {offset: new kakao.maps.Point(22,22)});
+        var myMarker = null;
         var instaCssIcon = '<div class="instagram" title="인스타그램 보러가기"></div>';
-        
-        // [수정됨] 카카오 공식 빨간 마커 주소 사용
-        var urgentImageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
-            urgentImageSize = new kakao.maps.Size(24, 35),
-            urgentImageOption = {offset: new kakao.maps.Point(11, 35)};
-        var urgentMarkerImage = new kakao.maps.MarkerImage(urgentImageSrc, urgentImageSize, urgentImageOption);
 
         clubs.forEach(function(club) {
             if (!club.lat || !club.lng) return;
@@ -199,65 +218,66 @@
             
             var marker;
             if (club.is_urgent) {
-                // 긴급 마커는 클러스터링 제외 (항상 지도 위에 노출) 및 zIndex 최상위
                 marker = new kakao.maps.Marker({ position: latlng, image: urgentMarkerImage, zIndex: 9999 });
+                marker.setMap(map); 
             } else {
-                marker = new kakao.maps.Marker({ position: latlng });
+                marker = new kakao.maps.Marker({ position: latlng, image: defaultMarkerImage });
             }
             
-            var labelClass = 'label';
-            var iconHtml = '';
-            if (club.is_urgent) {
-                labelClass += ' urgent';
-                iconHtml = '🔥 ';
-            }
-            var labelContent = '<div class="' + labelClass + '" onclick="triggerMarkerClick(' + club.id + ')">' + iconHtml + club.name + '</div>';
+            var labelClass = club.is_urgent ? 'label urgent' : 'label';
+            var iconHtml = club.is_urgent ? '🔥 ' : '';
+            var content = '<div class="' + labelClass + '" onclick="triggerMarkerClick(' + club.id + ')">' + iconHtml + club.name + '</div>';
             
-            var xAnc = 0.5; 
-            var yAnc = 1;   
+            var xAnc = 0.5; var yAnc = 1;   
             if (club.angle !== undefined) { xAnc = 0.5 - (Math.cos(club.angle) * 0.5); }
 
-            var labelOverlay = new kakao.maps.CustomOverlay({ 
-                content: labelContent, map: null, position: latlng, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 
-            });
-
-            markers.push({ marker: marker, club: club, isVisible: true });
-            labelOverlays.push({ overlay: labelOverlay, club: club });
+            var customOverlay = new kakao.maps.CustomOverlay({ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 });
             
+            // [수정됨] 긴급 라벨 초기 표시 (초기 레벨이 8이므로 보임)
+            if (club.is_urgent) { customOverlay.setMap(map); }
+
             kakao.maps.event.addListener(marker, 'click', function() { openClubDetail(club.id); });
+            
+            markers.push({ marker: marker, overlay: customOverlay, club: club, isVisible: true });
+            labelOverlays.push({ overlay: customOverlay, club: club });
         });
 
-        // 초기 로딩: 긴급 마커는 바로 지도에 표시, 일반 마커만 클러스터러에 추가
         var initialClusterMarkers = [];
         markers.forEach(function(item) {
-            if (item.club.is_urgent) {
-                item.marker.setMap(map); 
-            } else {
-                initialClusterMarkers.push(item.marker); 
-            }
+            if (!item.club.is_urgent) { initialClusterMarkers.push(item.marker); }
         });
         clusterer.addMarkers(initialClusterMarkers);
-        
-        updateLabelVisibility();
 
         function triggerMarkerClick(id) {
             var target = markers.find(m => m.club.id === id);
             if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
         }
 
+        // [수정됨] 줌 레벨에 따른 라벨 표시 로직 (긴급: ~8레벨, 일반: ~5레벨)
+        function updateLabelVisibility() {
+            var level = map.getLevel(); 
+            var showNormalLabels = (level <= 5); 
+            var showUrgentLabels = (level <= 8); // 레벨 8 이하에서만 보임
+
+            markers.forEach(function(item) {
+                if (!item.isVisible) return; 
+                
+                if (item.club.is_urgent) { 
+                    if (showUrgentLabels) item.overlay.setMap(map); 
+                    else item.overlay.setMap(null);
+                } else { 
+                    if (showNormalLabels) item.overlay.setMap(map); 
+                    else item.overlay.setMap(null); 
+                }
+            });
+        }
+        
+        kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
+
         function openClubDetail(id) {
             document.getElementById('topSearchInput').blur();
-            var club = clubs.find(c => c.id === id); 
-            if (!club) return;
-
-            var urgentArea = document.getElementById('urgentArea');
-            if (club.is_urgent && club.urgent_msg) {
-                urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
-                urgentArea.style.display = 'block';
-            } else {
-                urgentArea.style.display = 'none';
-            }
-
+            var club = clubs.find(c => c.id === id);
+            
             var titleHtml = club.name;
             if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
             document.getElementById('sheetTitle').innerHTML = titleHtml;
@@ -270,22 +290,22 @@
             document.getElementById('sheetTags').innerHTML = tagHtml;
             document.getElementById('btnWay').href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
             
-            var sheet = document.getElementById('bottomSheet');
-            sheet.style.transform = "translateY(0)"; 
-
-            // 줌 레벨 및 중앙 이동 (비율 0.13 적용)
+            var urgentArea = document.getElementById('urgentArea');
+            if (club.is_urgent && club.urgent_msg) {
+                urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
+                urgentArea.style.display = 'block';
+            } else { urgentArea.style.display = 'none'; }
+            
+            document.getElementById('bottomSheet').style.transform = "translateY(0)";
+            
             var targetLevel = 4;
             map.setLevel(targetLevel, {animate: true});
-
             var moveLatLon = new kakao.maps.LatLng(club.lat, club.lng);
             var projection = map.getProjection();
             var centerPoint = projection.pointFromCoords(moveLatLon);
-            
             var offsetY = Math.min(window.innerHeight * 0.13, 150); 
-            
             var newCenterPoint = new kakao.maps.Point(centerPoint.x, centerPoint.y + offsetY);
             var newCenterLatLon = projection.coordsFromPoint(newCenterPoint);
-            
             map.panTo(newCenterLatLon);
         }
 
@@ -296,37 +316,116 @@
             else { var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }
         }
 
+        var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
+        var uniqueTickerList = [];
+        var processedTeams = {};
+        
+        urgentClubs.forEach(function(c) {
+            if (!processedTeams[c.name]) {
+                uniqueTickerList.push(c);
+                processedTeams[c.name] = true;
+            }
+        });
+
+        if (uniqueTickerList.length > 0) {
+            var tickerContainer = document.getElementById('urgentTicker');
+            var tickerList = document.getElementById('tickerList');
+            tickerContainer.style.display = 'flex';
+            
+            uniqueTickerList.forEach(function(c) {
+                var li = document.createElement('li');
+                li.className = 'ticker-item';
+                li.innerHTML = '<b>[' + c.name + ']</b> ' + c.urgent_msg;
+                li.onclick = function() { openClubDetail(c.id); };
+                tickerList.appendChild(li);
+            });
+
+            if (uniqueTickerList.length > 1) {
+                var tickerHeight = 40;
+                var currentIndex = 0;
+                setInterval(function() {
+                    currentIndex++;
+                    tickerList.style.top = '-' + (currentIndex * tickerHeight) + 'px';
+                    
+                    if (currentIndex === uniqueTickerList.length) {
+                        setTimeout(function() {
+                            tickerList.style.transition = 'none';
+                            tickerList.style.top = '0px';
+                            currentIndex = 0;
+                            setTimeout(function() { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
+                        }, 500); 
+                    } else {
+                        if (currentIndex === uniqueTickerList.length) currentIndex = 0;
+                    }
+                }, 3000);
+                
+                var firstClone = tickerList.children[0].cloneNode(true);
+                firstClone.onclick = function() { openClubDetail(uniqueTickerList[0].id); };
+                tickerList.appendChild(firstClone);
+            }
+        }
+
+        const sheet = document.getElementById('bottomSheet');
+        const handleArea = document.getElementById('sheetHandle');
+        let startY = 0; let currentY = 0; let isDragging = false;
+        function bHandleStart(e) { startY = e.touches ? e.touches[0].clientY : e.clientY; isDragging = true; sheet.style.transition = 'none'; }
+        function bHandleMove(e) { if (!isDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); currentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = currentY - startY; if (deltaY > 0) { sheet.style.transform = `translateY(${deltaY}px)`; } }
+        function bHandleEnd(e) { if (!isDragging) return; isDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : currentY; if (!e.touches && currentY === 0) endY = startY; const deltaY = endY - startY; sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY > 50) { closeBottomSheet(); } else { sheet.style.transform = "translateY(0)"; } currentY = 0; startY = 0; }
+        handleArea.addEventListener('touchstart', bHandleStart, {passive: true}); handleArea.addEventListener('touchmove', bHandleMove, {passive: false}); handleArea.addEventListener('touchend', bHandleEnd); handleArea.addEventListener('mousedown', bHandleStart); window.addEventListener('mousemove', bHandleMove); window.addEventListener('mouseup', bHandleEnd);
+
+        const filterSheet = document.getElementById('filterSheet');
+        const filterHandle = document.getElementById('filterHandle');
+        let fStartY = 0; let fCurrentY = 0; let fIsDragging = false;
+        function fHandleStart(e) { fStartY = e.touches ? e.touches[0].clientY : e.clientY; fIsDragging = true; filterSheet.style.transition = 'none'; }
+        function fHandleMove(e) { if (!fIsDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); fCurrentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = fCurrentY - fStartY; if (deltaY < 0) { filterSheet.style.transform = `translateY(${deltaY}px)`; } }
+        function fHandleEnd(e) { if (!fIsDragging) return; fIsDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : fCurrentY; if (!e.touches && fCurrentY === 0) endY = fStartY; const deltaY = endY - fStartY; filterSheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY < -50) { closeFilterSheet(); } else { filterSheet.style.transform = "translateY(0)"; } fCurrentY = 0; fStartY = 0; }
+        filterHandle.addEventListener('touchstart', fHandleStart, {passive: true}); filterHandle.addEventListener('touchmove', fHandleMove, {passive: false}); filterHandle.addEventListener('touchend', fHandleEnd); filterHandle.addEventListener('mousedown', fHandleStart); window.addEventListener('mousemove', fHandleMove); window.addEventListener('mouseup', fHandleEnd);
+
+        function toggleFilterSheet() {
+            var sheet = document.getElementById('filterSheet');
+            if (sheet.style.transform === "translateY(0px)" || sheet.style.transform === "") { closeFilterSheet(); } else { openFilterSheet(); }
+        }
+
+        function moveToMyLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var lat = position.coords.latitude, lon = position.coords.longitude;
+                    var locPosition = new kakao.maps.LatLng(lat, lon);
+                    if (myMarker) myMarker.setMap(null);
+                    myMarker = new kakao.maps.Marker({ map: map, position: locPosition, image: gpsImage });
+                    map.panTo(locPosition);
+                });
+            } else { alert('위치 정보를 사용할 수 없습니다.'); }
+        }
+
         var selectedFilters = { 'region': [], 'day': [], 'target': [] };
         function openFilterSheet() { document.getElementById('filterSheet').style.transform = "translateY(0)"; }
         function closeFilterSheet() { document.getElementById('filterSheet').style.transform = "translateY(-100%)"; }
-
         function toggleFilter(category, value, element) {
             var index = selectedFilters[category].indexOf(value);
             if (index === -1) { selectedFilters[category].push(value); element.classList.add('selected'); } 
             else { selectedFilters[category].splice(index, 1); element.classList.remove('selected'); }
         }
-
         function resetFilters() {
             selectedFilters = { 'region': [], 'day': [], 'target': [] };
             document.querySelectorAll('.chip').forEach(el => el.classList.remove('selected'));
             document.getElementById('topSearchInput').value = ""; 
-            document.getElementById('filterBadge').classList.remove('active');
+            applyFilters();
         }
 
         function applyFilters() {
             if (window.event && window.event.type === 'click') closeFilterSheet();
             var keyword = document.getElementById('topSearchInput').value.trim();
             var filterCount = selectedFilters.region.length + selectedFilters.day.length + selectedFilters.target.length;
-            
             if (filterCount > 0) { document.getElementById('filterBadge').classList.add('active'); } 
             else { document.getElementById('filterBadge').classList.remove('active'); }
 
-            clusterer.clear();
-            var visibleMarkers = [];
-            var bounds = new kakao.maps.LatLngBounds(); 
+            clusterer.clear(); 
+            var visibleNormalMarkers = []; 
+            var bounds = new kakao.maps.LatLngBounds();
 
             markers.forEach(function(item) {
-                var club = item.club; var marker = item.marker;
+                var club = item.club;
                 var regionMatch = true;
                 if (selectedFilters.region.length > 0) {
                     regionMatch = false;
@@ -357,62 +456,24 @@
 
                 if (regionMatch && dayMatch && targetMatch && keywordMatch) { 
                     item.isVisible = true; 
-                    
-                    if (club.is_urgent) {
-                        marker.setMap(map);
-                    } else {
-                        visibleMarkers.push(marker);
-                    }
-                    bounds.extend(marker.getPosition()); 
+                    if (club.is_urgent) { item.marker.setMap(map); } 
+                    else { visibleNormalMarkers.push(item.marker); }
+                    bounds.extend(item.marker.getPosition());
                 } else { 
                     item.isVisible = false; 
-                    marker.setMap(null);
+                    item.marker.setMap(null); 
+                    item.overlay.setMap(null); 
                 }
             });
             
-            clusterer.addMarkers(visibleMarkers);
+            clusterer.addMarkers(visibleNormalMarkers);
             updateLabelVisibility();
 
-            if (visibleMarkers.length > 0 || bounds.isEmpty() === false) {
-                if (!bounds.isEmpty()) map.setBounds(bounds);
-            }
+            if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) { map.setBounds(bounds); }
         }
 
-        const sheet = document.getElementById('bottomSheet');
-        const handleArea = document.getElementById('sheetHandle');
-        let startY = 0; let currentY = 0; let isDragging = false;
+        applyFilters();
 
-        function bHandleStart(e) { startY = e.touches ? e.touches[0].clientY : e.clientY; isDragging = true; sheet.style.transition = 'none'; }
-        function bHandleMove(e) { if (!isDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); currentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = currentY - startY; if (deltaY > 0) { sheet.style.transform = `translateY(${deltaY}px)`; } }
-        function bHandleEnd(e) { if (!isDragging) return; isDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : currentY; if (!e.touches && currentY === 0) endY = startY; const deltaY = endY - startY; sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY > 50) { closeBottomSheet(); } else { sheet.style.transform = "translateY(0)"; } currentY = 0; startY = 0; }
-        handleArea.addEventListener('touchstart', bHandleStart, {passive: true}); handleArea.addEventListener('touchmove', bHandleMove, {passive: false}); handleArea.addEventListener('touchend', bHandleEnd); handleArea.addEventListener('mousedown', bHandleStart); window.addEventListener('mousemove', bHandleMove); window.addEventListener('mouseup', bHandleEnd);
-
-        const filterSheet = document.getElementById('filterSheet');
-        const filterHandle = document.getElementById('filterHandle');
-        let fStartY = 0; let fCurrentY = 0; let fIsDragging = false;
-
-        function fHandleStart(e) { fStartY = e.touches ? e.touches[0].clientY : e.clientY; fIsDragging = true; filterSheet.style.transition = 'none'; }
-        function fHandleMove(e) { if (!fIsDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); fCurrentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = fCurrentY - fStartY; if (deltaY < 0) { filterSheet.style.transform = `translateY(${deltaY}px)`; } }
-        function fHandleEnd(e) { if (!fIsDragging) return; fIsDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : fCurrentY; if (!e.touches && fCurrentY === 0) endY = fStartY; const deltaY = endY - fStartY; filterSheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY < -50) { closeFilterSheet(); } else { filterSheet.style.transform = "translateY(0)"; } fCurrentY = 0; fStartY = 0; }
-        filterHandle.addEventListener('touchstart', fHandleStart, {passive: true}); filterHandle.addEventListener('touchmove', fHandleMove, {passive: false}); filterHandle.addEventListener('touchend', fHandleEnd); filterHandle.addEventListener('mousedown', fHandleStart); window.addEventListener('mousemove', fHandleMove); window.addEventListener('mouseup', fHandleEnd);
-
-        function updateLabelVisibility() {
-            var level = map.getLevel(); var showLabels = (level <= 5);
-            for (var i = 0; i < labelOverlays.length; i++) { if (markers[i].isVisible && showLabels) { labelOverlays[i].overlay.setMap(map); } else { labelOverlays[i].overlay.setMap(null); } }
-        }
-        kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility); updateLabelVisibility();
-
-        function moveToMyLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    var lat = position.coords.latitude, lon = position.coords.longitude;
-                    var locPosition = new kakao.maps.LatLng(lat, lon);
-                    if (myMarker) myMarker.setMap(null);
-                    myMarker = new kakao.maps.Marker({ map: map, position: locPosition, image: gpsImage });
-                    map.panTo(locPosition);
-                });
-            } else { alert('위치 정보를 사용할 수 없습니다.'); }
-        }
     </script>
 </body>
 </html>
