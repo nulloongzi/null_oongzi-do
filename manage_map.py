@@ -8,7 +8,7 @@ import io
 # ==========================================
 # [설정] 사용자 정보 및 키 값
 # ==========================================
-# 1. 구글 시트 CSV 링크
+# 1. [변경됨] 구글 시트 CSV 링크 (사용자 제공 URL)
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-YkZIHnfsO4WgqpCmmP0uSraojWi58SsqXCUEdzRF2R55DASVA5882JusD8BMa9gNaTe/pub?gid=97006888&single=true&output=csv"
 
 # 2. 카카오 API 키
@@ -16,7 +16,7 @@ KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336"
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
 # 3. 테스트 모드
-IS_TEST_MODE = False  
+IS_TEST_MODE = True  
 # ==========================================
 
 def get_location(address):
@@ -55,7 +55,7 @@ def update_map():
 
     print("☁️ 구글 스프레드시트 동기화 중...")
     try:
-        response = requests.get(GOOGLE_SHEET_URL)
+        response = requests.get(GOOGLE_SHEET_URL, timeout=10)
         response.raise_for_status()
         
         decoded_content = response.content.decode('utf-8')
@@ -75,6 +75,12 @@ def update_map():
             price = row[5].strip() if len(row) > 5 else ""
             insta = row[6].strip() if len(row) > 6 else ""
             link = row[7].strip() if len(row) > 7 else ""
+            
+            # [수정됨] I열(index 8)은 이메일이므로 건너뛰고 J열(9), K열(10) 읽기
+            # row[8] : 이메일 (무시)
+            is_urgent_val = row[9].strip().upper() if len(row) > 9 else ""
+            is_urgent = True if is_urgent_val == 'O' else False
+            urgent_msg = row[10].strip() if len(row) > 10 else ""
 
             if not name or not address: continue
 
@@ -87,6 +93,8 @@ def update_map():
                 club['price'] = price
                 club['insta'] = insta
                 club['link'] = link
+                club['is_urgent'] = is_urgent
+                club['urgent_msg'] = urgent_msg
                 new_club_map[key] = club
             else:
                 print(f"✨ 업데이트 감지: {name} (좌표 갱신 중...)")
@@ -96,7 +104,9 @@ def update_map():
                         "name": name, "target": target, "address": address,
                         "schedule": schedule, "price": price, 
                         "insta": insta, "link": link,
-                        "lat": lat, "lng": lng
+                        "lat": lat, "lng": lng,
+                        "is_urgent": is_urgent,
+                        "urgent_msg": urgent_msg
                     }
                     new_count += 1
             count += 1
@@ -183,13 +193,12 @@ def update_map():
         
         #map {{ width: 100%; height: 100%; }}
         
-        :root {{ --white: #fff; --brand-color: #fac710; --shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+        :root {{ --white: #fff; --brand-color: #fac710; --urgent-color: #ff4757; --shadow: 0 4px 10px rgba(0,0,0,0.1); }}
         .instagram {{ font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: transform 0.2s; }}
         .instagram:hover {{ transform: scale(1.1); }}
         .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
         .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
 
-        /* 통합 검색바 */
         .search-container {{
             position: absolute; top: 15px; left: 15px; right: 15px;
             z-index: 20; display: flex; background: white; border-radius: 12px;
@@ -203,13 +212,11 @@ def update_map():
         .filter-badge {{ position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: #fac710; border-radius: 50%; display: none; }}
         .filter-badge.active {{ display: block; }}
 
-        /* 플로팅 버튼 */
         .fab-group {{ position: absolute; bottom: 30px; right: 15px; z-index: 20; display: flex; flex-direction: column; gap: 12px; }}
         .fab-btn {{ width: 48px; height: 48px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s; font-size: 20px; text-decoration: none; color: #333; }}
         .fab-btn:active {{ transform: scale(0.95); }}
         .fab-report {{ background: #fac710; color: #000; }}
 
-        /* 필터 시트 */
         .filter-sheet {{ position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }}
         .filter-sheet.active {{ transform: translateY(0); }}
         .fs-header {{ padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }}
@@ -227,10 +234,17 @@ def update_map():
         .fs-handle-area {{ width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }}
         .fs-handle {{ width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }}
 
-        /* 라벨 & 바텀시트 */
         .label {{ padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-40px); transition: z-index 0.1s, transform 0.1s; }}
         .label:hover {{ z-index: 10000 !important; transform: translateY(-42px) scale(1.05); }}
-        .bottom-sheet {{ position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); padding: 20px 24px 50px 24px; transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); touch-action: none; }}
+        
+        .label.urgent {{ background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }}
+        @keyframes pulse {{
+            0% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }}
+            70% {{ box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }}
+        }}
+
+        .bottom-sheet {{ position: fixed; bottom: 0; left: 15px; right: 15px; width: auto; background: #fff; z-index: 200; border-radius: 24px; box-shadow: 0 5px 25px rgba(0,0,0,0.15); padding: 20px 24px 30px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); touch-action: none; margin-bottom: 20px; }}
         .sheet-handle-area {{ width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
         .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
@@ -238,6 +252,9 @@ def update_map():
         .tag-box {{ display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }}
         .tag {{ font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }}
         .tag.target {{ color: #0056b3; background: #e7f5ff; }}
+        
+        .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
+
         .info-row {{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }}
         .info-icon {{ width: 20px; text-align: center; font-size: 16px; }}
         .action-buttons {{ display: flex; gap: 12px; margin-top: 30px; }}
@@ -313,6 +330,9 @@ def update_map():
 
     <div id="bottomSheet" class="bottom-sheet">
         <div class="sheet-handle-area" id="sheetHandle"><div class="sheet-handle"></div></div>
+        
+        <div id="urgentArea"></div>
+
         <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
         <div class="tag-box" id="sheetTags"></div>
         <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
@@ -343,13 +363,32 @@ def update_map():
         var gpsSvg = 'data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3e%3ccircle cx="50" cy="50" r="45" fill="rgba(66, 133, 244, 0.3)"/%3e%3ccircle cx="50" cy="50" r="25" fill="white"/%3e%3ccircle cx="50" cy="50" r="20" fill="%234285F4"/%3e%3c/svg%3e';
         var gpsImage = new kakao.maps.MarkerImage(gpsSvg, new kakao.maps.Size(44,44), {{offset: new kakao.maps.Point(22,22)}});
         var instaCssIcon = '<div class="instagram" title="인스타그램 보러가기"></div>';
+        
+        // [수정됨] 카카오 공식 빨간 마커 주소 사용
+        var urgentImageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
+            urgentImageSize = new kakao.maps.Size(24, 35),
+            urgentImageOption = {{offset: new kakao.maps.Point(11, 35)}};
+        var urgentMarkerImage = new kakao.maps.MarkerImage(urgentImageSrc, urgentImageSize, urgentImageOption);
 
         clubs.forEach(function(club) {{
             if (!club.lat || !club.lng) return;
             var latlng = new kakao.maps.LatLng(club.lat, club.lng);
-            var marker = new kakao.maps.Marker({{ position: latlng }}); 
             
-            var labelContent = '<div class="label" onclick="triggerMarkerClick(' + club.id + ')">' + club.name + '</div>';
+            var marker;
+            if (club.is_urgent) {{
+                // 긴급 마커는 클러스터링 제외 (항상 지도 위에 노출) 및 zIndex 최상위
+                marker = new kakao.maps.Marker({{ position: latlng, image: urgentMarkerImage, zIndex: 9999 }});
+            }} else {{
+                marker = new kakao.maps.Marker({{ position: latlng }});
+            }}
+            
+            var labelClass = 'label';
+            var iconHtml = '';
+            if (club.is_urgent) {{
+                labelClass += ' urgent';
+                iconHtml = '🔥 ';
+            }}
+            var labelContent = '<div class="' + labelClass + '" onclick="triggerMarkerClick(' + club.id + ')">' + iconHtml + club.name + '</div>';
             
             var xAnc = 0.5; 
             var yAnc = 1;   
@@ -365,7 +404,17 @@ def update_map():
             kakao.maps.event.addListener(marker, 'click', function() {{ openClubDetail(club.id); }});
         }});
 
-        clusterer.addMarkers(markers.map(m => m.marker));
+        // 초기 로딩: 긴급 마커는 바로 지도에 표시, 일반 마커만 클러스터러에 추가
+        var initialClusterMarkers = [];
+        markers.forEach(function(item) {{
+            if (item.club.is_urgent) {{
+                item.marker.setMap(map); 
+            }} else {{
+                initialClusterMarkers.push(item.marker); 
+            }}
+        }});
+        clusterer.addMarkers(initialClusterMarkers);
+        
         updateLabelVisibility();
 
         function triggerMarkerClick(id) {{
@@ -377,6 +426,14 @@ def update_map():
             document.getElementById('topSearchInput').blur();
             var club = clubs.find(c => c.id === id); 
             if (!club) return;
+
+            var urgentArea = document.getElementById('urgentArea');
+            if (club.is_urgent && club.urgent_msg) {{
+                urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
+                urgentArea.style.display = 'block';
+            }} else {{
+                urgentArea.style.display = 'none';
+            }}
 
             var titleHtml = club.name;
             if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
@@ -393,7 +450,7 @@ def update_map():
             var sheet = document.getElementById('bottomSheet');
             sheet.style.transform = "translateY(0)"; 
 
-            // [수정된 부분] 줌 설정 및 오프셋 조정 (앱 모드 고려하여 비율 축소 0.25 -> 0.13)
+            // 줌 레벨 및 중앙 이동 (비율 0.13 적용)
             var targetLevel = 4;
             map.setLevel(targetLevel, {{animate: true}});
 
@@ -401,8 +458,6 @@ def update_map():
             var projection = map.getProjection();
             var centerPoint = projection.pointFromCoords(moveLatLon);
             
-            // 화면 높이의 13% 정도만 아래로 이동 (앱의 긴 화면에서도 상단을 침범하지 않도록)
-            // Math.min을 사용하여 최대 150px 이상은 내려가지 않도록 안전장치 추가
             var offsetY = Math.min(window.innerHeight * 0.13, 150); 
             
             var newCenterPoint = new kakao.maps.Point(centerPoint.x, centerPoint.y + offsetY);
@@ -411,7 +466,7 @@ def update_map():
             map.panTo(newCenterLatLon);
         }}
 
-        function closeBottomSheet() {{ document.getElementById('bottomSheet').style.transform = "translateY(110%)"; }}
+        function closeBottomSheet() {{ document.getElementById('bottomSheet').style.transform = "translateY(120%)"; }}
         document.getElementById('btnCopy').onclick = function() {{ copyAddress(document.getElementById('sheetAddressVal').value); }};
         function copyAddress(addr) {{
             if (navigator.clipboard && navigator.clipboard.writeText) {{ navigator.clipboard.writeText(addr).then(() => {{ alert('주소가 복사되었습니다! 📋'); }}); }} 
@@ -479,18 +534,24 @@ def update_map():
 
                 if (regionMatch && dayMatch && targetMatch && keywordMatch) {{ 
                     item.isVisible = true; 
-                    visibleMarkers.push(marker);
+                    
+                    if (club.is_urgent) {{
+                        marker.setMap(map);
+                    }} else {{
+                        visibleMarkers.push(marker);
+                    }}
                     bounds.extend(marker.getPosition()); 
                 }} else {{ 
                     item.isVisible = false; 
+                    marker.setMap(null);
                 }}
             }});
             
             clusterer.addMarkers(visibleMarkers);
             updateLabelVisibility();
 
-            if (visibleMarkers.length > 0) {{
-                map.setBounds(bounds);
+            if (visibleMarkers.length > 0 || bounds.isEmpty() === false) {{
+                if (!bounds.isEmpty()) map.setBounds(bounds);
             }}
         }}
 
