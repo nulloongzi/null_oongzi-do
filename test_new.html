@@ -51,6 +51,8 @@
         .fab-btn { width: 48px; height: 48px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; text-decoration: none; color: #333; transition: transform 0.2s; }
         .fab-btn:active { transform: scale(0.95); }
         .fab-report { background: #fac710; color: #000; }
+        /* [추가됨] 십시일반 버튼 스타일 (티커와 동일한 빨간색) */
+        .fab-urgent { background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
         
         .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
         .label:hover { z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }
@@ -117,6 +119,8 @@
     </div>
 
     <div class="fab-group">
+        <a href="https://forms.gle/a6qKw9AgD2JGKQYj6" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
+        
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
@@ -233,7 +237,7 @@
 
             var customOverlay = new kakao.maps.CustomOverlay({ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 });
             
-            // [수정됨] 긴급 라벨 초기 표시 (초기 레벨이 8이므로 보임)
+            // 긴급 라벨 초기 표시 (초기 레벨이 8이므로 보임)
             if (club.is_urgent) { customOverlay.setMap(map); }
 
             kakao.maps.event.addListener(marker, 'click', function() { openClubDetail(club.id); });
@@ -253,7 +257,7 @@
             if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
         }
 
-        // [수정됨] 줌 레벨에 따른 라벨 표시 로직 (긴급: ~8레벨, 일반: ~5레벨)
+        // 줌 레벨에 따른 라벨 표시 로직 (긴급: ~8레벨, 일반: ~5레벨)
         function updateLabelVisibility() {
             var level = map.getLevel(); 
             var showNormalLabels = (level <= 5); 
