@@ -13,7 +13,7 @@ KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336"
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
 # [중요] 테스트 모드 설정 (True: test_new.html / False: index.html)
-IS_TEST_MODE = True
+IS_TEST_MODE = False
 # ==========================================
 
 def get_location(address):
