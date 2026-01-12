@@ -4,6 +4,7 @@ import requests
 import os
 import math
 import io
+import re  # 정규표현식 모듈 추가
 
 # ==========================================
 # [설정] 사용자 정보 및 키 값
@@ -12,8 +13,7 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
-# [중요] 테스트 모드 설정 (True: test_new.html / False: index.html)
-IS_TEST_MODE = False
+IS_TEST_MODE = True
 # ==========================================
 
 def get_location(address):
@@ -216,22 +216,17 @@ def update_map():
         .ticker-icon {{ font-size: 18px; margin-right: 10px; animation: pulse 1.5s infinite; }}
         .ticker-content {{ flex: 1; height: 100%; position: relative; overflow: hidden; }}
         .ticker-list {{ list-style: none; margin: 0; padding: 0; position: absolute; width: 100%; top: 0; left: 0; transition: top 0.5s ease-in-out; }}
-        .ticker-item {{ 
-            height: 40px; line-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
-            font-size: 14px; font-weight: 600; cursor: pointer; color: #333; 
-        }}
+        .ticker-item {{ height: 40px; line-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 600; cursor: pointer; color: #333; }}
         .ticker-item b {{ color: #d63031; margin-right: 5px; }}
 
         .fab-group {{ position: absolute; bottom: 30px; right: 15px; z-index: 20; display: flex; flex-direction: column; gap: 12px; }}
         .fab-btn {{ width: 48px; height: 48px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; text-decoration: none; color: #333; transition: transform 0.2s; }}
         .fab-btn:active {{ transform: scale(0.95); }}
         .fab-report {{ background: #fac710; color: #000; }}
-        /* [추가됨] 십시일반 버튼 스타일 (티커와 동일한 빨간색) */
         .fab-urgent {{ background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }}
         
         .label {{ padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }}
         .label:hover {{ z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }}
-        
         .label.urgent {{ background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }} 70% {{ box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }} }}
 
@@ -241,9 +236,25 @@ def update_map():
         
         .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
         
-        .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
+        .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }}
         .sheet-title {{ font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }}
         
+        /* [추가됨] 시간표 스타일 */
+        .timetable-container {{ margin-bottom: 20px; }}
+        .timetable-grid {{ display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }}
+        .tt-day {{ 
+            background: #f1f3f5; border-radius: 8px; padding: 8px 2px; 
+            text-align: center; font-size: 11px; color: #adb5bd; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            min-height: 52px; transition: all 0.2s;
+        }}
+        .tt-day.active {{ 
+            background: var(--brand-color); color: #000; font-weight: 800; 
+            box-shadow: 0 2px 5px rgba(250, 199, 16, 0.4); transform: translateY(-2px);
+        }}
+        .tt-name {{ margin-bottom: 3px; font-size: 12px; }}
+        .tt-time {{ font-size: 9px; line-height: 1.1; letter-spacing: -0.5px; }}
+
         .tag-box {{ display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }}
         .tag {{ font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }}
         .tag.target {{ color: #0056b3; background: #e7f5ff; }}
@@ -294,8 +305,7 @@ def update_map():
     </div>
 
     <div class="fab-group">
-        <a href="https://forms.gle/a6qKw9AgD2JGKQYj6" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
-        
+        <a href="INSERT_GOOGLE_FORM_URL_HERE" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
@@ -351,6 +361,12 @@ def update_map():
         <div id="urgentArea"></div>
 
         <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
+        
+        <div class="timetable-container">
+            <div class="timetable-grid" id="sheetTimetable">
+                </div>
+        </div>
+
         <div class="tag-box" id="sheetTags"></div>
         <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
         <div class="info-row"><span class="info-icon">⏰</span> <span id="sheetSchedule">-</span></div>
@@ -412,7 +428,6 @@ def update_map():
 
             var customOverlay = new kakao.maps.CustomOverlay({{ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 }});
             
-            // 긴급 라벨 초기 표시 (초기 레벨이 8이므로 보임)
             if (club.is_urgent) {{ customOverlay.setMap(map); }}
 
             kakao.maps.event.addListener(marker, 'click', function() {{ openClubDetail(club.id); }});
@@ -432,11 +447,10 @@ def update_map():
             if (target && target.marker) kakao.maps.event.trigger(target.marker, 'click');
         }}
 
-        // 줌 레벨에 따른 라벨 표시 로직 (긴급: ~8레벨, 일반: ~5레벨)
         function updateLabelVisibility() {{
             var level = map.getLevel(); 
             var showNormalLabels = (level <= 5); 
-            var showUrgentLabels = (level <= 8); // 레벨 8 이하에서만 보임
+            var showUrgentLabels = (level <= 8); 
 
             markers.forEach(function(item) {{
                 if (!item.isVisible) return; 
@@ -453,6 +467,46 @@ def update_map():
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
+        // [추가됨] 스케줄 텍스트 파싱 및 시간표 생성 함수
+        function parseAndRenderTimetable(scheduleText) {{
+            var days = ['월', '화', '수', '목', '금', '토', '일'];
+            var container = document.getElementById('sheetTimetable');
+            container.innerHTML = ''; // 초기화
+
+            // 요일별 시간 찾기 (예: "월(19-22)")
+            // 정규식 설명: 요일문자 뒤에 괄호나 공백, 그리고 숫자 포함된 시간 패턴 찾기
+            // 간단하게: 요일 문자가 있고, 그 뒤에 나오는 시간 같은 문자열을 찾아서 매칭
+            
+            days.forEach(function(day) {{
+                var isActive = false;
+                var timeText = "";
+                
+                // 단순 포함 여부 체크 (데이터가 "매주 월요일" 형식이면 "월"이 포함됨)
+                if (scheduleText.includes(day)) {{
+                    isActive = true;
+                    // 시간 추출 시도 (괄호 안의 숫자나, 요일 뒤의 숫자)
+                    // 예: "월(19-22)" -> "19-22"
+                    // 예: "월 19시" -> "19시"
+                    // 아주 단순화된 로직: 전체 텍스트에서 숫자 패턴을 찾아서 그냥 넣어줌 (정확한 파싱은 어려움)
+                    // 여기서는 "월(19-21)" 형태를 권장하고, 괄호 안 내용을 가져오도록 시도
+                    
+                    var regex = new RegExp(day + "\\\\(([^)]+)\\\\)");
+                    var match = scheduleText.match(regex);
+                    if (match) {{
+                        timeText = match[1];
+                    }} else {{
+                        // 괄호 형식이 아니면 전체 텍스트에서 숫자만 찾거나, 그냥 비워둠
+                        // 일단은 시각적 강조가 중요하므로 시간 텍스트가 없어도 활성화
+                    }}
+                }}
+
+                var div = document.createElement('div');
+                div.className = isActive ? 'tt-day active' : 'tt-day';
+                div.innerHTML = '<div class="tt-name">' + day + '</div><div class="tt-time">' + timeText + '</div>';
+                container.appendChild(div);
+            }});
+        }}
+
         function openClubDetail(id) {{
             document.getElementById('topSearchInput').blur();
             var club = clubs.find(c => c.id === id);
@@ -464,6 +518,9 @@ def update_map():
             document.getElementById('sheetSchedule').innerText = club.schedule || "일정 정보 없음";
             document.getElementById('sheetAddressVal').value = club.address;
             
+            // [추가됨] 시간표 렌더링 호출
+            parseAndRenderTimetable(club.schedule);
+
             var tagHtml = '<span class="tag target">' + club.target + '</span>';
             if(club.link) tagHtml += '<a href="' + club.link + '" target="_blank" style="text-decoration:none"><span class="tag" style="background:#eee">🏠 홈페이지</span></a>';
             document.getElementById('sheetTags').innerHTML = tagHtml;
