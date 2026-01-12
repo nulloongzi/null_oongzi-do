@@ -4,7 +4,6 @@ import requests
 import os
 import math
 import io
-import re  # 정규표현식 모듈 추가
 
 # ==========================================
 # [설정] 사용자 정보 및 키 값
@@ -13,6 +12,7 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
+# [중요] 테스트 모드 설정 (True: test_new.html / False: index.html)
 IS_TEST_MODE = True
 # ==========================================
 
@@ -205,14 +205,7 @@ def update_map():
         .filter-badge {{ position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: #fac710; border-radius: 50%; display: none; }}
         .filter-badge.active {{ display: block; }}
         
-        .urgent-ticker-bar {{
-            position: absolute; top: 70px; left: 15px; right: 15px; z-index: 18;
-            height: 40px; 
-            background: rgba(255, 245, 245, 0.95); 
-            border: 1px solid rgba(255, 71, 87, 0.3);
-            border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-            display: none; align-items: center; padding: 0 12px; overflow: hidden;
-        }}
+        .urgent-ticker-bar {{ position: absolute; top: 70px; left: 15px; right: 15px; z-index: 18; height: 40px; background: rgba(255, 245, 245, 0.95); border: 1px solid rgba(255, 71, 87, 0.3); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: none; align-items: center; padding: 0 12px; overflow: hidden; }}
         .ticker-icon {{ font-size: 18px; margin-right: 10px; animation: pulse 1.5s infinite; }}
         .ticker-content {{ flex: 1; height: 100%; position: relative; overflow: hidden; }}
         .ticker-list {{ list-style: none; margin: 0; padding: 0; position: absolute; width: 100%; top: 0; left: 0; transition: top 0.5s ease-in-out; }}
@@ -230,30 +223,54 @@ def update_map():
         .label.urgent {{ background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }} 70% {{ box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }} }}
 
-        .bottom-sheet {{ position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); padding: 20px 24px 50px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }}
-        .sheet-handle-area {{ width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; }}
+        .bottom-sheet {{ 
+            position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; 
+            border-top-left-radius: 24px; border-top-right-radius: 24px; 
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.1); 
+            padding: 20px 24px 0 24px; /* 하단 패딩 제거하고 내용물로 밀기 */
+            transform: translateY(120%); 
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            display: flex; flex-direction: column;
+            max-height: 90vh; /* 최대 높이 설정 */
+        }}
+        .sheet-handle-area {{ width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
         
+        .sheet-content-wrapper {{ flex: 1; overflow-y: auto; padding-bottom: 40px; -webkit-overflow-scrolling: touch; }}
+
         .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
         
         .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }}
         .sheet-title {{ font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }}
         
-        /* [추가됨] 시간표 스타일 */
-        .timetable-container {{ margin-bottom: 20px; }}
-        .timetable-grid {{ display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }}
-        .tt-day {{ 
+        /* 요약 시간표 (기존) */
+        .summary-timetable {{ margin-bottom: 20px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }}
+        .st-day {{ 
             background: #f1f3f5; border-radius: 8px; padding: 8px 2px; 
             text-align: center; font-size: 11px; color: #adb5bd; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
             min-height: 52px; transition: all 0.2s;
         }}
-        .tt-day.active {{ 
+        .st-day.active {{ 
             background: var(--brand-color); color: #000; font-weight: 800; 
             box-shadow: 0 2px 5px rgba(250, 199, 16, 0.4); transform: translateY(-2px);
         }}
-        .tt-name {{ margin-bottom: 3px; font-size: 12px; }}
-        .tt-time {{ font-size: 9px; line-height: 1.1; letter-spacing: -0.5px; }}
+        .st-name {{ margin-bottom: 3px; font-size: 12px; }}
+        .st-time {{ font-size: 9px; line-height: 1.1; letter-spacing: -0.5px; }}
+
+        /* [추가] 상세 시간표 (Full Grid) */
+        .full-timetable-area {{ margin-top: 30px; display: none; /* 초기엔 숨김 */ padding-top: 20px; border-top: 1px solid #eee; }}
+        .ft-title {{ font-size: 16px; font-weight: 700; margin-bottom: 10px; color: #333; }}
+        .ft-grid {{ 
+            display: grid; 
+            grid-template-columns: 40px repeat(7, 1fr); /* 시간축 + 7일 */
+            grid-auto-rows: 25px; /* 1시간 높이 */
+            gap: 1px; background: #eee; border: 1px solid #eee; border-radius: 8px; overflow: hidden;
+        }}
+        .ft-cell {{ background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; }}
+        .ft-header {{ background: #f8f9fa; font-weight: 700; color: #555; }}
+        .ft-time-col {{ background: #f8f9fa; color: #888; font-size: 10px; }}
+        .ft-block {{ background: var(--brand-color); opacity: 0.8; }}
 
         .tag-box {{ display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }}
         .tag {{ font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }}
@@ -262,7 +279,7 @@ def update_map():
         .info-row {{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }}
         .info-icon {{ width: 20px; text-align: center; font-size: 16px; }}
         
-        .action-buttons {{ display: flex; gap: 12px; margin-top: 30px; }}
+        .action-buttons {{ display: flex; gap: 12px; margin-top: 30px; margin-bottom: 20px; }}
         .btn {{ flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }}
         .btn:active {{ transform: scale(0.98); }}
         .btn-copy {{ background: #f1f3f5; color: #333; }}
@@ -285,6 +302,9 @@ def update_map():
         .btn-apply {{ flex: 1; background: #333; color: white; }}
         .fs-handle-area {{ width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }}
         .fs-handle {{ width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }}
+        
+        .expand-hint {{ text-align: center; color: #aaa; font-size: 12px; margin-top: 10px; animation: bounce 2s infinite; }}
+        @keyframes bounce {{ 0%, 20%, 50%, 80%, 100% {{transform: translateY(0);}} 40% {{transform: translateY(-5px);}} 60% {{transform: translateY(-3px);}} }}
     </style>
 </head>
 <body>
@@ -358,23 +378,30 @@ def update_map():
     <div id="bottomSheet" class="bottom-sheet">
         <div class="sheet-handle-area" id="sheetHandle"><div class="sheet-handle"></div></div>
         
-        <div id="urgentArea"></div>
+        <div class="sheet-content-wrapper">
+            <div id="urgentArea"></div>
 
-        <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
-        
-        <div class="timetable-container">
-            <div class="timetable-grid" id="sheetTimetable">
-                </div>
-        </div>
+            <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
+            
+            <div class="summary-timetable" id="summaryTimetable"></div>
 
-        <div class="tag-box" id="sheetTags"></div>
-        <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
-        <div class="info-row"><span class="info-icon">⏰</span> <span id="sheetSchedule">-</span></div>
-        <div class="action-buttons">
-            <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
-            <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
+            <div class="tag-box" id="sheetTags"></div>
+            <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
+            <div class="info-row"><span class="info-icon">⏰</span> <span id="sheetSchedule">-</span></div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
+                <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
+            </div>
+            <input type="hidden" id="sheetAddressVal">
+
+            <div class="expand-hint">▴ 위로 올려서 상세 시간표 확인</div>
+
+            <div class="full-timetable-area" id="fullTimetableArea">
+                <div class="ft-title">📅 주간 스케줄 상세</div>
+                <div class="ft-grid" id="fullTimetableGrid"></div>
+            </div>
         </div>
-        <input type="hidden" id="sheetAddressVal">
     </div>
 
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={KAKAO_JS_KEY}&libraries=clusterer"></script>
@@ -410,7 +437,6 @@ def update_map():
         clubs.forEach(function(club) {{
             if (!club.lat || !club.lng) return;
             var latlng = new kakao.maps.LatLng(club.lat, club.lng);
-            
             var marker;
             if (club.is_urgent) {{
                 marker = new kakao.maps.Marker({{ position: latlng, image: urgentMarkerImage, zIndex: 9999 }});
@@ -422,14 +448,11 @@ def update_map():
             var labelClass = club.is_urgent ? 'label urgent' : 'label';
             var iconHtml = club.is_urgent ? '🔥 ' : '';
             var content = '<div class="' + labelClass + '" onclick="triggerMarkerClick(' + club.id + ')">' + iconHtml + club.name + '</div>';
-            
             var xAnc = 0.5; var yAnc = 1;   
             if (club.angle !== undefined) {{ xAnc = 0.5 - (Math.cos(club.angle) * 0.5); }}
-
             var customOverlay = new kakao.maps.CustomOverlay({{ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 }});
             
             if (club.is_urgent) {{ customOverlay.setMap(map); }}
-
             kakao.maps.event.addListener(marker, 'click', function() {{ openClubDetail(club.id); }});
             
             markers.push({{ marker: marker, overlay: customOverlay, club: club, isVisible: true }});
@@ -451,60 +474,78 @@ def update_map():
             var level = map.getLevel(); 
             var showNormalLabels = (level <= 5); 
             var showUrgentLabels = (level <= 8); 
-
             markers.forEach(function(item) {{
                 if (!item.isVisible) return; 
-                
                 if (item.club.is_urgent) {{ 
-                    if (showUrgentLabels) item.overlay.setMap(map); 
-                    else item.overlay.setMap(null);
+                    if (showUrgentLabels) item.overlay.setMap(map); else item.overlay.setMap(null);
                 }} else {{ 
-                    if (showNormalLabels) item.overlay.setMap(map); 
-                    else item.overlay.setMap(null); 
+                    if (showNormalLabels) item.overlay.setMap(map); else item.overlay.setMap(null); 
                 }}
             }});
         }}
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
-        // [추가됨] 스케줄 텍스트 파싱 및 시간표 생성 함수
-        function parseAndRenderTimetable(scheduleText) {{
+        // [핵심] 시간표 렌더링 로직 (요약형 + 상세형)
+        function renderTimetables(scheduleText) {{
+            // 1. 요약형 (가로 바)
             var days = ['월', '화', '수', '목', '금', '토', '일'];
-            var container = document.getElementById('sheetTimetable');
-            container.innerHTML = ''; // 초기화
-
-            // 요일별 시간 찾기 (예: "월(19-22)")
-            // 정규식 설명: 요일문자 뒤에 괄호나 공백, 그리고 숫자 포함된 시간 패턴 찾기
-            // 간단하게: 요일 문자가 있고, 그 뒤에 나오는 시간 같은 문자열을 찾아서 매칭
+            var summaryContainer = document.getElementById('summaryTimetable');
+            summaryContainer.innerHTML = '';
             
+            var activeDays = [];
             days.forEach(function(day) {{
-                var isActive = false;
+                var isActive = scheduleText.includes(day);
                 var timeText = "";
-                
-                // 단순 포함 여부 체크 (데이터가 "매주 월요일" 형식이면 "월"이 포함됨)
-                if (scheduleText.includes(day)) {{
-                    isActive = true;
-                    // 시간 추출 시도 (괄호 안의 숫자나, 요일 뒤의 숫자)
-                    // 예: "월(19-22)" -> "19-22"
-                    // 예: "월 19시" -> "19시"
-                    // 아주 단순화된 로직: 전체 텍스트에서 숫자 패턴을 찾아서 그냥 넣어줌 (정확한 파싱은 어려움)
-                    // 여기서는 "월(19-21)" 형태를 권장하고, 괄호 안 내용을 가져오도록 시도
-                    
+                if (isActive) {{
+                    activeDays.push(day);
                     var regex = new RegExp(day + "\\\\(([^)]+)\\\\)");
                     var match = scheduleText.match(regex);
-                    if (match) {{
-                        timeText = match[1];
-                    }} else {{
-                        // 괄호 형식이 아니면 전체 텍스트에서 숫자만 찾거나, 그냥 비워둠
-                        // 일단은 시각적 강조가 중요하므로 시간 텍스트가 없어도 활성화
-                    }}
+                    if (match) timeText = match[1];
                 }}
-
                 var div = document.createElement('div');
-                div.className = isActive ? 'tt-day active' : 'tt-day';
-                div.innerHTML = '<div class="tt-name">' + day + '</div><div class="tt-time">' + timeText + '</div>';
-                container.appendChild(div);
+                div.className = isActive ? 'st-day active' : 'st-day';
+                div.innerHTML = '<div class="st-name">' + day + '</div><div class="st-time">' + timeText + '</div>';
+                summaryContainer.appendChild(div);
             }});
+
+            // 2. 상세형 (에타 스타일 그리드)
+            var fullContainer = document.getElementById('fullTimetableGrid');
+            fullContainer.innerHTML = '';
+            
+            // 헤더 생성 (빈칸 + 월~일)
+            var headerCell = document.createElement('div'); headerCell.className = 'ft-cell ft-header'; fullContainer.appendChild(headerCell);
+            days.forEach(d => {{ var c = document.createElement('div'); c.className = 'ft-cell ft-header'; c.innerText = d; fullContainer.appendChild(c); }});
+
+            // 시간 슬롯 생성 (06시 ~ 24시)
+            for (var h = 6; h <= 24; h++) {{
+                // 시간 라벨
+                var timeCol = document.createElement('div');
+                timeCol.className = 'ft-cell ft-time-col';
+                timeCol.innerText = h + '시';
+                fullContainer.appendChild(timeCol);
+
+                // 요일별 셀
+                days.forEach(day => {{
+                    var cell = document.createElement('div');
+                    cell.className = 'ft-cell';
+                    
+                    // 해당 요일, 해당 시간에 운동하는지 체크 (단순 파싱)
+                    // 예: "월(19-22)" -> 월요일 19, 20, 21시 셀 색칠
+                    if (scheduleText.includes(day)) {{
+                        var regex = new RegExp(day + "\\\\((\\\\d+)-(\\\\d+)\\\\)"); // 숫자-숫자 패턴 추출
+                        var match = scheduleText.match(regex);
+                        if (match) {{
+                            var start = parseInt(match[1]);
+                            var end = parseInt(match[2]);
+                            if (h >= start && h < end) {{
+                                cell.className = 'ft-cell ft-block'; // 색칠
+                            }}
+                        }}
+                    }}
+                    fullContainer.appendChild(cell);
+                }});
+            }}
         }}
 
         function openClubDetail(id) {{
@@ -518,8 +559,7 @@ def update_map():
             document.getElementById('sheetSchedule').innerText = club.schedule || "일정 정보 없음";
             document.getElementById('sheetAddressVal').value = club.address;
             
-            // [추가됨] 시간표 렌더링 호출
-            parseAndRenderTimetable(club.schedule);
+            renderTimetables(club.schedule); // 시간표 그리기
 
             var tagHtml = '<span class="tag target">' + club.target + '</span>';
             if(club.link) tagHtml += '<a href="' + club.link + '" target="_blank" style="text-decoration:none"><span class="tag" style="background:#eee">🏠 홈페이지</span></a>';
@@ -532,7 +572,10 @@ def update_map():
                 urgentArea.style.display = 'block';
             }} else {{ urgentArea.style.display = 'none'; }}
             
-            document.getElementById('bottomSheet').style.transform = "translateY(0)";
+            // 시트 초기화 (닫힘 -> 반 열림 상태)
+            var sheet = document.getElementById('bottomSheet');
+            sheet.style.transform = "translateY(0)"; // Peek 상태
+            document.getElementById('fullTimetableArea').style.display = 'none'; // 상세표 숨김
             
             var targetLevel = 4;
             map.setLevel(targetLevel, {{animate: true}});
@@ -604,9 +647,41 @@ def update_map():
         const sheet = document.getElementById('bottomSheet');
         const handleArea = document.getElementById('sheetHandle');
         let startY = 0; let currentY = 0; let isDragging = false;
+        
+        // [수정됨] 드래그 로직 (위로 올리면 확장)
         function bHandleStart(e) {{ startY = e.touches ? e.touches[0].clientY : e.clientY; isDragging = true; sheet.style.transition = 'none'; }}
-        function bHandleMove(e) {{ if (!isDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); currentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = currentY - startY; if (deltaY > 0) {{ sheet.style.transform = `translateY(${{deltaY}}px)`; }} }}
-        function bHandleEnd(e) {{ if (!isDragging) return; isDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : currentY; if (!e.touches && currentY === 0) endY = startY; const deltaY = endY - startY; sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY > 50) {{ closeBottomSheet(); }} else {{ sheet.style.transform = "translateY(0)"; }} currentY = 0; startY = 0; }}
+        function bHandleMove(e) {{ 
+            if (!isDragging) return; 
+            if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); 
+            currentY = e.touches ? e.touches[0].clientY : e.clientY; 
+            const deltaY = currentY - startY; 
+            
+            // 위로 드래그 시 저항감 주면서 이동
+            sheet.style.transform = `translateY(${{deltaY}}px)`; 
+        }}
+        function bHandleEnd(e) {{ 
+            if (!isDragging) return; isDragging = false; 
+            let endY = e.changedTouches ? e.changedTouches[0].clientY : currentY; 
+            if (!e.touches && currentY === 0) endY = startY; 
+            const deltaY = endY - startY; 
+            
+            sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
+            
+            if (deltaY > 50) {{ 
+                // 아래로 많이 내리면 닫기
+                closeBottomSheet(); 
+            }} else if (deltaY < -50) {{
+                // 위로 많이 올리면 상세 시간표 표시 (확장)
+                sheet.style.transform = "translateY(-40%)"; // 화면 위로 더 올라감
+                document.getElementById('fullTimetableArea').style.display = 'block';
+            }} else {{ 
+                // 제자리 (기본 상태)
+                sheet.style.transform = "translateY(0)"; 
+                // document.getElementById('fullTimetableArea').style.display = 'none'; // 유지할지 숨길지 결정 (일단 유지)
+            }} 
+            currentY = 0; startY = 0; 
+        }}
+        
         handleArea.addEventListener('touchstart', bHandleStart, {{passive: true}}); handleArea.addEventListener('touchmove', bHandleMove, {{passive: false}}); handleArea.addEventListener('touchend', bHandleEnd); handleArea.addEventListener('mousedown', bHandleStart); window.addEventListener('mousemove', bHandleMove); window.addEventListener('mouseup', bHandleEnd);
 
         const filterSheet = document.getElementById('filterSheet');
