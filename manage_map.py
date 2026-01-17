@@ -218,7 +218,7 @@ def update_map():
             border-top-left-radius: 24px; border-top-right-radius: 24px; 
             box-shadow: 0 -5px 25px rgba(0,0,0,0.15); 
             display: flex; flex-direction: column;
-            transition: height 0.1s linear; /* 드래그시 반응성 확보를 위해 짧게 */
+            transition: height 0.1s linear; 
             height: 0; 
             overflow: hidden;
         }}
@@ -234,31 +234,30 @@ def update_map():
         .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
         .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
 
-        /* 모핑 컨테이너 (relative로 변경하여 내부 요소 배치) */
+        /* [수정] 모핑 컨테이너: 배경 투명, 테두리 제거 */
         .time-morph-container {{
             position: relative;
-            background: white; 
+            background: transparent; /* 회색 직사각형 제거 */
             margin-bottom: 20px;
-            transition: all 0.1s linear; /* follow finger 위해 짧게 */
+            transition: height 0.1s linear; /* 높이 변경 애니메이션 */
             overflow: hidden;
-            min-height: 60px; /* 버블 높이 확보 */
+            min-height: 60px; 
+            border: none; /* 테두리 제거 */
         }}
 
-        /* [디자인 복구] 네온 스타일 버블 */
         .st-bubble {{ 
             background: #fff; 
-            border-radius: 8px; /* Square-ish */
+            border-radius: 8px; 
             padding: 8px 14px; 
             font-size: 13px; color: #333; white-space: nowrap; font-weight: 600;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border: 1px solid var(--brand-color); /* 노란 테두리 */
-            box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); /* 네온 글로우 */
+            border: 1px solid var(--brand-color); 
+            box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); 
             flex-shrink: 0;
         }}
         .st-day-text {{ font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }}
         .st-time-text {{ font-size: 14px; font-weight: 700; color: #333; }}
 
-        /* 요약 컨텐츠 (버블들) */
         .summary-content {{ 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; gap: 8px; overflow-x: auto; align-items: center;
@@ -268,23 +267,21 @@ def update_map():
         }}
         .summary-content::-webkit-scrollbar {{ display: none; }}
 
-        /* 상세 그리드 컨텐츠 */
         .full-content {{ 
             position: absolute; top: 0; left: 0; width: 100%;
             opacity: 0; transition: opacity 0.1s;
             z-index: 5;
         }}
 
-        /* [디자인 복구] 네온 스타일 그리드 */
         .ft-grid {{ 
             display: grid; 
             grid-template-columns: 40px repeat(7, 1fr); 
             grid-auto-rows: 25px; 
             gap: 1px; background: #eee; 
-            border: 1px solid var(--brand-color); /* 노란 테두리 */
-            border-radius: 8px; /* Square-ish */
+            border: 1px solid var(--brand-color); 
+            border-radius: 8px; 
             overflow: hidden; 
-            box-shadow: 0 0 10px rgba(250, 199, 16, 0.3); /* 네온 글로우 */
+            box-shadow: 0 0 10px rgba(250, 199, 16, 0.3); 
         }}
         .ft-header-row {{ padding: 0 0 10px 0; }}
         .ft-cell {{ background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; }}
@@ -571,8 +568,10 @@ def update_map():
         }}
 
         var sheetState = 'PEEK'; 
-        var PEEK_HEIGHT = 350; // 기본 높이
-        var EXPANDED_HEIGHT = window.innerHeight * 0.9; // 확장 높이 (90vh)
+        var PEEK_HEIGHT = 350; 
+        var EXPANDED_HEIGHT = window.innerHeight * 0.9;
+        var BUBBLE_HEIGHT = 60; // 버블 영역 높이
+        var GRID_HEIGHT = 300; // 상세 표 영역 높이
 
         function updateSheetState(newState, animation = true) {{
             var sheet = document.getElementById('bottomSheet');
@@ -589,48 +588,36 @@ def update_map():
             else if (newState === 'PEEK') {{
                 sheet.style.height = PEEK_HEIGHT + 'px';
                 hint.innerText = '▴ 위로 올려서 상세 정보 보기';
-                interpolateMorph(0); // 0% 확장
+                interpolateMorph(0); 
             }} 
             else if (newState === 'EXPANDED') {{
                 sheet.style.height = EXPANDED_HEIGHT + 'px';
                 hint.innerText = '▾ 아래로 내려서 요약 보기';
-                interpolateMorph(1); // 100% 확장
+                interpolateMorph(1); 
             }}
         }}
 
-        // [핵심] Real-time Morphing Interpolation
-        // ratio: 0 (Peek) ~ 1 (Expanded)
+        // [핵심] 높이 및 내용물 동시 제어 (Push Effect 구현)
         function interpolateMorph(ratio) {{
             var summary = document.getElementById('summaryContent');
             var full = document.getElementById('fullContent');
             var container = document.getElementById('timeMorphContainer');
             
-            // Opacity Cross-fade
-            // ratio 0 ~ 0.5: Bubble visible, Grid invisible
-            // ratio 0.5 ~ 1: Bubble fading out, Grid fading in
-            
-            // Safe bounds
             ratio = Math.min(Math.max(ratio, 0), 1);
 
-            // Container size change (optional, but good for height)
-            // 여기선 CSS height가 auto라 생략하거나 min-height 조절 가능
-            
+            // 1. 컨테이너 높이 자체를 늘려서 아래 내용물을 밀어냄
+            var currentMorphHeight = BUBBLE_HEIGHT + ((GRID_HEIGHT - BUBBLE_HEIGHT) * ratio);
+            container.style.height = currentMorphHeight + 'px';
+
+            // 2. 내용물 Cross-fade
             if (ratio < 0.5) {{
                 summary.style.display = 'flex';
                 full.style.display = 'none';
                 summary.style.opacity = 1 - (ratio * 2);
-                
-                container.style.backgroundColor = '#f1f3f5';
-                container.style.boxShadow = 'none';
-                container.style.padding = '8px 14px';
             }} else {{
                 summary.style.display = 'none';
                 full.style.display = 'block';
                 full.style.opacity = (ratio - 0.5) * 2;
-                
-                container.style.backgroundColor = '#f0f0f0';
-                container.style.boxShadow = '0 0 10px rgba(250, 199, 16, 0.3)';
-                container.style.padding = '0';
             }}
         }}
 
@@ -740,7 +727,8 @@ def update_map():
         function bHandleStart(e) {{ 
             startY = e.touches ? e.touches[0].clientY : e.clientY; 
             isDragging = true; 
-            sheet.style.transition = 'none'; // 실시간 반응 위해 끔
+            sheet.style.transition = 'none'; 
+            document.getElementById('timeMorphContainer').style.transition = 'none'; // 실시간 반응 위해 끔
             startHeight = sheet.offsetHeight;
         }}
         
@@ -750,16 +738,12 @@ def update_map():
             currentY = e.touches ? e.touches[0].clientY : e.clientY; 
             const deltaY = currentY - startY; 
             
-            // [Follow Finger] Height 직접 제어
             let newHeight = startHeight - deltaY;
-            
-            // Limit bounds
             if (newHeight < PEEK_HEIGHT) newHeight = PEEK_HEIGHT;
             if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
             
             sheet.style.height = newHeight + 'px';
 
-            // [Real-time Morphing] 비율 계산 (0 ~ 1)
             let ratio = (newHeight - PEEK_HEIGHT) / (EXPANDED_HEIGHT - PEEK_HEIGHT);
             interpolateMorph(ratio);
         }}
@@ -767,19 +751,17 @@ def update_map():
         function bHandleEnd(e) {{ 
             if (!isDragging) return; isDragging = false; 
             
+            // 애니메이션 복구
             sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            document.getElementById('timeMorphContainer').style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
             
             let currentH = sheet.offsetHeight;
-            
-            // 임계값 (절반 이상 올렸으면 확장)
             if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {{
                 updateSheetState('EXPANDED');
             }} else {{
-                // 너무 조금 올렸거나 내렸으면 Peek로 복귀
-                if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED'); // 아주 내리면 닫기
+                if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
                 else updateSheetState('PEEK');
             }}
-            
             currentY = 0; startY = 0; 
         }}
         
