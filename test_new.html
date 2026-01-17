@@ -109,21 +109,36 @@
             z-index: 5;
         }
 
+        /* [수정] ft-grid: 상단 헤더 셀과 본문 셀의 디자인 분리 */
         .ft-grid { 
             display: grid; 
             grid-template-columns: 40px repeat(7, 1fr); 
             grid-auto-rows: 25px; 
-            gap: 1px; background: #eee; 
+            gap: 2px; /* 간격 살짝 넓힘 */
+            background: #fff; /* 배경 흰색으로 변경 (더 깔끔하게) */
             border: none;
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            /* 그림자 제거 또는 아주 약하게 */
         }
         .ft-header-row { padding: 0 0 10px 0; }
-        .ft-cell { background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; }
-        .ft-header { background: #fafafa; font-weight: 800; color: #555; }
-        .ft-time-col { background: #fafafa; color: #999; font-size: 9px; border-right: 1px solid #eee; font-weight: 500; }
-        .ft-block { background: var(--brand-color); opacity: 0.9; }
+        .ft-cell { background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; color: #888; }
+        .ft-header { background: #fafafa; font-weight: 800; color: #555; border-radius: 4px; }
+        
+        /* [추가] 오늘 요일 강조 스타일 */
+        .ft-header.today { background: #333; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        .ft-time-col { background: #fff; color: #aaa; font-size: 9px; font-weight: 500; justify-content: flex-end; padding-right: 5px; }
+        
+        /* [수정] 블록 스타일: 둥근 모서리, 파스텔톤, 왼쪽 강조선 */
+        .ft-block { 
+            background: #ffeaa7; /* 연한 노란색 (파스텔 톤) */
+            border-radius: 4px; 
+            opacity: 1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border-left: 2px solid var(--brand-color); /* 왼쪽 강조선 */
+            margin: 1px; /* 셀 안에서 살짝 띄우기 */
+        }
 
         .tag-box { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
         .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }
@@ -156,7 +171,6 @@
         .fs-handle-area { width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }
         .fs-handle { width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }
         
-        /* [수정] 힌트 텍스트 마진 축소 */
         .expand-hint { text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
     </style>
 </head>
@@ -361,10 +375,30 @@
             return scheduleMap;
         }
 
+        // [수정] 스마트 레인지 렌더링 로직 적용
         function renderTimetables(scheduleText) {
             var scheduleData = parseScheduleText(scheduleText);
             var days = ['월', '화', '수', '목', '금', '토', '일'];
+            var dayIndices = {'일':0, '월':1, '화':2, '수':3, '목':4, '금':5, '토':6};
+            var todayIndex = new Date().getDay(); // 0(일) ~ 6(토)
+            var todayChar = Object.keys(dayIndices).find(key => dayIndices[key] === todayIndex);
+
+            // 1. 유효 시간 범위 계산 (최소 시작시간 - 3시간, 최대 종료시간 + 3시간)
+            var minH = 24, maxH = 0;
+            var hasData = false;
             
+            Object.values(scheduleData).forEach(function(data) {
+                if (data.startH < minH) minH = data.startH;
+                if (data.endH > maxH) maxH = data.endH;
+                hasData = true;
+            });
+
+            if (!hasData) { minH = 9; maxH = 22; } // 기본값
+            
+            var displayStart = Math.max(6, minH - 3); // 최소 6시
+            var displayEnd = Math.min(24, maxH + 3);  // 최대 24시
+
+            // 2. 요약(Bubble) 컨텐츠 렌더링
             var summaryContainer = document.getElementById('summaryContent');
             summaryContainer.innerHTML = '';
             var hasActive = false;
@@ -382,22 +416,40 @@
                 summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
             }
 
+            // 3. 풀 그리드(Full Grid) 렌더링
             var fullContainer = document.getElementById('fullTimetableGrid');
             fullContainer.innerHTML = '';
-            var headerCell = document.createElement('div'); headerCell.className = 'ft-cell ft-header'; fullContainer.appendChild(headerCell);
-            days.forEach(d => { var c = document.createElement('div'); c.className = 'ft-cell ft-header'; c.innerText = d; fullContainer.appendChild(c); });
+            
+            // 헤더 (요일)
+            var headerCell = document.createElement('div'); 
+            headerCell.className = 'ft-cell ft-header'; 
+            fullContainer.appendChild(headerCell); // 빈칸 (시간축 위)
+            
+            days.forEach(d => { 
+                var c = document.createElement('div'); 
+                c.className = 'ft-cell ft-header'; 
+                if (d === todayChar) c.className += ' today'; // 오늘 요일 강조
+                c.innerText = d; 
+                fullContainer.appendChild(c); 
+            });
 
-            for (var h = 6; h <= 24; h++) {
+            // 시간축 및 데이터 셀
+            for (var h = displayStart; h <= displayEnd; h++) {
                 var timeCol = document.createElement('div');
                 timeCol.className = 'ft-cell ft-time-col';
                 timeCol.innerText = h + '시';
                 fullContainer.appendChild(timeCol);
+                
                 days.forEach(day => {
                     var cell = document.createElement('div');
                     cell.className = 'ft-cell';
+                    
                     var data = scheduleData[day];
+                    // 블록 표시 로직
                     if (data && h >= data.startH && h < data.endH) {
                         cell.className = 'ft-cell ft-block';
+                        // 첫 시간 셀에만 텍스트 표시 (선택사항)
+                        // if (h === data.startH) cell.innerText = data.text; 
                     }
                     fullContainer.appendChild(cell);
                 });
@@ -444,11 +496,11 @@
 
             if (ratio > 0.8) {
                 container.style.height = 'auto'; // 높이 제한 해제
-                full.style.position = 'relative'; // ✨ 핵심 수정: absolute -> relative
+                full.style.position = 'relative'; // relative로 변경
             } else {
                  var targetH = BUBBLE_HEIGHT + (350 * ratio); 
                  container.style.height = targetH + 'px';
-                 full.style.position = 'absolute'; // ✨ 핵심 수정: 다시 absolute로 복귀
+                 full.style.position = 'absolute'; // absolute 유지
             }
 
             if (ratio < 0.5) {
