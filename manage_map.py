@@ -226,13 +226,13 @@ def update_map():
         .sheet-handle-area {{ width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
         
-        /* [수정] 스크롤바 숨김 처리 (Clean UI) */
+        /* [수정] 하단 여백 줄임 padding-bottom: 40px -> 20px */
         .sheet-content-wrapper {{ 
-            flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; 
+            flex: 1; overflow-y: auto; padding: 0 24px 20px 24px; 
             -webkit-overflow-scrolling: touch; 
-            scrollbar-width: none; /* Firefox */
+            scrollbar-width: none; 
         }}
-        .sheet-content-wrapper::-webkit-scrollbar {{ display: none; }} /* Chrome, Safari, Opera */
+        .sheet-content-wrapper::-webkit-scrollbar {{ display: none; }}
 
         .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
         .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }}
@@ -284,10 +284,10 @@ def update_map():
             grid-template-columns: 40px repeat(7, 1fr); 
             grid-auto-rows: 25px; 
             gap: 1px; background: #eee; 
-            border: 1px solid var(--brand-color); 
-            border-radius: 8px; 
+            border: none;
+            border-radius: 16px;
             overflow: hidden; 
-            box-shadow: 0 0 10px rgba(250, 199, 16, 0.3); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }}
         .ft-header-row {{ padding: 0 0 10px 0; }}
         .ft-cell {{ background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; }}
@@ -326,7 +326,8 @@ def update_map():
         .fs-handle-area {{ width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }}
         .fs-handle {{ width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }}
         
-        .expand-hint {{ text-align: center; color: #ccc; font-size: 11px; margin-top: 15px; margin-bottom: 5px; }}
+        /* [수정] 힌트 텍스트 마진 축소 */
+        .expand-hint {{ text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }}
     </style>
 </head>
 <body>
@@ -421,7 +422,7 @@ def update_map():
                 <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
             </div>
             
-            <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
+            <div class="expand-hint" id="expandHint">▴ 위로 올려서 전체 시간표 확인</div>
             <input type="hidden" id="sheetAddressVal">
         </div>
     </div>
@@ -509,20 +510,30 @@ def update_map():
         function parseScheduleText(text) {{
             var scheduleMap = {{}};
             if (!text) return scheduleMap;
-            var segments = text.split(" / "); 
+            
+            // 구분자 " / " 로 나눔
+            var segments = text.split(/\\s*\\/\\s*/); 
+            
             segments.forEach(function(segment) {{
-                var timeReg = /(\\d{{1,2}}):(\\d{{2}})\\s*~\\s*(\\d{{1,2}}):(\\d{{2}})/;
+                // 시간 추출 (HH:MM~HH:MM 또는 HH:MM-HH:MM)
+                var timeReg = /(\\d{{1,2}}):(\\d{{2}})\\s*[~-]\\s*(\\d{{1,2}}):(\\d{{2}})/;
                 var match = segment.match(timeReg);
+                
                 if (match) {{
                     var startH = parseInt(match[1]);
                     var startM = match[2];
                     var endH = parseInt(match[3]);
                     var endM = match[4];
                     var displayTime = startH + ":" + startM + "~" + endH + ":" + endM;
+                    
                     var days = ['월', '화', '수', '목', '금', '토', '일'];
                     days.forEach(function(day) {{
                         if (segment.includes(day)) {{
-                            scheduleMap[day] = {{ startH: startH, endH: endH, text: displayTime }};
+                            scheduleMap[day] = {{
+                                startH: startH,
+                                endH: endH,
+                                text: displayTime
+                            }};
                         }}
                     }});
                 }}
@@ -542,7 +553,7 @@ def update_map():
                 if (data) {{
                     hasActive = true;
                     var item = document.createElement('div');
-                    item.className = 'st-bubble';
+                    item.className = 'st-bubble active';
                     item.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + data.text + '</div>';
                     summaryContainer.appendChild(item);
                 }}
@@ -561,6 +572,7 @@ def update_map():
                 timeCol.className = 'ft-cell ft-time-col';
                 timeCol.innerText = h + '시';
                 fullContainer.appendChild(timeCol);
+
                 days.forEach(day => {{
                     var cell = document.createElement('div');
                     cell.className = 'ft-cell';
@@ -574,11 +586,10 @@ def update_map():
         }}
 
         var sheetState = 'PEEK'; 
-        // [수정] 요약본 높이를 조금 늘려서 스크롤 없이 다 보이게 조정 (350 -> 380)
         var PEEK_HEIGHT = 380; 
         var EXPANDED_HEIGHT = window.innerHeight * 0.9;
         var BUBBLE_HEIGHT = 60;
-        var GRID_HEIGHT = 300;
+        var GRID_HEIGHT = 300; // 예상 그리드 높이 (대략적)
 
         function updateSheetState(newState, animation = true) {{
             var sheet = document.getElementById('bottomSheet');
@@ -604,6 +615,7 @@ def update_map():
             }}
         }}
 
+        // [수정] 모핑 시 그리드 높이 자동(auto)으로 설정하여 잘림 방지
         function interpolateMorph(ratio) {{
             var summary = document.getElementById('summaryContent');
             var full = document.getElementById('fullContent');
@@ -611,8 +623,18 @@ def update_map():
             
             ratio = Math.min(Math.max(ratio, 0), 1);
 
-            var currentMorphHeight = BUBBLE_HEIGHT + ((GRID_HEIGHT - BUBBLE_HEIGHT) * ratio);
-            container.style.height = currentMorphHeight + 'px';
+            // ratio가 높을수록 그리드가 보이게 됨
+            // 그리드 내용을 다 보여주려면 height를 auto로 풀어줘야 함 (애니메이션 중엔 계산 필요)
+            // 여기선 간단히: ratio가 0.8 이상이면 auto로 풀어서 다 보여줌
+            
+            if (ratio > 0.8) {{
+                container.style.height = 'auto'; // 높이 제한 해제
+            }} else {{
+                 // PEEK 일때 버블 높이 ~ EXPANDED 일때 예상 높이로 보간
+                 // 하지만 정확한 그리드 높이를 모르므로, 적당히 큰 값으로 보간
+                 var targetH = BUBBLE_HEIGHT + (350 * ratio); 
+                 container.style.height = targetH + 'px';
+            }}
 
             if (ratio < 0.5) {{
                 summary.style.display = 'flex';
@@ -673,7 +695,6 @@ def update_map():
             else {{ var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }}
         }}
 
-        // ... (나머지 로직 동일)
         var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
         var uniqueTickerList = [];
         var processedTeams = {{}};
@@ -742,10 +763,8 @@ def update_map():
             currentY = e.touches ? e.touches[0].clientY : e.clientY; 
             const deltaY = currentY - startY; 
             
-            // [수정] 아래로 드래그 허용 (공중부양 제한 해제)
             let newHeight = startHeight - deltaY;
             
-            // 최대 높이만 제한, 최소 높이는 제한 없음 (닫기 위해)
             if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
             
             sheet.style.height = newHeight + 'px';
@@ -765,7 +784,6 @@ def update_map():
             if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {{
                 updateSheetState('EXPANDED');
             }} else {{
-                // [수정] PEEK 높이의 80% 미만으로 내려가면 닫기
                 if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
                 else updateSheetState('PEEK');
             }}
