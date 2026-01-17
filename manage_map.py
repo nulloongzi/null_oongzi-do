@@ -225,7 +225,14 @@ def update_map():
         
         .sheet-handle-area {{ width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
-        .sheet-content-wrapper {{ flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; -webkit-overflow-scrolling: touch; }}
+        
+        /* [수정] 스크롤바 숨김 처리 (Clean UI) */
+        .sheet-content-wrapper {{ 
+            flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; 
+            -webkit-overflow-scrolling: touch; 
+            scrollbar-width: none; /* Firefox */
+        }}
+        .sheet-content-wrapper::-webkit-scrollbar {{ display: none; }} /* Chrome, Safari, Opera */
 
         .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
         .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }}
@@ -234,15 +241,14 @@ def update_map():
         .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
         .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
 
-        /* [수정] 모핑 컨테이너: 배경 투명, 테두리 제거 */
         .time-morph-container {{
             position: relative;
-            background: transparent; /* 회색 직사각형 제거 */
+            background: transparent;
             margin-bottom: 20px;
-            transition: height 0.1s linear; /* 높이 변경 애니메이션 */
+            transition: height 0.1s linear;
             overflow: hidden;
             min-height: 60px; 
-            border: none; /* 테두리 제거 */
+            border: none;
         }}
 
         .st-bubble {{ 
@@ -568,10 +574,11 @@ def update_map():
         }}
 
         var sheetState = 'PEEK'; 
-        var PEEK_HEIGHT = 350; 
+        // [수정] 요약본 높이를 조금 늘려서 스크롤 없이 다 보이게 조정 (350 -> 380)
+        var PEEK_HEIGHT = 380; 
         var EXPANDED_HEIGHT = window.innerHeight * 0.9;
-        var BUBBLE_HEIGHT = 60; // 버블 영역 높이
-        var GRID_HEIGHT = 300; // 상세 표 영역 높이
+        var BUBBLE_HEIGHT = 60;
+        var GRID_HEIGHT = 300;
 
         function updateSheetState(newState, animation = true) {{
             var sheet = document.getElementById('bottomSheet');
@@ -597,7 +604,6 @@ def update_map():
             }}
         }}
 
-        // [핵심] 높이 및 내용물 동시 제어 (Push Effect 구현)
         function interpolateMorph(ratio) {{
             var summary = document.getElementById('summaryContent');
             var full = document.getElementById('fullContent');
@@ -605,11 +611,9 @@ def update_map():
             
             ratio = Math.min(Math.max(ratio, 0), 1);
 
-            // 1. 컨테이너 높이 자체를 늘려서 아래 내용물을 밀어냄
             var currentMorphHeight = BUBBLE_HEIGHT + ((GRID_HEIGHT - BUBBLE_HEIGHT) * ratio);
             container.style.height = currentMorphHeight + 'px';
 
-            // 2. 내용물 Cross-fade
             if (ratio < 0.5) {{
                 summary.style.display = 'flex';
                 full.style.display = 'none';
@@ -728,7 +732,7 @@ def update_map():
             startY = e.touches ? e.touches[0].clientY : e.clientY; 
             isDragging = true; 
             sheet.style.transition = 'none'; 
-            document.getElementById('timeMorphContainer').style.transition = 'none'; // 실시간 반응 위해 끔
+            document.getElementById('timeMorphContainer').style.transition = 'none';
             startHeight = sheet.offsetHeight;
         }}
         
@@ -738,8 +742,10 @@ def update_map():
             currentY = e.touches ? e.touches[0].clientY : e.clientY; 
             const deltaY = currentY - startY; 
             
+            // [수정] 아래로 드래그 허용 (공중부양 제한 해제)
             let newHeight = startHeight - deltaY;
-            if (newHeight < PEEK_HEIGHT) newHeight = PEEK_HEIGHT;
+            
+            // 최대 높이만 제한, 최소 높이는 제한 없음 (닫기 위해)
             if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
             
             sheet.style.height = newHeight + 'px';
@@ -751,14 +757,15 @@ def update_map():
         function bHandleEnd(e) {{ 
             if (!isDragging) return; isDragging = false; 
             
-            // 애니메이션 복구
             sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
             document.getElementById('timeMorphContainer').style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
             
             let currentH = sheet.offsetHeight;
+            
             if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {{
                 updateSheetState('EXPANDED');
             }} else {{
+                // [수정] PEEK 높이의 80% 미만으로 내려가면 닫기
                 if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
                 else updateSheetState('PEEK');
             }}
