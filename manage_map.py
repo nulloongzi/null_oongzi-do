@@ -12,7 +12,7 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
-IS_TEST_MODE = True
+IS_TEST_MODE = False  # True: 테스트 모드 (test_new.html), False: 배포 모드 (index.html)
 # ==========================================
 
 def get_location(address):
