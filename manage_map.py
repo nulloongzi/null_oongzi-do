@@ -422,7 +422,7 @@ def update_map():
                 <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
             </div>
             
-            <div class="expand-hint" id="expandHint">▴ 위로 올려서 전체 시간표 확인</div>
+            <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
         </div>
     </div>
@@ -510,30 +510,20 @@ def update_map():
         function parseScheduleText(text) {{
             var scheduleMap = {{}};
             if (!text) return scheduleMap;
-            
-            // 구분자 " / " 로 나눔
             var segments = text.split(/\\s*\\/\\s*/); 
-            
             segments.forEach(function(segment) {{
-                // 시간 추출 (HH:MM~HH:MM 또는 HH:MM-HH:MM)
                 var timeReg = /(\\d{{1,2}}):(\\d{{2}})\\s*[~-]\\s*(\\d{{1,2}}):(\\d{{2}})/;
                 var match = segment.match(timeReg);
-                
                 if (match) {{
                     var startH = parseInt(match[1]);
                     var startM = match[2];
                     var endH = parseInt(match[3]);
                     var endM = match[4];
                     var displayTime = startH + ":" + startM + "~" + endH + ":" + endM;
-                    
                     var days = ['월', '화', '수', '목', '금', '토', '일'];
                     days.forEach(function(day) {{
                         if (segment.includes(day)) {{
-                            scheduleMap[day] = {{
-                                startH: startH,
-                                endH: endH,
-                                text: displayTime
-                            }};
+                            scheduleMap[day] = {{ startH: startH, endH: endH, text: displayTime }};
                         }}
                     }});
                 }}
@@ -572,7 +562,6 @@ def update_map():
                 timeCol.className = 'ft-cell ft-time-col';
                 timeCol.innerText = h + '시';
                 fullContainer.appendChild(timeCol);
-
                 days.forEach(day => {{
                     var cell = document.createElement('div');
                     cell.className = 'ft-cell';
@@ -589,7 +578,7 @@ def update_map():
         var PEEK_HEIGHT = 380; 
         var EXPANDED_HEIGHT = window.innerHeight * 0.9;
         var BUBBLE_HEIGHT = 60;
-        var GRID_HEIGHT = 300; // 예상 그리드 높이 (대략적)
+        var GRID_HEIGHT = 300;
 
         function updateSheetState(newState, animation = true) {{
             var sheet = document.getElementById('bottomSheet');
@@ -695,6 +684,7 @@ def update_map():
             else {{ var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }}
         }}
 
+        // ... (나머지 로직 동일)
         var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
         var uniqueTickerList = [];
         var processedTeams = {{}};
