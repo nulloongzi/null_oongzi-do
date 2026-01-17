@@ -183,7 +183,13 @@ def update_map():
         * {{ box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }}
         html, body {{ width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; }}
         #map {{ width: 100%; height: 100%; }}
-        :root {{ --white: #fff; --brand-color: #fac710; --urgent-color: #ff4757; --shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+        :root {{ 
+            --white: #fff; 
+            --brand-color: #fac710; 
+            --urgent-color: #ff4757; 
+            --shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            --today-color: #d35400; /* 누룽지 짙은 갈색/오렌지 */
+        }}
         
         .search-container {{ position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }}
         .search-icon-box {{ width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }}
@@ -278,35 +284,88 @@ def update_map():
             z-index: 5;
         }}
 
-        /* [수정] ft-grid: 상단 헤더 셀과 본문 셀의 디자인 분리 */
-        .ft-grid {{ 
-            display: grid; 
-            grid-template-columns: 40px repeat(7, 1fr); 
-            grid-auto-rows: 25px; 
-            gap: 2px; /* 간격 살짝 넓힘 */
-            background: #fff; /* 배경 흰색으로 변경 (더 깔끔하게) */
-            border: none;
+        /* [NEW] Flexbox 기반 타임테이블 레이아웃 */
+        .ft-container {{
+            display: flex;
+            flex-direction: column;
+            background: #fff;
             border-radius: 12px;
-            overflow: hidden; 
-            /* 그림자 제거 또는 아주 약하게 */
+            overflow: hidden;
+            border: 1px solid #f0f0f0;
         }}
-        .ft-header-row {{ padding: 0 0 10px 0; }}
-        .ft-cell {{ background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; color: #888; }}
-        .ft-header {{ background: #fafafa; font-weight: 800; color: #555; border-radius: 4px; }}
+        .ft-header-row-flex {{
+            display: flex;
+            height: 35px;
+            border-bottom: 1px solid #eee;
+        }}
+        .ft-header-cell {{
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #888;
+            font-weight: 600;
+            background: #fafafa;
+        }}
+        .ft-header-cell.time-col {{ width: 50px; flex: none; border-right: 1px solid #eee; }}
         
-        /* [추가] 오늘 요일 강조 스타일 */
-        .ft-header.today {{ background: #333; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }}
+        /* [NEW] 오늘 요일 강조 색상 (누룽지 컨셉) */
+        .ft-header-cell.today {{ 
+            background: var(--today-color); 
+            color: #fff; 
+            font-weight: 800;
+        }}
 
-        .ft-time-col {{ background: #fff; color: #aaa; font-size: 9px; font-weight: 500; justify-content: flex-end; padding-right: 5px; }}
+        .ft-body {{
+            display: flex;
+            position: relative;
+        }}
+        .ft-col-time {{
+            width: 50px;
+            flex: none;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #eee;
+            background: #fafafa;
+        }}
+        .ft-time-label {{
+            height: 50px; /* 시간 칸 높이 50px로 확대 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #999;
+            font-weight: 500;
+            border-bottom: 1px solid #f5f5f5;
+        }}
+        .ft-col-day {{
+            flex: 1;
+            position: relative; /* 자식 absolute 배치를 위해 */
+            border-right: 1px solid #f8f8f8;
+        }}
+        .ft-col-day:last-child {{ border-right: none; }}
         
-        /* [수정] 블록 스타일: 둥근 모서리, 파스텔톤, 왼쪽 강조선 */
-        .ft-block {{ 
-            background: #ffeaa7; /* 연한 노란색 (파스텔 톤) */
-            border-radius: 4px; 
-            opacity: 1;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            border-left: 2px solid var(--brand-color); /* 왼쪽 강조선 */
-            margin: 1px; /* 셀 안에서 살짝 띄우기 */
+        /* [NEW] 통합된 블록 스타일 */
+        .ft-event-block {{
+            position: absolute;
+            width: 94%;
+            left: 3%;
+            background: rgba(250, 199, 16, 0.25); /* 연한 브랜드 컬러 */
+            border-left: 3px solid var(--brand-color);
+            border-radius: 4px;
+            font-size: 10px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 700;
+            line-height: 1.2;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 2px;
+            overflow: hidden;
         }}
 
         .tag-box {{ display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }}
@@ -421,10 +480,7 @@ def update_map():
             
             <div class="time-morph-container" id="timeMorphContainer" onclick="toggleTimeExpand()">
                 <div class="summary-content" id="summaryContent"></div>
-                <div class="full-content" id="fullContent">
-                    <div class="ft-header-row"><div class="ft-title">📅 주간 스케줄</div></div>
-                    <div class="ft-grid" id="fullTimetableGrid"></div>
-                </div>
+                <div class="full-content" id="fullContent"></div>
             </div>
             
             <div class="tag-box" id="sheetTags"></div>
@@ -529,14 +585,29 @@ def update_map():
                 var match = segment.match(timeReg);
                 if (match) {{
                     var startH = parseInt(match[1]);
-                    var startM = match[2];
+                    var startM = parseInt(match[2]);
                     var endH = parseInt(match[3]);
-                    var endM = match[4];
-                    var displayTime = startH + ":" + startM + "~" + endH + ":" + endM;
+                    var endM = parseInt(match[4]);
+                    
+                    // 12시간제 텍스트 변환 (ex: PM 7:00 ~ PM 10:00)
+                    function format12(h, m) {{
+                        var p = h >= 12 ? 'PM' : 'AM';
+                        var h12 = h % 12;
+                        if (h12 === 0) h12 = 12;
+                        var mStr = m < 10 ? '0'+m : m;
+                        return p + ' ' + h12 + ':' + mStr;
+                    }}
+                    
+                    var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
+                    
                     var days = ['월', '화', '수', '목', '금', '토', '일'];
                     days.forEach(function(day) {{
                         if (segment.includes(day)) {{
-                            scheduleMap[day] = {{ startH: startH, endH: endH, text: displayTime }};
+                            scheduleMap[day] = {{ 
+                                startH: startH, startM: startM, 
+                                endH: endH, endM: endM, 
+                                text: displayTime 
+                            }};
                         }}
                     }});
                 }}
@@ -544,15 +615,22 @@ def update_map():
             return scheduleMap;
         }}
 
-        // [수정] 스마트 레인지 렌더링 로직 적용
+        // [NEW] 12시간제 시간 라벨 생성 함수
+        function getHourLabel(h) {{
+            var p = h >= 12 ? 'PM' : 'AM';
+            var h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            return p + '<br>' + h12;
+        }}
+
         function renderTimetables(scheduleText) {{
             var scheduleData = parseScheduleText(scheduleText);
             var days = ['월', '화', '수', '목', '금', '토', '일'];
             var dayIndices = {{'일':0, '월':1, '화':2, '수':3, '목':4, '금':5, '토':6}};
-            var todayIndex = new Date().getDay(); // 0(일) ~ 6(토)
+            var todayIndex = new Date().getDay(); 
             var todayChar = Object.keys(dayIndices).find(key => dayIndices[key] === todayIndex);
 
-            // 1. 유효 시간 범위 계산 (최소 시작시간 - 3시간, 최대 종료시간 + 3시간)
+            // 1. 유효 시간 범위 계산
             var minH = 24, maxH = 0;
             var hasData = false;
             
@@ -562,12 +640,14 @@ def update_map():
                 hasData = true;
             }});
 
-            if (!hasData) {{ minH = 9; maxH = 22; }} // 기본값
+            if (!hasData) {{ minH = 18; maxH = 22; }}
             
-            var displayStart = Math.max(6, minH - 3); // 최소 6시
-            var displayEnd = Math.min(24, maxH + 3);  // 최대 24시
+            var displayStart = Math.max(6, minH - 2); 
+            var displayEnd = Math.min(24, maxH + 2);
+            var totalHours = displayEnd - displayStart;
+            var ROW_HEIGHT = 50; // 행 높이 50px로 설정 (여유있게)
 
-            // 2. 요약(Bubble) 컨텐츠 렌더링
+            // 2. 요약(Bubble) 컨텐츠
             var summaryContainer = document.getElementById('summaryContent');
             summaryContainer.innerHTML = '';
             var hasActive = false;
@@ -585,51 +665,88 @@ def update_map():
                 summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
             }}
 
-            // 3. 풀 그리드(Full Grid) 렌더링
-            var fullContainer = document.getElementById('fullTimetableGrid');
+            // 3. 풀 컨텐츠 (Flex Layout & Absolute Blocks)
+            var fullContainer = document.getElementById('fullContent');
             fullContainer.innerHTML = '';
             
-            // 헤더 (요일)
-            var headerCell = document.createElement('div'); 
-            headerCell.className = 'ft-cell ft-header'; 
-            fullContainer.appendChild(headerCell); // 빈칸 (시간축 위)
+            var ftContainer = document.createElement('div');
+            ftContainer.className = 'ft-container';
             
-            days.forEach(d => {{ 
-                var c = document.createElement('div'); 
-                c.className = 'ft-cell ft-header'; 
-                if (d === todayChar) c.className += ' today'; // 오늘 요일 강조
-                c.innerText = d; 
-                fullContainer.appendChild(c); 
+            // 헤더 생성
+            var headerRow = document.createElement('div');
+            headerRow.className = 'ft-header-row-flex';
+            var emptyCell = document.createElement('div'); emptyCell.className = 'ft-header-cell time-col';
+            headerRow.appendChild(emptyCell);
+            
+            days.forEach(function(d) {{
+                var cell = document.createElement('div');
+                cell.className = 'ft-header-cell';
+                if (d === todayChar) cell.className += ' today';
+                cell.innerText = d;
+                headerRow.appendChild(cell);
             }});
+            ftContainer.appendChild(headerRow);
 
-            // 시간축 및 데이터 셀
-            for (var h = displayStart; h <= displayEnd; h++) {{
-                var timeCol = document.createElement('div');
-                timeCol.className = 'ft-cell ft-time-col';
-                timeCol.innerText = h + '시';
-                fullContainer.appendChild(timeCol);
-                
-                days.forEach(day => {{
-                    var cell = document.createElement('div');
-                    cell.className = 'ft-cell';
-                    
-                    var data = scheduleData[day];
-                    // 블록 표시 로직
-                    if (data && h >= data.startH && h < data.endH) {{
-                        cell.className = 'ft-cell ft-block';
-                        // 첫 시간 셀에만 텍스트 표시 (선택사항)
-                        // if (h === data.startH) cell.innerText = data.text; 
-                    }}
-                    fullContainer.appendChild(cell);
-                }});
+            // 바디 생성
+            var bodyRow = document.createElement('div');
+            bodyRow.className = 'ft-body';
+            bodyRow.style.height = (totalHours * ROW_HEIGHT) + 'px';
+
+            // 시간 컬럼
+            var timeCol = document.createElement('div');
+            timeCol.className = 'ft-col-time';
+            for(var h = displayStart; h < displayEnd; h++) {{
+                var label = document.createElement('div');
+                label.className = 'ft-time-label';
+                label.innerHTML = getHourLabel(h);
+                timeCol.appendChild(label);
             }}
+            bodyRow.appendChild(timeCol);
+
+            // 요일 컬럼들 & 이벤트 블록
+            days.forEach(function(d) {{
+                var dayCol = document.createElement('div');
+                dayCol.className = 'ft-col-day';
+                
+                // 가로선 그리기 (배경용)
+                for(var h = displayStart; h < displayEnd; h++) {{
+                    var gridLine = document.createElement('div');
+                    gridLine.style.height = ROW_HEIGHT + 'px';
+                    gridLine.style.borderBottom = '1px solid #f8f8f8';
+                    gridLine.style.boxSizing = 'border-box';
+                    dayCol.appendChild(gridLine);
+                }}
+
+                var data = scheduleData[d];
+                if (data) {{
+                    // 블록 위치 계산
+                    var startTotalHours = data.startH + (data.startM / 60) - displayStart;
+                    var durationHours = (data.endH + (data.endM / 60)) - (data.startH + (data.startM / 60));
+                    
+                    var topPx = startTotalHours * ROW_HEIGHT;
+                    var heightPx = durationHours * ROW_HEIGHT;
+
+                    // 범위 내에 있을 때만 표시
+                    if (topPx >= 0) {{
+                        var block = document.createElement('div');
+                        block.className = 'ft-event-block';
+                        block.style.top = topPx + 'px';
+                        block.style.height = (heightPx - 2) + 'px'; // 간격 살짝
+                        block.innerHTML = data.text.replace('~', '<br>~<br>'); // 줄바꿈
+                        dayCol.appendChild(block);
+                    }}
+                }}
+                bodyRow.appendChild(dayCol);
+            }});
+            
+            ftContainer.appendChild(bodyRow);
+            fullContainer.appendChild(ftContainer);
         }}
 
         var sheetState = 'PEEK'; 
         var PEEK_HEIGHT = 380; 
         var EXPANDED_HEIGHT = window.innerHeight * 0.9;
         var BUBBLE_HEIGHT = 60;
-        var GRID_HEIGHT = 300;
 
         function updateSheetState(newState, animation = true) {{
             var sheet = document.getElementById('bottomSheet');
@@ -655,7 +772,6 @@ def update_map():
             }}
         }}
 
-        // [수정] 모핑 시 그리드 높이 자동(auto) 및 position 제어
         function interpolateMorph(ratio) {{
             var summary = document.getElementById('summaryContent');
             var full = document.getElementById('fullContent');
@@ -664,12 +780,12 @@ def update_map():
             ratio = Math.min(Math.max(ratio, 0), 1);
 
             if (ratio > 0.8) {{
-                container.style.height = 'auto'; // 높이 제한 해제
-                full.style.position = 'relative'; // relative로 변경
+                container.style.height = 'auto'; 
+                full.style.position = 'relative'; 
             }} else {{
                  var targetH = BUBBLE_HEIGHT + (350 * ratio); 
                  container.style.height = targetH + 'px';
-                 full.style.position = 'absolute'; // absolute 유지
+                 full.style.position = 'absolute'; 
             }}
 
             if (ratio < 0.5) {{
