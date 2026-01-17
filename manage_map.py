@@ -212,83 +212,81 @@ def update_map():
         .label.urgent {{ background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }} 70% {{ box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }} }}
 
-        /* [수정됨] 바텀시트: transform이 아닌 height로 제어 (공중부양 방지) */
         .bottom-sheet {{ 
             position: fixed; bottom: 0; left: 0; width: 100%; 
             background: #fff; z-index: 200; 
             border-top-left-radius: 24px; border-top-right-radius: 24px; 
             box-shadow: 0 -5px 25px rgba(0,0,0,0.15); 
             display: flex; flex-direction: column;
-            transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); /* 높이 애니메이션 */
-            height: 0; /* 초기엔 숨김 */
+            transition: height 0.1s linear; /* 드래그시 반응성 확보를 위해 짧게 */
+            height: 0; 
             overflow: hidden;
         }}
         
-        /* 닫힘 상태는 height: 0, 열림은 JS로 제어 */
-        
         .sheet-handle-area {{ width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
-        
-        .sheet-content-wrapper {{ 
-            flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; 
-            -webkit-overflow-scrolling: touch; 
-        }}
+        .sheet-content-wrapper {{ flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; -webkit-overflow-scrolling: touch; }}
 
         .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
-        
         .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }}
         .sheet-title {{ font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }}
         .instagram {{ font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }}
         .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
         .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
 
-        /* [핵심] 모핑 애니메이션 컨테이너 */
+        /* 모핑 컨테이너 (relative로 변경하여 내부 요소 배치) */
         .time-morph-container {{
-            background: #f1f3f5; 
-            border-radius: 16px; /* 버블과 동일한 둥근 모서리 */
-            padding: 8px 14px; /* 초기 버블 패딩 */
+            position: relative;
+            background: white; 
             margin-bottom: 20px;
-            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: all 0.1s linear; /* follow finger 위해 짧게 */
             overflow: hidden;
-            border: 1px solid transparent;
-            min-height: 52px; /* 버블 최소 높이 */
-        }}
-        
-        /* 확장되었을 때 스타일 */
-        .time-morph-container.expanded {{
-            padding: 0; /* 그리드는 꽉 차게 */
-            background: #f0f0f0; /* 그리드 배경색 */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 그림자 */
-            min-height: 300px; /* 확장 시 최소 높이 */
+            min-height: 60px; /* 버블 높이 확보 */
         }}
 
-        /* 1. 요약 (Bubble Content) */
-        .summary-content {{ 
-            display: flex; gap: 8px; overflow-x: auto; 
-            scrollbar-width: none; align-items: center; height: 100%;
-        }}
-        .summary-content::-webkit-scrollbar {{ display: none; }}
-        
-        .st-item {{ 
+        /* [디자인 복구] 네온 스타일 버블 */
+        .st-bubble {{ 
+            background: #fff; 
+            border-radius: 8px; /* Square-ish */
+            padding: 8px 14px; 
+            font-size: 13px; color: #333; white-space: nowrap; font-weight: 600;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 0 8px; flex-shrink: 0;
+            border: 1px solid var(--brand-color); /* 노란 테두리 */
+            box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); /* 네온 글로우 */
+            flex-shrink: 0;
         }}
         .st-day-text {{ font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }}
-        .st-time-text {{ font-size: 14px; font-weight: 700; color: #333; white-space: nowrap; }}
+        .st-time-text {{ font-size: 14px; font-weight: 700; color: #333; }}
 
-        /* 2. 상세 (Grid Content) */
-        .full-content {{ display: none; opacity: 0; transition: opacity 0.2s; }}
-        .full-content.visible {{ display: block; opacity: 1; }}
+        /* 요약 컨텐츠 (버블들) */
+        .summary-content {{ 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; gap: 8px; overflow-x: auto; align-items: center;
+            padding: 5px; scrollbar-width: none;
+            opacity: 1; transition: opacity 0.1s;
+            z-index: 10;
+        }}
+        .summary-content::-webkit-scrollbar {{ display: none; }}
 
-        .ft-header-row {{ padding: 12px 15px 5px 15px; display: flex; justify-content: space-between; align-items: center; background: #fff; border-bottom: 1px solid #eee; }}
-        .ft-title {{ font-size: 14px; font-weight: 700; color: #555; }}
-        
+        /* 상세 그리드 컨텐츠 */
+        .full-content {{ 
+            position: absolute; top: 0; left: 0; width: 100%;
+            opacity: 0; transition: opacity 0.1s;
+            z-index: 5;
+        }}
+
+        /* [디자인 복구] 네온 스타일 그리드 */
         .ft-grid {{ 
             display: grid; 
             grid-template-columns: 40px repeat(7, 1fr); 
             grid-auto-rows: 25px; 
             gap: 1px; background: #eee; 
+            border: 1px solid var(--brand-color); /* 노란 테두리 */
+            border-radius: 8px; /* Square-ish */
+            overflow: hidden; 
+            box-shadow: 0 0 10px rgba(250, 199, 16, 0.3); /* 네온 글로우 */
         }}
+        .ft-header-row {{ padding: 0 0 10px 0; }}
         .ft-cell {{ background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; }}
         .ft-header {{ background: #fafafa; font-weight: 800; color: #555; }}
         .ft-time-col {{ background: #fafafa; color: #999; font-size: 9px; border-right: 1px solid #eee; font-weight: 500; }}
@@ -308,8 +306,7 @@ def update_map():
         .btn-way {{ background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }}
         a.insta-link {{ text-decoration: none; display: flex; align-items: center; }}
 
-        /* 필터 시트 */
-        .filter-sheet {{ position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }}
+        .filter-sheet {{ position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; }}
         .filter-sheet.active {{ transform: translateY(0); }}
         .fs-header {{ padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }}
         .fs-title {{ font-size: 20px; font-weight: 800; }}
@@ -506,34 +503,23 @@ def update_map():
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
-        // [파싱 로직] 3가지 케이스 완벽 대응
         function parseScheduleText(text) {{
             var scheduleMap = {{}};
             if (!text) return scheduleMap;
-
-            // 구분자 " / " 로 나눔
             var segments = text.split(" / "); 
-            
             segments.forEach(function(segment) {{
-                // 시간 추출 (HH:MM~HH:MM)
                 var timeReg = /(\\d{{1,2}}):(\\d{{2}})\\s*~\\s*(\\d{{1,2}}):(\\d{{2}})/;
                 var match = segment.match(timeReg);
-                
                 if (match) {{
                     var startH = parseInt(match[1]);
                     var startM = match[2];
                     var endH = parseInt(match[3]);
                     var endM = match[4];
                     var displayTime = startH + ":" + startM + "~" + endH + ":" + endM;
-                    
                     var days = ['월', '화', '수', '목', '금', '토', '일'];
                     days.forEach(function(day) {{
                         if (segment.includes(day)) {{
-                            scheduleMap[day] = {{
-                                startH: startH,
-                                endH: endH,
-                                text: displayTime
-                            }};
+                            scheduleMap[day] = {{ startH: startH, endH: endH, text: displayTime }};
                         }}
                     }});
                 }}
@@ -543,31 +529,27 @@ def update_map():
 
         function renderTimetables(scheduleText) {{
             var scheduleData = parseScheduleText(scheduleText);
-            
-            // 1. 요약 (Bubble Content)
             var days = ['월', '화', '수', '목', '금', '토', '일'];
+            
             var summaryContainer = document.getElementById('summaryContent');
             summaryContainer.innerHTML = '';
-            
             var hasActive = false;
             days.forEach(function(day) {{
                 var data = scheduleData[day];
                 if (data) {{
                     hasActive = true;
                     var item = document.createElement('div');
-                    item.className = 'st-item';
+                    item.className = 'st-bubble';
                     item.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + data.text + '</div>';
                     summaryContainer.appendChild(item);
                 }}
             }});
             if (!hasActive) {{
-                summaryContainer.innerHTML = '<div class="st-item"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
+                summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
             }}
 
-            // 2. 상세 (Grid Content)
             var fullContainer = document.getElementById('fullTimetableGrid');
             fullContainer.innerHTML = '';
-            
             var headerCell = document.createElement('div'); headerCell.className = 'ft-cell ft-header'; fullContainer.appendChild(headerCell);
             days.forEach(d => {{ var c = document.createElement('div'); c.className = 'ft-cell ft-header'; c.innerText = d; fullContainer.appendChild(c); }});
 
@@ -576,7 +558,6 @@ def update_map():
                 timeCol.className = 'ft-cell ft-time-col';
                 timeCol.innerText = h + '시';
                 fullContainer.appendChild(timeCol);
-
                 days.forEach(day => {{
                     var cell = document.createElement('div');
                     cell.className = 'ft-cell';
@@ -589,40 +570,67 @@ def update_map():
             }}
         }}
 
-        var sheetState = 'CLOSED'; // CLOSED, PEEK, EXPANDED
+        var sheetState = 'PEEK'; 
+        var PEEK_HEIGHT = 350; // 기본 높이
+        var EXPANDED_HEIGHT = window.innerHeight * 0.9; // 확장 높이 (90vh)
 
-        // [시트 제어 로직 수정] height 사용으로 공중부양 방지
-        function updateSheetState(newState) {{
+        function updateSheetState(newState, animation = true) {{
             var sheet = document.getElementById('bottomSheet');
-            var morphBox = document.getElementById('timeMorphContainer');
-            var summary = document.getElementById('summaryContent');
-            var full = document.getElementById('fullContent');
             var hint = document.getElementById('expandHint');
             
             sheetState = newState;
+            
+            if (animation) sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            else sheet.style.transition = 'none';
 
             if (newState === 'CLOSED') {{
                 sheet.style.height = '0';
             }} 
             else if (newState === 'PEEK') {{
-                // 기본 높이 (내용물에 따라 적절히, 여기선 40%)
-                sheet.style.height = '350px'; 
-                
-                // 모핑 박스 축소
-                morphBox.classList.remove('expanded');
-                summary.style.display = 'flex';
-                full.classList.remove('visible');
+                sheet.style.height = PEEK_HEIGHT + 'px';
                 hint.innerText = '▴ 위로 올려서 상세 정보 보기';
+                interpolateMorph(0); // 0% 확장
             }} 
             else if (newState === 'EXPANDED') {{
-                // 최대 높이 (화면의 90%)
-                sheet.style.height = '90vh';
-                
-                // 모핑 박스 확장
-                morphBox.classList.add('expanded');
-                summary.style.display = 'none'; // 요약 숨김
-                full.classList.add('visible'); // 그리드 보임
+                sheet.style.height = EXPANDED_HEIGHT + 'px';
                 hint.innerText = '▾ 아래로 내려서 요약 보기';
+                interpolateMorph(1); // 100% 확장
+            }}
+        }}
+
+        // [핵심] Real-time Morphing Interpolation
+        // ratio: 0 (Peek) ~ 1 (Expanded)
+        function interpolateMorph(ratio) {{
+            var summary = document.getElementById('summaryContent');
+            var full = document.getElementById('fullContent');
+            var container = document.getElementById('timeMorphContainer');
+            
+            // Opacity Cross-fade
+            // ratio 0 ~ 0.5: Bubble visible, Grid invisible
+            // ratio 0.5 ~ 1: Bubble fading out, Grid fading in
+            
+            // Safe bounds
+            ratio = Math.min(Math.max(ratio, 0), 1);
+
+            // Container size change (optional, but good for height)
+            // 여기선 CSS height가 auto라 생략하거나 min-height 조절 가능
+            
+            if (ratio < 0.5) {{
+                summary.style.display = 'flex';
+                full.style.display = 'none';
+                summary.style.opacity = 1 - (ratio * 2);
+                
+                container.style.backgroundColor = '#f1f3f5';
+                container.style.boxShadow = 'none';
+                container.style.padding = '8px 14px';
+            }} else {{
+                summary.style.display = 'none';
+                full.style.display = 'block';
+                full.style.opacity = (ratio - 0.5) * 2;
+                
+                container.style.backgroundColor = '#f0f0f0';
+                container.style.boxShadow = '0 0 10px rgba(250, 199, 16, 0.3)';
+                container.style.padding = '0';
             }}
         }}
 
@@ -727,38 +735,51 @@ def update_map():
         const sheet = document.getElementById('bottomSheet');
         const handleArea = document.getElementById('sheetHandle');
         let startY = 0; let currentY = 0; let isDragging = false;
-        
-        // [드래그 로직 수정] height 제어 기반
+        let startHeight = 0;
+
         function bHandleStart(e) {{ 
             startY = e.touches ? e.touches[0].clientY : e.clientY; 
             isDragging = true; 
-            sheet.style.transition = 'none';
+            sheet.style.transition = 'none'; // 실시간 반응 위해 끔
+            startHeight = sheet.offsetHeight;
         }}
+        
         function bHandleMove(e) {{ 
             if (!isDragging) return; 
             if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); 
             currentY = e.touches ? e.touches[0].clientY : e.clientY; 
-            // 단순 이동 계산 (정밀 구현 생략, End에서 처리)
+            const deltaY = currentY - startY; 
+            
+            // [Follow Finger] Height 직접 제어
+            let newHeight = startHeight - deltaY;
+            
+            // Limit bounds
+            if (newHeight < PEEK_HEIGHT) newHeight = PEEK_HEIGHT;
+            if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
+            
+            sheet.style.height = newHeight + 'px';
+
+            // [Real-time Morphing] 비율 계산 (0 ~ 1)
+            let ratio = (newHeight - PEEK_HEIGHT) / (EXPANDED_HEIGHT - PEEK_HEIGHT);
+            interpolateMorph(ratio);
         }}
         
         function bHandleEnd(e) {{ 
             if (!isDragging) return; isDragging = false; 
-            let endY = e.changedTouches ? e.changedTouches[0].clientY : currentY; 
-            if (!e.touches && currentY === 0) endY = startY; 
-            const deltaY = endY - startY; 
             
-            sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
+            sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
             
-            if (deltaY < -50) {{ // 위로 당김
-                if (sheetState === 'PEEK') updateSheetState('EXPANDED');
-            }} 
-            else if (deltaY > 50) {{ // 아래로 내림
-                if (sheetState === 'EXPANDED') updateSheetState('PEEK');
-                else if (sheetState === 'PEEK') updateSheetState('CLOSED');
+            let currentH = sheet.offsetHeight;
+            
+            // 임계값 (절반 이상 올렸으면 확장)
+            if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {{
+                updateSheetState('EXPANDED');
+            }} else {{
+                // 너무 조금 올렸거나 내렸으면 Peek로 복귀
+                if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED'); // 아주 내리면 닫기
+                else updateSheetState('PEEK');
             }}
-            else {{
-                updateSheetState(sheetState);
-            }}
+            
             currentY = 0; startY = 0; 
         }}
         
