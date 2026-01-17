@@ -12,7 +12,6 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
-# 테스트 모드 설정
 IS_TEST_MODE = True
 # ==========================================
 
@@ -115,28 +114,32 @@ def update_map():
         return
 
     final_list = list(new_club_map.values())
-    
-    # 겹침 방지 로직
+
     adjusted_list = []
     clubs_by_coord = {}
+    
     for club in final_list:
         coord = (club['lat'], club['lng'])
         if coord not in clubs_by_coord:
             clubs_by_coord[coord] = []
         clubs_by_coord[coord].append(club)
+        
     for coord, clubs in clubs_by_coord.items():
         if len(clubs) == 1:
             adjusted_list.append(clubs[0])
         else:
             count = len(clubs)
             base_lat, base_lng = coord
-            radius = 0.0001
+            radius = 0.0001  
             for i, club in enumerate(clubs):
                 angle = (2 * math.pi / count) * i
-                club['lat'] = base_lat + radius * math.sin(angle)
-                club['lng'] = base_lng + radius * math.cos(angle)
+                new_lat = base_lat + radius * math.sin(angle)
+                new_lng = base_lng + radius * math.cos(angle)
+                club['lat'] = new_lat
+                club['lng'] = new_lng
                 club['angle'] = angle 
                 adjusted_list.append(club)
+                
     final_list = adjusted_list
 
     for idx, club in enumerate(final_list):
@@ -163,7 +166,6 @@ def update_map():
 
     print(f"🔄 지도({html_file}) 굽는 중...")
 
-    # 지도 중심 좌표 설정 (GVT 팀 기준 or 기본값)
     center_lat, center_lng = 37.5665, 126.9780 
     for club in final_list:
         if "GVT" in club['name']:
@@ -215,7 +217,6 @@ def update_map():
         .label.urgent {{ background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }} 70% {{ box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }} }}
 
-        /* 바텀시트 기본 스타일 */
         .bottom-sheet {{ 
             position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; 
             border-top-left-radius: 24px; border-top-right-radius: 24px; 
@@ -224,8 +225,8 @@ def update_map():
             transform: translateY(120%); 
             transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
             display: flex; flex-direction: column;
-            height: auto; /* 내용물에 따라 자동 */
-            max-height: 85vh; /* 최대 높이 */
+            height: auto; 
+            max-height: 85vh; 
             will-change: transform;
         }}
         .sheet-handle-area {{ width: 100%; padding: 0 0 20px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; }}
@@ -241,14 +242,13 @@ def update_map():
         .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
         .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
 
-        /* 1. 요약 시간표 (Text Bubble Style) - 가로 스크롤 가능 */
         .summary-timetable {{ 
             margin-bottom: 20px; 
             display: flex; gap: 8px; overflow-x: auto; 
-            padding-bottom: 5px; /* 스크롤바 공간 */
-            scrollbar-width: none; /* 파이어폭스 스크롤바 숨김 */
+            padding-bottom: 5px; 
+            scrollbar-width: none; 
         }}
-        .summary-timetable::-webkit-scrollbar {{ display: none; }} /* 크롬 스크롤바 숨김 */
+        .summary-timetable::-webkit-scrollbar {{ display: none; }}
         
         .st-bubble {{ 
             background: #f1f3f5; border-radius: 16px; padding: 8px 14px; 
@@ -264,7 +264,7 @@ def update_map():
         .st-bubble.active .st-day-text {{ color: var(--brand-color); font-weight: 800; }}
         .st-time-text {{ font-size: 14px; font-weight: 700; }}
 
-        /* 2. 상세 시간표 (Expanded Grid) - 초기엔 숨김 */
+        /* 상세 시간표 - 평소엔 안 보임 */
         .full-timetable-area {{ margin-top: 10px; display: none; padding-top: 10px; border-top: 1px solid #eee; }}
         .ft-header-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }}
         .ft-title {{ font-size: 16px; font-weight: 700; color: #333; }}
@@ -414,6 +414,7 @@ def update_map():
 
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={KAKAO_JS_KEY}&libraries=clusterer"></script>
     <script>
+        // ... (카카오맵 초기화 및 클러스터러 코드는 동일)
         var mapContainer = document.getElementById('map'), 
             mapOption = {{ center: new kakao.maps.LatLng({center_lat}, {center_lng}), level: 8 }}; 
         var map = new kakao.maps.Map(mapContainer, mapOption); 
@@ -492,9 +493,7 @@ def update_map():
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
-        // 시간표 렌더링 (요약형 Bubble + 상세형 Grid)
         function renderTimetables(scheduleText) {{
-            // 1. 요약형 (버블)
             var days = ['월', '화', '수', '목', '금', '토', '일'];
             var summaryContainer = document.getElementById('summaryTimetable');
             summaryContainer.innerHTML = '';
@@ -509,7 +508,6 @@ def update_map():
                     var match = scheduleText.match(regex);
                     if (match) timeText = match[1];
                     
-                    // 버블 생성 (활성화된 요일만 표시하거나, 모두 표시하되 스타일 다르게)
                     var bubble = document.createElement('div');
                     bubble.className = 'st-bubble active';
                     bubble.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + timeText + '</div>';
@@ -521,15 +519,12 @@ def update_map():
                 summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
             }}
 
-            // 2. 상세형 (그리드)
             var fullContainer = document.getElementById('fullTimetableGrid');
             fullContainer.innerHTML = '';
             
-            // 헤더 (요일)
             var headerCell = document.createElement('div'); headerCell.className = 'ft-cell ft-header'; fullContainer.appendChild(headerCell);
             days.forEach(d => {{ var c = document.createElement('div'); c.className = 'ft-cell ft-header'; c.innerText = d; fullContainer.appendChild(c); }});
 
-            // 시간 (6시~24시)
             for (var h = 6; h <= 24; h++) {{
                 var timeCol = document.createElement('div');
                 timeCol.className = 'ft-cell ft-time-col';
@@ -555,10 +550,9 @@ def update_map():
             }}
         }}
 
-        // 시트 상태 관리
-        // State: 'CLOSED', 'PEEK', 'EXPANDED'
         var sheetState = 'CLOSED';
 
+        // [수정] 시트 상태 관리 (translateY 음수 값 제거 -> 바닥에 붙임)
         function updateSheetState(newState) {{
             var sheet = document.getElementById('bottomSheet');
             var summary = document.getElementById('summaryTimetable');
@@ -574,27 +568,25 @@ def update_map():
                 sheet.style.transform = "translateY(120%)";
             }} 
             else if (newState === 'PEEK') {{
-                // 기본 상태: 버블 보임, 표 숨김
-                sheet.style.transform = "translateY(0)";
+                sheet.style.transform = "translateY(0)"; // 바닥에 붙임
                 summary.style.display = 'flex';
                 full.style.display = 'none';
                 hint.innerText = '▴ 위로 올려서 전체 시간표 확인';
                 hint.style.display = 'block';
-                // 태그와 정보 표시
                 tags.style.display = 'flex';
                 infoRow1.style.display = 'flex';
                 infoRow2.style.display = 'flex';
             }} 
             else if (newState === 'EXPANDED') {{
-                // 확장 상태: 버블 숨김, 표 보임, 시트 최대로 올림
-                // 모바일 전체화면 느낌을 위해 상단 여백 조금 남기고 올림
-                sheet.style.transform = "translateY(-40%)"; // 화면 위로 더 올림 (값 조절 가능)
+                // 공중부양 수정: translateY를 0으로 유지 (바닥에 고정)
+                // 내용물이 늘어나면서 높이가 자동으로 커짐
+                sheet.style.transform = "translateY(0)"; 
                 
-                summary.style.display = 'none'; // 버블 숨김
-                full.style.display = 'block';   // 표 보임
+                summary.style.display = 'none';
+                full.style.display = 'block';
                 hint.innerText = '▾ 아래로 내려서 요약 보기';
                 
-                // 공간 확보를 위해 기타 정보 숨기기 (선택사항)
+                // 정보 가리기 (원하면 주석 처리)
                 tags.style.display = 'none';
                 infoRow1.style.display = 'none';
                 infoRow2.style.display = 'none';
@@ -625,7 +617,6 @@ def update_map():
                 urgentArea.style.display = 'block';
             }} else {{ urgentArea.style.display = 'none'; }}
             
-            // 처음 열릴 때는 PEEK 상태
             updateSheetState('PEEK');
             
             var targetLevel = 4;
@@ -645,6 +636,7 @@ def update_map():
             if (navigator.clipboard && navigator.clipboard.writeText) {{ navigator.clipboard.writeText(addr).then(() => {{ alert('주소가 복사되었습니다! 📋'); }}); }} 
             else {{ var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }}
         }}
+        // ... (이하 티커, 필터 로직 동일)
 
         var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
         var uniqueTickerList = [];
@@ -706,11 +698,8 @@ def update_map():
             currentY = e.touches ? e.touches[0].clientY : e.clientY; 
             const deltaY = currentY - startY; 
             
-            // 드래그 중에는 transform으로 따라다니게 함
-            // 현재 상태에 따라 기준점(offset)이 다름을 고려해야 하지만, 
-            // 여기선 간단하게 상대적 이동만 구현
-            // 실제 구현시엔 복잡해지므로, 드래그 중엔 시각적 피드백만 주고 
-            // End에서 결정하는 게 깔끔함.
+            // [수정] 위로 드래그할 때 시트가 딸려 올라가서 바닥이 뜨는 현상 방지
+            // 드래그 중에는 transform을 건드리지 않고, 사용자의 의도(위/아래)만 파악
         }}
         
         function bHandleEnd(e) {{ 
@@ -721,24 +710,22 @@ def update_map():
             
             sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
             
-            // 로직: 드래그 방향과 거리에 따라 다음 상태 결정
-            if (deltaY < -50) {{ // 위로 당김
+            if (deltaY < -50) {{ // 위로 당김 -> 확장
                 if (sheetState === 'PEEK') updateSheetState('EXPANDED');
             }} 
-            else if (deltaY > 50) {{ // 아래로 내림
+            else if (deltaY > 50) {{ // 아래로 내림 -> 축소
                 if (sheetState === 'EXPANDED') updateSheetState('PEEK');
                 else if (sheetState === 'PEEK') updateSheetState('CLOSED');
             }}
             else {{
-                // 제자리 (원복)
                 updateSheetState(sheetState);
             }}
-            
             currentY = 0; startY = 0; 
         }}
         
         handleArea.addEventListener('touchstart', bHandleStart, {{passive: true}}); handleArea.addEventListener('touchmove', bHandleMove, {{passive: false}}); handleArea.addEventListener('touchend', bHandleEnd); handleArea.addEventListener('mousedown', bHandleStart); window.addEventListener('mousemove', bHandleMove); window.addEventListener('mouseup', bHandleEnd);
 
+        // ... (나머지 필터, GPS 로직 동일)
         const filterSheet = document.getElementById('filterSheet');
         const filterHandle = document.getElementById('filterHandle');
         let fStartY = 0; let fCurrentY = 0; let fIsDragging = false;
