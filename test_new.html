@@ -43,71 +43,85 @@
         .label.urgent { background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
 
+        /* [수정됨] 바텀시트: transform이 아닌 height로 제어 (공중부양 방지) */
         .bottom-sheet { 
-            position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; 
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: #fff; z-index: 200; 
             border-top-left-radius: 24px; border-top-right-radius: 24px; 
-            box-shadow: 0 -5px 25px rgba(0,0,0,0.1); 
-            padding: 20px 24px 0 24px; 
-            transform: translateY(120%); 
-            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.15); 
             display: flex; flex-direction: column;
-            height: auto; 
-            max-height: 85vh; 
-            will-change: transform;
+            transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); /* 높이 애니메이션 */
+            height: 0; /* 초기엔 숨김 */
+            overflow: hidden;
         }
-        .sheet-handle-area { width: 100%; padding: 0 0 20px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; }
-        .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; margin-top: 5px; }
         
-        .sheet-content-wrapper { flex: 1; overflow-y: auto; padding-bottom: 30px; -webkit-overflow-scrolling: touch; }
+        /* 닫힘 상태는 height: 0, 열림은 JS로 제어 */
+        
+        .sheet-handle-area { width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }
+        .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
+        
+        .sheet-content-wrapper { 
+            flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; 
+            -webkit-overflow-scrolling: touch; 
+        }
 
         .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }
         
-        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }
         .sheet-title { font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }
         .instagram { font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
         .instagram:before { content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }
         .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
 
-        .summary-timetable { 
-            margin-bottom: 20px; 
-            display: flex; gap: 8px; overflow-x: auto; 
-            padding-bottom: 5px; 
-            scrollbar-width: none; 
+        /* [핵심] 모핑 애니메이션 컨테이너 */
+        .time-morph-container {
+            background: #f1f3f5; 
+            border-radius: 16px; /* 버블과 동일한 둥근 모서리 */
+            padding: 8px 14px; /* 초기 버블 패딩 */
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            overflow: hidden;
+            border: 1px solid transparent;
+            min-height: 52px; /* 버블 최소 높이 */
         }
-        .summary-timetable::-webkit-scrollbar { display: none; }
         
-        .st-bubble { 
-            background: #f1f3f5; border-radius: 16px; padding: 8px 14px; 
-            font-size: 13px; color: #555; white-space: nowrap; font-weight: 600;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border: 1px solid transparent; transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        /* 확장되었을 때 스타일 */
+        .time-morph-container.expanded {
+            padding: 0; /* 그리드는 꽉 차게 */
+            background: #f0f0f0; /* 그리드 배경색 */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 그림자 */
+            min-height: 300px; /* 확장 시 최소 높이 */
         }
-        .st-bubble.active { 
-            background: #fff; border-color: var(--brand-color); color: #333; 
-            box-shadow: 0 2px 6px rgba(250, 199, 16, 0.4); 
-        }
-        .st-day-text { font-size: 12px; color: #888; margin-bottom: 2px; }
-        .st-bubble.active .st-day-text { color: var(--brand-color); font-weight: 800; }
-        .st-time-text { font-size: 14px; font-weight: 700; }
 
-        .full-timetable-area { margin-top: 10px; display: none; padding-top: 10px; border-top: 1px solid #eee; }
-        .ft-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .ft-title { font-size: 16px; font-weight: 700; color: #333; }
+        /* 1. 요약 (Bubble Content) */
+        .summary-content { 
+            display: flex; gap: 8px; overflow-x: auto; 
+            scrollbar-width: none; align-items: center; height: 100%;
+        }
+        .summary-content::-webkit-scrollbar { display: none; }
         
-        /* [수정] 둥근 모서리와 그림자 디자인 강화 */
+        .st-item { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 0 8px; flex-shrink: 0;
+        }
+        .st-day-text { font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }
+        .st-time-text { font-size: 14px; font-weight: 700; color: #333; white-space: nowrap; }
+
+        /* 2. 상세 (Grid Content) */
+        .full-content { display: none; opacity: 0; transition: opacity 0.2s; }
+        .full-content.visible { display: block; opacity: 1; }
+
+        .ft-header-row { padding: 12px 15px 5px 15px; display: flex; justify-content: space-between; align-items: center; background: #fff; border-bottom: 1px solid #eee; }
+        .ft-title { font-size: 14px; font-weight: 700; color: #555; }
+        
         .ft-grid { 
             display: grid; 
             grid-template-columns: 40px repeat(7, 1fr); 
             grid-auto-rows: 25px; 
-            gap: 1px; background: #f0f0f0; 
-            border: none;
-            border-radius: 16px; /* 더 둥글게 */
-            overflow: hidden; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* 부드러운 그림자 */
+            gap: 1px; background: #eee; 
         }
         .ft-cell { background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; }
-        .ft-header { background: #fafafa; font-weight: 800; color: #555; border-bottom: 1px solid #eee; }
+        .ft-header { background: #fafafa; font-weight: 800; color: #555; }
         .ft-time-col { background: #fafafa; color: #999; font-size: 9px; border-right: 1px solid #eee; font-weight: 500; }
         .ft-block { background: var(--brand-color); opacity: 0.9; }
 
@@ -125,7 +139,8 @@
         .btn-way { background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
         a.insta-link { text-decoration: none; display: flex; align-items: center; }
 
-        .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; }
+        /* 필터 시트 */
+        .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
         .filter-sheet.active { transform: translateY(0); }
         .fs-header { padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }
         .fs-title { font-size: 20px; font-weight: 800; }
@@ -142,7 +157,7 @@
         .fs-handle-area { width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }
         .fs-handle { width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }
         
-        .expand-hint { text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 5px; }
+        .expand-hint { text-align: center; color: #ccc; font-size: 11px; margin-top: 15px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -221,17 +236,14 @@
 
             <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
             
-            <div class="summary-timetable" id="summaryTimetable"></div>
-
-            <div class="full-timetable-area" id="fullTimetableArea">
-                <div class="ft-header-row">
-                    <div class="ft-title">📅 상세 주간 스케줄</div>
+            <div class="time-morph-container" id="timeMorphContainer" onclick="toggleTimeExpand()">
+                <div class="summary-content" id="summaryContent"></div>
+                <div class="full-content" id="fullContent">
+                    <div class="ft-header-row"><div class="ft-title">📅 주간 스케줄</div></div>
+                    <div class="ft-grid" id="fullTimetableGrid"></div>
                 </div>
-                <div class="ft-grid" id="fullTimetableGrid"></div>
             </div>
             
-            <div class="expand-hint" id="expandHint">▴ 위로 올려서 전체 시간표 확인</div>
-
             <div class="tag-box" id="sheetTags"></div>
             <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
             
@@ -239,6 +251,8 @@
                 <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
                 <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
             </div>
+            
+            <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
         </div>
     </div>
@@ -323,18 +337,16 @@
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
-        // [수정된 파싱 함수] 3가지 케이스 모두 처리
+        // [파싱 로직] 3가지 케이스 완벽 대응
         function parseScheduleText(text) {
             var scheduleMap = {};
             if (!text) return scheduleMap;
 
-            // 1. " / "으로 구분하여 세그먼트 나누기 (Format 3 대응)
-            // 구분자가 없을 수도 있으므로 일단 배열로 만듦
+            // 구분자 " / " 로 나눔
             var segments = text.split(" / "); 
             
             segments.forEach(function(segment) {
-                // 시간 추출 (HH:MM~HH:MM 형태)
-                // 정규식: 숫자:숫자 ~ 숫자:숫자
+                // 시간 추출 (HH:MM~HH:MM)
                 var timeReg = /(\d{1,2}):(\d{2})\s*~\s*(\d{1,2}):(\d{2})/;
                 var match = segment.match(timeReg);
                 
@@ -343,30 +355,29 @@
                     var startM = match[2];
                     var endH = parseInt(match[3]);
                     var endM = match[4];
+                    var displayTime = startH + ":" + startM + "~" + endH + ":" + endM;
                     
-                    // 이 세그먼트에 포함된 요일 찾기
                     var days = ['월', '화', '수', '목', '금', '토', '일'];
                     days.forEach(function(day) {
                         if (segment.includes(day)) {
                             scheduleMap[day] = {
                                 startH: startH,
                                 endH: endH,
-                                text: startH + ":" + startM + "~" + endH + ":" + endM
+                                text: displayTime
                             };
                         }
                     });
                 }
             });
-            
             return scheduleMap;
         }
 
         function renderTimetables(scheduleText) {
-            // 1. 파싱 (새로운 로직 적용)
             var scheduleData = parseScheduleText(scheduleText);
             
+            // 1. 요약 (Bubble Content)
             var days = ['월', '화', '수', '목', '금', '토', '일'];
-            var summaryContainer = document.getElementById('summaryTimetable');
+            var summaryContainer = document.getElementById('summaryContent');
             summaryContainer.innerHTML = '';
             
             var hasActive = false;
@@ -374,18 +385,17 @@
                 var data = scheduleData[day];
                 if (data) {
                     hasActive = true;
-                    var bubble = document.createElement('div');
-                    bubble.className = 'st-bubble active';
-                    bubble.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + data.text + '</div>';
-                    summaryContainer.appendChild(bubble);
+                    var item = document.createElement('div');
+                    item.className = 'st-item';
+                    item.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + data.text + '</div>';
+                    summaryContainer.appendChild(item);
                 }
             });
-            
             if (!hasActive) {
-                summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
+                summaryContainer.innerHTML = '<div class="st-item"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
             }
 
-            // 2. 상세형 (그리드) 렌더링
+            // 2. 상세 (Grid Content)
             var fullContainer = document.getElementById('fullTimetableGrid');
             fullContainer.innerHTML = '';
             
@@ -401,52 +411,55 @@
                 days.forEach(day => {
                     var cell = document.createElement('div');
                     cell.className = 'ft-cell';
-                    
                     var data = scheduleData[day];
-                    if (data) {
-                        // 종료 시간 전까지 색칠 (예: 20~22시면 20, 21시 블록 색칠)
-                        if (h >= data.startH && h < data.endH) {
-                            cell.className = 'ft-cell ft-block'; 
-                        }
+                    if (data && h >= data.startH && h < data.endH) {
+                        cell.className = 'ft-cell ft-block';
                     }
                     fullContainer.appendChild(cell);
                 });
             }
         }
 
-        var sheetState = 'PEEK'; 
+        var sheetState = 'CLOSED'; // CLOSED, PEEK, EXPANDED
 
+        // [시트 제어 로직 수정] height 사용으로 공중부양 방지
         function updateSheetState(newState) {
             var sheet = document.getElementById('bottomSheet');
-            var summary = document.getElementById('summaryTimetable');
-            var full = document.getElementById('fullTimetableArea');
+            var morphBox = document.getElementById('timeMorphContainer');
+            var summary = document.getElementById('summaryContent');
+            var full = document.getElementById('fullContent');
             var hint = document.getElementById('expandHint');
-            var tags = document.getElementById('sheetTags');
-            var infoRow1 = document.getElementById('sheetPrice').parentNode;
             
             sheetState = newState;
 
             if (newState === 'CLOSED') {
-                sheet.style.transform = "translateY(120%)";
+                sheet.style.height = '0';
             } 
             else if (newState === 'PEEK') {
-                sheet.style.transform = "translateY(0)"; 
+                // 기본 높이 (내용물에 따라 적절히, 여기선 40%)
+                sheet.style.height = '350px'; 
+                
+                // 모핑 박스 축소
+                morphBox.classList.remove('expanded');
                 summary.style.display = 'flex';
-                full.style.display = 'none';
-                hint.innerText = '▴ 위로 올려서 전체 시간표 확인';
-                hint.style.display = 'block';
-                tags.style.display = 'flex';
-                infoRow1.style.display = 'flex';
+                full.classList.remove('visible');
+                hint.innerText = '▴ 위로 올려서 상세 정보 보기';
             } 
             else if (newState === 'EXPANDED') {
-                sheet.style.transform = "translateY(0)"; 
-                summary.style.display = 'none';
-                full.style.display = 'block';
-                hint.innerText = '▾ 아래로 내려서 요약 보기';
+                // 최대 높이 (화면의 90%)
+                sheet.style.height = '90vh';
                 
-                tags.style.display = 'none';
-                infoRow1.style.display = 'none';
+                // 모핑 박스 확장
+                morphBox.classList.add('expanded');
+                summary.style.display = 'none'; // 요약 숨김
+                full.classList.add('visible'); // 그리드 보임
+                hint.innerText = '▾ 아래로 내려서 요약 보기';
             }
+        }
+
+        function toggleTimeExpand() {
+            if (sheetState === 'PEEK') updateSheetState('EXPANDED');
+            else if (sheetState === 'EXPANDED') updateSheetState('PEEK');
         }
 
         function openClubDetail(id) {
@@ -546,18 +559,17 @@
         const handleArea = document.getElementById('sheetHandle');
         let startY = 0; let currentY = 0; let isDragging = false;
         
+        // [드래그 로직 수정] height 제어 기반
         function bHandleStart(e) { 
             startY = e.touches ? e.touches[0].clientY : e.clientY; 
             isDragging = true; 
-            sheet.style.transition = 'none'; // 드래그 중엔 애니메이션 끔
+            sheet.style.transition = 'none';
         }
         function bHandleMove(e) { 
             if (!isDragging) return; 
             if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); 
             currentY = e.touches ? e.touches[0].clientY : e.clientY; 
-            const deltaY = currentY - startY; 
-            
-            sheet.style.transform = `translateY(${deltaY}px)`; 
+            // 단순 이동 계산 (정밀 구현 생략, End에서 처리)
         }
         
         function bHandleEnd(e) { 
@@ -566,14 +578,14 @@
             if (!e.touches && currentY === 0) endY = startY; 
             const deltaY = endY - startY; 
             
-            sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
+            sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
             
             if (deltaY < -50) { // 위로 당김
-                updateSheetState('EXPANDED');
+                if (sheetState === 'PEEK') updateSheetState('EXPANDED');
             } 
             else if (deltaY > 50) { // 아래로 내림
                 if (sheetState === 'EXPANDED') updateSheetState('PEEK');
-                else updateSheetState('CLOSED');
+                else if (sheetState === 'PEEK') updateSheetState('CLOSED');
             }
             else {
                 updateSheetState(sheetState);
