@@ -68,7 +68,6 @@
         .instagram:before { content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }
         .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
 
-        /* 1. 요약 시간표 (Text Bubble) - 가로 스크롤 가능 */
         .summary-timetable { 
             margin-bottom: 20px; 
             display: flex; gap: 8px; overflow-x: auto; 
@@ -82,7 +81,7 @@
             font-size: 13px; color: #555; white-space: nowrap; font-weight: 600;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             border: 1px solid transparent; transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 버블 그림자 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .st-bubble.active { 
             background: #fff; border-color: var(--brand-color); color: #333; 
@@ -92,24 +91,25 @@
         .st-bubble.active .st-day-text { color: var(--brand-color); font-weight: 800; }
         .st-time-text { font-size: 14px; font-weight: 700; }
 
-        /* 2. 상세 시간표 (Grid) - [디자인 개선] 둥근 모서리, 그림자 */
         .full-timetable-area { margin-top: 10px; display: none; padding-top: 10px; border-top: 1px solid #eee; }
         .ft-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .ft-title { font-size: 16px; font-weight: 700; color: #333; }
+        
+        /* [수정] 둥근 모서리와 그림자 디자인 강화 */
         .ft-grid { 
             display: grid; 
             grid-template-columns: 40px repeat(7, 1fr); 
             grid-auto-rows: 25px; 
-            gap: 1px; background: #eee; 
-            border: none; /* 테두리 제거하고 그림자로 대체 */
-            border-radius: 12px; /* 둥근 모서리 */
+            gap: 1px; background: #f0f0f0; 
+            border: none;
+            border-radius: 16px; /* 더 둥글게 */
             overflow: hidden; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 그림자 추가 */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* 부드러운 그림자 */
         }
         .ft-cell { background: white; font-size: 10px; display: flex; align-items: center; justify-content: center; }
-        .ft-header { background: #f8f9fa; font-weight: 700; color: #555; }
-        .ft-time-col { background: #f8f9fa; color: #888; font-size: 10px; border-right: 1px solid #eee; }
-        .ft-block { background: var(--brand-color); opacity: 0.8; }
+        .ft-header { background: #fafafa; font-weight: 800; color: #555; border-bottom: 1px solid #eee; }
+        .ft-time-col { background: #fafafa; color: #999; font-size: 9px; border-right: 1px solid #eee; font-weight: 500; }
+        .ft-block { background: var(--brand-color); opacity: 0.9; }
 
         .tag-box { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
         .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }
@@ -323,25 +323,60 @@
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
+        // [수정된 파싱 함수] 3가지 케이스 모두 처리
+        function parseScheduleText(text) {
+            var scheduleMap = {};
+            if (!text) return scheduleMap;
+
+            // 1. " / "으로 구분하여 세그먼트 나누기 (Format 3 대응)
+            // 구분자가 없을 수도 있으므로 일단 배열로 만듦
+            var segments = text.split(" / "); 
+            
+            segments.forEach(function(segment) {
+                // 시간 추출 (HH:MM~HH:MM 형태)
+                // 정규식: 숫자:숫자 ~ 숫자:숫자
+                var timeReg = /(\d{1,2}):(\d{2})\s*~\s*(\d{1,2}):(\d{2})/;
+                var match = segment.match(timeReg);
+                
+                if (match) {
+                    var startH = parseInt(match[1]);
+                    var startM = match[2];
+                    var endH = parseInt(match[3]);
+                    var endM = match[4];
+                    
+                    // 이 세그먼트에 포함된 요일 찾기
+                    var days = ['월', '화', '수', '목', '금', '토', '일'];
+                    days.forEach(function(day) {
+                        if (segment.includes(day)) {
+                            scheduleMap[day] = {
+                                startH: startH,
+                                endH: endH,
+                                text: startH + ":" + startM + "~" + endH + ":" + endM
+                            };
+                        }
+                    });
+                }
+            });
+            
+            return scheduleMap;
+        }
+
         function renderTimetables(scheduleText) {
+            // 1. 파싱 (새로운 로직 적용)
+            var scheduleData = parseScheduleText(scheduleText);
+            
             var days = ['월', '화', '수', '목', '금', '토', '일'];
             var summaryContainer = document.getElementById('summaryTimetable');
             summaryContainer.innerHTML = '';
             
             var hasActive = false;
             days.forEach(function(day) {
-                var isActive = scheduleText.includes(day);
-                var timeText = "-";
-                if (isActive) {
+                var data = scheduleData[day];
+                if (data) {
                     hasActive = true;
-                    // [수정] 정규표현식 강화: 공백 허용 (예: "수 (19-22)")
-                    var regex = new RegExp(day + "\\s*\\(([^)]+)\\)");
-                    var match = scheduleText.match(regex);
-                    if (match) timeText = match[1];
-                    
                     var bubble = document.createElement('div');
                     bubble.className = 'st-bubble active';
-                    bubble.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + timeText + '</div>';
+                    bubble.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + data.text + '</div>';
                     summaryContainer.appendChild(bubble);
                 }
             });
@@ -350,6 +385,7 @@
                 summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
             }
 
+            // 2. 상세형 (그리드) 렌더링
             var fullContainer = document.getElementById('fullTimetableGrid');
             fullContainer.innerHTML = '';
             
@@ -365,16 +401,12 @@
                 days.forEach(day => {
                     var cell = document.createElement('div');
                     cell.className = 'ft-cell';
-                    if (scheduleText.includes(day)) {
-                        // [수정] 그리드용 숫자 파싱 강화
-                        var regex = new RegExp(day + "\\s*\\((\\d+)-(\\d+)\\)"); 
-                        var match = scheduleText.match(regex);
-                        if (match) {
-                            var start = parseInt(match[1]);
-                            var end = parseInt(match[2]);
-                            if (h >= start && h < end) {
-                                cell.className = 'ft-cell ft-block'; 
-                            }
+                    
+                    var data = scheduleData[day];
+                    if (data) {
+                        // 종료 시간 전까지 색칠 (예: 20~22시면 20, 21시 블록 색칠)
+                        if (h >= data.startH && h < data.endH) {
+                            cell.className = 'ft-cell ft-block'; 
                         }
                     }
                     fullContainer.appendChild(cell);
@@ -425,7 +457,6 @@
             if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
             document.getElementById('sheetTitle').innerHTML = titleHtml;
             document.getElementById('sheetPrice').innerText = club.price || "회비 정보 없음";
-            // [삭제] sheetSchedule 텍스트 업데이트 코드 삭제됨
             document.getElementById('sheetAddressVal').value = club.address;
             
             renderTimetables(club.schedule);
@@ -515,7 +546,6 @@
         const handleArea = document.getElementById('sheetHandle');
         let startY = 0; let currentY = 0; let isDragging = false;
         
-        // [복구됨] 드래그 상호작용 (Follow Finger)
         function bHandleStart(e) { 
             startY = e.touches ? e.touches[0].clientY : e.clientY; 
             isDragging = true; 
@@ -526,14 +556,6 @@
             if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); 
             currentY = e.touches ? e.touches[0].clientY : e.clientY; 
             const deltaY = currentY - startY; 
-            
-            // 현재 상태에 따라 시작점이 다름
-            var baseTransform = 0; 
-            // EXPANDED 상태일 때 위로 더 못가게 하거나, 아래로 당기는 것만 허용하는 등 세부 로직 가능
-            // 여기선 간단하게 현재 위치(0) 기준으로 움직이게 함 (PEEK 기준)
-            // 만약 EXPANDED 상태였다면 화면 위쪽에 고정되어 있으므로, 
-            // CSS 상으로는 translateY(0) 이고 높이가 커진 상태임.
-            // 따라서 transform은 그냥 deltaY를 따라가면 됨.
             
             sheet.style.transform = `translateY(${deltaY}px)`; 
         }
@@ -554,8 +576,7 @@
                 else updateSheetState('CLOSED');
             }
             else {
-                // 제자리 복귀 (현재 상태 유지)
-                sheet.style.transform = "translateY(0)"; 
+                updateSheetState(sheetState);
             }
             currentY = 0; startY = 0; 
         }
