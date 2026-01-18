@@ -12,7 +12,7 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
-IS_TEST_MODE = False  # True: 테스트 모드 (test_new.html), False: 배포 모드 (index.html)
+IS_TEST_MODE = True
 # ==========================================
 
 def get_location(address):
@@ -328,7 +328,6 @@ def update_map():
             background: #fafafa;
         }}
         
-        /* [수정] 시간 라벨: 한 줄 표시 (flex-direction: row), 글자 크기 조정 */
         .ft-time-label {{
             display: flex;
             flex-direction: row; 
@@ -349,6 +348,7 @@ def update_map():
         }}
         .ft-col-day:last-child {{ border-right: none; }}
         
+        /* [수정] flex-direction: column 추가하여 내용 세로 정렬 */
         .ft-event-block {{
             position: absolute;
             width: 94%;
@@ -359,6 +359,7 @@ def update_map():
             font-size: 10px;
             color: #555;
             display: flex;
+            flex-direction: column; /* 세로 정렬 */
             align-items: center;
             justify-content: center;
             text-align: center;
@@ -616,7 +617,6 @@ def update_map():
             return scheduleMap;
         }}
 
-        // [수정] 한 줄 표시를 위해 <br> 대신 공백 사용
         function getHourLabel(h) {{
             var p = h >= 12 ? 'PM' : 'AM';
             var h12 = h % 12;
@@ -646,12 +646,8 @@ def update_map():
             var displayEnd = Math.min(24, maxH + 2);
             var totalHours = displayEnd - displayStart;
 
-            // [NEW] 스크롤 방지를 위한 행 높이 동적 계산 로직
-            // 화면 높이의 약 55%를 그리드 영역으로 할당한다고 가정
             var availableHeight = window.innerHeight * 0.55; 
             var calculatedRowHeight = availableHeight / totalHours;
-            
-            // 너무 좁아지거나 너무 넓어지지 않도록 제한 (최소 32px ~ 최대 60px)
             var ROW_HEIGHT = Math.max(32, Math.min(60, calculatedRowHeight));
 
             var summaryContainer = document.getElementById('summaryContent');
@@ -700,7 +696,7 @@ def update_map():
             for(var h = displayStart; h < displayEnd; h++) {{
                 var label = document.createElement('div');
                 label.className = 'ft-time-label';
-                label.style.height = ROW_HEIGHT + 'px'; // 동적 높이 적용
+                label.style.height = ROW_HEIGHT + 'px'; 
                 label.innerHTML = getHourLabel(h);
                 timeCol.appendChild(label);
             }}
@@ -712,7 +708,7 @@ def update_map():
                 
                 for(var h = displayStart; h < displayEnd; h++) {{
                     var gridLine = document.createElement('div');
-                    gridLine.style.height = ROW_HEIGHT + 'px'; // 동적 높이 적용
+                    gridLine.style.height = ROW_HEIGHT + 'px'; 
                     gridLine.style.borderBottom = '1px solid #f8f8f8';
                     gridLine.style.boxSizing = 'border-box';
                     dayCol.appendChild(gridLine);
@@ -726,12 +722,18 @@ def update_map():
                     var topPx = startTotalHours * ROW_HEIGHT;
                     var heightPx = durationHours * ROW_HEIGHT;
 
+                    // [NEW] 총 소요 시간 계산 및 포맷팅 (예: 2h, 2.5h)
+                    var duration = (data.endH + (data.endM / 60)) - (data.startH + (data.startM / 60));
+                    var durationStr = Number.isInteger(duration) ? duration : duration.toFixed(1);
+
                     if (topPx >= 0) {{
                         var block = document.createElement('div');
                         block.className = 'ft-event-block';
                         block.style.top = topPx + 'px';
                         block.style.height = (heightPx - 2) + 'px'; 
-                        block.innerHTML = data.text.replace('~', '<br>~<br>'); 
+                        // [NEW] 시간 + 소요시간 표시
+                        block.innerHTML = data.text.replace('~', '<br>~<br>') + 
+                                          '<div style="font-size:9px; opacity:0.8; margin-top:2px;">(' + durationStr + 'h)</div>';
                         dayCol.appendChild(block);
                     }}
                 }}

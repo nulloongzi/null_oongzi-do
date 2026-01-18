@@ -1,7 +1,7 @@
 {
     "name": "누룽지도",
     "short_name": "누룽지도",
-    "start_url": "./index.html",
+    "start_url": "./test_new.html",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#ffffff",
