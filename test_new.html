@@ -202,6 +202,7 @@
         // [도시락 관리 로직]
         let isEditMode = false;
         let selectedSlotIndex = null;
+        let isDietPlanOpen = false; // 식단표 열림 상태
 
         window.toggleEditMode = function() {
             isEditMode = !isEditMode;
@@ -214,7 +215,22 @@
             } else {
                 btn.classList.remove('editing');
                 btn.innerHTML = '🍽 편집';
-                saveLunchboxToDB(); // 편집 종료 시 저장
+                saveLunchboxToDB(); 
+            }
+        };
+
+        window.toggleDietPlan = function() {
+            isDietPlanOpen = !isDietPlanOpen;
+            const container = document.getElementById('dietPlanContainer');
+            if (isDietPlanOpen) {
+                renderCombinedSchedule();
+                container.style.height = '400px'; 
+                container.style.padding = '10px';
+                document.getElementById('dietToggleBtn').innerText = '📅 식단표 접기';
+            } else {
+                container.style.height = '0';
+                container.style.padding = '0 10px';
+                document.getElementById('dietToggleBtn').innerText = '📅 식단표 (스케줄 확인)';
             }
         };
 
@@ -222,42 +238,35 @@
             if (!currentUser || !currentProfileData) return;
             const userRef = doc(db, "users", currentUser.uid);
             try {
-                // [수정] 빈 칸(null)도 위치를 기억하기 위해 그대로 저장합니다.
                 let slots = currentProfileData.tempSlots || currentProfileData.bookmarks || [null, null, null, null, null];
-                
-                // 혹시 모를 오류 방지를 위해 길이를 5개로 맞춥니다.
                 while(slots.length < 5) slots.push(null);
                 if(slots.length > 5) slots = slots.slice(0, 5);
 
                 await updateDoc(userRef, { bookmarks: slots });
-                
-                // 로컬 데이터도 즉시 동기화
                 currentProfileData.bookmarks = slots;
                 renderProfileCard(); 
+                
+                // 식단표가 열려있다면 갱신
+                if (isDietPlanOpen) renderCombinedSchedule();
+
             } catch (e) { console.error("Save Error:", e); }
         }
 
         window.bookmarkTeam = async function(teamId) {
             if (!currentUser || !db) { alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요."); return; }
             try {
-                // 현재 상태 가져오기 (없으면 빈 5칸 생성)
                 let slots = currentProfileData.bookmarks || [null, null, null, null, null];
                 while(slots.length < 5) slots.push(null);
 
-                // 이미 있는지 확인
                 if (slots.includes(teamId)) { alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }
                 
-                // 빈 자리(null) 찾기
                 let emptyIndex = slots.findIndex(item => item === null);
                 if (emptyIndex === -1) { alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요."); return; }
 
-                // 빈 자리에 팀 ID 할당
                 slots[emptyIndex] = teamId;
 
-                // 전체 배열 업데이트
                 const userRef = doc(db, "users", currentUser.uid);
                 await updateDoc(userRef, { bookmarks: slots });
-                
                 currentProfileData.bookmarks = slots;
                 
                 alert("도시락에 팀을 담았습니다! 🍱");
@@ -272,19 +281,19 @@
             document.getElementById('lbEditBtn').innerHTML = '🍽 편집';
             document.getElementById('lbEditBtn').classList.remove('editing');
             
-            // [수정] DB에 저장된 위치 그대로 가져옵니다.
+            // 초기화 시 식단표는 닫아둠
+            isDietPlanOpen = false;
+            document.getElementById('dietPlanContainer').style.height = '0';
+            document.getElementById('dietPlanContainer').style.padding = '0 10px';
+            document.getElementById('dietToggleBtn').innerText = '📅 식단표 (스케줄 확인)';
+
             let saved = currentProfileData.bookmarks || [];
-            
-            // 데이터가 없거나 예전 데이터(길이가 안 맞음)일 경우 초기화
             let normalized = [null, null, null, null, null];
-            
             if (saved.length > 0) {
-                // 기존 데이터가 있으면 칸에 맞춰 넣기 (예전 데이터 호환성 유지)
                 for(let i=0; i<5; i++) {
                     if (i < saved.length) normalized[i] = saved[i];
                 }
             }
-            
             currentProfileData.tempSlots = normalized; 
             
             renderLunchboxGrid();
@@ -296,13 +305,12 @@
             grid.innerHTML = ""; 
             const slots = currentProfileData.tempSlots || [null,null,null,null,null];
             
-            // placeholder 텍스트 정의
             const placeholders = [
-                "밥을<br>담아주세요🍚", // 0: 밥 (좌하단)
-                "국을<br>담아주세요🥘", // 1: 국 (우하단)
-                "반찬1🍳",            // 2: 반찬 (좌상단)
-                "반찬2🥗",            // 3: 반찬 (중상단)
-                "반찬3🥢"             // 4: 반찬 (우상단)
+                "밥을<br>담아주세요🍚", 
+                "국을<br>담아주세요🥘", 
+                "반찬1🍳",            
+                "반찬2🥗",            
+                "반찬3🥢"             
             ];
 
             for (let i = 0; i < 5; i++) {
@@ -318,9 +326,7 @@
                         div.innerHTML = `<span>${team.name}</span>`;
                         div.classList.add('filled');
                         
-                        // 편집 모드일 때
                         if (isEditMode) {
-                            // 삭제 버튼
                             const delBtn = document.createElement('div');
                             delBtn.className = 'lb-del-btn';
                             delBtn.innerText = '✕';
@@ -329,11 +335,8 @@
                                 deleteSlot(i);
                             };
                             div.appendChild(delBtn);
-                            
-                            // 클릭 시 선택/스왑
                             div.onclick = () => handleSlotClick(i);
                         } else {
-                            // 일반 모드: 이동
                             div.onclick = function() { 
                                 document.getElementById('lunchboxOverlay').style.display = 'none'; 
                                 moveToTeamLocation(team.lat, team.lng); 
@@ -351,6 +354,128 @@
             }
         }
 
+        // [식단표 렌더링 로직 - 계단식 겹치기 적용]
+        function renderCombinedSchedule() {
+            const container = document.getElementById('dietPlanBody');
+            container.innerHTML = '';
+
+            const slots = currentProfileData.tempSlots || [];
+            // 슬롯별 색상 정의 (파스텔톤)
+            const slotColors = ["#ffebee", "#e3f2fd", "#e8f5e9", "#fff3e0", "#f3e5f5"]; // 빨, 파, 초, 주, 보 (연한색)
+            const borderColors = ["#ef9a9a", "#90caf9", "#a5d6a7", "#ffcc80", "#ce93d8"];
+
+            // 1. 모든 팀의 일정 수집
+            let allEvents = [];
+            slots.forEach((teamId, idx) => {
+                if(teamId !== null) {
+                    const team = allClubs.find(c => c.id === teamId);
+                    if(team) {
+                        const scheduleMap = parseScheduleText(team.schedule);
+                        for (const [day, data] of Object.entries(scheduleMap)) {
+                            allEvents.push({
+                                teamName: team.name,
+                                day: day,
+                                start: data.startH + (data.startM/60),
+                                end: data.endH + (data.endM/60),
+                                text: data.text,
+                                slotIdx: idx
+                            });
+                        }
+                    }
+                }
+            });
+
+            // 2. 시간표 뼈대 그리기
+            const days = ['월', '화', '수', '목', '금', '토', '일'];
+            const displayStart = 6; 
+            const displayEnd = 24; 
+            const totalHours = displayEnd - displayStart;
+            const ROW_HEIGHT = 40; 
+            
+            // 헤더
+            const headerRow = document.createElement('div');
+            headerRow.className = 'diet-header-row';
+            headerRow.innerHTML = '<div class="diet-time-col"></div>';
+            days.forEach(d => {
+                headerRow.innerHTML += `<div class="diet-day-col header">${d}</div>`;
+            });
+            container.appendChild(headerRow);
+
+            // 바디 (그리드)
+            const bodyWrapper = document.createElement('div');
+            bodyWrapper.className = 'diet-body-wrapper';
+            bodyWrapper.style.height = (totalHours * ROW_HEIGHT) + 'px';
+
+            // 시간축
+            const timeCol = document.createElement('div');
+            timeCol.className = 'diet-time-col';
+            for(let h = displayStart; h < displayEnd; h++) {
+                const label = document.createElement('div');
+                label.className = 'diet-time-label';
+                label.style.height = ROW_HEIGHT + 'px';
+                label.innerText = getHourLabel(h);
+                timeCol.appendChild(label);
+            }
+            bodyWrapper.appendChild(timeCol);
+
+            // 요일별 컬럼 생성 및 이벤트 배치
+            days.forEach(day => {
+                const dayCol = document.createElement('div');
+                dayCol.className = 'diet-day-col';
+                
+                // 가이드라인
+                for(let h = displayStart; h < displayEnd; h++) {
+                    const line = document.createElement('div');
+                    line.className = 'diet-grid-line';
+                    line.style.height = ROW_HEIGHT + 'px';
+                    dayCol.appendChild(line);
+                }
+
+                // 해당 요일의 이벤트 필터링 및 정렬
+                let dayEvents = allEvents.filter(e => e.day === day).sort((a,b) => a.start - b.start);
+
+                // 겹침 계산 (간단한 계단식 로직)
+                // 직전 이벤트와 겹치면 indent 증가
+                dayEvents.forEach((evt, i) => {
+                    let indent = 0;
+                    // 내 앞의 이벤트들과 겹치는지 확인
+                    for(let j=0; j<i; j++) {
+                        const prev = dayEvents[j];
+                        // 겹침 조건: (내 시작 < 남의 끝) AND (내 끝 > 남의 시작)
+                        if (evt.start < prev.end && evt.end > prev.start) {
+                            indent++; 
+                        }
+                    }
+                    // 너무 많이 겹치면(3개 이상) 다시 0으로 (폭 제한 때문)
+                    if(indent > 2) indent = 0; 
+
+                    const topPx = (evt.start - displayStart) * ROW_HEIGHT;
+                    const heightPx = (evt.end - evt.start) * ROW_HEIGHT;
+                    
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = 'diet-event';
+                    eventDiv.style.top = topPx + 'px';
+                    eventDiv.style.height = (heightPx - 2) + 'px';
+                    // 계단식 배치: 왼쪽 여백을 줌
+                    eventDiv.style.left = (indent * 15) + '%';
+                    eventDiv.style.width = (90 - (indent * 10)) + '%';
+                    eventDiv.style.zIndex = indent + 1;
+                    
+                    // 스타일 적용
+                    eventDiv.style.backgroundColor = slotColors[evt.slotIdx];
+                    eventDiv.style.borderLeft = `3px solid ${borderColors[evt.slotIdx]}`;
+                    
+                    eventDiv.innerHTML = `<span class="evt-title">${evt.teamName}</span><span class="evt-time">${evt.text}</span>`;
+                    
+                    dayCol.appendChild(eventDiv);
+                });
+
+                bodyWrapper.appendChild(dayCol);
+            });
+
+            container.appendChild(bodyWrapper);
+        }
+
         function handleSlotClick(index) {
             if (selectedSlotIndex === null) {
                 // 첫 번째 선택
@@ -365,12 +490,16 @@
                 selectedSlotIndex = null; // 선택 해제
             }
             renderLunchboxGrid();
+            // 스왑 후 식단표가 열려있다면 갱신
+            if (isDietPlanOpen) renderCombinedSchedule();
         }
 
         function deleteSlot(index) {
             if(confirm("이 반찬을 도시락에서 뺄까요?")) {
                 currentProfileData.tempSlots[index] = null;
                 renderLunchboxGrid();
+                // 삭제 후 식단표가 열려있다면 갱신
+                if (isDietPlanOpen) renderCombinedSchedule();
             }
         }
 
@@ -472,7 +601,7 @@
         .divider { color: rgba(255,255,255,0.8); font-size: 11px; margin: 10px 0; display: flex; align-items: center; gap: 10px; }
         .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.5); }
 
-        /* [NEW] 도시락 스타일 개선 */
+        /* [도시락 및 식단표 스타일] */
         .lunchbox-wrapper {
             width: 330px;
             background: #fff8e1;
@@ -483,6 +612,8 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            transition: all 0.3s ease;
+            max-height: 90vh; /* 화면 넘침 방지 */
         }
         .lb-header {
             display: flex;
@@ -511,11 +642,12 @@
 
         .lunchbox-grid { 
             width: 100%; 
-            height: 220px; /* 전체 높이 */
+            height: 220px; 
             display: grid; 
             grid-template-columns: repeat(6, 1fr); 
-            grid-template-rows: 0.8fr 1.2fr; /* 윗줄(반찬)은 작게, 아랫줄(밥국)은 크게 */
+            grid-template-rows: 0.8fr 1.2fr;
             gap: 4px; 
+            flex-shrink: 0;
         }
         
         .lb-cell { 
@@ -540,7 +672,6 @@
         .lb-cell.filled { background: #fffde7; border-color: var(--brand-color); color: #333; }
         .lb-placeholder { display: block; }
         
-        /* 삭제 버튼 (X) */
         .lb-del-btn {
             position: absolute;
             top: -5px;
@@ -558,12 +689,98 @@
             z-index: 10;
         }
 
-        /* 급식판 배치 (표준형: 밥/국 하단, 반찬 상단) */
-        .slot-2 { grid-row: 1; grid-column: 1 / span 2; } /* 반찬1 (좌상) */
-        .slot-3 { grid-row: 1; grid-column: 3 / span 2; } /* 반찬2 (중상) */
-        .slot-4 { grid-row: 1; grid-column: 5 / span 2; } /* 반찬3 (우상) */
-        .slot-0 { grid-row: 2; grid-column: 1 / span 3; } /* 밥 (좌하) */
-        .slot-1 { grid-row: 2; grid-column: 4 / span 3; } /* 국 (우하) */
+        /* 급식판 배치 */
+        .slot-2 { grid-row: 1; grid-column: 1 / span 2; } 
+        .slot-3 { grid-row: 1; grid-column: 3 / span 2; } 
+        .slot-4 { grid-row: 1; grid-column: 5 / span 2; } 
+        .slot-0 { grid-row: 2; grid-column: 1 / span 3; } 
+        .slot-1 { grid-row: 2; grid-column: 4 / span 3; } 
+
+        /* [NEW] 식단표(스케줄) 스타일 */
+        .diet-toggle-btn {
+            text-align: center;
+            background: #d7ccc8;
+            color: #5d4037;
+            font-weight: 700;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .diet-plan-container {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            height: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 0 10px; /* 초기 패딩은 toggle시 조절 */
+        }
+        .diet-header-row {
+            display: flex;
+            height: 30px;
+            border-bottom: 2px solid #8d6e63;
+            background: #efebe9;
+        }
+        .diet-time-col {
+            width: 40px;
+            flex-shrink: 0;
+            border-right: 1px solid #ddd;
+            background: #fafafa;
+        }
+        .diet-day-col {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #5d4037;
+            position: relative;
+            border-right: 1px solid #eee;
+        }
+        .diet-day-col.header {
+            background: #d7ccc8;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .diet-body-wrapper {
+            flex: 1;
+            display: flex;
+            overflow-y: auto;
+            position: relative;
+        }
+        .diet-time-label {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            font-size: 10px;
+            color: #888;
+            padding-top: 2px;
+            border-bottom: 1px solid #eee;
+        }
+        .diet-grid-line {
+            width: 100%;
+            border-bottom: 1px solid #f5f5f5;
+            box-sizing: border-box;
+        }
+        .diet-event {
+            position: absolute;
+            font-size: 9px;
+            color: #333;
+            padding: 2px 4px;
+            box-sizing: border-box;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            line-height: 1.1;
+        }
+        .evt-title { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .evt-time { font-size: 8px; opacity: 0.8; margin-top: 1px; }
 
         .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
         .label:hover { z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }
@@ -668,6 +885,11 @@
                 <button id="lbEditBtn" class="lb-edit-btn" onclick="toggleEditMode()">🍽 편집</button>
             </div>
             <div class="lunchbox-grid" id="lunchboxGrid"></div>
+            
+            <div id="dietToggleBtn" class="diet-toggle-btn" onclick="toggleDietPlan()">📅 식단표 (스케줄 확인)</div>
+            <div id="dietPlanContainer" class="diet-plan-container">
+                <div id="dietPlanBody" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
+            </div>
         </div>
     </div>
 
