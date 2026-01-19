@@ -35,7 +35,6 @@
             console.error("Firebase 초기화 실패:", e);
         }
 
-        // 밥 종류별 색상 정의
         const riceData = [
             {name: "현미밥", weight: 50, color: "#d7ccc8"}, 
             {name: "백미밥", weight: 50, color: "#fafafa"}, 
@@ -79,7 +78,6 @@
             return { base: selected.name, code: suffix, full: selected.name + "-" + suffix, color: selected.color };
         }
 
-        // 현재 클럽 데이터 연동 (파이썬에서 주입)
         const allClubs = __CLUBS_JSON__;
 
         async function checkDuplicateNickname(nickname) {
@@ -201,47 +199,170 @@
             }
         }
 
+        // [도시락 관리 로직]
+        let isEditMode = false;
+        let selectedSlotIndex = null;
+
+        window.toggleEditMode = function() {
+            isEditMode = !isEditMode;
+            selectedSlotIndex = null;
+            renderLunchboxGrid();
+            const btn = document.getElementById('lbEditBtn');
+            if (isEditMode) {
+                btn.classList.add('editing');
+                btn.innerHTML = '✅ 완료';
+            } else {
+                btn.classList.remove('editing');
+                btn.innerHTML = '🍽 편집';
+                saveLunchboxToDB(); // 편집 종료 시 저장
+            }
+        };
+
+        async function saveLunchboxToDB() {
+            if (!currentUser || !currentProfileData) return;
+            const userRef = doc(db, "users", currentUser.uid);
+            try {
+                // null 제외하고 실제 ID만 필터링하여 저장
+                const cleanBookmarks = currentProfileData.bookmarks.filter(id => id !== null);
+                await updateDoc(userRef, { bookmarks: cleanBookmarks });
+            } catch (e) { console.error("Save Error:", e); }
+        }
+
         window.bookmarkTeam = async function(teamId) {
             if (!currentUser || !db) { alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요."); return; }
             try {
-                const userRef = doc(db, "users", currentUser.uid);
                 let bookmarks = currentProfileData.bookmarks || [];
-                if (bookmarks.includes(teamId)) { alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }
-                if (bookmarks.length >= 5) { alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요."); return; }
+                // 이미 있는지 확인 (빈 값 제외)
+                const exists = bookmarks.some(bid => bid === teamId);
+                if (exists) { alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }
+                
+                // 빈 자리가 있는지 확인 (5개 미만)
+                const realCount = bookmarks.filter(id => id !== null).length;
+                if (realCount >= 5) { alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요."); return; }
+
+                const userRef = doc(db, "users", currentUser.uid);
                 await updateDoc(userRef, { bookmarks: arrayUnion(teamId) });
+                
                 if (!currentProfileData.bookmarks) currentProfileData.bookmarks = [];
                 currentProfileData.bookmarks.push(teamId);
+                
                 alert("도시락에 팀을 담았습니다! 🍱");
                 renderProfileCard(); 
             } catch (e) { alert("찜하기 실패: " + e.message); }
         };
 
         window.openLunchbox = function() {
-            if (!currentProfileData || !currentProfileData.bookmarks || currentProfileData.bookmarks.length === 0) { alert("도시락이 비어있어요! 팀 상세화면에서 [🍱 담기]를 눌러보세요."); return; }
+            if (!currentProfileData) { alert("로그인이 필요합니다."); return; }
             const overlay = document.getElementById('lunchboxOverlay');
+            isEditMode = false;
+            document.getElementById('lbEditBtn').innerHTML = '🍽 편집';
+            document.getElementById('lbEditBtn').classList.remove('editing');
+            
+            // 데이터 정규화: 항상 5개 슬롯 배열로 유지 (null 포함)
+            let saved = currentProfileData.bookmarks || [];
+            let normalized = [null, null, null, null, null];
+            let savedIdx = 0;
+            for(let i=0; i<5; i++) {
+                if (savedIdx < saved.length && saved[savedIdx] !== null) {
+                    normalized[i] = saved[savedIdx];
+                    savedIdx++;
+                }
+            }
+            // DB 데이터가 순서 보장이 안 될 수 있으므로, 로컬에서 관리할 때는 5칸 배열 사용
+            // 여기서는 단순하게 앞에서부터 채움. (DB 저장은 압축해서 함)
+            currentProfileData.tempSlots = normalized; 
+            
+            renderLunchboxGrid();
+            overlay.style.display = 'flex';
+        };
+
+        function renderLunchboxGrid() {
             const grid = document.getElementById('lunchboxGrid');
             grid.innerHTML = ""; 
-            const bookmarks = currentProfileData.bookmarks; 
-            const slots = [null, null, null, null, null];
-            bookmarks.forEach((bid, idx) => { if (idx < 5) slots[idx] = bid; });
+            const slots = currentProfileData.tempSlots || [null,null,null,null,null];
+            
+            // placeholder 텍스트 정의
+            const placeholders = [
+                "밥을<br>담아주세요🍚", // 0: 밥 (좌하단)
+                "국을<br>담아주세요🥘", // 1: 국 (우하단)
+                "반찬1🍳",            // 2: 반찬 (좌상단)
+                "반찬2🥗",            // 3: 반찬 (중상단)
+                "반찬3🥢"             // 4: 반찬 (우상단)
+            ];
+
             for (let i = 0; i < 5; i++) {
                 const teamId = slots[i];
                 const div = document.createElement('div');
                 div.className = 'lb-cell slot-' + i;
+                
+                if (selectedSlotIndex === i) div.classList.add('selected');
+
                 if (teamId !== null) {
                     const team = allClubs.find(c => c.id === teamId);
                     if (team) {
-                        div.innerText = team.name;
-                        div.onclick = function() { overlay.style.display = 'none'; moveToTeamLocation(team.lat, team.lng); };
+                        div.innerHTML = `<span>${team.name}</span>`;
                         div.classList.add('filled');
+                        
+                        // 편집 모드일 때
+                        if (isEditMode) {
+                            // 삭제 버튼
+                            const delBtn = document.createElement('div');
+                            delBtn.className = 'lb-del-btn';
+                            delBtn.innerText = '✕';
+                            delBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                deleteSlot(i);
+                            };
+                            div.appendChild(delBtn);
+                            
+                            // 클릭 시 선택/스왑
+                            div.onclick = () => handleSlotClick(i);
+                        } else {
+                            // 일반 모드: 이동
+                            div.onclick = function() { 
+                                document.getElementById('lunchboxOverlay').style.display = 'none'; 
+                                moveToTeamLocation(team.lat, team.lng); 
+                            };
+                        }
                     }
-                } else { div.innerText = "빈 칸"; div.classList.add('empty'); }
+                } else {
+                    div.innerHTML = `<span class="lb-placeholder">${placeholders[i]}</span>`;
+                    div.classList.add('empty');
+                    if (isEditMode) {
+                        div.onclick = () => handleSlotClick(i);
+                    }
+                }
                 grid.appendChild(div);
             }
-            overlay.style.display = 'flex';
-        };
+        }
 
-        window.closeLunchbox = function() { document.getElementById('lunchboxOverlay').style.display = 'none'; };
+        function handleSlotClick(index) {
+            if (selectedSlotIndex === null) {
+                // 첫 번째 선택
+                selectedSlotIndex = index;
+            } else {
+                // 두 번째 선택 -> 스왑
+                if (selectedSlotIndex !== index) {
+                    const temp = currentProfileData.tempSlots[selectedSlotIndex];
+                    currentProfileData.tempSlots[selectedSlotIndex] = currentProfileData.tempSlots[index];
+                    currentProfileData.tempSlots[index] = temp;
+                }
+                selectedSlotIndex = null; // 선택 해제
+            }
+            renderLunchboxGrid();
+        }
+
+        function deleteSlot(index) {
+            if(confirm("이 반찬을 도시락에서 뺄까요?")) {
+                currentProfileData.tempSlots[index] = null;
+                renderLunchboxGrid();
+            }
+        }
+
+        window.closeLunchbox = function() { 
+            if(isEditMode) saveLunchboxToDB(); // 닫을 때 저장
+            document.getElementById('lunchboxOverlay').style.display = 'none'; 
+        };
 
         function moveToTeamLocation(lat, lng) {
             if (window.map && window.kakao) {
@@ -289,7 +410,6 @@
             --nurungji-card: #fbc02d; 
         }
         
-        /* [기존 UI 스타일] */
         .search-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }
         .search-icon-box { width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }
         .main-search-input { flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; }
@@ -312,13 +432,11 @@
         .fab-report { background: #fac710; color: #000; }
         .fab-urgent { background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
         
-        /* [NEW] 프로필 & 도시락 버튼 */
         .fab-profile { position: absolute; bottom: 30px; left: 15px; z-index: 20; width: 55px; height: 55px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; border: 2px solid #eee; transition: transform 0.2s; }
         .fab-profile:active { transform: scale(0.95); }
         .fab-lunchbox { position: absolute; bottom: 100px; left: 15px; z-index: 20; width: 50px; height: 50px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 26px; cursor: pointer; border: 1px solid #eee; transition: transform 0.2s; }
         .fab-lunchbox:active { transform: scale(0.95); }
 
-        /* [NEW] 오버레이 스타일 (프로필/로그인/도시락) */
         .profile-overlay, .lunchbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 500; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
         .profile-card { width: 80%; max-width: 320px; background: var(--nurungji-card); padding: 30px 20px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.2); position: relative; border: 8px dashed rgba(255,255,255,0.9); border-radius: 40px; background-clip: padding-box; }
         .pc-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; }
@@ -339,24 +457,104 @@
         .divider { color: rgba(255,255,255,0.8); font-size: 11px; margin: 10px 0; display: flex; align-items: center; gap: 10px; }
         .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.5); }
 
-        .lunchbox-grid { width: 320px; height: 180px; background: #fff8e1; border: 4px solid #8d6e63; border-radius: 12px; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-        .lb-cell { background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: 700; color: #555; text-align: center; padding: 4px; cursor: pointer; transition: background 0.1s; border: 1px solid #e0e0e0; }
-        .lb-cell:active { background: #eee; }
-        .lb-cell.empty { color: #ccc; font-weight: 400; }
-        .lb-cell.filled { background: #fffde7; border-color: var(--brand-color); }
-        .slot-2 { grid-row: 1; grid-column: 1 / span 2; } 
-        .slot-3 { grid-row: 1; grid-column: 3 / span 2; } 
-        .slot-4 { grid-row: 1; grid-column: 5 / span 2; } 
-        .slot-0 { grid-row: 2; grid-column: 1 / span 3; } 
-        .slot-1 { grid-row: 2; grid-column: 4 / span 3; } 
+        /* [NEW] 도시락 스타일 개선 */
+        .lunchbox-wrapper {
+            width: 330px;
+            background: #fff8e1;
+            border: 4px solid #8d6e63;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .lb-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #5d4037;
+            font-weight: 800;
+            font-size: 18px;
+            padding: 0 5px;
+        }
+        .lb-edit-btn {
+            background: transparent;
+            border: 1px solid #8d6e63;
+            color: #5d4037;
+            border-radius: 15px;
+            padding: 4px 10px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .lb-edit-btn.editing {
+            background: #d32f2f;
+            color: white;
+            border-color: #b71c1c;
+        }
 
-        /* 지도 마커 및 라벨 */
+        .lunchbox-grid { 
+            width: 100%; 
+            height: 220px; /* 전체 높이 */
+            display: grid; 
+            grid-template-columns: repeat(6, 1fr); 
+            grid-template-rows: 0.8fr 1.2fr; /* 윗줄(반찬)은 작게, 아랫줄(밥국)은 크게 */
+            gap: 4px; 
+        }
+        
+        .lb-cell { 
+            background: #fff; 
+            border-radius: 6px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 12px; 
+            font-weight: 700; 
+            color: #555; 
+            text-align: center; 
+            padding: 4px; 
+            cursor: pointer; 
+            transition: all 0.1s; 
+            border: 1px solid #e0e0e0; 
+            position: relative;
+        }
+        .lb-cell:active { transform: scale(0.98); }
+        .lb-cell.selected { border: 2px solid #e65100; background: #ffe0b2; }
+        .lb-cell.empty { color: #aaa; font-weight: 400; font-size: 11px; line-height: 1.3; }
+        .lb-cell.filled { background: #fffde7; border-color: var(--brand-color); color: #333; }
+        .lb-placeholder { display: block; }
+        
+        /* 삭제 버튼 (X) */
+        .lb-del-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background: #ff5252;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        /* 급식판 배치 (표준형: 밥/국 하단, 반찬 상단) */
+        .slot-2 { grid-row: 1; grid-column: 1 / span 2; } /* 반찬1 (좌상) */
+        .slot-3 { grid-row: 1; grid-column: 3 / span 2; } /* 반찬2 (중상) */
+        .slot-4 { grid-row: 1; grid-column: 5 / span 2; } /* 반찬3 (우상) */
+        .slot-0 { grid-row: 2; grid-column: 1 / span 3; } /* 밥 (좌하) */
+        .slot-1 { grid-row: 2; grid-column: 4 / span 3; } /* 국 (우하) */
+
         .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
         .label:hover { z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }
         .label.urgent { background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
 
-        /* 바텀 시트 */
         .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: height 0.1s linear; height: 0; overflow: hidden; }
         .sheet-handle-area { width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }
         .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
@@ -370,7 +568,6 @@
         .instagram:before { content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }
         .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
 
-        /* 타임테이블 관련 스타일 (기존 기능 유지) */
         .time-morph-container { position: relative; background: transparent; margin-bottom: 20px; transition: height 0.1s linear; overflow: hidden; min-height: 60px; border: none; }
         .st-bubble { background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; color: #333; white-space: nowrap; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--brand-color); box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); flex-shrink: 0; }
         .st-day-text { font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }
@@ -403,7 +600,6 @@
         .btn-way { background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
         a.insta-link { text-decoration: none; display: flex; align-items: center; }
 
-        /* 필터 시트 */
         .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; }
         .filter-sheet.active { transform: translateY(0); }
         .fs-header { padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -451,7 +647,13 @@
     </div>
 
     <div id="lunchboxOverlay" class="lunchbox-overlay" onclick="closeLunchbox()">
-        <div class="lunchbox-grid" id="lunchboxGrid" onclick="event.stopPropagation()"></div>
+        <div class="lunchbox-wrapper" onclick="event.stopPropagation()">
+            <div class="lb-header">
+                <span>도시락 🍱</span>
+                <button id="lbEditBtn" class="lb-edit-btn" onclick="toggleEditMode()">🍽 편집</button>
+            </div>
+            <div class="lunchbox-grid" id="lunchboxGrid"></div>
+        </div>
     </div>
 
     <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
