@@ -5,6 +5,7 @@ import requests
 import io
 import os
 import math
+import hashlib  # [NEW] 고유 ID 생성을 위해 추가
 from config import GOOGLE_SHEET_URL, JSON_FILE_NAME, MANIFEST_FILE_NAME, IS_TEST_MODE
 from geocoder import get_location
 
@@ -36,7 +37,6 @@ def fetch_and_process_data():
         for row in csv_reader:
             if len(row) < 4: continue
             
-            # 데이터 파싱
             name = row[1].strip() if len(row) > 1 else ""
             target = row[2].strip() if len(row) > 2 else ""
             address = row[3].strip() if len(row) > 3 else ""
@@ -54,7 +54,6 @@ def fetch_and_process_data():
             
             if key in cached_data:
                 club = cached_data[key]
-                # 기존 데이터 업데이트
                 club.update({
                     'target': target, 'schedule': schedule, 'price': price,
                     'insta': insta, 'link': link, 'is_urgent': is_urgent,
@@ -107,9 +106,12 @@ def apply_spiral_coordinates(club_list):
                 club['angle'] = angle 
                 adjusted_list.append(club)
     
-    # ID 부여
-    for idx, club in enumerate(adjusted_list):
-        club['id'] = idx
+    # [수정됨] ID 부여 로직 변경: 단순 인덱스(idx) -> 이름+주소 기반 해시값
+    # 이제 데이터 순서가 바뀌어도 ID가 유지됩니다.
+    for club in adjusted_list:
+        unique_str = club['name'] + club['address']
+        # MD5 해시의 앞 12자리만 사용 (충분히 유니크함)
+        club['id'] = hashlib.md5(unique_str.encode('utf-8')).hexdigest()[:12]
         
     return adjusted_list
 
@@ -124,7 +126,7 @@ def generate_manifest(html_filename):
         "start_url": "./" + html_filename,
         "display": "standalone",
         "background_color": "#ffffff",
-        "theme_color": "#ffffff",
+        "theme_color": "#fff8e1",
         "icons": [
             {"src": "https://cdn-icons-png.flaticon.com/512/528/528098.png", "sizes": "192x192", "type": "image/png"},
             {"src": "https://cdn-icons-png.flaticon.com/512/528/528098.png", "sizes": "512x512", "type": "image/png"}
