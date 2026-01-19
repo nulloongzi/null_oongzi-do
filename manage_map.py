@@ -618,7 +618,7 @@ def update_map():
     <div class="fab-profile" onclick="toggleProfileCard()">🍚</div>
 
     <div class="fab-group">
-        <a href="https://forms.gle/INSERT_GOOGLE_FORM_URL_HERE" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
+        <a href="https://forms.gle/PiNXA5QkxKoPQyix6" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
