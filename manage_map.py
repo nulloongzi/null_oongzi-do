@@ -12,7 +12,8 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
-IS_TEST_MODE = True
+# 테스트 중이므로 True로 설정 (test_new.html 생성)
+IS_TEST_MODE = True  
 # ==========================================
 
 def get_location(address):
@@ -115,6 +116,7 @@ def update_map():
 
     final_list = list(new_club_map.values())
 
+    # 좌표 겹침 처리 (나선형 배치 등) - 기존 로직 유지
     adjusted_list = []
     clubs_by_coord = {}
     for club in final_list:
@@ -143,7 +145,7 @@ def update_map():
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(final_list, f, ensure_ascii=False, indent=4)
 
-    # Manifest
+    # Manifest 생성
     manifest_content = {
         "name": "누룽지도",
         "short_name": "누룽지도",
@@ -167,6 +169,7 @@ def update_map():
             center_lat, center_lng = club['lat'], club['lng']
             break
     
+    # HTML 생성: 기존 기능(검색/필터) + 신규 기능(파이어베이스/도시락) 병합
     html_content = f"""
 <!DOCTYPE html>
 <html lang="ko">
@@ -205,23 +208,20 @@ def update_map():
             console.error("Firebase 초기화 실패:", e);
         }}
 
-        // 🍚 밥 종류별 색상 정의
+        // 밥 종류별 색상 정의
         const riceData = [
-            // [흔함]
-            {{name: "현미밥", weight: 50, color: "#d7ccc8"}}, // 베이지
-            {{name: "백미밥", weight: 50, color: "#fafafa"}}, // 흰색 (크림)
-            {{name: "흑미밥", weight: 50, color: "#b39ddb"}}, // 연보라
-            {{name: "보리밥", weight: 50, color: "#cfd8dc"}}, // 회색빛
-            {{name: "콩밥", weight: 50, color: "#a5d6a7"}},   // 연두색
-            {{name: "오곡밥", weight: 50, color: "#ffe0b2"}}, // 연주황
-
-            // [덜 흔함]
-            {{name: "차조밥", weight: 10, color: "#fff59d"}}, // 노랑
+            {{name: "현미밥", weight: 50, color: "#d7ccc8"}}, 
+            {{name: "백미밥", weight: 50, color: "#fafafa"}}, 
+            {{name: "흑미밥", weight: 50, color: "#b39ddb"}}, 
+            {{name: "보리밥", weight: 50, color: "#cfd8dc"}}, 
+            {{name: "콩밥", weight: 50, color: "#a5d6a7"}},   
+            {{name: "오곡밥", weight: 50, color: "#ffe0b2"}}, 
+            {{name: "차조밥", weight: 10, color: "#fff59d"}}, 
             {{name: "기장밥", weight: 10, color: "#fff9c4"}}, 
             {{name: "숭늉", weight: 10, color: "#efebe9"}},
-            {{name: "볶음밥", weight: 10, color: "#ffcc80"}}, // 볶음색
-            {{name: "비빔밥", weight: 10, color: "#ffab91"}}, // 고추장색
-            {{name: "김밥", weight: 10, color: "#bdbdbd"}},   // 김 색
+            {{name: "볶음밥", weight: 10, color: "#ffcc80"}}, 
+            {{name: "비빔밥", weight: 10, color: "#ffab91"}}, 
+            {{name: "김밥", weight: 10, color: "#bdbdbd"}},   
             {{name: "주먹밥", weight: 10, color: "#f5f5f5"}},
             {{name: "유부초밥", weight: 10, color: "#ffe082"}},
             {{name: "덮밥", weight: 10, color: "#dcedc8"}},
@@ -229,44 +229,30 @@ def update_map():
             {{name: "솥밥", weight: 10, color: "#bcaaa4"}},
             {{name: "약밥", weight: 10, color: "#8d6e63"}},
             {{name: "죽", weight: 10, color: "#e0f2f1"}},
-            {{name: "곤드레밥", weight: 10, color: "#81c784"}}, // 나물색
+            {{name: "곤드레밥", weight: 10, color: "#81c784"}}, 
             {{name: "영양밥", weight: 10, color: "#ffecb3"}},
-            {{name: "치밥", weight: 10, color: "#ff8a65"}}, // 양념치킨색
+            {{name: "치밥", weight: 10, color: "#ff8a65"}}, 
             {{name: "햇반", weight: 10, color: "#ffffff"}},
             {{name: "고봉밥", weight: 10, color: "#fbe9e7"}},
-
-            // [레어]
-            {{name: "밥아저씨", weight: 1, color: "#4fc3f7"}} // 하늘색
+            {{name: "밥아저씨", weight: 1, color: "#4fc3f7"}} 
         ];
 
         function generateRiceName() {{
             let totalWeight = 0;
             for (let item of riceData) totalWeight += item.weight;
-
             let randomNum = Math.random() * totalWeight;
             let selected = riceData[0];
-
             for (let item of riceData) {{
-                if (randomNum < item.weight) {{
-                    selected = item;
-                    break;
-                }}
+                if (randomNum < item.weight) {{ selected = item; break; }}
                 randomNum -= item.weight;
             }}
-            
             const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
             let suffix = "";
             for (let i = 0; i < 3; i++) suffix += chars.charAt(Math.floor(Math.random() * chars.length));
-            
-            return {{
-                base: selected.name,
-                code: suffix,
-                full: selected.name + "-" + suffix,
-                color: selected.color
-            }};
+            return {{ base: selected.name, code: suffix, full: selected.name + "-" + suffix, color: selected.color }};
         }}
 
-        // 현재 클럽 데이터
+        // 현재 클럽 데이터 연동 (파이썬에서 주입)
         const allClubs = {json.dumps(final_list, ensure_ascii=False)};
 
         async function checkDuplicateNickname(nickname) {{
@@ -296,11 +282,7 @@ def update_map():
         window.loginWithGoogle = async function() {{
             if (!auth) return;
             const provider = new GoogleAuthProvider();
-            try {{
-                await signInWithPopup(auth, provider);
-            }} catch (error) {{
-                alert("로그인 실패: " + error.message);
-            }}
+            try {{ await signInWithPopup(auth, provider); }} catch (error) {{ alert("로그인 실패: " + error.message); }}
         }};
 
         window.registerWithEmail = async function() {{
@@ -331,41 +313,24 @@ def update_map():
             const userRef = doc(db, "users", user.uid);
             try {{
                 const userSnap = await getDoc(userRef);
-
                 if (userSnap.exists()) {{
                     currentProfileData = userSnap.data();
                 }} else {{
-                    let newNameObj = null;
-                    let isUnique = false;
-                    let retryCount = 0;
-
+                    let newNameObj = null; let isUnique = false; let retryCount = 0;
                     while (!isUnique && retryCount < 10) {{
                         newNameObj = generateRiceName();
                         const isDup = await checkDuplicateNickname(newNameObj.full);
-                        if (!isDup) isUnique = true;
-                        else retryCount++;
+                        if (!isDup) isUnique = true; else retryCount++;
                     }}
                     if (!isUnique) newNameObj.full += Date.now().toString().slice(-4);
-
                     const now = new Date();
-                    const userData = {{
-                        nickname: newNameObj.base,
-                        suffix: newNameObj.code,
-                        full_nickname: newNameObj.full,
-                        color: newNameObj.color,
-                        created_at: now,
-                        email: user.email,
-                        bookmarks: [] 
-                    }};
-                    
+                    const userData = {{ nickname: newNameObj.base, suffix: newNameObj.code, full_nickname: newNameObj.full, color: newNameObj.color, created_at: now, email: user.email, bookmarks: [] }};
                     await setDoc(userRef, userData);
                     currentProfileData = userData;
                     alert("환영합니다! [" + newNameObj.full + "]님이 되셨습니다! 🍚");
                 }}
                 renderProfileCard();
-            }} catch (error) {{
-                console.error("DB Error:", error);
-            }}
+            }} catch (error) {{ console.error("DB Error:", error); }}
         }}
 
         function updateProfileUI(isLoggedIn) {{
@@ -382,7 +347,6 @@ def update_map():
 
         function renderProfileCard() {{
             if (!currentProfileData) return;
-            
             const card = document.getElementById('myProfileCard');
             const nicknameEl = document.getElementById('pcNickname');
             const dateEl = document.getElementById('pcDate');
@@ -395,14 +359,11 @@ def update_map():
                 bgColor = found ? found.color : "#fbc02d";
             }}
             card.style.backgroundColor = bgColor;
-
             nicknameEl.innerText = currentProfileData.full_nickname;
-
             if (currentProfileData.created_at) {{
                 const d = new Date(currentProfileData.created_at.seconds * 1000);
                 dateEl.innerText = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
             }}
-
             const bookmarks = currentProfileData.bookmarks || [];
             if (bookmarks.length > 0) {{
                 const mainId = bookmarks[0];
@@ -414,84 +375,46 @@ def update_map():
         }}
 
         window.bookmarkTeam = async function(teamId) {{
-            if (!currentUser || !db) {{
-                alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요.");
-                return;
-            }}
+            if (!currentUser || !db) {{ alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요."); return; }}
             try {{
                 const userRef = doc(db, "users", currentUser.uid);
-                
                 let bookmarks = currentProfileData.bookmarks || [];
-                
-                if (bookmarks.includes(teamId)) {{
-                    alert("이미 도시락에 담긴 팀입니다! 🍱");
-                    return;
-                }}
-                
-                if (bookmarks.length >= 5) {{
-                    alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\\n기존 팀을 빼고 담아주세요.");
-                    return;
-                }}
-
-                await updateDoc(userRef, {{
-                    bookmarks: arrayUnion(teamId)
-                }});
-                
+                if (bookmarks.includes(teamId)) {{ alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }}
+                if (bookmarks.length >= 5) {{ alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\\n기존 팀을 빼고 담아주세요."); return; }}
+                await updateDoc(userRef, {{ bookmarks: arrayUnion(teamId) }});
                 if (!currentProfileData.bookmarks) currentProfileData.bookmarks = [];
                 currentProfileData.bookmarks.push(teamId);
-                
                 alert("도시락에 팀을 담았습니다! 🍱");
                 renderProfileCard(); 
-            }} catch (e) {{
-                console.error(e);
-                alert("찜하기 실패: " + e.message);
-            }}
+            }} catch (e) {{ alert("찜하기 실패: " + e.message); }}
         }};
 
         window.openLunchbox = function() {{
-            if (!currentProfileData || !currentProfileData.bookmarks || currentProfileData.bookmarks.length === 0) {{
-                alert("도시락이 비어있어요! 팀 상세화면에서 [🍱 담기]를 눌러보세요.");
-                return;
-            }}
-            
+            if (!currentProfileData || !currentProfileData.bookmarks || currentProfileData.bookmarks.length === 0) {{ alert("도시락이 비어있어요! 팀 상세화면에서 [🍱 담기]를 눌러보세요."); return; }}
             const overlay = document.getElementById('lunchboxOverlay');
             const grid = document.getElementById('lunchboxGrid');
             grid.innerHTML = ""; 
-
             const bookmarks = currentProfileData.bookmarks; 
             const slots = [null, null, null, null, null];
-            bookmarks.forEach((bid, idx) => {{
-                if (idx < 5) slots[idx] = bid;
-            }});
-
+            bookmarks.forEach((bid, idx) => {{ if (idx < 5) slots[idx] = bid; }});
             for (let i = 0; i < 5; i++) {{
                 const teamId = slots[i];
                 const div = document.createElement('div');
                 div.className = 'lb-cell slot-' + i;
-                
                 if (teamId !== null) {{
                     const team = allClubs.find(c => c.id === teamId);
                     if (team) {{
                         div.innerText = team.name;
-                        div.onclick = function() {{
-                            overlay.style.display = 'none';
-                            moveToTeamLocation(team.lat, team.lng);
-                        }};
+                        div.onclick = function() {{ overlay.style.display = 'none'; moveToTeamLocation(team.lat, team.lng); }};
                         div.classList.add('filled');
                     }}
-                }} else {{
-                    div.innerText = "빈 칸";
-                    div.classList.add('empty');
-                }}
+                }} else {{ div.innerText = "빈 칸"; div.classList.add('empty'); }}
                 grid.appendChild(div);
             }}
-            
             overlay.style.display = 'flex';
         }};
 
-        window.closeLunchbox = function() {{
-            document.getElementById('lunchboxOverlay').style.display = 'none';
-        }};
+        window.closeLunchbox = function() {{ document.getElementById('lunchboxOverlay').style.display = 'none'; }};
 
         function moveToTeamLocation(lat, lng) {{
             if (window.map && window.kakao) {{
@@ -505,19 +428,13 @@ def update_map():
             if (!currentUser || !db) return;
             const currentName = document.getElementById('pcNickname').innerText;
             const newName = prompt("변경할 닉네임을 입력해주세요 (하이픈 금지)", currentName);
-            
             if (newName && newName.trim() !== "" && newName !== currentName) {{
-                if (newName.includes("-")) {{
-                    alert("⚠️ 닉네임에 하이픈(-)은 사용할 수 없습니다.\\n하이픈은 오직 '밥아저씨'가 랜덤으로 지어준 이름에만 허용됩니다!");
-                    return;
-                }}
+                if (newName.includes("-")) {{ alert("⚠️ 닉네임에 하이픈(-)은 사용할 수 없습니다.\\n하이픈은 오직 '밥아저씨'가 랜덤으로 지어준 이름에만 허용됩니다!"); return; }}
                 try {{
                     const isDup = await checkDuplicateNickname(newName);
                     if (isDup) {{ alert("이미 누군가 사용 중인 이름입니다."); return; }}
-                    
                     const userRef = doc(db, "users", currentUser.uid);
                     await updateDoc(userRef, {{ full_nickname: newName }});
-                    
                     currentProfileData.full_nickname = newName;
                     renderProfileCard();
                     alert("닉네임 변경 완료! 🥄");
@@ -529,78 +446,6 @@ def update_map():
             const overlay = document.getElementById('profileOverlay');
             overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
         }};
-
-        // [NEW] Robust Schedule Parsing Logic (Accumulator Pattern)
-        function parseScheduleText(text) {{
-            var scheduleMap = {{}};
-            if (!text) return scheduleMap;
-
-            // 1. Normalize: Remove spaces in times (19: 40 -> 19:40)
-            // Replace "19 : 30" -> "19:30"
-            text = text.replace(/(\\d{{1,2}})\\s*:\\s*(\\d{{2}})/g, "$1:$2"); 
-            
-            // 2. Split by common delimiters (/, &, ,) but keeping logical chunks
-            // We split by / but treat it carefully
-            var parts = text.split(/[\\/,&]/); 
-            var pendingDays = [];
-            var dayMap = {{'월': '월', '화': '화', '수': '수', '목': '목', '금': '금', '토': '토', '일': '일'}};
-            
-            // Regex for Time Range: 19:00~22:00 or 19:00-22:00
-            var timeReg = /(\\d{{1,2}}):(\\d{{2}})\\s*[~-]\\s*(\\d{{1,2}}):(\\d{{2}})/;
-
-            parts.forEach(function(part) {{
-                part = part.trim();
-                if(!part) return;
-
-                // Check for time range
-                var match = part.match(timeReg);
-                
-                // Extract days in this chunk
-                var currentDays = [];
-                for (var char of part) {{
-                    if (dayMap[char]) currentDays.push(dayMap[char]);
-                }}
-
-                if (match) {{
-                    // Found a time!
-                    var startH = parseInt(match[1]);
-                    var startM = parseInt(match[2]);
-                    var endH = parseInt(match[3]);
-                    var endM = parseInt(match[4]);
-                    
-                    function format12(h, m) {{
-                        var p = h >= 12 ? 'PM' : 'AM';
-                        var h12 = h % 12;
-                        if (h12 === 0) h12 = 12;
-                        var mStr = m < 10 ? '0'+m : m;
-                        return p + ' ' + h12 + ':' + mStr;
-                    }}
-                    var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
-
-                    // Apply time to ALL accumulated days + current days
-                    var allDays = pendingDays.concat(currentDays);
-                    // Remove duplicates
-                    allDays = [...new Set(allDays)];
-
-                    allDays.forEach(function(day) {{
-                        scheduleMap[day] = {{
-                            startH: startH, startM: startM,
-                            endH: endH, endM: endM,
-                            text: displayTime
-                        }};
-                    }});
-
-                    // Reset pending days because they are now assigned
-                    pendingDays = []; 
-                }} else {{
-                    // No time found, must be just days (e.g., "Mon", "Tue")
-                    // Accumulate them for the NEXT time found
-                    pendingDays = pendingDays.concat(currentDays);
-                }}
-            }});
-            
-            return scheduleMap;
-        }}
     </script>
 
     <style>
@@ -617,7 +462,7 @@ def update_map():
             --nurungji-card: #fbc02d; 
         }}
         
-        /* ... (기존 스타일 유지) ... */
+        /* [기존 UI 스타일] */
         .search-container {{ position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }}
         .search-icon-box {{ width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }}
         .main-search-input {{ flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; }}
@@ -640,172 +485,115 @@ def update_map():
         .fab-report {{ background: #fac710; color: #000; }}
         .fab-urgent {{ background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }}
         
-        .fab-profile {{ 
-            position: absolute; bottom: 30px; left: 15px; 
-            z-index: 20; 
-            width: 55px; height: 55px; 
-            background: #fff; /* 흰 쌀밥 배경 */
-            border-radius: 50%; 
-            box-shadow: var(--shadow);
-            display: flex; justify-content: center; align-items: center;
-            font-size: 30px; cursor: pointer;
-            border: 2px solid #eee;
-            transition: transform 0.2s;
-        }}
+        /* [NEW] 프로필 & 도시락 버튼 */
+        .fab-profile {{ position: absolute; bottom: 30px; left: 15px; z-index: 20; width: 55px; height: 55px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; border: 2px solid #eee; transition: transform 0.2s; }}
         .fab-profile:active {{ transform: scale(0.95); }}
-
-        /* 도시락 버튼 (플로팅 위) */
-        .fab-lunchbox {{
-            position: absolute; bottom: 100px; left: 15px;
-            z-index: 20;
-            width: 50px; height: 50px;
-            background: #fff;
-            border-radius: 50%;
-            box-shadow: var(--shadow);
-            display: flex; justify-content: center; align-items: center;
-            font-size: 26px; cursor: pointer;
-            border: 1px solid #eee;
-            transition: transform 0.2s;
-        }}
+        .fab-lunchbox {{ position: absolute; bottom: 100px; left: 15px; z-index: 20; width: 50px; height: 50px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 26px; cursor: pointer; border: 1px solid #eee; transition: transform 0.2s; }}
         .fab-lunchbox:active {{ transform: scale(0.95); }}
 
-        .profile-overlay {{
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            z-index: 500;
-            display: none; 
-            justify-content: center; align-items: center;
-            backdrop-filter: blur(3px);
-        }}
+        /* [NEW] 오버레이 스타일 (프로필/로그인/도시락) */
+        .profile-overlay, .lunchbox-overlay {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 500; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }}
+        .profile-card {{ width: 80%; max-width: 320px; background: var(--nurungji-card); padding: 30px 20px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.2); position: relative; border: 8px dashed rgba(255,255,255,0.9); border-radius: 40px; background-clip: padding-box; }}
+        .pc-header {{ display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; }}
+        .pc-nickname {{ color: #fff; font-size: 24px; font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }}
+        .pc-edit-btn {{ cursor: pointer; font-size: 18px; background: rgba(255,255,255,0.4); width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }}
+        .pc-date {{ color: rgba(255,255,255,0.95); font-size: 12px; font-weight: 600; margin-bottom: 10px; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }}
+        .pc-divider {{ height: 2px; background: rgba(255,255,255,0.5); width: 50%; margin: 10px auto; border-radius: 1px; }}
+        .pc-main-team {{ color: #fff; font-size: 20px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 5px; }}
         
-        /* [수정] 밥알 구름 카드 디자인 (굵은 점선 + 짙은 노랑) */
-        .profile-card {{
-            width: 80%; max-width: 320px;
-            background: var(--nurungji-card);
-            padding: 30px 20px;
-            text-align: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            position: relative;
-            border: 8px dashed rgba(255,255,255,0.9);
-            border-radius: 40px; 
-            background-clip: padding-box; 
-        }}
-        .pc-header {{
-            display: flex; justify-content: center; align-items: center; gap: 8px;
-            margin-bottom: 5px;
-        }}
-        .pc-nickname {{
-            color: #fff; font-size: 24px; font-weight: 800;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }}
-        .pc-edit-btn {{
-            cursor: pointer; font-size: 18px; 
-            background: rgba(255,255,255,0.4);
-            width: 30px; height: 30px; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-        }}
-        .pc-date {{
-            color: rgba(255,255,255,0.95);
-            font-size: 12px; font-weight: 600;
-            margin-bottom: 10px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }}
-        
-        /* [NEW] 구분선 및 대표팀 */
-        .pc-divider {{
-            height: 2px; background: rgba(255,255,255,0.5);
-            width: 50%; margin: 10px auto; border-radius: 1px;
-        }}
-        .pc-main-team {{
-            color: #fff; font-size: 20px; font-weight: 700;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
-            margin-top: 5px;
-        }}
-
-        /* 로그인 섹션 */
         .login-section {{ display: flex; flex-direction: column; gap: 10px; width: 100%; }}
         .input-group {{ display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }}
         .auth-input {{ padding: 10px 15px; border-radius: 20px; border: none; outline: none; font-size: 14px; background: rgba(255,255,255,0.9); }}
         .btn-row {{ display: flex; gap: 8px; }}
         .btn-auth {{ flex: 1; padding: 10px; border-radius: 20px; border: none; cursor: pointer; font-weight: 700; font-size: 13px; color: #555; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-        .btn-auth.primary {{ background: #fff; border: 2px solid white; }}
-        .btn-auth.secondary {{ background: transparent; border: 1px solid white; color: white; }}
+        .btn-google-login {{ background: white; color: #555; border: 1px solid #ddd; padding: 12px 20px; border-radius: 30px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
+        .btn-google-login img {{ width: 18px; height: 18px; }}
+        .btn-logout {{ margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 5px 10px; border-radius: 12px; font-size: 12px; cursor: pointer; }}
         .divider {{ color: rgba(255,255,255,0.8); font-size: 11px; margin: 10px 0; display: flex; align-items: center; gap: 10px; }}
         .divider::before, .divider::after {{ content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.5); }}
 
-        /* 구글 로그인 버튼 */
-        .btn-google-login {{
-            background: white; color: #555; border: 1px solid #ddd; padding: 12px 20px; border-radius: 30px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }}
-        /* [수정] 구글 로고 공식 URL */
-        .btn-google-login img {{ width: 18px; height: 18px; }}
-        
-        .btn-logout {{ margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 5px 10px; border-radius: 12px; font-size: 12px; cursor: pointer; }}
-
-        /* [NEW] 도시락통 오버레이 */
-        .lunchbox-overlay {{
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 550;
-            display: none; justify-content: center; align-items: center;
-            backdrop-filter: blur(2px);
-        }}
-        /* 도시락 그리드 (3열 2행) */
-        .lunchbox-grid {{
-            width: 320px; height: 180px;
-            background: #fff8e1; /* 나무 도시락 느낌 연한색 */
-            border: 4px solid #8d6e63;
-            border-radius: 12px;
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            grid-template-rows: 1fr 1fr;
-            gap: 2px;
-            padding: 2px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }}
-        .lb-cell {{
-            background: #fff;
-            border-radius: 4px;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 12px; font-weight: 700; color: #555;
-            text-align: center; padding: 4px;
-            cursor: pointer;
-            transition: background 0.1s;
-            border: 1px solid #e0e0e0;
-        }}
+        .lunchbox-grid {{ width: 320px; height: 180px; background: #fff8e1; border: 4px solid #8d6e63; border-radius: 12px; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }}
+        .lb-cell {{ background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: 700; color: #555; text-align: center; padding: 4px; cursor: pointer; transition: background 0.1s; border: 1px solid #e0e0e0; }}
         .lb-cell:active {{ background: #eee; }}
         .lb-cell.empty {{ color: #ccc; font-weight: 400; }}
         .lb-cell.filled {{ background: #fffde7; border-color: var(--brand-color); }}
+        .slot-2 {{ grid-row: 1; grid-column: 1 / span 2; }} 
+        .slot-3 {{ grid-row: 1; grid-column: 3 / span 2; }} 
+        .slot-4 {{ grid-row: 1; grid-column: 5 / span 2; }} 
+        .slot-0 {{ grid-row: 2; grid-column: 1 / span 3; }} 
+        .slot-1 {{ grid-row: 2; grid-column: 4 / span 3; }} 
 
-        /* Grid Layout Override for irregular shape */
-        /* Row 1 (Top): 3 items -> Each spans 2 cols */
-        .slot-2 {{ grid-row: 1; grid-column: 1 / span 2; }} /* 좌상 */
-        .slot-3 {{ grid-row: 1; grid-column: 3 / span 2; }} /* 중상 */
-        .slot-4 {{ grid-row: 1; grid-column: 5 / span 2; }} /* 우상 */
-        
-        /* Row 2 (Bottom): 2 items -> Each spans 3 cols */
-        .slot-0 {{ grid-row: 2; grid-column: 1 / span 3; }} /* 좌하 */
-        .slot-1 {{ grid-row: 2; grid-column: 4 / span 3; }} /* 우하 */
-
+        /* 지도 마커 및 라벨 */
         .label {{ padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }}
         .label:hover {{ z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }}
         .label.urgent {{ background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }} 70% {{ box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }} }}
 
-        .bottom-sheet {{ 
-            position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: #fff; z-index: 200; 
-            border-top-left-radius: 24px; border-top-right-radius: 24px; 
-            box-shadow: 0 -5px 25px rgba(0,0,0,0.15); 
-            display: flex; flex-direction: column;
-            transition: height 0.1s linear; 
-            height: 0; 
-            overflow: hidden;
-        }}
+        /* 바텀 시트 */
+        .bottom-sheet {{ position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: height 0.1s linear; height: 0; overflow: hidden; }}
         .sheet-handle-area {{ width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
         .sheet-content-wrapper {{ flex: 1; overflow-y: auto; padding: 0 24px 20px 24px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }}
         .sheet-content-wrapper::-webkit-scrollbar {{ display: none; }}
+
+        .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
+        .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }}
+        .sheet-title {{ font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }}
+        .instagram {{ font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }}
+        .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
+        .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
+
+        /* 타임테이블 관련 스타일 (기존 기능 유지) */
+        .time-morph-container {{ position: relative; background: transparent; margin-bottom: 20px; transition: height 0.1s linear; overflow: hidden; min-height: 60px; border: none; }}
+        .st-bubble {{ background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; color: #333; white-space: nowrap; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--brand-color); box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); flex-shrink: 0; }}
+        .st-day-text {{ font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }}
+        .st-time-text {{ font-size: 14px; font-weight: 700; color: #333; }}
+        .summary-content {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; gap: 8px; overflow-x: auto; align-items: center; padding: 5px; scrollbar-width: none; opacity: 1; transition: opacity 0.1s; z-index: 10; }}
+        .summary-content::-webkit-scrollbar {{ display: none; }}
+        .full-content {{ position: absolute; top: 0; left: 0; width: 100%; opacity: 0; transition: opacity 0.1s; z-index: 5; }}
+        
+        .ft-container {{ display: flex; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #f0f0f0; }}
+        .ft-header-row-flex {{ display: flex; height: 35px; border-bottom: 1px solid #eee; }}
+        .ft-header-cell {{ flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #888; font-weight: 600; background: #fafafa; }}
+        .ft-header-cell.time-col {{ width: 50px; flex: none; border-right: 1px solid #eee; }}
+        .ft-header-cell.today {{ background: var(--today-color); color: #fff; font-weight: 800; }}
+        .ft-body {{ display: flex; position: relative; }}
+        .ft-col-time {{ width: 50px; flex: none; display: flex; flex-direction: column; border-right: 1px solid #eee; background: #fafafa; }}
+        .ft-time-label {{ display: flex; flex-direction: row; gap: 2px; align-items: center; justify-content: center; font-size: 11px; color: #999; font-weight: 500; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }}
+        .ft-col-day {{ flex: 1; position: relative; border-right: 1px solid #f8f8f8; }}
+        .ft-col-day:last-child {{ border-right: none; }}
+        .ft-event-block {{ position: absolute; width: 94%; left: 3%; background: rgba(250, 199, 16, 0.25); border-left: 3px solid var(--brand-color); border-radius: 4px; font-size: 10px; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-weight: 700; line-height: 1.2; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 2px; overflow: hidden; }}
+
+        .tag-box {{ display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }}
+        .tag {{ font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }}
+        .tag.target {{ color: #0056b3; background: #e7f5ff; }}
+        .info-row {{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }}
+        .info-icon {{ width: 20px; text-align: center; font-size: 16px; }}
+        .action-buttons {{ display: flex; gap: 12px; margin-top: 20px; }}
+        .btn {{ flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }}
+        .btn:active {{ transform: scale(0.98); }}
+        .btn-copy {{ background: #f1f3f5; color: #333; }}
+        .btn-way {{ background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }}
+        a.insta-link {{ text-decoration: none; display: flex; align-items: center; }}
+
+        /* 필터 시트 */
+        .filter-sheet {{ position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; }}
+        .filter-sheet.active {{ transform: translateY(0); }}
+        .fs-header {{ padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }}
+        .fs-title {{ font-size: 20px; font-weight: 800; }}
+        .fs-body {{ flex: 1; overflow-y: auto; padding: 0 24px 10px; }}
+        .fs-section {{ margin-bottom: 25px; }}
+        .fs-label {{ font-size: 14px; font-weight: 700; color: #888; margin-bottom: 10px; display: block; }}
+        .chip-group {{ display: flex; flex-wrap: wrap; gap: 8px; }}
+        .chip {{ padding: 8px 16px; border-radius: 20px; border: 1px solid #e0e0e0; background: #fff; font-size: 14px; color: #555; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }}
+        .chip:hover {{ background: #f8f9fa; }}
+        .chip.selected {{ background: var(--brand-color); color: #000; border-color: var(--brand-color); box-shadow: 0 2px 6px rgba(250, 199, 16, 0.3); font-weight: 700; }}
+        .fs-footer {{ padding: 10px 24px 10px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white; }}
+        .btn-reset {{ flex: 0.3; background: #f1f3f5; color: #555; }}
+        .btn-apply {{ flex: 1; background: #333; color: white; }}
+        .fs-handle-area {{ width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }}
+        .fs-handle {{ width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }}
+        
         .expand-hint {{ text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }}
     </style>
 </head>
@@ -830,19 +618,17 @@ def update_map():
     <div class="fab-profile" onclick="toggleProfileCard()">🍚</div>
 
     <div class="fab-group">
-        <a href="https://forms.gle/FpHvQyGg3jBivjTU6" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
+        <a href="https://forms.gle/INSERT_GOOGLE_FORM_URL_HERE" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
 
     <div id="lunchboxOverlay" class="lunchbox-overlay" onclick="closeLunchbox()">
-        <div class="lunchbox-grid" id="lunchboxGrid" onclick="event.stopPropagation()">
-            </div>
+        <div class="lunchbox-grid" id="lunchboxGrid" onclick="event.stopPropagation()"></div>
     </div>
 
     <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
         <div class="profile-card" id="myProfileCard" onclick="event.stopPropagation()">
-            
             <div id="loginSection" class="login-section">
                 <button class="btn-google-login" onclick="loginWithGoogle()">
                     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="G">
@@ -858,20 +644,62 @@ def update_map():
                     <button class="btn-auth secondary" onclick="registerWithEmail()">회원가입</button>
                 </div>
             </div>
-
             <div id="profileContent" style="display:none;">
                 <div class="pc-header">
                     <span id="pcNickname" class="pc-nickname">...</span>
                     <div class="pc-edit-btn" onclick="editNickname()">🥢</div>
                 </div>
                 <div id="pcDate" class="pc-date">가입일: -</div>
-                
                 <div class="pc-divider"></div>
                 <div id="pcMainTeam" class="pc-main-team">찜한 팀이 없어요</div>
-
                 <button class="btn-logout" onclick="logout()">로그아웃</button>
             </div>
         </div>
+    </div>
+
+    <div id="filterSheet" class="filter-sheet">
+        <div class="fs-header"><div class="fs-title">검색 조건 설정</div></div>
+        <div class="fs-body">
+            <div class="fs-section"><span class="fs-label">📍 지역 (중복 선택 가능)</span>
+                <div class="chip-group" id="regionChips">
+                    <div class="chip" onclick="toggleFilter('region', '서울', this)">서울</div>
+                    <div class="chip" onclick="toggleFilter('region', '경기', this)">경기</div>
+                    <div class="chip" onclick="toggleFilter('region', '인천', this)">인천</div>
+                    <div class="chip" onclick="toggleFilter('region', '강원', this)">강원</div>
+                    <div class="chip" onclick="toggleFilter('region', '충청', this)">충청</div>
+                    <div class="chip" onclick="toggleFilter('region', '전라', this)">전라</div>
+                    <div class="chip" onclick="toggleFilter('region', '경상', this)">경상</div>
+                    <div class="chip" onclick="toggleFilter('region', '제주', this)">제주</div>
+                </div>
+            </div>
+            <div class="fs-section"><span class="fs-label">📅 요일</span>
+                <div class="chip-group" id="dayChips">
+                    <div class="chip" onclick="toggleFilter('day', '월', this)">월</div>
+                    <div class="chip" onclick="toggleFilter('day', '화', this)">화</div>
+                    <div class="chip" onclick="toggleFilter('day', '수', this)">수</div>
+                    <div class="chip" onclick="toggleFilter('day', '목', this)">목</div>
+                    <div class="chip" onclick="toggleFilter('day', '금', this)">금</div>
+                    <div class="chip" onclick="toggleFilter('day', '토', this)">토</div>
+                    <div class="chip" onclick="toggleFilter('day', '일', this)">일</div>
+                </div>
+            </div>
+            <div class="fs-section"><span class="fs-label">🏐 대상 및 특징</span>
+                <div class="chip-group" id="targetChips">
+                    <div class="chip" onclick="toggleFilter('target', '성인', this)">성인</div>
+                    <div class="chip" onclick="toggleFilter('target', '대학생', this)">대학생</div>
+                    <div class="chip" onclick="toggleFilter('target', '청소년', this)">청소년</div>
+                    <div class="chip" onclick="toggleFilter('target', '여성전용', this)">여성전용</div>
+                    <div class="chip" onclick="toggleFilter('target', '남성전용', this)">남성전용</div>
+                    <div class="chip" onclick="toggleFilter('target', '선출가능', this)">선출가능</div>
+                    <div class="chip" onclick="toggleFilter('target', '6인제', this)">6인제</div>
+                </div>
+            </div>
+        </div>
+        <div class="fs-footer">
+            <div class="btn btn-reset" onclick="resetFilters()">초기화</div>
+            <div class="btn btn-apply" onclick="applyFilters()">적용하기</div>
+        </div>
+        <div class="fs-handle-area" id="filterHandle"><div class="fs-handle"></div></div>
     </div>
 
     <div id="bottomSheet" class="bottom-sheet">
@@ -887,10 +715,7 @@ def update_map():
             
             <div class="time-morph-container" id="timeMorphContainer" onclick="toggleTimeExpand()">
                 <div class="summary-content" id="summaryContent"></div>
-                <div class="full-content" id="fullContent">
-                    <div class="ft-header-row"><div class="ft-title">📅 주간 스케줄</div></div>
-                    <div class="ft-grid" id="fullTimetableGrid"></div>
-                </div>
+                <div class="full-content" id="fullContent"></div>
             </div>
             
             <div class="tag-box" id="sheetTags"></div>
@@ -903,14 +728,11 @@ def update_map():
             
             <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
-            <input type="hidden" id="sheetTeamId">
         </div>
     </div>
 
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={KAKAO_JS_KEY}&libraries=clusterer"></script>
     <script>
-        // ... (나머지 지도 로직은 기존과 동일하므로 생략하지 않고 위 코드 블록에 포함되어 있습니다) ...
-        // openClubDetail 함수 내부에 찜하기 버튼 연결 로직 추가됨
         var mapContainer = document.getElementById('map'), 
             mapOption = {{ center: new kakao.maps.LatLng({center_lat}, {center_lng}), level: 8 }}; 
         var map = new kakao.maps.Map(mapContainer, mapOption); 
@@ -1235,7 +1057,7 @@ def update_map():
                 urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
                 urgentArea.style.display = 'block';
             }} else {{ urgentArea.style.display = 'none'; }}
-            
+
             // [NEW] 찜하기 버튼에 onclick 이벤트 연결
             var btnBookmark = document.getElementById('btnBookmark');
             btnBookmark.onclick = function() {{ bookmarkTeam(club.id); }};
@@ -1260,7 +1082,7 @@ def update_map():
             else {{ var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }}
         }}
 
-        // ... (나머지 로직 동일)
+        // 긴급 구인 티커 로직
         var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
         var uniqueTickerList = [];
         var processedTeams = {{}};
@@ -1330,29 +1152,19 @@ def update_map():
             const deltaY = currentY - startY; 
             
             let newHeight = startHeight - deltaY;
-            
             if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
-            
             sheet.style.height = newHeight + 'px';
-
             let ratio = (newHeight - PEEK_HEIGHT) / (EXPANDED_HEIGHT - PEEK_HEIGHT);
             interpolateMorph(ratio);
         }}
         
         function bHandleEnd(e) {{ 
             if (!isDragging) return; isDragging = false; 
-            
             sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
             document.getElementById('timeMorphContainer').style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            
             let currentH = sheet.offsetHeight;
-            
-            if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {{
-                updateSheetState('EXPANDED');
-            }} else {{
-                if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
-                else updateSheetState('PEEK');
-            }}
+            if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {{ updateSheetState('EXPANDED'); }} 
+            else {{ if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED'); else updateSheetState('PEEK'); }}
             currentY = 0; startY = 0; 
         }}
         
@@ -1458,7 +1270,6 @@ def update_map():
         }}
 
         applyFilters();
-
     </script>
 </body>
 </html>

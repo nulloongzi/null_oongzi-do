@@ -11,7 +11,8 @@ import io
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-YkZIHnfsO4WgqpCmmP0uSraojWi58SsqXCUEdzRF2R55DASVA5882JusD8BMa9gNaTe/pub?gid=97006888&single=true&output=csv"
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
-IS_TEST_MODE = True  # 테스트 모드 유지
+
+IS_TEST_MODE = False  # True: 테스트 모드 (test_new.html 생성), False: 배포 모드 (
 # ==========================================
 
 def get_location(address):
@@ -35,8 +36,10 @@ def update_map():
     
     if IS_TEST_MODE:
         html_file = "test_new.html"
+        print("🔧 현재 모드: [테스트] -> test_new.html 생성")
     else:
         html_file = "index.html"
+        print("🚀 현재 모드: [배포/실전] -> index.html 생성")
 
     cached_data = {} 
     if os.path.exists(json_file):
@@ -71,7 +74,6 @@ def update_map():
             insta = row[6].strip() if len(row) > 6 else ""
             link = row[7].strip() if len(row) > 7 else ""
             
-            # J열(9), K열(10) 읽기
             is_urgent_val = row[9].strip().upper() if len(row) > 9 else ""
             is_urgent = True if is_urgent_val == 'O' else False
             urgent_msg = row[10].strip() if len(row) > 10 else ""
@@ -115,29 +117,24 @@ def update_map():
 
     adjusted_list = []
     clubs_by_coord = {}
-    
     for club in final_list:
         coord = (club['lat'], club['lng'])
         if coord not in clubs_by_coord:
             clubs_by_coord[coord] = []
         clubs_by_coord[coord].append(club)
-        
     for coord, clubs in clubs_by_coord.items():
         if len(clubs) == 1:
             adjusted_list.append(clubs[0])
         else:
             count = len(clubs)
             base_lat, base_lng = coord
-            radius = 0.0001  
+            radius = 0.0001
             for i, club in enumerate(clubs):
                 angle = (2 * math.pi / count) * i
-                new_lat = base_lat + radius * math.sin(angle)
-                new_lng = base_lng + radius * math.cos(angle)
-                club['lat'] = new_lat
-                club['lng'] = new_lng
+                club['lat'] = base_lat + radius * math.sin(angle)
+                club['lng'] = base_lng + radius * math.cos(angle)
                 club['angle'] = angle 
                 adjusted_list.append(club)
-                
     final_list = adjusted_list
 
     for idx, club in enumerate(final_list):
@@ -146,7 +143,7 @@ def update_map():
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(final_list, f, ensure_ascii=False, indent=4)
 
-    # Manifest 생성 (PWA 설정)
+    # Manifest
     manifest_content = {
         "name": "누룽지도",
         "short_name": "누룽지도",
@@ -186,15 +183,14 @@ def update_map():
         * {{ box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }}
         html, body {{ width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; }}
         #map {{ width: 100%; height: 100%; }}
-        :root {{ --white: #fff; --brand-color: #fac710; --urgent-color: #ff4757; --shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+        :root {{ 
+            --white: #fff; 
+            --brand-color: #fac710; 
+            --urgent-color: #ff4757; 
+            --shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            --today-color: #d35400; 
+        }}
         
-        /* 인스타그램 아이콘 */
-        .instagram {{ font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: transform 0.2s; }}
-        .instagram:hover {{ transform: scale(1.1); }}
-        .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
-        .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
-
-        /* 검색창 및 버튼 */
         .search-container {{ position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }}
         .search-icon-box {{ width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }}
         .main-search-input {{ flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; }}
@@ -204,28 +200,177 @@ def update_map():
         .filter-badge {{ position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: #fac710; border-radius: 50%; display: none; }}
         .filter-badge.active {{ display: block; }}
         
+        .urgent-ticker-bar {{ position: absolute; top: 70px; left: 15px; right: 15px; z-index: 18; height: 40px; background: rgba(255, 245, 245, 0.95); border: 1px solid rgba(255, 71, 87, 0.3); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: none; align-items: center; padding: 0 12px; overflow: hidden; will-change: top; }}
+        .ticker-icon {{ font-size: 18px; margin-right: 10px; animation: pulse 1.5s infinite; }}
+        .ticker-content {{ flex: 1; height: 100%; position: relative; overflow: hidden; }}
+        .ticker-list {{ list-style: none; margin: 0; padding: 0; position: absolute; width: 100%; top: 0; left: 0; transition: top 0.5s ease-in-out; }}
+        .ticker-item {{ height: 40px; line-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 600; cursor: pointer; color: #333; }}
+        .ticker-item b {{ color: #d63031; margin-right: 5px; }}
+
         .fab-group {{ position: absolute; bottom: 30px; right: 15px; z-index: 20; display: flex; flex-direction: column; gap: 12px; }}
-        .fab-btn {{ width: 48px; height: 48px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; text-decoration: none; color: #333; transition: transform 0.2s; }}
+        .fab-btn {{ width: 50px; height: 50px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; text-decoration: none; color: #333; transition: transform 0.2s; }}
         .fab-btn:active {{ transform: scale(0.95); }}
         .fab-report {{ background: #fac710; color: #000; }}
+        .fab-urgent {{ background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }}
         
-        /* [수정됨] 라벨 위치 조정 (-55px) */
         .label {{ padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }}
         .label:hover {{ z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }}
-        
         .label.urgent {{ background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }}
         @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }} 70% {{ box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }} }}
 
-        /* 바텀시트 & 필터시트 */
-        .bottom-sheet {{ position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); padding: 20px 24px 50px 24px; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }}
-        .sheet-handle-area {{ width: 100%; padding: 10px 0 25px 0; display: flex; justify-content: center; cursor: grab; }}
+        .bottom-sheet {{ 
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: #fff; z-index: 200; 
+            border-top-left-radius: 24px; border-top-right-radius: 24px; 
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.15); 
+            display: flex; flex-direction: column;
+            transition: height 0.1s linear; 
+            height: 0; 
+            overflow: hidden;
+        }}
+        
+        .sheet-handle-area {{ width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
         
+        .sheet-content-wrapper {{ 
+            flex: 1; overflow-y: auto; padding: 0 24px 20px 24px; 
+            -webkit-overflow-scrolling: touch; 
+            scrollbar-width: none; 
+        }}
+        .sheet-content-wrapper::-webkit-scrollbar {{ display: none; }}
+
         .urgent-banner {{ margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }}
-        
-        .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
+        .sheet-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }}
         .sheet-title {{ font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }}
+        .instagram {{ font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }}
+        .instagram:before {{ content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }}
+        .instagram:after {{ content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }}
+
+        .time-morph-container {{
+            position: relative;
+            background: transparent;
+            margin-bottom: 20px;
+            transition: height 0.1s linear;
+            overflow: hidden;
+            min-height: 60px; 
+            border: none;
+        }}
+
+        .st-bubble {{ 
+            background: #fff; 
+            border-radius: 8px; 
+            padding: 8px 14px; 
+            font-size: 13px; color: #333; white-space: nowrap; font-weight: 600;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border: 1px solid var(--brand-color); 
+            box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); 
+            flex-shrink: 0;
+        }}
+        .st-day-text {{ font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }}
+        .st-time-text {{ font-size: 14px; font-weight: 700; color: #333; }}
+
+        .summary-content {{ 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; gap: 8px; overflow-x: auto; align-items: center;
+            padding: 5px; scrollbar-width: none;
+            opacity: 1; transition: opacity 0.1s;
+            z-index: 10;
+        }}
+        .summary-content::-webkit-scrollbar {{ display: none; }}
+
+        .full-content {{ 
+            position: absolute; top: 0; left: 0; width: 100%;
+            opacity: 0; transition: opacity 0.1s;
+            z-index: 5;
+        }}
+
+        .ft-container {{
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #f0f0f0;
+        }}
+        .ft-header-row-flex {{
+            display: flex;
+            height: 35px;
+            border-bottom: 1px solid #eee;
+        }}
+        .ft-header-cell {{
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #888;
+            font-weight: 600;
+            background: #fafafa;
+        }}
+        .ft-header-cell.time-col {{ width: 50px; flex: none; border-right: 1px solid #eee; }}
         
+        .ft-header-cell.today {{ 
+            background: var(--today-color); 
+            color: #fff; 
+            font-weight: 800;
+        }}
+
+        .ft-body {{
+            display: flex;
+            position: relative;
+        }}
+        .ft-col-time {{
+            width: 50px;
+            flex: none;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #eee;
+            background: #fafafa;
+        }}
+        
+        .ft-time-label {{
+            display: flex;
+            flex-direction: row; 
+            gap: 2px;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #999;
+            font-weight: 500;
+            border-bottom: 1px solid #f5f5f5;
+            white-space: nowrap; 
+        }}
+        
+        .ft-col-day {{
+            flex: 1;
+            position: relative;
+            border-right: 1px solid #f8f8f8;
+        }}
+        .ft-col-day:last-child {{ border-right: none; }}
+        
+        /* [수정] flex-direction: column 추가하여 내용 세로 정렬 */
+        .ft-event-block {{
+            position: absolute;
+            width: 94%;
+            left: 3%;
+            background: rgba(250, 199, 16, 0.25);
+            border-left: 3px solid var(--brand-color);
+            border-radius: 4px;
+            font-size: 10px;
+            color: #555;
+            display: flex;
+            flex-direction: column; /* 세로 정렬 */
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 700;
+            line-height: 1.2;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 2px;
+            overflow: hidden;
+        }}
+
         .tag-box {{ display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }}
         .tag {{ font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }}
         .tag.target {{ color: #0056b3; background: #e7f5ff; }}
@@ -233,14 +378,14 @@ def update_map():
         .info-row {{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }}
         .info-icon {{ width: 20px; text-align: center; font-size: 16px; }}
         
-        .action-buttons {{ display: flex; gap: 12px; margin-top: 30px; }}
+        .action-buttons {{ display: flex; gap: 12px; margin-top: 20px; }}
         .btn {{ flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }}
         .btn:active {{ transform: scale(0.98); }}
         .btn-copy {{ background: #f1f3f5; color: #333; }}
         .btn-way {{ background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }}
         a.insta-link {{ text-decoration: none; display: flex; align-items: center; }}
 
-        .filter-sheet {{ position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }}
+        .filter-sheet {{ position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; }}
         .filter-sheet.active {{ transform: translateY(0); }}
         .fs-header {{ padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }}
         .fs-title {{ font-size: 20px; font-weight: 800; }}
@@ -256,6 +401,8 @@ def update_map():
         .btn-apply {{ flex: 1; background: #333; color: white; }}
         .fs-handle-area {{ width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }}
         .fs-handle {{ width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }}
+        
+        .expand-hint {{ text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }}
     </style>
 </head>
 <body>
@@ -268,7 +415,15 @@ def update_map():
         <div class="filter-btn-icon" onclick="openFilterSheet()">⚙️<div id="filterBadge" class="filter-badge"></div></div>
     </div>
 
+    <div id="urgentTicker" class="urgent-ticker-bar">
+        <div class="ticker-icon">🔥</div>
+        <div class="ticker-content">
+            <ul id="tickerList" class="ticker-list"></ul>
+        </div>
+    </div>
+
     <div class="fab-group">
+        <a href="INSERT_GOOGLE_FORM_URL_HERE" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
@@ -321,17 +476,27 @@ def update_map():
     <div id="bottomSheet" class="bottom-sheet">
         <div class="sheet-handle-area" id="sheetHandle"><div class="sheet-handle"></div></div>
         
-        <div id="urgentArea"></div>
+        <div class="sheet-content-wrapper">
+            <div id="urgentArea"></div>
 
-        <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
-        <div class="tag-box" id="sheetTags"></div>
-        <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
-        <div class="info-row"><span class="info-icon">⏰</span> <span id="sheetSchedule">-</span></div>
-        <div class="action-buttons">
-            <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
-            <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
+            <div class="sheet-header"><div class="sheet-title" id="sheetTitle">팀 이름</div></div>
+            
+            <div class="time-morph-container" id="timeMorphContainer" onclick="toggleTimeExpand()">
+                <div class="summary-content" id="summaryContent"></div>
+                <div class="full-content" id="fullContent"></div>
+            </div>
+            
+            <div class="tag-box" id="sheetTags"></div>
+            <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
+                <a href="#" target="_blank" class="btn btn-way" id="btnWay">🚀 길찾기</a>
+            </div>
+            
+            <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
+            <input type="hidden" id="sheetAddressVal">
         </div>
-        <input type="hidden" id="sheetAddressVal">
     </div>
 
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={KAKAO_JS_KEY}&libraries=clusterer"></script>
@@ -349,9 +514,7 @@ def update_map():
 
         var clubs = {json.dumps(final_list, ensure_ascii=False)};
         var markers = []; 
-        var labelOverlays = []; 
-
-        // [수정됨] 커스텀 마커 이미지 설정 (노랑/빨강)
+        
         var defaultImageSrc = './marker_yellow.png'; 
         var urgentImageSrc = './marker_red.png'; 
         var imageSize = new kakao.maps.Size(40, 53); 
@@ -368,12 +531,10 @@ def update_map():
         clubs.forEach(function(club) {{
             if (!club.lat || !club.lng) return;
             var latlng = new kakao.maps.LatLng(club.lat, club.lng);
-            
-            // [수정됨] 마커 생성 로직 (긴급/일반 구분)
             var marker;
             if (club.is_urgent) {{
                 marker = new kakao.maps.Marker({{ position: latlng, image: urgentMarkerImage, zIndex: 9999 }});
-                marker.setMap(map); // 긴급은 클러스터링 없이 바로 표시
+                marker.setMap(map); 
             }} else {{
                 marker = new kakao.maps.Marker({{ position: latlng, image: defaultMarkerImage }});
             }}
@@ -381,22 +542,16 @@ def update_map():
             var labelClass = club.is_urgent ? 'label urgent' : 'label';
             var iconHtml = club.is_urgent ? '🔥 ' : '';
             var content = '<div class="' + labelClass + '" onclick="triggerMarkerClick(' + club.id + ')">' + iconHtml + club.name + '</div>';
-            
             var xAnc = 0.5; var yAnc = 1;   
             if (club.angle !== undefined) {{ xAnc = 0.5 - (Math.cos(club.angle) * 0.5); }}
-
             var customOverlay = new kakao.maps.CustomOverlay({{ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 }});
             
-            // 긴급 라벨은 항상 보이기
             if (club.is_urgent) {{ customOverlay.setMap(map); }}
-
             kakao.maps.event.addListener(marker, 'click', function() {{ openClubDetail(club.id); }});
             
             markers.push({{ marker: marker, overlay: customOverlay, club: club, isVisible: true }});
-            labelOverlays.push({{ overlay: customOverlay, club: club }});
         }});
 
-        // 초기 로딩 시 일반 마커만 클러스터러에 추가
         var initialClusterMarkers = [];
         markers.forEach(function(item) {{
             if (!item.club.is_urgent) {{ initialClusterMarkers.push(item.marker); }}
@@ -410,88 +565,390 @@ def update_map():
 
         function updateLabelVisibility() {{
             var level = map.getLevel(); 
-            var showLabels = (level <= 5); 
-            
+            var showNormalLabels = (level <= 5); 
+            var showUrgentLabels = (level <= 8); 
             markers.forEach(function(item) {{
                 if (!item.isVisible) return; 
-
-                if (item.club.is_urgent) {{
-                    item.overlay.setMap(map); // 긴급은 항상 보임
-                }} else {{
-                    if (showLabels) item.overlay.setMap(map);
-                    else item.overlay.setMap(null);
+                if (item.club.is_urgent) {{ 
+                    if (showUrgentLabels) item.overlay.setMap(map); else item.overlay.setMap(null);
+                }} else {{ 
+                    if (showNormalLabels) item.overlay.setMap(map); else item.overlay.setMap(null); 
                 }}
             }});
         }}
         
         kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
-        function openClubDetail(id) {{
-            document.getElementById('topSearchInput').blur(); // 키보드 숨김
+        function parseScheduleText(text) {{
+            var scheduleMap = {{}};
+            if (!text) return scheduleMap;
+            var segments = text.split(/\\s*\\/\\s*/); 
+            segments.forEach(function(segment) {{
+                var timeReg = /(\\d{{1,2}}):(\\d{{2}})\\s*[~-]\\s*(\\d{{1,2}}):(\\d{{2}})/;
+                var match = segment.match(timeReg);
+                if (match) {{
+                    var startH = parseInt(match[1]);
+                    var startM = parseInt(match[2]);
+                    var endH = parseInt(match[3]);
+                    var endM = parseInt(match[4]);
+                    
+                    function format12(h, m) {{
+                        var p = h >= 12 ? 'PM' : 'AM';
+                        var h12 = h % 12;
+                        if (h12 === 0) h12 = 12;
+                        var mStr = m < 10 ? '0'+m : m;
+                        return p + ' ' + h12 + ':' + mStr;
+                    }}
+                    
+                    var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
+                    
+                    var days = ['월', '화', '수', '목', '금', '토', '일'];
+                    days.forEach(function(day) {{
+                        if (segment.includes(day)) {{
+                            scheduleMap[day] = {{ 
+                                startH: startH, startM: startM, 
+                                endH: endH, endM: endM, 
+                                text: displayTime 
+                            }};
+                        }}
+                    }});
+                }}
+            }});
+            return scheduleMap;
+        }}
+
+        function getHourLabel(h) {{
+            var p = h >= 12 ? 'PM' : 'AM';
+            var h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            return p + ' ' + h12;
+        }}
+
+        function renderTimetables(scheduleText) {{
+            var scheduleData = parseScheduleText(scheduleText);
+            var days = ['월', '화', '수', '목', '금', '토', '일'];
+            var dayIndices = {{'일':0, '월':1, '화':2, '수':3, '목':4, '금':5, '토':6}};
+            var todayIndex = new Date().getDay(); 
+            var todayChar = Object.keys(dayIndices).find(key => dayIndices[key] === todayIndex);
+
+            var minH = 24, maxH = 0;
+            var hasData = false;
             
+            Object.values(scheduleData).forEach(function(data) {{
+                if (data.startH < minH) minH = data.startH;
+                if (data.endH > maxH) maxH = data.endH;
+                hasData = true;
+            }});
+
+            if (!hasData) {{ minH = 18; maxH = 22; }}
+            
+            var displayStart = Math.max(6, minH - 2); 
+            var displayEnd = Math.min(24, maxH + 2);
+            var totalHours = displayEnd - displayStart;
+
+            var availableHeight = window.innerHeight * 0.55; 
+            var calculatedRowHeight = availableHeight / totalHours;
+            var ROW_HEIGHT = Math.max(32, Math.min(60, calculatedRowHeight));
+
+            var summaryContainer = document.getElementById('summaryContent');
+            summaryContainer.innerHTML = '';
+            var hasActive = false;
+            days.forEach(function(day) {{
+                var data = scheduleData[day];
+                if (data) {{
+                    hasActive = true;
+                    var item = document.createElement('div');
+                    item.className = 'st-bubble active';
+                    item.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + data.text + '</div>';
+                    summaryContainer.appendChild(item);
+                }}
+            }});
+            if (!hasActive) {{
+                summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
+            }}
+
+            var fullContainer = document.getElementById('fullContent');
+            fullContainer.innerHTML = '';
+            
+            var ftContainer = document.createElement('div');
+            ftContainer.className = 'ft-container';
+            
+            var headerRow = document.createElement('div');
+            headerRow.className = 'ft-header-row-flex';
+            var emptyCell = document.createElement('div'); emptyCell.className = 'ft-header-cell time-col';
+            headerRow.appendChild(emptyCell);
+            
+            days.forEach(function(d) {{
+                var cell = document.createElement('div');
+                cell.className = 'ft-header-cell';
+                if (d === todayChar) cell.className += ' today';
+                cell.innerText = d;
+                headerRow.appendChild(cell);
+            }});
+            ftContainer.appendChild(headerRow);
+
+            var bodyRow = document.createElement('div');
+            bodyRow.className = 'ft-body';
+            bodyRow.style.height = (totalHours * ROW_HEIGHT) + 'px';
+
+            var timeCol = document.createElement('div');
+            timeCol.className = 'ft-col-time';
+            for(var h = displayStart; h < displayEnd; h++) {{
+                var label = document.createElement('div');
+                label.className = 'ft-time-label';
+                label.style.height = ROW_HEIGHT + 'px'; 
+                label.innerHTML = getHourLabel(h);
+                timeCol.appendChild(label);
+            }}
+            bodyRow.appendChild(timeCol);
+
+            days.forEach(function(d) {{
+                var dayCol = document.createElement('div');
+                dayCol.className = 'ft-col-day';
+                
+                for(var h = displayStart; h < displayEnd; h++) {{
+                    var gridLine = document.createElement('div');
+                    gridLine.style.height = ROW_HEIGHT + 'px'; 
+                    gridLine.style.borderBottom = '1px solid #f8f8f8';
+                    gridLine.style.boxSizing = 'border-box';
+                    dayCol.appendChild(gridLine);
+                }}
+
+                var data = scheduleData[d];
+                if (data) {{
+                    var startTotalHours = data.startH + (data.startM / 60) - displayStart;
+                    var durationHours = (data.endH + (data.endM / 60)) - (data.startH + (data.startM / 60));
+                    
+                    var topPx = startTotalHours * ROW_HEIGHT;
+                    var heightPx = durationHours * ROW_HEIGHT;
+
+                    // [NEW] 총 소요 시간 계산 및 포맷팅 (예: 2h, 2.5h)
+                    var duration = (data.endH + (data.endM / 60)) - (data.startH + (data.startM / 60));
+                    var durationStr = Number.isInteger(duration) ? duration : duration.toFixed(1);
+
+                    if (topPx >= 0) {{
+                        var block = document.createElement('div');
+                        block.className = 'ft-event-block';
+                        block.style.top = topPx + 'px';
+                        block.style.height = (heightPx - 2) + 'px'; 
+                        // [NEW] 시간 + 소요시간 표시
+                        block.innerHTML = data.text.replace('~', '<br>~<br>') + 
+                                          '<div style="font-size:9px; opacity:0.8; margin-top:2px;">(' + durationStr + 'h)</div>';
+                        dayCol.appendChild(block);
+                    }}
+                }}
+                bodyRow.appendChild(dayCol);
+            }});
+            
+            ftContainer.appendChild(bodyRow);
+            fullContainer.appendChild(ftContainer);
+        }}
+
+        var sheetState = 'PEEK'; 
+        var PEEK_HEIGHT = 380; 
+        var EXPANDED_HEIGHT = window.innerHeight * 0.9;
+        var BUBBLE_HEIGHT = 60;
+
+        function updateSheetState(newState, animation = true) {{
+            var sheet = document.getElementById('bottomSheet');
+            var hint = document.getElementById('expandHint');
+            
+            sheetState = newState;
+            
+            if (animation) sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            else sheet.style.transition = 'none';
+
+            if (newState === 'CLOSED') {{
+                sheet.style.height = '0';
+            }} 
+            else if (newState === 'PEEK') {{
+                sheet.style.height = PEEK_HEIGHT + 'px';
+                hint.innerText = '▴ 위로 올려서 상세 정보 보기';
+                interpolateMorph(0); 
+            }} 
+            else if (newState === 'EXPANDED') {{
+                sheet.style.height = EXPANDED_HEIGHT + 'px';
+                hint.innerText = '▾ 아래로 내려서 요약 보기';
+                interpolateMorph(1); 
+            }}
+        }}
+
+        function interpolateMorph(ratio) {{
+            var summary = document.getElementById('summaryContent');
+            var full = document.getElementById('fullContent');
+            var container = document.getElementById('timeMorphContainer');
+            
+            ratio = Math.min(Math.max(ratio, 0), 1);
+
+            if (ratio > 0.8) {{
+                container.style.height = 'auto'; 
+                full.style.position = 'relative'; 
+            }} else {{
+                 var targetH = BUBBLE_HEIGHT + (350 * ratio); 
+                 container.style.height = targetH + 'px';
+                 full.style.position = 'absolute'; 
+            }}
+
+            if (ratio < 0.5) {{
+                summary.style.display = 'flex';
+                full.style.display = 'none';
+                summary.style.opacity = 1 - (ratio * 2);
+            }} else {{
+                summary.style.display = 'none';
+                full.style.display = 'block';
+                full.style.opacity = (ratio - 0.5) * 2;
+            }}
+        }}
+
+        function toggleTimeExpand() {{
+            if (sheetState === 'PEEK') updateSheetState('EXPANDED');
+            else if (sheetState === 'EXPANDED') updateSheetState('PEEK');
+        }}
+
+        function openClubDetail(id) {{
+            document.getElementById('topSearchInput').blur();
             var club = clubs.find(c => c.id === id);
             
             var titleHtml = club.name;
             if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
             document.getElementById('sheetTitle').innerHTML = titleHtml;
-            
             document.getElementById('sheetPrice').innerText = club.price || "회비 정보 없음";
-            document.getElementById('sheetSchedule').innerText = club.schedule || "일정 정보 없음";
             document.getElementById('sheetAddressVal').value = club.address;
             
+            renderTimetables(club.schedule);
+
             var tagHtml = '<span class="tag target">' + club.target + '</span>';
             if(club.link) tagHtml += '<a href="' + club.link + '" target="_blank" style="text-decoration:none"><span class="tag" style="background:#eee">🏠 홈페이지</span></a>';
             document.getElementById('sheetTags').innerHTML = tagHtml;
-            
             document.getElementById('btnWay').href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
             
             var urgentArea = document.getElementById('urgentArea');
             if (club.is_urgent && club.urgent_msg) {{
                 urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
                 urgentArea.style.display = 'block';
-            }} else {{
-                urgentArea.style.display = 'none';
-            }}
+            }} else {{ urgentArea.style.display = 'none'; }}
             
-            document.getElementById('bottomSheet').style.transform = "translateY(0)";
+            updateSheetState('PEEK');
             
             var targetLevel = 4;
             map.setLevel(targetLevel, {{animate: true}});
-
             var moveLatLon = new kakao.maps.LatLng(club.lat, club.lng);
             var projection = map.getProjection();
             var centerPoint = projection.pointFromCoords(moveLatLon);
-            
             var offsetY = Math.min(window.innerHeight * 0.13, 150); 
             var newCenterPoint = new kakao.maps.Point(centerPoint.x, centerPoint.y + offsetY);
             var newCenterLatLon = projection.coordsFromPoint(newCenterPoint);
-            
             map.panTo(newCenterLatLon);
         }}
 
-        function closeBottomSheet() {{
-            document.getElementById('bottomSheet').style.transform = "translateY(120%)";
-        }}
-        
+        function closeBottomSheet() {{ updateSheetState('CLOSED'); }}
         document.getElementById('btnCopy').onclick = function() {{ copyAddress(document.getElementById('sheetAddressVal').value); }};
         function copyAddress(addr) {{
             if (navigator.clipboard && navigator.clipboard.writeText) {{ navigator.clipboard.writeText(addr).then(() => {{ alert('주소가 복사되었습니다! 📋'); }}); }} 
             else {{ var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }}
         }}
 
+        // ... (나머지 로직 동일)
+        var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
+        var uniqueTickerList = [];
+        var processedTeams = {{}};
+        
+        urgentClubs.forEach(function(c) {{
+            if (!processedTeams[c.name]) {{
+                uniqueTickerList.push(c);
+                processedTeams[c.name] = true;
+            }}
+        }});
+
+        if (uniqueTickerList.length > 0) {{
+            var tickerContainer = document.getElementById('urgentTicker');
+            var tickerList = document.getElementById('tickerList');
+            tickerContainer.style.display = 'flex';
+            
+            uniqueTickerList.forEach(function(c) {{
+                var li = document.createElement('li');
+                li.className = 'ticker-item';
+                li.innerHTML = '<b>[' + c.name + ']</b> ' + c.urgent_msg;
+                li.onclick = function() {{ openClubDetail(c.id); }};
+                tickerList.appendChild(li);
+            }});
+
+            if (uniqueTickerList.length > 1) {{
+                var tickerHeight = 40;
+                var currentIndex = 0;
+                setInterval(function() {{
+                    currentIndex++;
+                    tickerList.style.top = '-' + (currentIndex * tickerHeight) + 'px';
+                    
+                    if (currentIndex === uniqueTickerList.length) {{
+                        setTimeout(function() {{
+                            tickerList.style.transition = 'none';
+                            tickerList.style.top = '0px';
+                            currentIndex = 0;
+                            setTimeout(function() {{ tickerList.style.transition = 'top 0.5s ease-in-out'; }}, 50);
+                        }}, 500); 
+                    }} else {{
+                        if (currentIndex === uniqueTickerList.length) currentIndex = 0;
+                    }}
+                }}, 3000);
+                
+                var firstClone = tickerList.children[0].cloneNode(true);
+                firstClone.onclick = function() {{ openClubDetail(uniqueTickerList[0].id); }};
+                tickerList.appendChild(firstClone);
+            }}
+        }}
+
         const sheet = document.getElementById('bottomSheet');
         const handleArea = document.getElementById('sheetHandle');
         let startY = 0; let currentY = 0; let isDragging = false;
+        let startHeight = 0;
 
-        function bHandleStart(e) {{ startY = e.touches ? e.touches[0].clientY : e.clientY; isDragging = true; sheet.style.transition = 'none'; }}
-        function bHandleMove(e) {{ if (!isDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); currentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = currentY - startY; if (deltaY > 0) {{ sheet.style.transform = `translateY(${{deltaY}}px)`; }} }}
-        function bHandleEnd(e) {{ if (!isDragging) return; isDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : currentY; if (!e.touches && currentY === 0) endY = startY; const deltaY = endY - startY; sheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY > 50) {{ closeBottomSheet(); }} else {{ sheet.style.transform = "translateY(0)"; }} currentY = 0; startY = 0; }}
+        function bHandleStart(e) {{ 
+            startY = e.touches ? e.touches[0].clientY : e.clientY; 
+            isDragging = true; 
+            sheet.style.transition = 'none'; 
+            document.getElementById('timeMorphContainer').style.transition = 'none';
+            startHeight = sheet.offsetHeight;
+        }}
+        
+        function bHandleMove(e) {{ 
+            if (!isDragging) return; 
+            if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); 
+            currentY = e.touches ? e.touches[0].clientY : e.clientY; 
+            const deltaY = currentY - startY; 
+            
+            let newHeight = startHeight - deltaY;
+            
+            if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
+            
+            sheet.style.height = newHeight + 'px';
+
+            let ratio = (newHeight - PEEK_HEIGHT) / (EXPANDED_HEIGHT - PEEK_HEIGHT);
+            interpolateMorph(ratio);
+        }}
+        
+        function bHandleEnd(e) {{ 
+            if (!isDragging) return; isDragging = false; 
+            
+            sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            document.getElementById('timeMorphContainer').style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            
+            let currentH = sheet.offsetHeight;
+            
+            if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {{
+                updateSheetState('EXPANDED');
+            }} else {{
+                if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
+                else updateSheetState('PEEK');
+            }}
+            currentY = 0; startY = 0; 
+        }}
+        
         handleArea.addEventListener('touchstart', bHandleStart, {{passive: true}}); handleArea.addEventListener('touchmove', bHandleMove, {{passive: false}}); handleArea.addEventListener('touchend', bHandleEnd); handleArea.addEventListener('mousedown', bHandleStart); window.addEventListener('mousemove', bHandleMove); window.addEventListener('mouseup', bHandleEnd);
 
         const filterSheet = document.getElementById('filterSheet');
         const filterHandle = document.getElementById('filterHandle');
         let fStartY = 0; let fCurrentY = 0; let fIsDragging = false;
-
         function fHandleStart(e) {{ fStartY = e.touches ? e.touches[0].clientY : e.clientY; fIsDragging = true; filterSheet.style.transition = 'none'; }}
         function fHandleMove(e) {{ if (!fIsDragging) return; if(e.cancelable && e.type.startsWith('touch')) e.preventDefault(); fCurrentY = e.touches ? e.touches[0].clientY : e.clientY; const deltaY = fCurrentY - fStartY; if (deltaY < 0) {{ filterSheet.style.transform = `translateY(${{deltaY}}px)`; }} }}
         function fHandleEnd(e) {{ if (!fIsDragging) return; fIsDragging = false; let endY = e.changedTouches ? e.changedTouches[0].clientY : fCurrentY; if (!e.touches && fCurrentY === 0) endY = fStartY; const deltaY = endY - fStartY; filterSheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; if (deltaY < -50) {{ closeFilterSheet(); }} else {{ filterSheet.style.transform = "translateY(0)"; }} fCurrentY = 0; fStartY = 0; }}
@@ -499,11 +956,7 @@ def update_map():
 
         function toggleFilterSheet() {{
             var sheet = document.getElementById('filterSheet');
-            if (sheet.style.transform === "translateY(0px)" || sheet.style.transform === "") {{
-                closeFilterSheet();
-            }} else {{
-                openFilterSheet();
-            }}
+            if (sheet.style.transform === "translateY(0px)" || sheet.style.transform === "") {{ closeFilterSheet(); }} else {{ openFilterSheet(); }}
         }}
 
         function moveToMyLocation() {{
@@ -519,16 +972,13 @@ def update_map():
         }}
 
         var selectedFilters = {{ 'region': [], 'day': [], 'target': [] }};
-
         function openFilterSheet() {{ document.getElementById('filterSheet').style.transform = "translateY(0)"; }}
         function closeFilterSheet() {{ document.getElementById('filterSheet').style.transform = "translateY(-100%)"; }}
-
         function toggleFilter(category, value, element) {{
             var index = selectedFilters[category].indexOf(value);
             if (index === -1) {{ selectedFilters[category].push(value); element.classList.add('selected'); }} 
             else {{ selectedFilters[category].splice(index, 1); element.classList.remove('selected'); }}
         }}
-
         function resetFilters() {{
             selectedFilters = {{ 'region': [], 'day': [], 'target': [] }};
             document.querySelectorAll('.chip').forEach(el => el.classList.remove('selected'));
@@ -540,7 +990,6 @@ def update_map():
             if (window.event && window.event.type === 'click') closeFilterSheet();
             var keyword = document.getElementById('topSearchInput').value.trim();
             var filterCount = selectedFilters.region.length + selectedFilters.day.length + selectedFilters.target.length;
-            
             if (filterCount > 0) {{ document.getElementById('filterBadge').classList.add('active'); }} 
             else {{ document.getElementById('filterBadge').classList.remove('active'); }}
 
@@ -550,7 +999,6 @@ def update_map():
 
             markers.forEach(function(item) {{
                 var club = item.club;
-                
                 var regionMatch = true;
                 if (selectedFilters.region.length > 0) {{
                     regionMatch = false;
@@ -562,7 +1010,6 @@ def update_map():
                         else if (club.address.startsWith(r)) regionMatch = true;
                     }}
                 }}
-                
                 var dayMatch = true;
                 if (selectedFilters.day.length > 0) {{
                     dayMatch = false;
@@ -570,7 +1017,6 @@ def update_map():
                     if (cleanSchedule.includes("매일")) dayMatch = true;
                     else {{ for (var i = 0; i < selectedFilters.day.length; i++) {{ if (cleanSchedule.includes(selectedFilters.day[i])) dayMatch = true; }} }}
                 }}
-                
                 var targetMatch = true;
                 if (selectedFilters.target.length > 0) {{
                     targetMatch = false;
@@ -578,17 +1024,13 @@ def update_map():
                     for (var i = 0; i < selectedFilters.target.length; i++) {{ if (club.target.includes(selectedFilters.target[i])) targetMatch = true; }}
                     if (!hasSpecialFilter && club.target.includes("무관")) targetMatch = true;
                 }}
-                
                 var keywordMatch = true;
                 if (keyword.length > 0) {{ if (!club.name.includes(keyword) && !club.address.includes(keyword)) {{ keywordMatch = false; }} }}
 
                 if (regionMatch && dayMatch && targetMatch && keywordMatch) {{ 
                     item.isVisible = true; 
-                    if (club.is_urgent) {{
-                        item.marker.setMap(map); 
-                    }} else {{
-                        visibleNormalMarkers.push(item.marker); 
-                    }}
+                    if (club.is_urgent) {{ item.marker.setMap(map); }} 
+                    else {{ visibleNormalMarkers.push(item.marker); }}
                     bounds.extend(item.marker.getPosition());
                 }} else {{ 
                     item.isVisible = false; 
@@ -600,9 +1042,7 @@ def update_map():
             clusterer.addMarkers(visibleNormalMarkers);
             updateLabelVisibility();
 
-            if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) {{
-                map.setBounds(bounds);
-            }}
+            if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) {{ map.setBounds(bounds); }}
         }}
 
         applyFilters();

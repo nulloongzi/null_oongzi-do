@@ -36,23 +36,20 @@
             console.error("Firebase 초기화 실패:", e);
         }
 
-        // 🍚 밥 종류별 색상 정의
+        // 밥 종류별 색상 정의
         const riceData = [
-            // [흔함]
-            {name: "현미밥", weight: 50, color: "#d7ccc8"}, // 베이지
-            {name: "백미밥", weight: 50, color: "#fafafa"}, // 흰색 (크림)
-            {name: "흑미밥", weight: 50, color: "#b39ddb"}, // 연보라
-            {name: "보리밥", weight: 50, color: "#cfd8dc"}, // 회색빛
-            {name: "콩밥", weight: 50, color: "#a5d6a7"},   // 연두색
-            {name: "오곡밥", weight: 50, color: "#ffe0b2"}, // 연주황
-
-            // [덜 흔함]
-            {name: "차조밥", weight: 10, color: "#fff59d"}, // 노랑
+            {name: "현미밥", weight: 50, color: "#d7ccc8"}, 
+            {name: "백미밥", weight: 50, color: "#fafafa"}, 
+            {name: "흑미밥", weight: 50, color: "#b39ddb"}, 
+            {name: "보리밥", weight: 50, color: "#cfd8dc"}, 
+            {name: "콩밥", weight: 50, color: "#a5d6a7"},   
+            {name: "오곡밥", weight: 50, color: "#ffe0b2"}, 
+            {name: "차조밥", weight: 10, color: "#fff59d"}, 
             {name: "기장밥", weight: 10, color: "#fff9c4"}, 
             {name: "숭늉", weight: 10, color: "#efebe9"},
-            {name: "볶음밥", weight: 10, color: "#ffcc80"}, // 볶음색
-            {name: "비빔밥", weight: 10, color: "#ffab91"}, // 고추장색
-            {name: "김밥", weight: 10, color: "#bdbdbd"},   // 김 색
+            {name: "볶음밥", weight: 10, color: "#ffcc80"}, 
+            {name: "비빔밥", weight: 10, color: "#ffab91"}, 
+            {name: "김밥", weight: 10, color: "#bdbdbd"},   
             {name: "주먹밥", weight: 10, color: "#f5f5f5"},
             {name: "유부초밥", weight: 10, color: "#ffe082"},
             {name: "덮밥", weight: 10, color: "#dcedc8"},
@@ -60,44 +57,30 @@
             {name: "솥밥", weight: 10, color: "#bcaaa4"},
             {name: "약밥", weight: 10, color: "#8d6e63"},
             {name: "죽", weight: 10, color: "#e0f2f1"},
-            {name: "곤드레밥", weight: 10, color: "#81c784"}, // 나물색
+            {name: "곤드레밥", weight: 10, color: "#81c784"}, 
             {name: "영양밥", weight: 10, color: "#ffecb3"},
-            {name: "치밥", weight: 10, color: "#ff8a65"}, // 양념치킨색
+            {name: "치밥", weight: 10, color: "#ff8a65"}, 
             {name: "햇반", weight: 10, color: "#ffffff"},
             {name: "고봉밥", weight: 10, color: "#fbe9e7"},
-
-            // [레어]
-            {name: "밥아저씨", weight: 1, color: "#4fc3f7"} // 하늘색
+            {name: "밥아저씨", weight: 1, color: "#4fc3f7"} 
         ];
 
         function generateRiceName() {
             let totalWeight = 0;
             for (let item of riceData) totalWeight += item.weight;
-
             let randomNum = Math.random() * totalWeight;
             let selected = riceData[0];
-
             for (let item of riceData) {
-                if (randomNum < item.weight) {
-                    selected = item;
-                    break;
-                }
+                if (randomNum < item.weight) { selected = item; break; }
                 randomNum -= item.weight;
             }
-            
             const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
             let suffix = "";
             for (let i = 0; i < 3; i++) suffix += chars.charAt(Math.floor(Math.random() * chars.length));
-            
-            return {
-                base: selected.name,
-                code: suffix,
-                full: selected.name + "-" + suffix,
-                color: selected.color
-            };
+            return { base: selected.name, code: suffix, full: selected.name + "-" + suffix, color: selected.color };
         }
 
-        // 현재 클럽 데이터
+        // 현재 클럽 데이터 연동 (파이썬에서 주입)
         const allClubs = [{"name": "GVT", "target": "성인, 대학생", "address": "서울특별시 광진구 아차산로70길 35", "schedule": "토 13:00~17:00", "price": "월 3만원 (학생 2만원) / 게스트 1만원", "insta": "gvt__official", "link": "", "lat": 37.5409675314785, "lng": 127.100704228215, "id": 0, "is_urgent": true, "urgent_msg": "🔹 남자부 모집중‼ 게스트 환영‼ 🔹"}, {"name": "브이홀릭", "target": "성인, 대학생", "address": "경기도 성남시 분당구 양현로 262", "schedule": "화/금 19:00~22:00 / 일 14:00~18:00", "price": "월 4만원 / 게스트 1만원", "insta": "v_holic_2010", "link": "", "lat": 37.4073263996148, "lng": 127.126612716157, "id": 1, "is_urgent": false, "urgent_msg": ""}, {"name": "H_B", "target": "성인, 대학생 (선출가능)", "address": "경기도 수원시 장안구 수일로233번길 15", "schedule": "수 18:00~22:00", "price": "월 2만원 / 게스트 8천원 (싸다싸!)", "insta": "hb_volleyball_club", "link": "http://www.hb-volleyball.co.kr", "lat": 37.3073441859489, "lng": 127.015667305962, "id": 2, "is_urgent": false, "urgent_msg": ""}, {"name": "H_B", "target": "성인, 대학생 (선출가능)", "address": "경기도 화성시 매송면 매송로 41", "schedule": "토 18:00~22:00", "price": "월 2만원 / 게스트 8천원 (싸다싸!)", "insta": "hb_volleyball_club", "link": "http://www.hb-volleyball.co.kr", "lat": 37.2518258783031, "lng": 126.909629549921, "id": 3, "is_urgent": false, "urgent_msg": ""}, {"name": "동두천화목배구클럽", "target": "성인, 대학생, 청소년", "address": "경기도 동두천시 어수로 4", "schedule": "월/수/금 19:30~22:00", "price": "월 1만원", "insta": "ddc_voller", "link": "https://open.kakao.com/o/p10jZzWh", "lat": 37.9052629454328, "lng": 127.043063227981, "id": 4, "is_urgent": false, "urgent_msg": ""}, {"name": "팀큐브", "target": "성인, 대학생, (여성전용, 6인제)", "address": "서울 강남구 삼성로135길 42", "schedule": "월/수 19:00~21:00", "price": "월 6.5만원(주2회 11만원) / 게스트 2.5만원", "insta": "teamcubevc", "link": "", "lat": 37.520125172379, "lng": 127.044715764538, "id": 5, "is_urgent": false, "urgent_msg": ""}, {"name": "성북SVA", "target": "성인, 대학생, 청소년", "address": "서울 성북구 화랑로13길 144", "schedule": "화/목 19:00~22:00", "price": "월 8만원", "insta": "kr_sports_plus", "link": "", "lat": 37.6085494620429, "lng": 127.042324971736, "id": 6, "is_urgent": false, "urgent_msg": ""}, {"name": "라이크발리볼", "target": "성인, 대학생", "address": "인천 미추홀구 석정로 165", "schedule": "토 12:30~16:30", "price": "월 3만원 / 게스트 1만원", "insta": "likevolleyball_team", "link": "", "lat": 37.4739644136398, "lng": 126.651978806147, "id": 7, "is_urgent": false, "urgent_msg": ""}, {"name": "라이크발리볼", "target": "성인, 대학생", "address": "인천 서구 한중로 25", "schedule": "수 18:00~21:00", "price": "월 3만원 / 게스트 1만원", "insta": "likevolleyball_team", "link": "", "lat": 37.5795849502601, "lng": 126.672802385687, "id": 8, "is_urgent": false, "urgent_msg": ""}, {"name": "JK배구클럽", "target": "성인, 대학생", "address": "경기 시흥시 장곡로 10", "schedule": "일 10:00~13:00", "price": "회비3만 / 게스트비 없음", "insta": "", "link": "https://m.cafe.daum.net/volleyballsok/IfzY/3333?searchView=Y", "lat": 37.3798358362533, "lng": 126.787616614841, "id": 9, "is_urgent": false, "urgent_msg": ""}, {"name": "새로(CERO)", "target": "성인, 대학생", "address": "서울 강동구 상일로12길 56", "schedule": "토 14:00~17:00", "price": "월 4만원 / 게스트 1만원", "insta": "cero_vc", "link": "", "lat": 37.5556127825867, "lng": 127.174608361426, "id": 10, "is_urgent": false, "urgent_msg": ""}, {"name": "마산베스트", "target": "성인, 대학생", "address": "경남 창원시 마산회원구 팔용로 280", "schedule": "화/목 19:00~21:00", "price": "월3만원", "insta": "masan_best", "link": "", "lat": 35.248323558591, "lng": 128.602594607144, "id": 11, "is_urgent": false, "urgent_msg": ""}, {"name": "대구 NTC", "target": "성인, 대학생, (선출가능, 군미필 상관x)", "address": "대구 달서구 계대동문로3길 46", "schedule": "월/수/목 18:30~21:30", "price": "월3만원 / 게스트비 x", "insta": "ntc_volleyball", "link": "", "lat": 35.8579351866729, "lng": 128.494745397447, "id": 12, "is_urgent": false, "urgent_msg": ""}, {"name": "광명선우", "target": "무관", "address": "경기 광명시 가림로 18 하안북초등학교", "schedule": "일 13:00~17:00", "price": "월 2만원 / 게스트 1만원", "insta": "volleyball_sunwoo", "link": "", "lat": 37.4647085135351, "lng": 126.869134235278, "id": 13, "is_urgent": false, "urgent_msg": ""}, {"name": "우리하모니", "target": "성인, 대학생 (여성전용)", "address": "서울 양천구 남부순환로 380", "schedule": "토 14:00~18:00", "price": "월 3만원 / 게스트 1만원", "insta": "harmony__volleyball", "link": "", "lat": 37.5326758132814, "lng": 126.828972567552, "id": 14, "is_urgent": false, "urgent_msg": ""}, {"name": "FAV", "target": "성인, 대학생", "address": "경기도 고양시 일산 서구 송포백송길 70-1", "schedule": "월/화/수/목/금 19: 40~21:30", "price": "성인 월 기준 - 주 1회 14만원, 주 2~3회 19만원", "insta": "favclub.official", "link": "http://litt.ly/fav_volleyball", "lat": 37.6929835875228, "lng": 126.736120374622, "id": 15, "is_urgent": false, "urgent_msg": ""}, {"name": "구미 거북클럽", "target": "성인, 대학생, 무관 (선출가능)", "address": "경북 구미시 형곡로14길 5-20", "schedule": "화 18:30~21:30 / 토 14:00~17:30", "price": "월 2만원", "insta": "volleyball_gumi", "link": "https://m.cafe.naver.com/geobukclub.cafe?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAb21jcAOw3JBleHRuA2FlbQIxMQBzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAact0OTzvMhVFL7QPLtsO9AWmiWgTsYPFoXQoegc5zLSWZD2Xd0HgqvY9Fs8Sg_aem_zOfY0iLzVbb2vT-dMgNk2Q", "lat": 36.1147023025135, "lng": 128.329775063006, "id": 16, "is_urgent": false, "urgent_msg": ""}, {"name": "강서VC", "target": "성인, 대학생", "address": "서울 강서구 등촌로39길 71", "schedule": "수 18:00~21:00 / 토 15:00~18:00", "price": "분기 8만원(학생 5만원) / 게스트 1만원", "insta": "gangseo.vc", "link": "", "lat": 37.5476142187642, "lng": 126.857942163854, "id": 17, "is_urgent": false, "urgent_msg": ""}, {"name": "레드팡스", "target": "성인", "address": "서울 노원구 섬밭로 181", "schedule": "목 18:00~21:00 / 일 16:30~19:30", "price": "월 3만원 / 게스트 8천원", "insta": "", "link": "https://www.daangn.com/kr/group/%EB%B0%B0%EA%B5%AC%EB%8F%99%ED%98%B8%ED%9A%8C-%EB%A0%88%EB%93%9C%ED%8C%A1%EC%8A%A4-2wq9tjryem95/", "lat": 37.632255170053, "lng": 127.066056635951, "id": 18, "is_urgent": false, "urgent_msg": ""}, {"name": "정무배구", "target": "무관", "address": "전북 전주시 덕진구 만성북4길 10", "schedule": "수/목 19:00~21:00", "price": "주1회 월 5만원, 주2회 월 7만원", "insta": "jeongmu_volley", "link": "", "lat": 35.8477726720349, "lng": 127.074701125365, "id": 19, "is_urgent": false, "urgent_msg": ""}, {"name": "안성 넘버나인", "target": "성인, 대학생", "address": "경기 안성시 비룡로 78", "schedule": "수 19:00~21:40", "price": "", "insta": "anseong_no9_volleyballclub", "link": "https://www.youtube.com/@%EC%95%88%EC%84%B1%EB%84%98%EB%B2%84%EB%82%98%EC%9D%B89", "lat": 37.015078008763, "lng": 127.263020902801, "angle": 0.0, "id": 20, "is_urgent": false, "urgent_msg": ""}, {"name": "하이발리", "target": "성인", "address": "경기 파주시 다율로30", "schedule": "수 19:00~21:00", "price": "월 4만원 / 게스트 1만원", "insta": "high.volley", "link": "", "lat": 37.7379799283829, "lng": 126.726930320218, "id": 21, "is_urgent": false, "urgent_msg": ""}, {"name": "임팩트", "target": "성인, 대학생, 청소년", "address": "경기 파주시 월롱면 휴암로 434", "schedule": "목 19:00~22:00", "price": "월 2만원 / 게스트 5천원", "insta": "paju_impact", "link": "http://kko.to/7v33m3qZj", "lat": 37.8300288380237, "lng": 126.781056138359, "id": 22, "is_urgent": false, "urgent_msg": ""}, {"name": "임팩트", "target": "성인, 대학생, 청소년", "address": "경기 파주시 해솔로 60", "schedule": "토 13:00~17:00", "price": "월 2만원 / 게스트 5천원", "insta": "paju_impact", "link": "http://kko.to/7v33m3qZj", "lat": 37.7274642059342, "lng": 126.745874918567, "id": 23, "is_urgent": false, "urgent_msg": ""}, {"name": "안성MVP", "target": "성인", "address": "경기 안성시 공도읍 기업단지로 57", "schedule": "화/목 19:00~21:30", "price": "월 3만원", "insta": "mvp_official_2014", "link": "https://open.kakao.com/o/s8T9ZYWe", "lat": 37.0028098402492, "lng": 127.15850296807, "id": 24, "is_urgent": false, "urgent_msg": ""}, {"name": "대구 두류배구회", "target": "성인, 대학생, 청소년, 무관", "address": "대구 달서구 서당로 30", "schedule": "일 09:00~13:00", "price": "회비 남:월 2만원, 여:월 1만원 (가입비 3만원)", "insta": "", "link": "https://open.kakao.com/o/sNOhf3Ah", "lat": 35.8545121028952, "lng": 128.496514228915, "id": 25, "is_urgent": false, "urgent_msg": ""}, {"name": "DGZ", "target": "성인", "address": "서울 동작구 장승배기로10가길 35", "schedule": "일 9:30~14:20 (남녀 두시간씩)", "price": "월 4만원 / 게스트 1만원 (현재 무료)", "insta": "dgz_volleyball_club", "link": "", "lat": 37.5027160069897, "lng": 126.940926768444, "angle": 0.0, "id": 26, "is_urgent": false, "urgent_msg": ""}, {"name": "여수에이스", "target": "성인", "address": "전남 여수시 웅천북4로 9", "schedule": "화/금 18:30~21:40", "price": "월 2만원 / 게스트 1만원", "insta": "yeosu_ace_volleyball", "link": "", "lat": 34.7483267150984, "lng": 127.684825674004, "id": 27, "is_urgent": false, "urgent_msg": ""}, {"name": "V.O.L", "target": "성인, 대학생", "address": "서울 동작구 장승배기로10가길 35", "schedule": "수 18:30~21:30 / 토 12:30~18:00", "price": "월 4만원 / 게스트 1만원", "insta": "v.o.l_volleyball", "link": "", "lat": 37.5027160069897, "lng": 126.940726768444, "angle": 3.141592653589793, "id": 28, "is_urgent": false, "urgent_msg": ""}, {"name": "레이더스", "target": "성인", "address": "경기 안성시 비룡로 78", "schedule": "화/금 19:00~21:30", "price": "30세 미만 월 1만원, 30세 이상 월 2만원 / 게스트비 없음", "insta": "raiders_volleyball_team", "link": "", "lat": 37.015078008763, "lng": 127.262820902801, "angle": 3.141592653589793, "id": 29, "is_urgent": false, "urgent_msg": ""}, {"name": "경주 더케이", "target": "성인, 대학생", "address": "경북 경주시 광중2길 28", "schedule": "화/목 18:00~20:00", "price": "월 3.5만원 (연납 3만원) / 1회체험비 무료", "insta": "thek_vbc", "link": "pf.kakao.com/_xcTaxmn", "lat": 35.8849473288934, "lng": 129.229737107908, "id": 30, "is_urgent": false, "urgent_msg": ""}, {"name": "원주 스마일 배구클럽", "target": "무관", "address": "강원 원주시 남원로 551", "schedule": "화 18:00~22:00 / 토 13:00~16:00", "price": "월 성인 2.5만원, 대학생1.5만원 / 게스트비 5천원", "insta": "smile.volleyball.club_", "link": "https://open.kakao.com/o/gTs0Mpse", "lat": 37.3338307104893, "lng": 127.946303709594, "id": 31, "is_urgent": false, "urgent_msg": ""}, {"name": "우사모 SWVC", "target": "성인, 대학생", "address": "서울 도봉구 우이천로 432", "schedule": "일 13:00~18:00", "price": "월 4만원(학생 및 무직은 3만원) / 게스트 1만원", "insta": "swvc_volley", "link": "", "lat": 37.6526987118348, "lng": 127.0184004627, "id": 32, "is_urgent": false, "urgent_msg": ""}, {"name": "NWN", "target": "성인, 대학생", "address": "서울 노원구 한글비석로 566", "schedule": "수 18:30~21:30 / 토 15:00~19:00", "price": "월 3만원 / 게스트 1만원", "insta": "nowon_no.1_volleyball", "link": "https://m.cafe.daum.net/nowon-no.1/_rec?utm_source=ig&utm_medium=social&utm_content=link_in_bio", "lat": 37.6648178269709, "lng": 127.054322233957, "id": 33, "is_urgent": false, "urgent_msg": ""}, {"name": "어나더레벨", "target": "무관", "address": "세종특별자치시 다정남로 91", "schedule": "수 19:00~21:30", "price": "신규 첫달 6만 / 월 3만 / 게스트1회무료(2회 1만원)", "insta": "khp4949", "link": "https://open.kakao.com/o/g3dvQE4g", "lat": 36.4939039101709, "lng": 127.250966962615, "id": 34, "is_urgent": false, "urgent_msg": ""}, {"name": "시흥 수요배구회 픽업게임", "target": "성인, 대학생", "address": "경기 시흥시 장곡로54번길 14", "schedule": "수 17:50~20:50", "price": "없음", "insta": "volleyball_pickup_siheung", "link": "https://open.kakao.com/o/s2KVlj0h", "lat": 37.380779446634, "lng": 126.78327876897, "id": 35, "is_urgent": false, "urgent_msg": ""}, {"name": "군포배구클럽", "target": "성인, 대학생", "address": "경기 군포시 산본로 267", "schedule": "일 10:00~16:00", "price": "월 2.5만원 / 게스트 1만원", "insta": "gunpo_volleyball", "link": "https://open.kakao.com/o/g1qV2i3h", "lat": 37.3540356844596, "lng": 126.936815220052, "id": 36, "is_urgent": false, "urgent_msg": ""}, {"name": "부산배구클럽", "target": "성인, 대학생, 청소년, 선출가능", "address": "부산 북구 덕천2길 10", "schedule": "화 18:00~21:00", "price": "성인 월 2만원 (대학생 월 1.5만원, 고등학생 월 1만원)", "insta": "volleyball_busan", "link": "https://open.kakao.com/o/suiGnD0", "lat": 35.2082050651349, "lng": 129.006965137504, "id": 37, "is_urgent": false, "urgent_msg": ""}, {"name": "HB아카데미", "target": "무관", "address": "서울 도봉구 노해로 273", "schedule": "월 17:00-18:30 / 일 15:00-16:30 / 일 16:30-18:00", "price": "1회 무료체험 / 학생 12만원 / 성인 14만원 / 개인레슨 문의", "insta": "h_bacademy", "link": "https://m.blog.naver.com/rudejr2238", "lat": 37.6518477614279, "lng": 127.038744954072, "id": 38, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 마음로 284", "schedule": "화 19:00~22:00", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.519724340798, "lng": 127.236589788899, "id": 39, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 세종로 941", "schedule": "목 18:30~21:00", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.4877156432012, "lng": 127.243231178402, "id": 40, "is_urgent": false, "urgent_msg": ""}, {"name": "세종 맥스(Team Max)", "target": "성인, 대학생, 선출가능", "address": "세종특별자치시 아름동 804", "schedule": "일  9:00~12:00 (남) / 12:00~4:00 (여)", "price": "가입비 2만원 / 월 3만원 / 게스트 5천원", "insta": "max_volleyball_", "link": "https://open.kakao.com/o/sT6CiRdf", "lat": 36.523100478656, "lng": 127.255014907693, "id": 41, "is_urgent": false, "urgent_msg": ""}, {"name": "순천배구클럽", "target": "성인, 대학생", "address": "전남 순천시 북정2길 20", "schedule": "화 18:30~22:00", "price": "월 3.5만원", "insta": "heooooooeh", "link": "", "lat": 34.9646430183578, "lng": 127.483992847829, "id": 42, "is_urgent": false, "urgent_msg": ""}, {"name": "순천배구클럽", "target": "성인, 대학생", "address": "전남 순천시 순광로 15", "schedule": "금 18:30~21:30", "price": "월 3.5만원", "insta": "heooooooeh", "link": "", "lat": 34.9560628875777, "lng": 127.522478978541, "id": 43, "is_urgent": false, "urgent_msg": ""}, {"name": "목포하나클럽", "target": "성인, 대학생", "address": "전남 목포시 남악1로16번길 25", "schedule": "월/수/금 18:30~21:40", "price": "월 3만원 / 게스트 비용 없음", "insta": "mokpo_hana_vc", "link": "", "lat": 34.8080460089449, "lng": 126.449995234402, "id": 44, "is_urgent": false, "urgent_msg": ""}, {"name": "하이원배구동호회", "target": "성인", "address": "경기 하남시 아리수로 600", "schedule": "화/수/목 10:00~12:00", "price": "월 1만원", "insta": "", "link": "https://www.daangn.com/kr/community/%ED%95%98%EB%82%A8%EC%8B%9C-%EC%97%AC%EC%9E%90-%EB%B0%B0%EA%B5%AC-%EB%8F%99%ED%98%B8%ED%9A%8C-54tne9r282sz/", "lat": 37.5657002161617, "lng": 127.193906244378, "id": 45, "is_urgent": false, "urgent_msg": ""}];
 
         async function checkDuplicateNickname(nickname) {
@@ -127,11 +110,7 @@
         window.loginWithGoogle = async function() {
             if (!auth) return;
             const provider = new GoogleAuthProvider();
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                alert("로그인 실패: " + error.message);
-            }
+            try { await signInWithPopup(auth, provider); } catch (error) { alert("로그인 실패: " + error.message); }
         };
 
         window.registerWithEmail = async function() {
@@ -162,41 +141,24 @@
             const userRef = doc(db, "users", user.uid);
             try {
                 const userSnap = await getDoc(userRef);
-
                 if (userSnap.exists()) {
                     currentProfileData = userSnap.data();
                 } else {
-                    let newNameObj = null;
-                    let isUnique = false;
-                    let retryCount = 0;
-
+                    let newNameObj = null; let isUnique = false; let retryCount = 0;
                     while (!isUnique && retryCount < 10) {
                         newNameObj = generateRiceName();
                         const isDup = await checkDuplicateNickname(newNameObj.full);
-                        if (!isDup) isUnique = true;
-                        else retryCount++;
+                        if (!isDup) isUnique = true; else retryCount++;
                     }
                     if (!isUnique) newNameObj.full += Date.now().toString().slice(-4);
-
                     const now = new Date();
-                    const userData = {
-                        nickname: newNameObj.base,
-                        suffix: newNameObj.code,
-                        full_nickname: newNameObj.full,
-                        color: newNameObj.color,
-                        created_at: now,
-                        email: user.email,
-                        bookmarks: [] 
-                    };
-                    
+                    const userData = { nickname: newNameObj.base, suffix: newNameObj.code, full_nickname: newNameObj.full, color: newNameObj.color, created_at: now, email: user.email, bookmarks: [] };
                     await setDoc(userRef, userData);
                     currentProfileData = userData;
                     alert("환영합니다! [" + newNameObj.full + "]님이 되셨습니다! 🍚");
                 }
                 renderProfileCard();
-            } catch (error) {
-                console.error("DB Error:", error);
-            }
+            } catch (error) { console.error("DB Error:", error); }
         }
 
         function updateProfileUI(isLoggedIn) {
@@ -213,7 +175,6 @@
 
         function renderProfileCard() {
             if (!currentProfileData) return;
-            
             const card = document.getElementById('myProfileCard');
             const nicknameEl = document.getElementById('pcNickname');
             const dateEl = document.getElementById('pcDate');
@@ -226,14 +187,11 @@
                 bgColor = found ? found.color : "#fbc02d";
             }
             card.style.backgroundColor = bgColor;
-
             nicknameEl.innerText = currentProfileData.full_nickname;
-
             if (currentProfileData.created_at) {
                 const d = new Date(currentProfileData.created_at.seconds * 1000);
                 dateEl.innerText = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
             }
-
             const bookmarks = currentProfileData.bookmarks || [];
             if (bookmarks.length > 0) {
                 const mainId = bookmarks[0];
@@ -245,84 +203,46 @@
         }
 
         window.bookmarkTeam = async function(teamId) {
-            if (!currentUser || !db) {
-                alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요.");
-                return;
-            }
+            if (!currentUser || !db) { alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요."); return; }
             try {
                 const userRef = doc(db, "users", currentUser.uid);
-                
                 let bookmarks = currentProfileData.bookmarks || [];
-                
-                if (bookmarks.includes(teamId)) {
-                    alert("이미 도시락에 담긴 팀입니다! 🍱");
-                    return;
-                }
-                
-                if (bookmarks.length >= 5) {
-                    alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요.");
-                    return;
-                }
-
-                await updateDoc(userRef, {
-                    bookmarks: arrayUnion(teamId)
-                });
-                
+                if (bookmarks.includes(teamId)) { alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }
+                if (bookmarks.length >= 5) { alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요."); return; }
+                await updateDoc(userRef, { bookmarks: arrayUnion(teamId) });
                 if (!currentProfileData.bookmarks) currentProfileData.bookmarks = [];
                 currentProfileData.bookmarks.push(teamId);
-                
                 alert("도시락에 팀을 담았습니다! 🍱");
                 renderProfileCard(); 
-            } catch (e) {
-                console.error(e);
-                alert("찜하기 실패: " + e.message);
-            }
+            } catch (e) { alert("찜하기 실패: " + e.message); }
         };
 
         window.openLunchbox = function() {
-            if (!currentProfileData || !currentProfileData.bookmarks || currentProfileData.bookmarks.length === 0) {
-                alert("도시락이 비어있어요! 팀 상세화면에서 [🍱 담기]를 눌러보세요.");
-                return;
-            }
-            
+            if (!currentProfileData || !currentProfileData.bookmarks || currentProfileData.bookmarks.length === 0) { alert("도시락이 비어있어요! 팀 상세화면에서 [🍱 담기]를 눌러보세요."); return; }
             const overlay = document.getElementById('lunchboxOverlay');
             const grid = document.getElementById('lunchboxGrid');
             grid.innerHTML = ""; 
-
             const bookmarks = currentProfileData.bookmarks; 
             const slots = [null, null, null, null, null];
-            bookmarks.forEach((bid, idx) => {
-                if (idx < 5) slots[idx] = bid;
-            });
-
+            bookmarks.forEach((bid, idx) => { if (idx < 5) slots[idx] = bid; });
             for (let i = 0; i < 5; i++) {
                 const teamId = slots[i];
                 const div = document.createElement('div');
                 div.className = 'lb-cell slot-' + i;
-                
                 if (teamId !== null) {
                     const team = allClubs.find(c => c.id === teamId);
                     if (team) {
                         div.innerText = team.name;
-                        div.onclick = function() {
-                            overlay.style.display = 'none';
-                            moveToTeamLocation(team.lat, team.lng);
-                        };
+                        div.onclick = function() { overlay.style.display = 'none'; moveToTeamLocation(team.lat, team.lng); };
                         div.classList.add('filled');
                     }
-                } else {
-                    div.innerText = "빈 칸";
-                    div.classList.add('empty');
-                }
+                } else { div.innerText = "빈 칸"; div.classList.add('empty'); }
                 grid.appendChild(div);
             }
-            
             overlay.style.display = 'flex';
         };
 
-        window.closeLunchbox = function() {
-            document.getElementById('lunchboxOverlay').style.display = 'none';
-        };
+        window.closeLunchbox = function() { document.getElementById('lunchboxOverlay').style.display = 'none'; };
 
         function moveToTeamLocation(lat, lng) {
             if (window.map && window.kakao) {
@@ -336,19 +256,13 @@
             if (!currentUser || !db) return;
             const currentName = document.getElementById('pcNickname').innerText;
             const newName = prompt("변경할 닉네임을 입력해주세요 (하이픈 금지)", currentName);
-            
             if (newName && newName.trim() !== "" && newName !== currentName) {
-                if (newName.includes("-")) {
-                    alert("⚠️ 닉네임에 하이픈(-)은 사용할 수 없습니다.\n하이픈은 오직 '밥아저씨'가 랜덤으로 지어준 이름에만 허용됩니다!");
-                    return;
-                }
+                if (newName.includes("-")) { alert("⚠️ 닉네임에 하이픈(-)은 사용할 수 없습니다.\n하이픈은 오직 '밥아저씨'가 랜덤으로 지어준 이름에만 허용됩니다!"); return; }
                 try {
                     const isDup = await checkDuplicateNickname(newName);
                     if (isDup) { alert("이미 누군가 사용 중인 이름입니다."); return; }
-                    
                     const userRef = doc(db, "users", currentUser.uid);
                     await updateDoc(userRef, { full_nickname: newName });
-                    
                     currentProfileData.full_nickname = newName;
                     renderProfileCard();
                     alert("닉네임 변경 완료! 🥄");
@@ -360,78 +274,6 @@
             const overlay = document.getElementById('profileOverlay');
             overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
         };
-
-        // [NEW] Robust Schedule Parsing Logic (Accumulator Pattern)
-        function parseScheduleText(text) {
-            var scheduleMap = {};
-            if (!text) return scheduleMap;
-
-            // 1. Normalize: Remove spaces in times (19: 40 -> 19:40)
-            // Replace "19 : 30" -> "19:30"
-            text = text.replace(/(\d{1,2})\s*:\s*(\d{2})/g, "$1:$2"); 
-            
-            // 2. Split by common delimiters (/, &, ,) but keeping logical chunks
-            // We split by / but treat it carefully
-            var parts = text.split(/[\/,&]/); 
-            var pendingDays = [];
-            var dayMap = {'월': '월', '화': '화', '수': '수', '목': '목', '금': '금', '토': '토', '일': '일'};
-            
-            // Regex for Time Range: 19:00~22:00 or 19:00-22:00
-            var timeReg = /(\d{1,2}):(\d{2})\s*[~-]\s*(\d{1,2}):(\d{2})/;
-
-            parts.forEach(function(part) {
-                part = part.trim();
-                if(!part) return;
-
-                // Check for time range
-                var match = part.match(timeReg);
-                
-                // Extract days in this chunk
-                var currentDays = [];
-                for (var char of part) {
-                    if (dayMap[char]) currentDays.push(dayMap[char]);
-                }
-
-                if (match) {
-                    // Found a time!
-                    var startH = parseInt(match[1]);
-                    var startM = parseInt(match[2]);
-                    var endH = parseInt(match[3]);
-                    var endM = parseInt(match[4]);
-                    
-                    function format12(h, m) {
-                        var p = h >= 12 ? 'PM' : 'AM';
-                        var h12 = h % 12;
-                        if (h12 === 0) h12 = 12;
-                        var mStr = m < 10 ? '0'+m : m;
-                        return p + ' ' + h12 + ':' + mStr;
-                    }
-                    var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
-
-                    // Apply time to ALL accumulated days + current days
-                    var allDays = pendingDays.concat(currentDays);
-                    // Remove duplicates
-                    allDays = [...new Set(allDays)];
-
-                    allDays.forEach(function(day) {
-                        scheduleMap[day] = {
-                            startH: startH, startM: startM,
-                            endH: endH, endM: endM,
-                            text: displayTime
-                        };
-                    });
-
-                    // Reset pending days because they are now assigned
-                    pendingDays = []; 
-                } else {
-                    // No time found, must be just days (e.g., "Mon", "Tue")
-                    // Accumulate them for the NEXT time found
-                    pendingDays = pendingDays.concat(currentDays);
-                }
-            });
-            
-            return scheduleMap;
-        }
     </script>
 
     <style>
@@ -448,7 +290,7 @@
             --nurungji-card: #fbc02d; 
         }
         
-        /* ... (기존 스타일 유지) ... */
+        /* [기존 UI 스타일] */
         .search-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }
         .search-icon-box { width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }
         .main-search-input { flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; }
@@ -471,172 +313,115 @@
         .fab-report { background: #fac710; color: #000; }
         .fab-urgent { background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
         
-        .fab-profile { 
-            position: absolute; bottom: 30px; left: 15px; 
-            z-index: 20; 
-            width: 55px; height: 55px; 
-            background: #fff; /* 흰 쌀밥 배경 */
-            border-radius: 50%; 
-            box-shadow: var(--shadow);
-            display: flex; justify-content: center; align-items: center;
-            font-size: 30px; cursor: pointer;
-            border: 2px solid #eee;
-            transition: transform 0.2s;
-        }
+        /* [NEW] 프로필 & 도시락 버튼 */
+        .fab-profile { position: absolute; bottom: 30px; left: 15px; z-index: 20; width: 55px; height: 55px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; border: 2px solid #eee; transition: transform 0.2s; }
         .fab-profile:active { transform: scale(0.95); }
-
-        /* 도시락 버튼 (플로팅 위) */
-        .fab-lunchbox {
-            position: absolute; bottom: 100px; left: 15px;
-            z-index: 20;
-            width: 50px; height: 50px;
-            background: #fff;
-            border-radius: 50%;
-            box-shadow: var(--shadow);
-            display: flex; justify-content: center; align-items: center;
-            font-size: 26px; cursor: pointer;
-            border: 1px solid #eee;
-            transition: transform 0.2s;
-        }
+        .fab-lunchbox { position: absolute; bottom: 100px; left: 15px; z-index: 20; width: 50px; height: 50px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 26px; cursor: pointer; border: 1px solid #eee; transition: transform 0.2s; }
         .fab-lunchbox:active { transform: scale(0.95); }
 
-        .profile-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            z-index: 500;
-            display: none; 
-            justify-content: center; align-items: center;
-            backdrop-filter: blur(3px);
-        }
+        /* [NEW] 오버레이 스타일 (프로필/로그인/도시락) */
+        .profile-overlay, .lunchbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 500; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .profile-card { width: 80%; max-width: 320px; background: var(--nurungji-card); padding: 30px 20px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.2); position: relative; border: 8px dashed rgba(255,255,255,0.9); border-radius: 40px; background-clip: padding-box; }
+        .pc-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .pc-nickname { color: #fff; font-size: 24px; font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .pc-edit-btn { cursor: pointer; font-size: 18px; background: rgba(255,255,255,0.4); width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+        .pc-date { color: rgba(255,255,255,0.95); font-size: 12px; font-weight: 600; margin-bottom: 10px; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .pc-divider { height: 2px; background: rgba(255,255,255,0.5); width: 50%; margin: 10px auto; border-radius: 1px; }
+        .pc-main-team { color: #fff; font-size: 20px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 5px; }
         
-        /* [수정] 밥알 구름 카드 디자인 (굵은 점선 + 짙은 노랑) */
-        .profile-card {
-            width: 80%; max-width: 320px;
-            background: var(--nurungji-card);
-            padding: 30px 20px;
-            text-align: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            position: relative;
-            border: 8px dashed rgba(255,255,255,0.9);
-            border-radius: 40px; 
-            background-clip: padding-box; 
-        }
-        .pc-header {
-            display: flex; justify-content: center; align-items: center; gap: 8px;
-            margin-bottom: 5px;
-        }
-        .pc-nickname {
-            color: #fff; font-size: 24px; font-weight: 800;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .pc-edit-btn {
-            cursor: pointer; font-size: 18px; 
-            background: rgba(255,255,255,0.4);
-            width: 30px; height: 30px; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .pc-date {
-            color: rgba(255,255,255,0.95);
-            font-size: 12px; font-weight: 600;
-            margin-bottom: 10px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        
-        /* [NEW] 구분선 및 대표팀 */
-        .pc-divider {
-            height: 2px; background: rgba(255,255,255,0.5);
-            width: 50%; margin: 10px auto; border-radius: 1px;
-        }
-        .pc-main-team {
-            color: #fff; font-size: 20px; font-weight: 700;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
-            margin-top: 5px;
-        }
-
-        /* 로그인 섹션 */
         .login-section { display: flex; flex-direction: column; gap: 10px; width: 100%; }
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
         .auth-input { padding: 10px 15px; border-radius: 20px; border: none; outline: none; font-size: 14px; background: rgba(255,255,255,0.9); }
         .btn-row { display: flex; gap: 8px; }
         .btn-auth { flex: 1; padding: 10px; border-radius: 20px; border: none; cursor: pointer; font-weight: 700; font-size: 13px; color: #555; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn-auth.primary { background: #fff; border: 2px solid white; }
-        .btn-auth.secondary { background: transparent; border: 1px solid white; color: white; }
+        .btn-google-login { background: white; color: #555; border: 1px solid #ddd; padding: 12px 20px; border-radius: 30px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-google-login img { width: 18px; height: 18px; }
+        .btn-logout { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 5px 10px; border-radius: 12px; font-size: 12px; cursor: pointer; }
         .divider { color: rgba(255,255,255,0.8); font-size: 11px; margin: 10px 0; display: flex; align-items: center; gap: 10px; }
         .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.5); }
 
-        /* 구글 로그인 버튼 */
-        .btn-google-login {
-            background: white; color: #555; border: 1px solid #ddd; padding: 12px 20px; border-radius: 30px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        /* [수정] 구글 로고 공식 URL */
-        .btn-google-login img { width: 18px; height: 18px; }
-        
-        .btn-logout { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 5px 10px; border-radius: 12px; font-size: 12px; cursor: pointer; }
-
-        /* [NEW] 도시락통 오버레이 */
-        .lunchbox-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 550;
-            display: none; justify-content: center; align-items: center;
-            backdrop-filter: blur(2px);
-        }
-        /* 도시락 그리드 (3열 2행) */
-        .lunchbox-grid {
-            width: 320px; height: 180px;
-            background: #fff8e1; /* 나무 도시락 느낌 연한색 */
-            border: 4px solid #8d6e63;
-            border-radius: 12px;
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            grid-template-rows: 1fr 1fr;
-            gap: 2px;
-            padding: 2px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .lb-cell {
-            background: #fff;
-            border-radius: 4px;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 12px; font-weight: 700; color: #555;
-            text-align: center; padding: 4px;
-            cursor: pointer;
-            transition: background 0.1s;
-            border: 1px solid #e0e0e0;
-        }
+        .lunchbox-grid { width: 320px; height: 180px; background: #fff8e1; border: 4px solid #8d6e63; border-radius: 12px; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .lb-cell { background: #fff; border-radius: 4px; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: 700; color: #555; text-align: center; padding: 4px; cursor: pointer; transition: background 0.1s; border: 1px solid #e0e0e0; }
         .lb-cell:active { background: #eee; }
         .lb-cell.empty { color: #ccc; font-weight: 400; }
         .lb-cell.filled { background: #fffde7; border-color: var(--brand-color); }
+        .slot-2 { grid-row: 1; grid-column: 1 / span 2; } 
+        .slot-3 { grid-row: 1; grid-column: 3 / span 2; } 
+        .slot-4 { grid-row: 1; grid-column: 5 / span 2; } 
+        .slot-0 { grid-row: 2; grid-column: 1 / span 3; } 
+        .slot-1 { grid-row: 2; grid-column: 4 / span 3; } 
 
-        /* Grid Layout Override for irregular shape */
-        /* Row 1 (Top): 3 items -> Each spans 2 cols */
-        .slot-2 { grid-row: 1; grid-column: 1 / span 2; } /* 좌상 */
-        .slot-3 { grid-row: 1; grid-column: 3 / span 2; } /* 중상 */
-        .slot-4 { grid-row: 1; grid-column: 5 / span 2; } /* 우상 */
-        
-        /* Row 2 (Bottom): 2 items -> Each spans 3 cols */
-        .slot-0 { grid-row: 2; grid-column: 1 / span 3; } /* 좌하 */
-        .slot-1 { grid-row: 2; grid-column: 4 / span 3; } /* 우하 */
-
+        /* 지도 마커 및 라벨 */
         .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
         .label:hover { z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }
         .label.urgent { background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
 
-        .bottom-sheet { 
-            position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: #fff; z-index: 200; 
-            border-top-left-radius: 24px; border-top-right-radius: 24px; 
-            box-shadow: 0 -5px 25px rgba(0,0,0,0.15); 
-            display: flex; flex-direction: column;
-            transition: height 0.1s linear; 
-            height: 0; 
-            overflow: hidden;
-        }
+        /* 바텀 시트 */
+        .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: height 0.1s linear; height: 0; overflow: hidden; }
         .sheet-handle-area { width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }
         .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
         .sheet-content-wrapper { flex: 1; overflow-y: auto; padding: 0 24px 20px 24px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
         .sheet-content-wrapper::-webkit-scrollbar { display: none; }
+
+        .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }
+        .sheet-title { font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }
+        .instagram { font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+        .instagram:before { content: ""; position: absolute; border-radius: inherit; aspect-ratio: 1; border: 0.08em solid var(--white); width: 65%; height: 65%; border-radius: 25%; }
+        .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
+
+        /* 타임테이블 관련 스타일 (기존 기능 유지) */
+        .time-morph-container { position: relative; background: transparent; margin-bottom: 20px; transition: height 0.1s linear; overflow: hidden; min-height: 60px; border: none; }
+        .st-bubble { background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; color: #333; white-space: nowrap; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--brand-color); box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); flex-shrink: 0; }
+        .st-day-text { font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }
+        .st-time-text { font-size: 14px; font-weight: 700; color: #333; }
+        .summary-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; gap: 8px; overflow-x: auto; align-items: center; padding: 5px; scrollbar-width: none; opacity: 1; transition: opacity 0.1s; z-index: 10; }
+        .summary-content::-webkit-scrollbar { display: none; }
+        .full-content { position: absolute; top: 0; left: 0; width: 100%; opacity: 0; transition: opacity 0.1s; z-index: 5; }
+        
+        .ft-container { display: flex; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #f0f0f0; }
+        .ft-header-row-flex { display: flex; height: 35px; border-bottom: 1px solid #eee; }
+        .ft-header-cell { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #888; font-weight: 600; background: #fafafa; }
+        .ft-header-cell.time-col { width: 50px; flex: none; border-right: 1px solid #eee; }
+        .ft-header-cell.today { background: var(--today-color); color: #fff; font-weight: 800; }
+        .ft-body { display: flex; position: relative; }
+        .ft-col-time { width: 50px; flex: none; display: flex; flex-direction: column; border-right: 1px solid #eee; background: #fafafa; }
+        .ft-time-label { display: flex; flex-direction: row; gap: 2px; align-items: center; justify-content: center; font-size: 11px; color: #999; font-weight: 500; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
+        .ft-col-day { flex: 1; position: relative; border-right: 1px solid #f8f8f8; }
+        .ft-col-day:last-child { border-right: none; }
+        .ft-event-block { position: absolute; width: 94%; left: 3%; background: rgba(250, 199, 16, 0.25); border-left: 3px solid var(--brand-color); border-radius: 4px; font-size: 10px; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-weight: 700; line-height: 1.2; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 2px; overflow: hidden; }
+
+        .tag-box { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }
+        .tag.target { color: #0056b3; background: #e7f5ff; }
+        .info-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }
+        .info-icon { width: 20px; text-align: center; font-size: 16px; }
+        .action-buttons { display: flex; gap: 12px; margin-top: 20px; }
+        .btn { flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-copy { background: #f1f3f5; color: #333; }
+        .btn-way { background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
+        a.insta-link { text-decoration: none; display: flex; align-items: center; }
+
+        /* 필터 시트 */
+        .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; }
+        .filter-sheet.active { transform: translateY(0); }
+        .fs-header { padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .fs-title { font-size: 20px; font-weight: 800; }
+        .fs-body { flex: 1; overflow-y: auto; padding: 0 24px 10px; }
+        .fs-section { margin-bottom: 25px; }
+        .fs-label { font-size: 14px; font-weight: 700; color: #888; margin-bottom: 10px; display: block; }
+        .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip { padding: 8px 16px; border-radius: 20px; border: 1px solid #e0e0e0; background: #fff; font-size: 14px; color: #555; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .chip:hover { background: #f8f9fa; }
+        .chip.selected { background: var(--brand-color); color: #000; border-color: var(--brand-color); box-shadow: 0 2px 6px rgba(250, 199, 16, 0.3); font-weight: 700; }
+        .fs-footer { padding: 10px 24px 10px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white; }
+        .btn-reset { flex: 0.3; background: #f1f3f5; color: #555; }
+        .btn-apply { flex: 1; background: #333; color: white; }
+        .fs-handle-area { width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }
+        .fs-handle { width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }
+        
         .expand-hint { text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
     </style>
 </head>
@@ -661,19 +446,17 @@
     <div class="fab-profile" onclick="toggleProfileCard()">🍚</div>
 
     <div class="fab-group">
-        <a href="https://forms.gle/FpHvQyGg3jBivjTU6" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
+        <a href="https://forms.gle/INSERT_GOOGLE_FORM_URL_HERE" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
 
     <div id="lunchboxOverlay" class="lunchbox-overlay" onclick="closeLunchbox()">
-        <div class="lunchbox-grid" id="lunchboxGrid" onclick="event.stopPropagation()">
-            </div>
+        <div class="lunchbox-grid" id="lunchboxGrid" onclick="event.stopPropagation()"></div>
     </div>
 
     <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
         <div class="profile-card" id="myProfileCard" onclick="event.stopPropagation()">
-            
             <div id="loginSection" class="login-section">
                 <button class="btn-google-login" onclick="loginWithGoogle()">
                     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="G">
@@ -689,20 +472,62 @@
                     <button class="btn-auth secondary" onclick="registerWithEmail()">회원가입</button>
                 </div>
             </div>
-
             <div id="profileContent" style="display:none;">
                 <div class="pc-header">
                     <span id="pcNickname" class="pc-nickname">...</span>
                     <div class="pc-edit-btn" onclick="editNickname()">🥢</div>
                 </div>
                 <div id="pcDate" class="pc-date">가입일: -</div>
-                
                 <div class="pc-divider"></div>
                 <div id="pcMainTeam" class="pc-main-team">찜한 팀이 없어요</div>
-
                 <button class="btn-logout" onclick="logout()">로그아웃</button>
             </div>
         </div>
+    </div>
+
+    <div id="filterSheet" class="filter-sheet">
+        <div class="fs-header"><div class="fs-title">검색 조건 설정</div></div>
+        <div class="fs-body">
+            <div class="fs-section"><span class="fs-label">📍 지역 (중복 선택 가능)</span>
+                <div class="chip-group" id="regionChips">
+                    <div class="chip" onclick="toggleFilter('region', '서울', this)">서울</div>
+                    <div class="chip" onclick="toggleFilter('region', '경기', this)">경기</div>
+                    <div class="chip" onclick="toggleFilter('region', '인천', this)">인천</div>
+                    <div class="chip" onclick="toggleFilter('region', '강원', this)">강원</div>
+                    <div class="chip" onclick="toggleFilter('region', '충청', this)">충청</div>
+                    <div class="chip" onclick="toggleFilter('region', '전라', this)">전라</div>
+                    <div class="chip" onclick="toggleFilter('region', '경상', this)">경상</div>
+                    <div class="chip" onclick="toggleFilter('region', '제주', this)">제주</div>
+                </div>
+            </div>
+            <div class="fs-section"><span class="fs-label">📅 요일</span>
+                <div class="chip-group" id="dayChips">
+                    <div class="chip" onclick="toggleFilter('day', '월', this)">월</div>
+                    <div class="chip" onclick="toggleFilter('day', '화', this)">화</div>
+                    <div class="chip" onclick="toggleFilter('day', '수', this)">수</div>
+                    <div class="chip" onclick="toggleFilter('day', '목', this)">목</div>
+                    <div class="chip" onclick="toggleFilter('day', '금', this)">금</div>
+                    <div class="chip" onclick="toggleFilter('day', '토', this)">토</div>
+                    <div class="chip" onclick="toggleFilter('day', '일', this)">일</div>
+                </div>
+            </div>
+            <div class="fs-section"><span class="fs-label">🏐 대상 및 특징</span>
+                <div class="chip-group" id="targetChips">
+                    <div class="chip" onclick="toggleFilter('target', '성인', this)">성인</div>
+                    <div class="chip" onclick="toggleFilter('target', '대학생', this)">대학생</div>
+                    <div class="chip" onclick="toggleFilter('target', '청소년', this)">청소년</div>
+                    <div class="chip" onclick="toggleFilter('target', '여성전용', this)">여성전용</div>
+                    <div class="chip" onclick="toggleFilter('target', '남성전용', this)">남성전용</div>
+                    <div class="chip" onclick="toggleFilter('target', '선출가능', this)">선출가능</div>
+                    <div class="chip" onclick="toggleFilter('target', '6인제', this)">6인제</div>
+                </div>
+            </div>
+        </div>
+        <div class="fs-footer">
+            <div class="btn btn-reset" onclick="resetFilters()">초기화</div>
+            <div class="btn btn-apply" onclick="applyFilters()">적용하기</div>
+        </div>
+        <div class="fs-handle-area" id="filterHandle"><div class="fs-handle"></div></div>
     </div>
 
     <div id="bottomSheet" class="bottom-sheet">
@@ -718,10 +543,7 @@
             
             <div class="time-morph-container" id="timeMorphContainer" onclick="toggleTimeExpand()">
                 <div class="summary-content" id="summaryContent"></div>
-                <div class="full-content" id="fullContent">
-                    <div class="ft-header-row"><div class="ft-title">📅 주간 스케줄</div></div>
-                    <div class="ft-grid" id="fullTimetableGrid"></div>
-                </div>
+                <div class="full-content" id="fullContent"></div>
             </div>
             
             <div class="tag-box" id="sheetTags"></div>
@@ -734,14 +556,11 @@
             
             <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
-            <input type="hidden" id="sheetTeamId">
         </div>
     </div>
 
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=69f821ba943db5e3532ac90ea5ca1080&libraries=clusterer"></script>
     <script>
-        // ... (나머지 지도 로직은 기존과 동일하므로 생략하지 않고 위 코드 블록에 포함되어 있습니다) ...
-        // openClubDetail 함수 내부에 찜하기 버튼 연결 로직 추가됨
         var mapContainer = document.getElementById('map'), 
             mapOption = { center: new kakao.maps.LatLng(37.5409675314785, 127.100704228215), level: 8 }; 
         var map = new kakao.maps.Map(mapContainer, mapOption); 
@@ -1066,7 +885,7 @@
                 urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
                 urgentArea.style.display = 'block';
             } else { urgentArea.style.display = 'none'; }
-            
+
             // [NEW] 찜하기 버튼에 onclick 이벤트 연결
             var btnBookmark = document.getElementById('btnBookmark');
             btnBookmark.onclick = function() { bookmarkTeam(club.id); };
@@ -1091,7 +910,7 @@
             else { var t = document.createElement("input"); t.value = addr; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); alert('주소가 복사되었습니다! 📋'); }
         }
 
-        // ... (나머지 로직 동일)
+        // 긴급 구인 티커 로직
         var urgentClubs = clubs.filter(c => c.is_urgent && c.urgent_msg);
         var uniqueTickerList = [];
         var processedTeams = {};
@@ -1161,29 +980,19 @@
             const deltaY = currentY - startY; 
             
             let newHeight = startHeight - deltaY;
-            
             if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
-            
             sheet.style.height = newHeight + 'px';
-
             let ratio = (newHeight - PEEK_HEIGHT) / (EXPANDED_HEIGHT - PEEK_HEIGHT);
             interpolateMorph(ratio);
         }
         
         function bHandleEnd(e) { 
             if (!isDragging) return; isDragging = false; 
-            
             sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
             document.getElementById('timeMorphContainer').style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            
             let currentH = sheet.offsetHeight;
-            
-            if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
-                updateSheetState('EXPANDED');
-            } else {
-                if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
-                else updateSheetState('PEEK');
-            }
+            if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) { updateSheetState('EXPANDED'); } 
+            else { if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED'); else updateSheetState('PEEK'); }
             currentY = 0; startY = 0; 
         }
         
@@ -1289,7 +1098,6 @@
         }
 
         applyFilters();
-
     </script>
 </body>
 </html>
