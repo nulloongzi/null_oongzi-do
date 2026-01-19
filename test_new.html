@@ -7,7 +7,6 @@
     <title>누룽지도</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
-    
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/528/528098.png">
@@ -15,7 +14,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // ============================================
         // [설정] 사용자 Firebase Config 적용 완료
@@ -38,7 +37,7 @@
             db = getFirestore(app);
             console.log("🔥 Firebase 연결 성공!");
         } catch (e) {
-            console.error("Firebase 초기화 실패 (키 값을 확인하세요):", e);
+            console.error("Firebase 초기화 실패:", e);
         }
 
         // 🍚 밥 닉네임 생성기
@@ -72,35 +71,29 @@
                     currentUser = user;
                     console.log("✅ 로그인 됨:", user.uid);
                     
-                    // DB에서 유저 정보 확인
                     const userRef = doc(db, "users", user.uid);
-                    
-                    // [수정] 에러 방지용 try-catch 블록 추가
                     try {
                         const userSnap = await getDoc(userRef);
 
                         if (userSnap.exists()) {
                             const data = userSnap.data();
-                            console.log("👋 환영합니다, " + data.full_nickname);
-                            updateProfileUI(data.full_nickname);
+                            updateProfileUI(data.full_nickname, data.created_at);
                         } else {
-                            // 신규 유저 -> 닉네임 생성 후 저장
                             const newName = generateRiceName();
+                            const now = new Date();
                             await setDoc(userRef, {
                                 nickname: newName.base,
                                 suffix: newName.code,
                                 full_nickname: newName.full,
-                                created_at: new Date()
+                                created_at: now
                             });
-                            console.log("✨ 새 밥이 지어졌습니다: " + newName.full);
+                            updateProfileUI(newName.full, {"seconds": now.getTime()/1000});
                             alert("따끈따끈한 새 닉네임이 발급되었습니다!\n🍚 [" + newName.full + "]");
-                            updateProfileUI(newName.full);
                         }
                     } catch (error) {
-                        console.error("❌ DB 접근 실패. Firebase 콘솔에서 Firestore Rules를 'allow read, write: if request.auth != null;'로 변경해주세요.", error);
+                        console.error("DB 접근 실패:", error);
                     }
                 } else {
-                    // 로그아웃 상태면 익명 로그인 시도
                     signInAnonymously(auth).catch((error) => {
                         console.error("로그인 에러:", error);
                     });
@@ -108,16 +101,46 @@
             });
         }
 
-        function updateProfileUI(name) {
-            // 추후 UI에 닉네임 표시 기능 추가 예정
+        // 프로필 UI 업데이트
+        function updateProfileUI(name, createdAt) {
+            const nicknameEl = document.getElementById('pcNickname');
+            const dateEl = document.getElementById('pcDate');
+            
+            if (nicknameEl) nicknameEl.innerText = name;
+            
+            if (dateEl && createdAt) {
+                const dateObj = new Date(createdAt.seconds * 1000);
+                const dateStr = dateObj.getFullYear() + "." + (dateObj.getMonth()+1) + "." + dateObj.getDate();
+                dateEl.innerText = "가입일: " + dateStr;
+            }
         }
 
-        // 전역 함수로 등록 (HTML에서 호출 가능하게)
-        window.saveMyTeam = async function(teamId) {
-            if (!currentUser || !db) { alert("로그인이 필요하거나 서버 연결이 안됐어요!"); return; }
-            // 추후 찜하기 로직 구현 예정
-            alert("팀(ID:" + teamId + ")을 찜했습니다! (DB 저장 로직 준비중)");
+        // 닉네임 변경 기능
+        window.editNickname = async function() {
+            if (!currentUser || !db) return;
+            const newName = prompt("변경할 닉네임을 입력해주세요 (예: 맛있는누룽지)");
+            if (newName && newName.trim() !== "") {
+                try {
+                    const userRef = doc(db, "users", currentUser.uid);
+                    await updateDoc(userRef, { full_nickname: newName });
+                    document.getElementById('pcNickname').innerText = newName;
+                    alert("닉네임이 [" + newName + "]으로 변경되었습니다! 🥄");
+                } catch (e) {
+                    alert("닉네임 변경 실패: " + e);
+                }
+            }
         };
+
+        // 프로필 카드 열기/닫기
+        window.toggleProfileCard = function() {
+            const overlay = document.getElementById('profileOverlay');
+            if (overlay.style.display === 'flex') {
+                overlay.style.display = 'none';
+            } else {
+                overlay.style.display = 'flex';
+            }
+        };
+
     </script>
 
     <style>
@@ -130,6 +153,8 @@
             --urgent-color: #ff4757; 
             --shadow: 0 4px 10px rgba(0,0,0,0.1); 
             --today-color: #d35400; 
+            --nurungji-dark: #6d4c41; /* 탄 누룽지색 */
+            --nurungji-card: #fbc02d; /* 짙은 노란색 */
         }
         
         .search-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }
@@ -154,6 +179,64 @@
         .fab-report { background: #fac710; color: #000; }
         .fab-urgent { background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
         
+        /* [수정] 좌측 하단 밥 버튼 */
+        .fab-profile { 
+            position: absolute; bottom: 30px; left: 15px; 
+            z-index: 20; 
+            width: 55px; height: 55px; 
+            background: var(--nurungji-dark); 
+            border-radius: 50%; 
+            box-shadow: var(--shadow);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 28px; cursor: pointer;
+            border: 2px solid #fff;
+            transition: transform 0.2s;
+        }
+        .fab-profile:active { transform: scale(0.95); }
+
+        /* 프로필 카드 오버레이 */
+        .profile-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 500;
+            display: none; 
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(3px);
+        }
+        
+        /* [수정] 밥알 구름 카드 디자인 */
+        .profile-card {
+            width: 80%; max-width: 320px;
+            background: var(--nurungji-card);
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            position: relative;
+            
+            /* 핵심: 밥알처럼 촘촘한 구름마크 효과 (굵은 점선 활용) */
+            border: 8px dashed rgba(255,255,255,0.8);
+            border-radius: 30px; /* 둥글둥글한 형태 */
+            background-clip: padding-box; /* 배경이 테두리 안쪽까지만 오게 */
+        }
+        .pc-header {
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            margin-bottom: 10px;
+        }
+        .pc-nickname {
+            color: #fff; font-size: 24px; font-weight: 800;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .pc-edit-btn {
+            cursor: pointer; font-size: 18px; 
+            background: rgba(255,255,255,0.3);
+            width: 30px; height: 30px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .pc-date {
+            color: rgba(255,255,255,0.9);
+            font-size: 13px; font-weight: 500;
+        }
+
         .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
         .label:hover { z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }
         .label.urgent { background-color: var(--urgent-color); color: #fff; border: 2px solid #fff; animation: pulse 1.5s infinite; }
@@ -362,10 +445,22 @@
         </div>
     </div>
 
+    <div class="fab-profile" onclick="toggleProfileCard()">🍚</div>
+
     <div class="fab-group">
         <a href="https://forms.gle/FpHvQyGg3jBivjTU6" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
+    </div>
+
+    <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <div class="pc-header">
+                <span id="pcNickname" class="pc-nickname">누룽지 굽는 중...</span>
+                <div class="pc-edit-btn" onclick="editNickname()">🥢</div>
+            </div>
+            <div id="pcDate" class="pc-date">가입일: -</div>
+        </div>
     </div>
 
     <div id="filterSheet" class="filter-sheet">
