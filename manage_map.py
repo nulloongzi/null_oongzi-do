@@ -205,10 +205,9 @@ def update_map():
             console.error("Firebase 초기화 실패:", e);
         }}
 
-        // 🍚 밥 종류별 색상 정의 (요청 반영)
-        // weight: 확률 가중치, color: 카드 배경색
+        // 🍚 밥 종류별 색상 정의
         const riceData = [
-            // [흔함 - 62%]
+            // [흔함]
             {{name: "현미밥", weight: 50, color: "#d7ccc8"}}, // 베이지
             {{name: "백미밥", weight: 50, color: "#fafafa"}}, // 흰색 (크림)
             {{name: "흑미밥", weight: 50, color: "#b39ddb"}}, // 연보라
@@ -216,7 +215,7 @@ def update_map():
             {{name: "콩밥", weight: 50, color: "#a5d6a7"}},   // 연두색
             {{name: "오곡밥", weight: 50, color: "#ffe0b2"}}, // 연주황
 
-            // [덜 흔함 - 37%]
+            // [덜 흔함]
             {{name: "차조밥", weight: 10, color: "#fff59d"}}, // 노랑
             {{name: "기장밥", weight: 10, color: "#fff9c4"}}, 
             {{name: "숭늉", weight: 10, color: "#efebe9"}},
@@ -236,8 +235,8 @@ def update_map():
             {{name: "햇반", weight: 10, color: "#ffffff"}},
             {{name: "고봉밥", weight: 10, color: "#fbe9e7"}},
 
-            // [레어 - 0.2%]
-            {{name: "밥아저씨", weight: 1, color: "#4fc3f7"}} // 하늘색 (참 쉽죠?)
+            // [레어]
+            {{name: "밥아저씨", weight: 1, color: "#4fc3f7"}} // 하늘색
         ];
 
         function generateRiceName() {{
@@ -267,7 +266,7 @@ def update_map():
             }};
         }}
 
-        // 현재 클럽 데이터 전역 변수로 접근하기 위해
+        // 현재 클럽 데이터
         const allClubs = {json.dumps(final_list, ensure_ascii=False)};
 
         async function checkDuplicateNickname(nickname) {{
@@ -381,7 +380,6 @@ def update_map():
             }}
         }}
 
-        // [수정] 프로필 카드 렌더링 (대표팀 로직 및 색상 적용)
         function renderProfileCard() {{
             if (!currentProfileData) return;
             
@@ -390,8 +388,6 @@ def update_map():
             const dateEl = document.getElementById('pcDate');
             const mainTeamEl = document.getElementById('pcMainTeam');
 
-            // 1. 카드 색상 적용 (밥 종류별)
-            // 밥이름에 매칭되는 색 찾기 (기존 데이터엔 color가 없을수도 있으니 매칭)
             let bgColor = currentProfileData.color;
             if (!bgColor) {{
                 const riceName = currentProfileData.nickname || currentProfileData.full_nickname.split('-')[0];
@@ -400,16 +396,13 @@ def update_map():
             }}
             card.style.backgroundColor = bgColor;
 
-            // 2. 닉네임
             nicknameEl.innerText = currentProfileData.full_nickname;
 
-            // 3. 가입일
             if (currentProfileData.created_at) {{
                 const d = new Date(currentProfileData.created_at.seconds * 1000);
                 dateEl.innerText = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
             }}
 
-            // 4. 대표팀 (찜 목록의 첫 번째)
             const bookmarks = currentProfileData.bookmarks || [];
             if (bookmarks.length > 0) {{
                 const mainId = bookmarks[0];
@@ -420,7 +413,6 @@ def update_map():
             }}
         }}
 
-        // [NEW] 찜하기 기능 (Bookmark)
         window.bookmarkTeam = async function(teamId) {{
             if (!currentUser || !db) {{
                 alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요.");
@@ -429,7 +421,6 @@ def update_map():
             try {{
                 const userRef = doc(db, "users", currentUser.uid);
                 
-                // 현재 북마크 확인
                 let bookmarks = currentProfileData.bookmarks || [];
                 
                 if (bookmarks.includes(teamId)) {{
@@ -442,24 +433,21 @@ def update_map():
                     return;
                 }}
 
-                // 업데이트
                 await updateDoc(userRef, {{
                     bookmarks: arrayUnion(teamId)
                 }});
                 
-                // 로컬 데이터 갱신 및 UI 업데이트
                 if (!currentProfileData.bookmarks) currentProfileData.bookmarks = [];
                 currentProfileData.bookmarks.push(teamId);
                 
                 alert("도시락에 팀을 담았습니다! 🍱");
-                renderProfileCard(); // 대표팀 갱신 될수도 있으니
+                renderProfileCard(); 
             }} catch (e) {{
                 console.error(e);
                 alert("찜하기 실패: " + e.message);
             }}
         }};
 
-        // [NEW] 도시락 열기 (렌더링)
         window.openLunchbox = function() {{
             if (!currentProfileData || !currentProfileData.bookmarks || currentProfileData.bookmarks.length === 0) {{
                 alert("도시락이 비어있어요! 팀 상세화면에서 [🍱 담기]를 눌러보세요.");
@@ -468,24 +456,14 @@ def update_map():
             
             const overlay = document.getElementById('lunchboxOverlay');
             const grid = document.getElementById('lunchboxGrid');
-            grid.innerHTML = ""; // 초기화
+            grid.innerHTML = ""; 
 
-            const bookmarks = currentProfileData.bookmarks; // [id1, id2, id3, id4, id5]
-            
-            // 순서 매핑: 0(좌하), 1(우하), 2(좌상), 3(중상), 4(우상)
-            // CSS Grid 배치를 위해 빈 슬롯 5개를 만들고 채워넣음
-            // Grid Order: 
-            // Row 1 (Top): Cell 2, Cell 3, Cell 4
-            // Row 2 (Btm): Cell 0, Cell 1
-            
-            // 실제 데이터 매핑
+            const bookmarks = currentProfileData.bookmarks; 
             const slots = [null, null, null, null, null];
             bookmarks.forEach((bid, idx) => {{
                 if (idx < 5) slots[idx] = bid;
             }});
 
-            // 렌더링 순서는 HTML 구조상 위->아래 지만, CSS로 위치 잡음
-            // 편의상 0~4번 슬롯을 생성하고 CSS 클래스로 위치 지정
             for (let i = 0; i < 5; i++) {{
                 const teamId = slots[i];
                 const div = document.createElement('div');
@@ -515,9 +493,7 @@ def update_map():
             document.getElementById('lunchboxOverlay').style.display = 'none';
         }};
 
-        // 팀 위치로 이동
         function moveToTeamLocation(lat, lng) {{
-            // 카카오맵 이동 (Global map obj assumed)
             if (window.map && window.kakao) {{
                 const moveLatLon = new kakao.maps.LatLng(lat, lng);
                 map.setLevel(4);
@@ -525,7 +501,6 @@ def update_map():
             }}
         }}
 
-        // 닉네임 변경 (하이픈 금지)
         window.editNickname = async function() {{
             if (!currentUser || !db) return;
             const currentName = document.getElementById('pcNickname').innerText;
@@ -543,7 +518,6 @@ def update_map():
                     const userRef = doc(db, "users", currentUser.uid);
                     await updateDoc(userRef, {{ full_nickname: newName }});
                     
-                    // 로컬 업데이트
                     currentProfileData.full_nickname = newName;
                     renderProfileCard();
                     alert("닉네임 변경 완료! 🥄");
@@ -555,6 +529,78 @@ def update_map():
             const overlay = document.getElementById('profileOverlay');
             overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
         }};
+
+        // [NEW] Robust Schedule Parsing Logic (Accumulator Pattern)
+        function parseScheduleText(text) {{
+            var scheduleMap = {{}};
+            if (!text) return scheduleMap;
+
+            // 1. Normalize: Remove spaces in times (19: 40 -> 19:40)
+            // Replace "19 : 30" -> "19:30"
+            text = text.replace(/(\\d{{1,2}})\\s*:\\s*(\\d{{2}})/g, "$1:$2"); 
+            
+            // 2. Split by common delimiters (/, &, ,) but keeping logical chunks
+            // We split by / but treat it carefully
+            var parts = text.split(/[\\/,&]/); 
+            var pendingDays = [];
+            var dayMap = {{'월': '월', '화': '화', '수': '수', '목': '목', '금': '금', '토': '토', '일': '일'}};
+            
+            // Regex for Time Range: 19:00~22:00 or 19:00-22:00
+            var timeReg = /(\\d{{1,2}}):(\\d{{2}})\\s*[~-]\\s*(\\d{{1,2}}):(\\d{{2}})/;
+
+            parts.forEach(function(part) {{
+                part = part.trim();
+                if(!part) return;
+
+                // Check for time range
+                var match = part.match(timeReg);
+                
+                // Extract days in this chunk
+                var currentDays = [];
+                for (var char of part) {{
+                    if (dayMap[char]) currentDays.push(dayMap[char]);
+                }}
+
+                if (match) {{
+                    // Found a time!
+                    var startH = parseInt(match[1]);
+                    var startM = parseInt(match[2]);
+                    var endH = parseInt(match[3]);
+                    var endM = parseInt(match[4]);
+                    
+                    function format12(h, m) {{
+                        var p = h >= 12 ? 'PM' : 'AM';
+                        var h12 = h % 12;
+                        if (h12 === 0) h12 = 12;
+                        var mStr = m < 10 ? '0'+m : m;
+                        return p + ' ' + h12 + ':' + mStr;
+                    }}
+                    var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
+
+                    // Apply time to ALL accumulated days + current days
+                    var allDays = pendingDays.concat(currentDays);
+                    // Remove duplicates
+                    allDays = [...new Set(allDays)];
+
+                    allDays.forEach(function(day) {{
+                        scheduleMap[day] = {{
+                            startH: startH, startM: startM,
+                            endH: endH, endM: endM,
+                            text: displayTime
+                        }};
+                    }});
+
+                    // Reset pending days because they are now assigned
+                    pendingDays = []; 
+                }} else {{
+                    // No time found, must be just days (e.g., "Mon", "Tue")
+                    // Accumulate them for the NEXT time found
+                    pendingDays = pendingDays.concat(currentDays);
+                }}
+            }});
+            
+            return scheduleMap;
+        }}
     </script>
 
     <style>
@@ -711,8 +757,8 @@ def update_map():
             border: 4px solid #8d6e63;
             border-radius: 12px;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr; /* 3열 */
-            grid-template-rows: 1fr 1fr;       /* 2행 */
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: 1fr 1fr;
             gap: 2px;
             padding: 2px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
@@ -731,24 +777,13 @@ def update_map():
         .lb-cell.empty {{ color: #ccc; font-weight: 400; }}
         .lb-cell.filled {{ background: #fffde7; border-color: var(--brand-color); }}
 
-        /* [NEW] 도시락 칸 위치 매핑 (요청사항: 좌하, 우하, 좌상, 중상, 우상 순) */
-        /* Row 1 (Top): Col 1, 2, 3 */
-        /* Row 2 (Bottom): Col 1(span 1.5?), Col 2 */
-        /* 요청: 아래쪽이 2칸, 위쪽이 3칸 */
-        
         /* Grid Layout Override for irregular shape */
-        /* Let's make Bottom Row cells span 1.5 columns? No, let's use 6 column grid */
-        .lunchbox-grid {{
-            grid-template-columns: repeat(6, 1fr);
-            grid-template-rows: 1fr 1fr;
-        }}
-        
-        /* Top Row (3 items) -> Each spans 2 cols */
+        /* Row 1 (Top): 3 items -> Each spans 2 cols */
         .slot-2 {{ grid-row: 1; grid-column: 1 / span 2; }} /* 좌상 */
         .slot-3 {{ grid-row: 1; grid-column: 3 / span 2; }} /* 중상 */
         .slot-4 {{ grid-row: 1; grid-column: 5 / span 2; }} /* 우상 */
         
-        /* Bottom Row (2 items) -> Each spans 3 cols */
+        /* Row 2 (Bottom): 2 items -> Each spans 3 cols */
         .slot-0 {{ grid-row: 2; grid-column: 1 / span 3; }} /* 좌하 */
         .slot-1 {{ grid-row: 2; grid-column: 4 / span 3; }} /* 우하 */
 
@@ -767,11 +802,11 @@ def update_map():
             height: 0; 
             overflow: hidden;
         }}
-        /* ... 나머지 CSS 동일 ... */
         .sheet-handle-area {{ width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }}
         .sheet-handle {{ width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }}
         .sheet-content-wrapper {{ flex: 1; overflow-y: auto; padding: 0 24px 20px 24px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }}
         .sheet-content-wrapper::-webkit-scrollbar {{ display: none; }}
+        .expand-hint {{ text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }}
     </style>
 </head>
 <body>
@@ -1117,7 +1152,6 @@ def update_map():
             fullContainer.appendChild(ftContainer);
         }}
 
-        // ... (이하 기존 로직 동일) ...
         var sheetState = 'PEEK'; 
         var PEEK_HEIGHT = 380; 
         var EXPANDED_HEIGHT = window.innerHeight * 0.9;
