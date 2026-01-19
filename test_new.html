@@ -407,10 +407,10 @@
                             div.appendChild(delBtn);
                             div.onclick = () => handleSlotClick(i);
                         } else {
+                            // [수정됨] 마커를 누른 것과 똑같이 상세 페이지(바텀시트)를 엽니다.
                             div.onclick = function() { 
                                 document.getElementById('lunchboxOverlay').style.display = 'none'; 
-                                if(team.lat && team.lng) moveToTeamLocation(team.lat, team.lng);
-                                else alert("위치 정보가 없는 팀입니다 (나만의 메뉴).");
+                                openClubDetail(team.id); 
                             };
                         }
                     } else {
@@ -540,7 +540,7 @@
                     eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
                     const nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
-                    eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span><span class="evt-time">${evt.text}</span>`;
+                    eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span>`;
                     
                     dayCol.appendChild(eventDiv);
                 });
@@ -846,15 +846,25 @@
             position: absolute;
             font-size: 10px;
             color: #3e2723;
-            padding: 2px 4px;
+            padding: 2px 0; /* 좌우 패딩 제거 */
             box-sizing: border-box;
             overflow: hidden;
-            display: flex; flex-direction: column; justify-content: center;
+            display: flex; 
+            justify-content: center; /* 가로 중앙 정렬 */
+            align-items: center; /* 세로 중앙 정렬 */
             border-radius: 6px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.08);
             line-height: 1.1;
         }
-        .evt-title { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .evt-title { 
+            font-weight: 800; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+            writing-mode: vertical-rl; /* 세로 쓰기 모드 */
+            text-orientation: upright; /* 글자를 똑바로 세움 */
+            letter-spacing: 1px; /* 자간 조정 */
+        }
         .evt-time { font-size: 9px; opacity: 0.8; margin-top: 1px; }
 
         .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
@@ -1323,7 +1333,7 @@
         }
 
         var sheetState = 'PEEK'; 
-        var PEEK_HEIGHT = 380; 
+        var PEEK_HEIGHT = 390; 
         var EXPANDED_HEIGHT = window.innerHeight * 0.9;
         var BUBBLE_HEIGHT = 60;
 
