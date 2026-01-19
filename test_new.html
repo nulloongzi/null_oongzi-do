@@ -222,9 +222,18 @@
             if (!currentUser || !currentProfileData) return;
             const userRef = doc(db, "users", currentUser.uid);
             try {
-                // null 제외하고 실제 ID만 필터링하여 저장
-                const cleanBookmarks = currentProfileData.bookmarks.filter(id => id !== null);
+                // [수정 핵심] DB 저장 시 편집된 tempSlots를 기준으로 필터링합니다!
+                const sourceArr = currentProfileData.tempSlots || currentProfileData.bookmarks || [];
+                const cleanBookmarks = sourceArr.filter(id => id !== null);
+                
                 await updateDoc(userRef, { bookmarks: cleanBookmarks });
+                
+                // [중요] 로컬 캐시(bookmarks)도 즉시 업데이트하여 싱크를 맞춥니다.
+                currentProfileData.bookmarks = cleanBookmarks;
+                
+                // [추가] 메인 화면의 대표팀(트로피) 정보도 즉시 갱신
+                renderProfileCard(); 
+                
             } catch (e) { console.error("Save Error:", e); }
         }
 
@@ -268,8 +277,7 @@
                     savedIdx++;
                 }
             }
-            // DB 데이터가 순서 보장이 안 될 수 있으므로, 로컬에서 관리할 때는 5칸 배열 사용
-            // 여기서는 단순하게 앞에서부터 채움. (DB 저장은 압축해서 함)
+            // 임시 편집용 데이터 생성
             currentProfileData.tempSlots = normalized; 
             
             renderLunchboxGrid();
