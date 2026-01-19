@@ -231,6 +231,14 @@ def update_map():
             }};
         }}
 
+        // [NEW] 중복 확인 함수 (DB 조회)
+        async function checkDuplicateNickname(nickname) {{
+            if (!db) return false;
+            const q = query(collection(db, "users"), where("full_nickname", "==", nickname));
+            const querySnapshot = await getDocs(q);
+            return !querySnapshot.empty; // 비어있지 않으면(true) 중복임
+        }}
+
         // 로그인 및 유저 데이터 로드
         let currentUser = null;
 
@@ -248,16 +256,37 @@ def update_map():
                             const data = userSnap.data();
                             updateProfileUI(data.full_nickname, data.created_at);
                         }} else {{
-                            const newName = generateRiceName();
+                            // [NEW] 가입 시 중복 검사 로직 (Loop)
+                            let newNameObj = null;
+                            let isUnique = false;
+                            let retryCount = 0;
+
+                            // 유니크한 닉네임이 나올 때까지 반복 (최대 10번)
+                            while (!isUnique && retryCount < 10) {{
+                                newNameObj = generateRiceName();
+                                const isDup = await checkDuplicateNickname(newNameObj.full);
+                                if (!isDup) {{
+                                    isUnique = true;
+                                }} else {{
+                                    console.log("중복 발생! 다시 짓습니다: " + newNameObj.full);
+                                    retryCount++;
+                                }}
+                            }}
+
+                            // 10번 실패하면 타임스탬프 붙여서 강제 생성
+                            if (!isUnique) {{
+                                newNameObj.full = newNameObj.full + Date.now().toString().slice(-4);
+                            }}
+
                             const now = new Date();
                             await setDoc(userRef, {{
-                                nickname: newName.base,
-                                suffix: newName.code,
-                                full_nickname: newName.full,
+                                nickname: newNameObj.base,
+                                suffix: newNameObj.code,
+                                full_nickname: newNameObj.full,
                                 created_at: now
                             }});
-                            updateProfileUI(newName.full, {{"seconds": now.getTime()/1000}});
-                            alert("따끈따끈한 새 닉네임이 발급되었습니다!\\n🍚 [" + newName.full + "]");
+                            updateProfileUI(newNameObj.full, {{"seconds": now.getTime()/1000}});
+                            alert("따끈따끈한 새 닉네임이 발급되었습니다!\\n🍚 [" + newNameObj.full + "]");
                         }}
                     }} catch (error) {{
                         console.error("DB 접근 실패:", error);
@@ -284,16 +313,29 @@ def update_map():
             }}
         }}
 
-        // 닉네임 변경 기능
+        // [NEW] 닉네임 변경 기능 (중복 검사 포함)
         window.editNickname = async function() {{
             if (!currentUser || !db) return;
-            const newName = prompt("변경할 닉네임을 입력해주세요 (예: 맛있는누룽지)");
-            if (newName && newName.trim() !== "") {{
+            
+            const currentName = document.getElementById('pcNickname').innerText;
+            const newName = prompt("변경할 닉네임을 입력해주세요 (예: 맛있는누룽지)", currentName);
+            
+            if (newName && newName.trim() !== "" && newName !== currentName) {{
                 try {{
+                    // 중복 검사
+                    const isDup = await checkDuplicateNickname(newName);
+                    if (isDup) {{
+                        alert("이미 누군가 사용 중인 밥이름입니다! 😢\\n다른 이름을 지어주세요.");
+                        return;
+                    }}
+
+                    // 중복 아니면 업데이트
                     const userRef = doc(db, "users", currentUser.uid);
                     await updateDoc(userRef, {{ full_nickname: newName }});
+                    
                     document.getElementById('pcNickname').innerText = newName;
                     alert("닉네임이 [" + newName + "]으로 변경되었습니다! 🥄");
+                
                 }} catch (e) {{
                     alert("닉네임 변경 실패: " + e);
                 }}
@@ -348,7 +390,7 @@ def update_map():
         .fab-report {{ background: #fac710; color: #000; }}
         .fab-urgent {{ background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }}
         
-        /* [수정] 좌측 하단 밥 버튼 */
+        /* 좌측 하단 밥 버튼 */
         .fab-profile {{ 
             position: absolute; bottom: 30px; left: 15px; 
             z-index: 20; 
@@ -373,7 +415,7 @@ def update_map():
             backdrop-filter: blur(3px);
         }}
         
-        /* [수정] 밥알 구름 카드 디자인 */
+        /* 밥알 구름 카드 디자인 */
         .profile-card {{
             width: 80%; max-width: 320px;
             background: var(--nurungji-card);
@@ -384,8 +426,8 @@ def update_map():
             
             /* 핵심: 밥알처럼 촘촘한 구름마크 효과 (굵은 점선 활용) */
             border: 8px dashed rgba(255,255,255,0.8);
-            border-radius: 30px; /* 둥글둥글한 형태 */
-            background-clip: padding-box; /* 배경이 테두리 안쪽까지만 오게 */
+            border-radius: 30px; 
+            background-clip: padding-box; 
         }}
         .pc-header {{
             display: flex; justify-content: center; align-items: center; gap: 8px;
