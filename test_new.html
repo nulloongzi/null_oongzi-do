@@ -10,6 +10,109 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/528/528098.png">
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // ============================================
+        // [설정] 사용자 Firebase Config 적용 완료
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCnzjy0jzK6HD34Z-i7tapG3y-hkrA-XaM",
+            authDomain: "nulloongzi-do.firebaseapp.com",
+            projectId: "nulloongzi-do",
+            storageBucket: "nulloongzi-do.firebasestorage.app",
+            messagingSenderId: "1024551952678",
+            appId: "1:1024551952678:web:91a0df59c12b68b968a1e7",
+            measurementId: "G-L1KWREQEMW"
+        };
+
+        // Firebase 초기화
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log("🔥 Firebase 연결 성공!");
+        } catch (e) {
+            console.error("Firebase 초기화 실패 (키 값을 확인하세요):", e);
+        }
+
+        // 🍚 밥 닉네임 생성기
+        function generateRiceName() {
+            const riceTypes = [
+                "현미밥", "백미밥", "흑미밥", "보리밥", "콩밥", "오곡밥", 
+                "차조밥", "기장밥", "누룽지", "숭늉", "볶음밥", "비빔밥",
+                "김밥", "주먹밥", "유부초밥", "덮밥", "국밥", "솥밥", "약밥", "죽"
+            ];
+            const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+            
+            const rice = riceTypes[Math.floor(Math.random() * riceTypes.length)];
+            let suffix = "";
+            for (let i = 0; i < 3; i++) {
+                suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            
+            return {
+                base: rice,
+                code: suffix,
+                full: rice + "-" + suffix
+            };
+        }
+
+        // 로그인 및 유저 데이터 로드
+        let currentUser = null;
+
+        if (auth) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    console.log("✅ 로그인 됨:", user.uid);
+                    
+                    // DB에서 유저 정보 확인
+                    const userRef = doc(db, "users", user.uid);
+                    const userSnap = await getDoc(userRef);
+
+                    if (userSnap.exists()) {
+                        const data = userSnap.data();
+                        console.log("👋 환영합니다, " + data.full_nickname);
+                        updateProfileUI(data.full_nickname);
+                    } else {
+                        // 신규 유저 -> 닉네임 생성 후 저장
+                        const newName = generateRiceName();
+                        await setDoc(userRef, {
+                            nickname: newName.base,
+                            suffix: newName.code,
+                            full_nickname: newName.full,
+                            created_at: new Date()
+                        });
+                        console.log("✨ 새 밥이 지어졌습니다: " + newName.full);
+                        alert("따끈따끈한 새 닉네임이 발급되었습니다!\n🍚 [" + newName.full + "]");
+                        updateProfileUI(newName.full);
+                    }
+                } else {
+                    // 로그아웃 상태면 익명 로그인 시도
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("로그인 에러:", error);
+                    });
+                }
+            });
+        }
+
+        function updateProfileUI(name) {
+            // TODO: UI에 닉네임 표시하기 (나중에 구현)
+            // document.getElementById('userNickname').innerText = name;
+        }
+
+        // 전역 함수로 등록 (HTML에서 호출 가능하게)
+        window.saveMyTeam = async function(teamId) {
+            if (!currentUser || !db) { alert("로그인이 필요하거나 서버 연결이 안됐어요!"); return; }
+            // TODO: 찜하기 로직 구현
+            alert("팀(ID:" + teamId + ")을 찜했습니다! (DB 저장 로직 예정)");
+        };
+    </script>
+
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; }
@@ -179,7 +282,6 @@
         }
         .ft-col-day:last-child { border-right: none; }
         
-        /* [수정] flex-direction: column 추가하여 내용 세로 정렬 */
         .ft-event-block {
             position: absolute;
             width: 94%;
@@ -190,7 +292,7 @@
             font-size: 10px;
             color: #555;
             display: flex;
-            flex-direction: column; /* 세로 정렬 */
+            flex-direction: column; 
             align-items: center;
             justify-content: center;
             text-align: center;
@@ -553,7 +655,6 @@
                     var topPx = startTotalHours * ROW_HEIGHT;
                     var heightPx = durationHours * ROW_HEIGHT;
 
-                    // [NEW] 총 소요 시간 계산 및 포맷팅 (예: 2h, 2.5h)
                     var duration = (data.endH + (data.endM / 60)) - (data.startH + (data.startM / 60));
                     var durationStr = Number.isInteger(duration) ? duration : duration.toFixed(1);
 
@@ -562,7 +663,6 @@
                         block.className = 'ft-event-block';
                         block.style.top = topPx + 'px';
                         block.style.height = (heightPx - 2) + 'px'; 
-                        // [NEW] 시간 + 소요시간 표시
                         block.innerHTML = data.text.replace('~', '<br>~<br>') + 
                                           '<div style="font-size:9px; opacity:0.8; margin-top:2px;">(' + durationStr + 'h)</div>';
                         dayCol.appendChild(block);
