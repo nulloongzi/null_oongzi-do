@@ -13,7 +13,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        // [수정] 이메일/비번 인증 모듈 추가
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // Firebase Config
@@ -37,35 +38,27 @@
             console.error("Firebase 초기화 실패:", e);
         }
 
-        // [수정] 🍚 확률형 밥 닉네임 생성기 (가챠 시스템)
+        // 🍚 확률형 밥 닉네임 생성기
         function generateRiceName() {
-            // 1. 밥 종류 및 가중치 정의
-            // weight: 높을수록 잘 나옴
             const riceData = [
-                // [흔함] 1~6번 (가중치 50, 합 300) -> 약 62% 확률
                 {name: "현미밥", weight: 50}, {name: "백미밥", weight: 50}, {name: "흑미밥", weight: 50},
                 {name: "보리밥", weight: 50}, {name: "콩밥", weight: 50}, {name: "오곡밥", weight: 50},
-                
-                // [덜 흔함] 7~24번 (가중치 10, 합 180) -> 약 37% 확률
                 {name: "차조밥", weight: 10}, {name: "기장밥", weight: 10}, {name: "숭늉", weight: 10},
                 {name: "볶음밥", weight: 10}, {name: "비빔밥", weight: 10}, {name: "김밥", weight: 10},
                 {name: "주먹밥", weight: 10}, {name: "유부초밥", weight: 10}, {name: "덮밥", weight: 10},
                 {name: "국밥", weight: 10}, {name: "솥밥", weight: 10}, {name: "약밥", weight: 10},
                 {name: "죽", weight: 10}, {name: "곤드레밥", weight: 10}, {name: "영양밥", weight: 10},
                 {name: "치밥", weight: 10}, {name: "햇반", weight: 10}, {name: "고봉밥", weight: 10},
-                
-                // [레어] 25번 (가중치 1, 합 1) -> 약 0.2% 확률
                 {name: "밥아저씨", weight: 1}
             ];
 
-            // 2. 가중치 기반 랜덤 선택 (Roulette Selection)
             let totalWeight = 0;
             for (let item of riceData) {
                 totalWeight += item.weight;
             }
 
             let randomNum = Math.random() * totalWeight;
-            let selectedRice = "백미밥"; // fallback
+            let selectedRice = "백미밥"; 
 
             for (let item of riceData) {
                 if (randomNum < item.weight) {
@@ -75,7 +68,6 @@
                 randomNum -= item.weight;
             }
             
-            // 3. 3자리 난수 코드 생성
             const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
             let suffix = "";
             for (let i = 0; i < 3; i++) {
@@ -113,6 +105,7 @@
             });
         }
 
+        // [NEW] 구글 로그인
         window.loginWithGoogle = async function() {
             if (!auth) return;
             const provider = new GoogleAuthProvider();
@@ -120,7 +113,35 @@
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("구글 로그인 실패:", error);
-                alert("로그인에 실패했습니다 ㅠ_ㅠ\n" + error.message);
+                alert("구글 로그인 실패 ㅠ_ㅠ\n" + error.message);
+            }
+        };
+
+        // [NEW] 이메일 회원가입
+        window.registerWithEmail = async function() {
+            const email = document.getElementById('emailInput').value;
+            const pw = document.getElementById('pwInput').value;
+            if(!email || !pw) { alert('이메일과 비밀번호를 입력해주세요.'); return; }
+            if(pw.length < 6) { alert('비밀번호는 6자리 이상이어야 합니다.'); return; }
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, pw);
+                // 회원가입 성공 시 onAuthStateChanged가 자동 호출됨 -> 닉네임 생성 로직 탐
+            } catch(error) {
+                alert("회원가입 실패: " + error.message);
+            }
+        };
+
+        // [NEW] 이메일 로그인
+        window.loginWithEmail = async function() {
+            const email = document.getElementById('emailInput').value;
+            const pw = document.getElementById('pwInput').value;
+            if(!email || !pw) { alert('이메일과 비밀번호를 입력해주세요.'); return; }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pw);
+            } catch(error) {
+                alert("로그인 실패: 이메일이나 비밀번호를 확인해주세요.\n" + error.message);
             }
         };
 
@@ -129,6 +150,8 @@
             if(confirm("정말 로그아웃 하시겠습니까?")) {
                 signOut(auth).then(() => {
                     alert("로그아웃 되었습니다.");
+                    document.getElementById('emailInput').value = "";
+                    document.getElementById('pwInput').value = "";
                     document.getElementById('profileOverlay').style.display = 'none';
                 });
             }
@@ -147,7 +170,6 @@
                     let isUnique = false;
                     let retryCount = 0;
 
-                    // 중복 검사 반복
                     while (!isUnique && retryCount < 10) {
                         newNameObj = generateRiceName();
                         const isDup = await checkDuplicateNickname(newNameObj.full);
@@ -168,7 +190,6 @@
                     
                     renderProfileCard(newNameObj.full, {"seconds": now.getTime()/1000});
                     
-                    // 밥아저씨 당첨 시 특별 알림
                     if (newNameObj.base === "밥아저씨") {
                         alert("🎉 축하합니다!! [전설의 밥아저씨]가 되셨습니다!! 🎉\n🍚 [" + newNameObj.full + "]");
                     } else {
@@ -181,14 +202,14 @@
         }
 
         function updateProfileUI(isLoggedIn) {
-            const loginBtn = document.getElementById('loginBtn');
+            const loginSection = document.getElementById('loginSection');
             const profileContent = document.getElementById('profileContent');
             
             if (isLoggedIn) {
-                if(loginBtn) loginBtn.style.display = 'none';
+                if(loginSection) loginSection.style.display = 'none';
                 if(profileContent) profileContent.style.display = 'block';
             } else {
-                if(loginBtn) loginBtn.style.display = 'flex';
+                if(loginSection) loginSection.style.display = 'flex';
                 if(profileContent) profileContent.style.display = 'none';
             }
         }
@@ -205,14 +226,12 @@
             }
         }
 
-        // [수정] 닉네임 변경 시 하이픈(-) 금지
         window.editNickname = async function() {
             if (!currentUser || !db) return;
             const currentName = document.getElementById('pcNickname').innerText;
             const newName = prompt("변경할 닉네임을 입력해주세요 (예: 맛있는누룽지)", currentName);
             
             if (newName && newName.trim() !== "" && newName !== currentName) {
-                // 하이픈 금지 체크 (희소성 유지)
                 if (newName.includes("-")) {
                     alert("⚠️ 닉네임에 하이픈(-)은 사용할 수 없습니다.\n하이픈은 오직 '밥아저씨'가 랜덤으로 지어준 이름에만 허용됩니다!");
                     return;
@@ -300,9 +319,8 @@
             backdrop-filter: blur(3px);
         }
         
-        /* 밥알 구름 카드 */
         .profile-card {
-            width: 80%; max-width: 320px;
+            width: 85%; max-width: 340px;
             background: var(--nurungji-card);
             padding: 30px 20px;
             text-align: center;
@@ -331,7 +349,40 @@
             font-size: 13px; font-weight: 500;
         }
         
-        /* 구글 로그인 버튼 */
+        /* 로그인 섹션 스타일 */
+        .login-section {
+            display: flex; flex-direction: column; gap: 10px;
+            width: 100%;
+        }
+        .input-group {
+            display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;
+        }
+        .auth-input {
+            padding: 10px 15px; border-radius: 20px;
+            border: none; outline: none;
+            font-size: 14px;
+            background: rgba(255,255,255,0.9);
+        }
+        .btn-row {
+            display: flex; gap: 8px;
+        }
+        .btn-auth {
+            flex: 1;
+            padding: 10px; border-radius: 20px;
+            border: none; cursor: pointer;
+            font-weight: 700; font-size: 13px;
+            color: #555; background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-auth.primary { background: #fff; border: 2px solid white; }
+        .btn-auth.secondary { background: transparent; border: 1px solid white; color: white; }
+        
+        .divider { 
+            color: rgba(255,255,255,0.7); font-size: 11px; margin: 10px 0; 
+            display: flex; align-items: center; gap: 10px;
+        }
+        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.4); }
+
         .btn-google-login {
             background: white; color: #555;
             border: 1px solid #ddd;
@@ -340,11 +391,12 @@
             font-weight: 700;
             font-size: 14px;
             cursor: pointer;
-            display: flex; align-items: center; gap: 10px;
-            margin: 0 auto;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .btn-google-login img { width: 18px; height: 18px; }
+        
         .btn-logout {
             margin-top: 20px;
             background: transparent;
@@ -574,10 +626,25 @@
 
     <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
         <div class="profile-card" onclick="event.stopPropagation()">
-            <button id="loginBtn" class="btn-google-login" onclick="loginWithGoogle()" style="display:none;">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
-                구글로 닉네임 생성하기
-            </button>
+            
+            <div id="loginSection" class="login-section">
+                <button class="btn-google-login" onclick="loginWithGoogle()">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
+                    구글로 간편 로그인
+                </button>
+                
+                <div class="divider">또는</div>
+                
+                <div class="input-group">
+                    <input type="email" id="emailInput" class="auth-input" placeholder="이메일 입력">
+                    <input type="password" id="pwInput" class="auth-input" placeholder="비밀번호 (6자리 이상)">
+                </div>
+                
+                <div class="btn-row">
+                    <button class="btn-auth primary" onclick="loginWithEmail()">로그인</button>
+                    <button class="btn-auth secondary" onclick="registerWithEmail()">회원가입</button>
+                </div>
+            </div>
 
             <div id="profileContent" style="display:none;">
                 <div class="pc-header">
