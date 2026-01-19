@@ -222,38 +222,43 @@
             if (!currentUser || !currentProfileData) return;
             const userRef = doc(db, "users", currentUser.uid);
             try {
-                // [수정 핵심] DB 저장 시 편집된 tempSlots를 기준으로 필터링합니다!
-                const sourceArr = currentProfileData.tempSlots || currentProfileData.bookmarks || [];
-                const cleanBookmarks = sourceArr.filter(id => id !== null);
+                // [수정] 빈 칸(null)도 위치를 기억하기 위해 그대로 저장합니다.
+                let slots = currentProfileData.tempSlots || currentProfileData.bookmarks || [null, null, null, null, null];
                 
-                await updateDoc(userRef, { bookmarks: cleanBookmarks });
+                // 혹시 모를 오류 방지를 위해 길이를 5개로 맞춥니다.
+                while(slots.length < 5) slots.push(null);
+                if(slots.length > 5) slots = slots.slice(0, 5);
+
+                await updateDoc(userRef, { bookmarks: slots });
                 
-                // [중요] 로컬 캐시(bookmarks)도 즉시 업데이트하여 싱크를 맞춥니다.
-                currentProfileData.bookmarks = cleanBookmarks;
-                
-                // [추가] 메인 화면의 대표팀(트로피) 정보도 즉시 갱신
+                // 로컬 데이터도 즉시 동기화
+                currentProfileData.bookmarks = slots;
                 renderProfileCard(); 
-                
             } catch (e) { console.error("Save Error:", e); }
         }
 
         window.bookmarkTeam = async function(teamId) {
             if (!currentUser || !db) { alert("로그인이 필요한 기능입니다! 🍚 버튼을 눌러 로그인해주세요."); return; }
             try {
-                let bookmarks = currentProfileData.bookmarks || [];
-                // 이미 있는지 확인 (빈 값 제외)
-                const exists = bookmarks.some(bid => bid === teamId);
-                if (exists) { alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }
-                
-                // 빈 자리가 있는지 확인 (5개 미만)
-                const realCount = bookmarks.filter(id => id !== null).length;
-                if (realCount >= 5) { alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요."); return; }
+                // 현재 상태 가져오기 (없으면 빈 5칸 생성)
+                let slots = currentProfileData.bookmarks || [null, null, null, null, null];
+                while(slots.length < 5) slots.push(null);
 
-                const userRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userRef, { bookmarks: arrayUnion(teamId) });
+                // 이미 있는지 확인
+                if (slots.includes(teamId)) { alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }
                 
-                if (!currentProfileData.bookmarks) currentProfileData.bookmarks = [];
-                currentProfileData.bookmarks.push(teamId);
+                // 빈 자리(null) 찾기
+                let emptyIndex = slots.findIndex(item => item === null);
+                if (emptyIndex === -1) { alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요."); return; }
+
+                // 빈 자리에 팀 ID 할당
+                slots[emptyIndex] = teamId;
+
+                // 전체 배열 업데이트
+                const userRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userRef, { bookmarks: slots });
+                
+                currentProfileData.bookmarks = slots;
                 
                 alert("도시락에 팀을 담았습니다! 🍱");
                 renderProfileCard(); 
@@ -267,17 +272,19 @@
             document.getElementById('lbEditBtn').innerHTML = '🍽 편집';
             document.getElementById('lbEditBtn').classList.remove('editing');
             
-            // 데이터 정규화: 항상 5개 슬롯 배열로 유지 (null 포함)
+            // [수정] DB에 저장된 위치 그대로 가져옵니다.
             let saved = currentProfileData.bookmarks || [];
+            
+            // 데이터가 없거나 예전 데이터(길이가 안 맞음)일 경우 초기화
             let normalized = [null, null, null, null, null];
-            let savedIdx = 0;
-            for(let i=0; i<5; i++) {
-                if (savedIdx < saved.length && saved[savedIdx] !== null) {
-                    normalized[i] = saved[savedIdx];
-                    savedIdx++;
+            
+            if (saved.length > 0) {
+                // 기존 데이터가 있으면 칸에 맞춰 넣기 (예전 데이터 호환성 유지)
+                for(let i=0; i<5; i++) {
+                    if (i < saved.length) normalized[i] = saved[i];
                 }
             }
-            // 임시 편집용 데이터 생성
+            
             currentProfileData.tempSlots = normalized; 
             
             renderLunchboxGrid();
