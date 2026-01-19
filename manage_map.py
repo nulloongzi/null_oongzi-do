@@ -12,7 +12,7 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvPWY_U5hM-
 KAKAO_REST_KEY = "9d17b379d6a4de94c06563a990609336" 
 KAKAO_JS_KEY = "69f821ba943db5e3532ac90ea5ca1080" 
 
-IS_TEST_MODE = True  # True: 테스트 모드 (test_new.html 생성), False: 배포 모드 (index.html 생성)
+IS_TEST_MODE = True
 # ==========================================
 
 def get_location(address):
@@ -176,6 +176,8 @@ def update_map():
     <title>누룽지도</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
+    
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/528/528098.png">
 
@@ -241,24 +243,30 @@ def update_map():
                     
                     // DB에서 유저 정보 확인
                     const userRef = doc(db, "users", user.uid);
-                    const userSnap = await getDoc(userRef);
+                    
+                    // [수정] 에러 방지용 try-catch 블록 추가
+                    try {{
+                        const userSnap = await getDoc(userRef);
 
-                    if (userSnap.exists()) {{
-                        const data = userSnap.data();
-                        console.log("👋 환영합니다, " + data.full_nickname);
-                        updateProfileUI(data.full_nickname);
-                    }} else {{
-                        // 신규 유저 -> 닉네임 생성 후 저장
-                        const newName = generateRiceName();
-                        await setDoc(userRef, {{
-                            nickname: newName.base,
-                            suffix: newName.code,
-                            full_nickname: newName.full,
-                            created_at: new Date()
-                        }});
-                        console.log("✨ 새 밥이 지어졌습니다: " + newName.full);
-                        alert("따끈따끈한 새 닉네임이 발급되었습니다!\\n🍚 [" + newName.full + "]");
-                        updateProfileUI(newName.full);
+                        if (userSnap.exists()) {{
+                            const data = userSnap.data();
+                            console.log("👋 환영합니다, " + data.full_nickname);
+                            updateProfileUI(data.full_nickname);
+                        }} else {{
+                            // 신규 유저 -> 닉네임 생성 후 저장
+                            const newName = generateRiceName();
+                            await setDoc(userRef, {{
+                                nickname: newName.base,
+                                suffix: newName.code,
+                                full_nickname: newName.full,
+                                created_at: new Date()
+                            }});
+                            console.log("✨ 새 밥이 지어졌습니다: " + newName.full);
+                            alert("따끈따끈한 새 닉네임이 발급되었습니다!\\n🍚 [" + newName.full + "]");
+                            updateProfileUI(newName.full);
+                        }}
+                    }} catch (error) {{
+                        console.error("❌ DB 접근 실패. Firebase 콘솔에서 Firestore Rules를 'allow read, write: if request.auth != null;'로 변경해주세요.", error);
                     }}
                 }} else {{
                     // 로그아웃 상태면 익명 로그인 시도
@@ -270,15 +278,14 @@ def update_map():
         }}
 
         function updateProfileUI(name) {{
-            // TODO: UI에 닉네임 표시하기 (나중에 구현)
-            // document.getElementById('userNickname').innerText = name;
+            // 추후 UI에 닉네임 표시 기능 추가 예정
         }}
 
         // 전역 함수로 등록 (HTML에서 호출 가능하게)
         window.saveMyTeam = async function(teamId) {{
             if (!currentUser || !db) {{ alert("로그인이 필요하거나 서버 연결이 안됐어요!"); return; }}
-            // TODO: 찜하기 로직 구현
-            alert("팀(ID:" + teamId + ")을 찜했습니다! (DB 저장 로직 예정)");
+            // 추후 찜하기 로직 구현 예정
+            alert("팀(ID:" + teamId + ")을 찜했습니다! (DB 저장 로직 준비중)");
         }};
     </script>
 
@@ -525,7 +532,7 @@ def update_map():
     </div>
 
     <div class="fab-group">
-        <a href="INSERT_GOOGLE_FORM_URL_HERE" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
+        <a href="https://forms.gle/FpHvQyGg3jBivjTU6" target="_blank" class="fab-btn fab-urgent" title="십시일반 긴급구인 신청">🥄</a>
         <a href="https://forms.gle/H6HoEUy5zM7FHuHL7" target="_blank" class="fab-btn fab-report" title="팀 제보하기">📢</a>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
@@ -585,7 +592,10 @@ def update_map():
             
             <div class="time-morph-container" id="timeMorphContainer" onclick="toggleTimeExpand()">
                 <div class="summary-content" id="summaryContent"></div>
-                <div class="full-content" id="fullContent"></div>
+                <div class="full-content" id="fullContent">
+                    <div class="ft-header-row"><div class="ft-title">📅 주간 스케줄</div></div>
+                    <div class="ft-grid" id="fullTimetableGrid"></div>
+                </div>
             </div>
             
             <div class="tag-box" id="sheetTags"></div>
