@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>누룽지도</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#fff8e1">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/528/528098.png">
@@ -31,35 +31,21 @@
             auth = getAuth(app);
             db = getFirestore(app);
             console.log("🔥 Firebase 연결 성공!");
-        } catch (e) {
-            console.error("Firebase 초기화 실패:", e);
-        }
+        } catch (e) { console.error("Firebase 초기화 실패:", e); }
 
         const riceData = [
-            {name: "현미밥", weight: 50, color: "#d7ccc8"}, 
-            {name: "백미밥", weight: 50, color: "#fafafa"}, 
-            {name: "흑미밥", weight: 50, color: "#b39ddb"}, 
-            {name: "보리밥", weight: 50, color: "#cfd8dc"}, 
-            {name: "콩밥", weight: 50, color: "#a5d6a7"},   
-            {name: "오곡밥", weight: 50, color: "#ffe0b2"}, 
-            {name: "차조밥", weight: 10, color: "#fff59d"}, 
-            {name: "기장밥", weight: 10, color: "#fff9c4"}, 
-            {name: "숭늉", weight: 10, color: "#efebe9"},
-            {name: "볶음밥", weight: 10, color: "#ffcc80"}, 
-            {name: "비빔밥", weight: 10, color: "#ffab91"}, 
-            {name: "김밥", weight: 10, color: "#bdbdbd"},   
-            {name: "주먹밥", weight: 10, color: "#f5f5f5"},
-            {name: "유부초밥", weight: 10, color: "#ffe082"},
-            {name: "덮밥", weight: 10, color: "#dcedc8"},
-            {name: "국밥", weight: 10, color: "#cfd8dc"},
-            {name: "솥밥", weight: 10, color: "#bcaaa4"},
-            {name: "약밥", weight: 10, color: "#8d6e63"},
-            {name: "죽", weight: 10, color: "#e0f2f1"},
-            {name: "곤드레밥", weight: 10, color: "#81c784"}, 
-            {name: "영양밥", weight: 10, color: "#ffecb3"},
-            {name: "치밥", weight: 10, color: "#ff8a65"}, 
-            {name: "햇반", weight: 10, color: "#ffffff"},
-            {name: "고봉밥", weight: 10, color: "#fbe9e7"},
+            {name: "현미밥", weight: 50, color: "#d7ccc8"}, {name: "백미밥", weight: 50, color: "#fafafa"}, 
+            {name: "흑미밥", weight: 50, color: "#b39ddb"}, {name: "보리밥", weight: 50, color: "#cfd8dc"}, 
+            {name: "콩밥", weight: 50, color: "#a5d6a7"}, {name: "오곡밥", weight: 50, color: "#ffe0b2"}, 
+            {name: "차조밥", weight: 10, color: "#fff59d"}, {name: "기장밥", weight: 10, color: "#fff9c4"}, 
+            {name: "숭늉", weight: 10, color: "#efebe9"}, {name: "볶음밥", weight: 10, color: "#ffcc80"}, 
+            {name: "비빔밥", weight: 10, color: "#ffab91"}, {name: "김밥", weight: 10, color: "#bdbdbd"},   
+            {name: "주먹밥", weight: 10, color: "#f5f5f5"}, {name: "유부초밥", weight: 10, color: "#ffe082"},
+            {name: "덮밥", weight: 10, color: "#dcedc8"}, {name: "국밥", weight: 10, color: "#cfd8dc"},
+            {name: "솥밥", weight: 10, color: "#bcaaa4"}, {name: "약밥", weight: 10, color: "#8d6e63"},
+            {name: "죽", weight: 10, color: "#e0f2f1"}, {name: "곤드레밥", weight: 10, color: "#81c784"}, 
+            {name: "영양밥", weight: 10, color: "#ffecb3"}, {name: "치밥", weight: 10, color: "#ff8a65"}, 
+            {name: "햇반", weight: 10, color: "#ffffff"}, {name: "고봉밥", weight: 10, color: "#fbe9e7"},
             {name: "밥아저씨", weight: 1, color: "#4fc3f7"} 
         ];
 
@@ -183,7 +169,9 @@
                 const found = riceData.find(r => r.name === riceName);
                 bgColor = found ? found.color : "#fbc02d";
             }
+            // 카드 색상은 밥 색상을 유지하되, 테두리와 스타일은 누룽지 테마 적용
             card.style.backgroundColor = bgColor;
+            
             nicknameEl.innerText = currentProfileData.full_nickname;
             if (currentProfileData.created_at) {
                 const d = new Date(currentProfileData.created_at.seconds * 1000);
@@ -191,18 +179,22 @@
             }
             const bookmarks = currentProfileData.bookmarks || [];
             if (bookmarks.length > 0) {
-                const mainId = bookmarks[0];
-                const mainTeam = allClubs.find(c => c.id === mainId);
-                mainTeamEl.innerHTML = mainTeam ? "🏆 " + mainTeam.name : "데이터 없음";
+                // bookmarks 배열에서 null이 아닌 첫 번째 요소 찾기
+                const firstValid = bookmarks.find(b => b !== null);
+                if (firstValid) {
+                    const mainTeam = allClubs.find(c => c.id === firstValid);
+                    mainTeamEl.innerHTML = mainTeam ? "🏆 " + mainTeam.name : "데이터 없음";
+                } else {
+                    mainTeamEl.innerText = "찜한 팀이 없어요";
+                }
             } else {
                 mainTeamEl.innerText = "찜한 팀이 없어요";
             }
         }
 
-        // [도시락 관리 로직]
         let isEditMode = false;
         let selectedSlotIndex = null;
-        let isDietPlanOpen = false; // 식단표 열림 상태
+        let isDietPlanOpen = false;
 
         window.toggleEditMode = function() {
             isEditMode = !isEditMode;
@@ -224,12 +216,14 @@
             const container = document.getElementById('dietPlanContainer');
             if (isDietPlanOpen) {
                 renderCombinedSchedule();
-                container.style.height = '400px'; 
+                container.style.height = '420px'; 
                 container.style.padding = '10px';
+                container.style.marginTop = '10px';
                 document.getElementById('dietToggleBtn').innerText = '📅 식단표 접기';
             } else {
                 container.style.height = '0';
                 container.style.padding = '0 10px';
+                container.style.marginTop = '0';
                 document.getElementById('dietToggleBtn').innerText = '📅 식단표 (스케줄 확인)';
             }
         };
@@ -245,10 +239,7 @@
                 await updateDoc(userRef, { bookmarks: slots });
                 currentProfileData.bookmarks = slots;
                 renderProfileCard(); 
-                
-                // 식단표가 열려있다면 갱신
                 if (isDietPlanOpen) renderCombinedSchedule();
-
             } catch (e) { console.error("Save Error:", e); }
         }
 
@@ -281,19 +272,24 @@
             document.getElementById('lbEditBtn').innerHTML = '🍽 편집';
             document.getElementById('lbEditBtn').classList.remove('editing');
             
-            // 초기화 시 식단표는 닫아둠
             isDietPlanOpen = false;
-            document.getElementById('dietPlanContainer').style.height = '0';
-            document.getElementById('dietPlanContainer').style.padding = '0 10px';
+            const dietContainer = document.getElementById('dietPlanContainer');
+            dietContainer.style.height = '0';
+            dietContainer.style.padding = '0 10px';
+            dietContainer.style.marginTop = '0';
             document.getElementById('dietToggleBtn').innerText = '📅 식단표 (스케줄 확인)';
 
             let saved = currentProfileData.bookmarks || [];
             let normalized = [null, null, null, null, null];
+            
+            // 기존 데이터가 5개보다 적거나 많을 수 있으므로 안전하게 복사
             if (saved.length > 0) {
+                // saved 배열의 길이가 5라고 가정하지 않고, 최대 5개까지만 복사
                 for(let i=0; i<5; i++) {
                     if (i < saved.length) normalized[i] = saved[i];
                 }
             }
+            
             currentProfileData.tempSlots = normalized; 
             
             renderLunchboxGrid();
@@ -306,11 +302,8 @@
             const slots = currentProfileData.tempSlots || [null,null,null,null,null];
             
             const placeholders = [
-                "밥을<br>담아주세요🍚", 
-                "국을<br>담아주세요🥘", 
-                "반찬1🍳",            
-                "반찬2🥗",            
-                "반찬3🥢"             
+                "밥을<br>담아주세요🍚", "국을<br>담아주세요🥘", 
+                "반찬1🍳", "반찬2🥗", "반찬3🥢"             
             ];
 
             for (let i = 0; i < 5; i++) {
@@ -354,24 +347,29 @@
             }
         }
 
-        // [식단표 렌더링 로직 - 계단식 겹치기 적용]
         function renderCombinedSchedule() {
             const container = document.getElementById('dietPlanBody');
             container.innerHTML = '';
 
             const slots = currentProfileData.tempSlots || [];
-            // 슬롯별 색상 정의 (파스텔톤)
-            const slotColors = ["#ffebee", "#e3f2fd", "#e8f5e9", "#fff3e0", "#f3e5f5"]; // 빨, 파, 초, 주, 보 (연한색)
-            const borderColors = ["#ef9a9a", "#90caf9", "#a5d6a7", "#ffcc80", "#ce93d8"];
+            // 누룽지 테마에 어울리는 파스텔 톤 색상
+            const slotColors = ["#fff9c4", "#ffe0b2", "#dcedc8", "#ffccbc", "#e1bee7"]; 
+            const borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
 
-            // 1. 모든 팀의 일정 수집
             let allEvents = [];
+            let minH = 24, maxH = 0;
+            let hasData = false;
+
             slots.forEach((teamId, idx) => {
                 if(teamId !== null) {
                     const team = allClubs.find(c => c.id === teamId);
                     if(team) {
                         const scheduleMap = parseScheduleText(team.schedule);
                         for (const [day, data] of Object.entries(scheduleMap)) {
+                            if (data.startH < minH) minH = data.startH;
+                            if (data.endH > maxH) maxH = data.endH;
+                            hasData = true;
+                            
                             allEvents.push({
                                 teamName: team.name,
                                 day: day,
@@ -385,28 +383,27 @@
                 }
             });
 
-            // 2. 시간표 뼈대 그리기
-            const days = ['월', '화', '수', '목', '금', '토', '일'];
-            const displayStart = 6; 
-            const displayEnd = 24; 
+            // [동적 시간 범위 계산]
+            if (!hasData) { minH = 18; maxH = 22; }
+            const displayStart = Math.max(6, Math.floor(minH) - 1); 
+            const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
             const ROW_HEIGHT = 40; 
             
-            // 헤더
+            // 헤더 (누룽지 디자인 적용)
+            const days = ['월', '화', '수', '목', '금', '토', '일'];
             const headerRow = document.createElement('div');
             headerRow.className = 'diet-header-row';
-            headerRow.innerHTML = '<div class="diet-time-col"></div>';
+            headerRow.innerHTML = '<div class="diet-time-col header-corner"></div>';
             days.forEach(d => {
                 headerRow.innerHTML += `<div class="diet-day-col header">${d}</div>`;
             });
             container.appendChild(headerRow);
 
-            // 바디 (그리드)
             const bodyWrapper = document.createElement('div');
             bodyWrapper.className = 'diet-body-wrapper';
             bodyWrapper.style.height = (totalHours * ROW_HEIGHT) + 'px';
 
-            // 시간축
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
             for(let h = displayStart; h < displayEnd; h++) {
@@ -418,12 +415,10 @@
             }
             bodyWrapper.appendChild(timeCol);
 
-            // 요일별 컬럼 생성 및 이벤트 배치
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
                 
-                // 가이드라인
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
                     line.className = 'diet-grid-line';
@@ -431,22 +426,16 @@
                     dayCol.appendChild(line);
                 }
 
-                // 해당 요일의 이벤트 필터링 및 정렬
                 let dayEvents = allEvents.filter(e => e.day === day).sort((a,b) => a.start - b.start);
 
-                // 겹침 계산 (간단한 계단식 로직)
-                // 직전 이벤트와 겹치면 indent 증가
                 dayEvents.forEach((evt, i) => {
                     let indent = 0;
-                    // 내 앞의 이벤트들과 겹치는지 확인
                     for(let j=0; j<i; j++) {
                         const prev = dayEvents[j];
-                        // 겹침 조건: (내 시작 < 남의 끝) AND (내 끝 > 남의 시작)
                         if (evt.start < prev.end && evt.end > prev.start) {
                             indent++; 
                         }
                     }
-                    // 너무 많이 겹치면(3개 이상) 다시 0으로 (폭 제한 때문)
                     if(indent > 2) indent = 0; 
 
                     const topPx = (evt.start - displayStart) * ROW_HEIGHT;
@@ -455,15 +444,13 @@
                     const eventDiv = document.createElement('div');
                     eventDiv.className = 'diet-event';
                     eventDiv.style.top = topPx + 'px';
-                    eventDiv.style.height = (heightPx - 2) + 'px';
-                    // 계단식 배치: 왼쪽 여백을 줌
-                    eventDiv.style.left = (indent * 15) + '%';
-                    eventDiv.style.width = (90 - (indent * 10)) + '%';
+                    eventDiv.style.height = Math.max(heightPx - 2, 20) + 'px'; // 최소 높이 보장
+                    eventDiv.style.left = (indent * 10) + '%';
+                    eventDiv.style.width = (95 - (indent * 5)) + '%';
                     eventDiv.style.zIndex = indent + 1;
                     
-                    // 스타일 적용
                     eventDiv.style.backgroundColor = slotColors[evt.slotIdx];
-                    eventDiv.style.borderLeft = `3px solid ${borderColors[evt.slotIdx]}`;
+                    eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
                     eventDiv.innerHTML = `<span class="evt-title">${evt.teamName}</span><span class="evt-time">${evt.text}</span>`;
                     
@@ -478,19 +465,16 @@
 
         function handleSlotClick(index) {
             if (selectedSlotIndex === null) {
-                // 첫 번째 선택
                 selectedSlotIndex = index;
             } else {
-                // 두 번째 선택 -> 스왑
                 if (selectedSlotIndex !== index) {
                     const temp = currentProfileData.tempSlots[selectedSlotIndex];
                     currentProfileData.tempSlots[selectedSlotIndex] = currentProfileData.tempSlots[index];
                     currentProfileData.tempSlots[index] = temp;
                 }
-                selectedSlotIndex = null; // 선택 해제
+                selectedSlotIndex = null;
             }
             renderLunchboxGrid();
-            // 스왑 후 식단표가 열려있다면 갱신
             if (isDietPlanOpen) renderCombinedSchedule();
         }
 
@@ -498,13 +482,12 @@
             if(confirm("이 반찬을 도시락에서 뺄까요?")) {
                 currentProfileData.tempSlots[index] = null;
                 renderLunchboxGrid();
-                // 삭제 후 식단표가 열려있다면 갱신
                 if (isDietPlanOpen) renderCombinedSchedule();
             }
         }
 
         window.closeLunchbox = function() { 
-            if(isEditMode) saveLunchboxToDB(); // 닫을 때 저장
+            if(isEditMode) saveLunchboxToDB(); 
             document.getElementById('lunchboxOverlay').style.display = 'none'; 
         };
 
@@ -542,103 +525,106 @@
 
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }
-        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #fff8e1; }
         #map { width: 100%; height: 100%; }
+        
+        /* [누룽지 테마 컬러 변수] */
         :root { 
             --white: #fff; 
-            --brand-color: #fac710; 
-            --urgent-color: #ff4757; 
-            --shadow: 0 4px 10px rgba(0,0,0,0.1); 
-            --today-color: #d35400; 
-            --nurungji-dark: #6d4c41; 
-            --nurungji-card: #fbc02d; 
+            --nurungji-yellow: #fac710; 
+            --nurungji-brown: #8d6e63;
+            --nurungji-dark: #5d4037;
+            --nurungji-bg: #fff8e1;
+            --nurungji-light: #fffde7;
+            --urgent-color: #ff7043; 
+            --shadow: 0 4px 10px rgba(93, 64, 55, 0.15); 
+            --today-color: #d84315; 
         }
         
-        .search-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 12px; box-shadow: var(--shadow); height: 48px; align-items: center; padding: 0 5px; }
-        .search-icon-box { width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: #888; }
-        .main-search-input { flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; }
-        .separator { width: 1px; height: 20px; background: #eee; margin: 0 5px; }
-        .filter-btn-icon { width: 48px; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; color: #333; position: relative; }
+        .search-container { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 20; display: flex; background: white; border-radius: 16px; box-shadow: var(--shadow); height: 50px; align-items: center; padding: 0 8px; border: 2px solid var(--nurungji-brown); }
+        .search-icon-box { width: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: var(--nurungji-brown); }
+        .main-search-input { flex: 1; border: none; outline: none; font-size: 15px; height: 100%; background: transparent; color: var(--nurungji-dark); }
+        .separator { width: 1px; height: 20px; background: #d7ccc8; margin: 0 5px; }
+        .filter-btn-icon { width: 48px; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; color: var(--nurungji-brown); position: relative; }
         .filter-btn-icon:active { opacity: 0.5; }
-        .filter-badge { position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: #fac710; border-radius: 50%; display: none; }
+        .filter-badge { position: absolute; top: 12px; right: 10px; width: 8px; height: 8px; background: var(--nurungji-yellow); border-radius: 50%; display: none; }
         .filter-badge.active { display: block; }
         
-        .urgent-ticker-bar { position: absolute; top: 70px; left: 15px; right: 15px; z-index: 18; height: 40px; background: rgba(255, 245, 245, 0.95); border: 1px solid rgba(255, 71, 87, 0.3); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: none; align-items: center; padding: 0 12px; overflow: hidden; will-change: top; }
+        .urgent-ticker-bar { position: absolute; top: 75px; left: 15px; right: 15px; z-index: 18; height: 44px; background: #fffbf0; border: 2px solid var(--urgent-color); border-radius: 12px; box-shadow: var(--shadow); display: none; align-items: center; padding: 0 12px; overflow: hidden; will-change: top; }
         .ticker-icon { font-size: 18px; margin-right: 10px; animation: pulse 1.5s infinite; }
         .ticker-content { flex: 1; height: 100%; position: relative; overflow: hidden; }
         .ticker-list { list-style: none; margin: 0; padding: 0; position: absolute; width: 100%; top: 0; left: 0; transition: top 0.5s ease-in-out; }
-        .ticker-item { height: 40px; line-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 600; cursor: pointer; color: #333; }
-        .ticker-item b { color: #d63031; margin-right: 5px; }
+        .ticker-item { height: 44px; line-height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--nurungji-dark); }
+        .ticker-item b { color: #d84315; margin-right: 5px; }
 
         .fab-group { position: absolute; bottom: 30px; right: 15px; z-index: 20; display: flex; flex-direction: column; gap: 12px; }
-        .fab-btn { width: 50px; height: 50px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; text-decoration: none; color: #333; transition: transform 0.2s; }
+        .fab-btn { width: 50px; height: 50px; background: white; border-radius: 20px; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; text-decoration: none; color: var(--nurungji-brown); transition: transform 0.2s; border: 2px solid var(--nurungji-brown); }
         .fab-btn:active { transform: scale(0.95); }
-        .fab-report { background: #fac710; color: #000; }
-        .fab-urgent { background: var(--urgent-color); color: #fff; border: 2px solid #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
+        .fab-report { background: var(--nurungji-yellow); color: var(--nurungji-dark); border-color: var(--nurungji-dark); }
+        .fab-urgent { background: var(--urgent-color); color: #fff; border-color: #fff; font-size: 24px; box-shadow: 0 4px 15px rgba(255, 112, 67, 0.4); }
         
-        .fab-profile { position: absolute; bottom: 30px; left: 15px; z-index: 20; width: 55px; height: 55px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; border: 2px solid #eee; transition: transform 0.2s; }
+        .fab-profile { position: absolute; bottom: 30px; left: 15px; z-index: 20; width: 55px; height: 55px; background: #fff; border-radius: 24px; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; border: 3px solid var(--nurungji-brown); transition: transform 0.2s; }
         .fab-profile:active { transform: scale(0.95); }
-        .fab-lunchbox { position: absolute; bottom: 100px; left: 15px; z-index: 20; width: 50px; height: 50px; background: #fff; border-radius: 50%; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 26px; cursor: pointer; border: 1px solid #eee; transition: transform 0.2s; }
+        .fab-lunchbox { position: absolute; bottom: 100px; left: 15px; z-index: 20; width: 50px; height: 50px; background: #fff; border-radius: 20px; box-shadow: var(--shadow); display: flex; justify-content: center; align-items: center; font-size: 26px; cursor: pointer; border: 2px solid var(--nurungji-brown); transition: transform 0.2s; }
         .fab-lunchbox:active { transform: scale(0.95); }
 
-        .profile-overlay, .lunchbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 500; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
-        .profile-card { width: 80%; max-width: 320px; background: var(--nurungji-card); padding: 30px 20px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.2); position: relative; border: 8px dashed rgba(255,255,255,0.9); border-radius: 40px; background-clip: padding-box; }
+        .profile-overlay, .lunchbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(93, 64, 55, 0.5); z-index: 500; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        
+        /* [누룽지 테마: 프로필 카드] */
+        .profile-card { width: 85%; max-width: 340px; background: var(--nurungji-bg); padding: 30px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative; border: 4px solid var(--nurungji-brown); border-radius: 24px; }
         .pc-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; }
-        .pc-nickname { color: #fff; font-size: 24px; font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        .pc-edit-btn { cursor: pointer; font-size: 18px; background: rgba(255,255,255,0.4); width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
-        .pc-date { color: rgba(255,255,255,0.95); font-size: 12px; font-weight: 600; margin-bottom: 10px; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .pc-divider { height: 2px; background: rgba(255,255,255,0.5); width: 50%; margin: 10px auto; border-radius: 1px; }
-        .pc-main-team { color: #fff; font-size: 20px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-top: 5px; }
+        .pc-nickname { color: var(--nurungji-dark); font-size: 22px; font-weight: 800; }
+        .pc-edit-btn { cursor: pointer; font-size: 16px; background: rgba(255,255,255,0.5); width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid var(--nurungji-brown); }
+        .pc-date { color: var(--nurungji-brown); font-size: 12px; font-weight: 600; margin-bottom: 12px; opacity: 0.8; }
+        .pc-divider { height: 2px; background: var(--nurungji-brown); width: 40%; margin: 10px auto; border-radius: 1px; opacity: 0.3; }
+        .pc-main-team { color: var(--nurungji-dark); font-size: 18px; font-weight: 700; margin-top: 8px; background: rgba(255,255,255,0.4); padding: 5px 10px; border-radius: 10px; display: inline-block; }
         
         .login-section { display: flex; flex-direction: column; gap: 10px; width: 100%; }
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-        .auth-input { padding: 10px 15px; border-radius: 20px; border: none; outline: none; font-size: 14px; background: rgba(255,255,255,0.9); }
+        .auth-input { padding: 12px 15px; border-radius: 12px; border: 2px solid #d7ccc8; outline: none; font-size: 14px; background: white; color: var(--nurungji-dark); }
         .btn-row { display: flex; gap: 8px; }
-        .btn-auth { flex: 1; padding: 10px; border-radius: 20px; border: none; cursor: pointer; font-weight: 700; font-size: 13px; color: #555; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn-google-login { background: white; color: #555; border: 1px solid #ddd; padding: 12px 20px; border-radius: 30px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-auth { flex: 1; padding: 12px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 13px; color: var(--nurungji-dark); background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 2px solid var(--nurungji-brown); }
+        .btn-google-login { background: white; color: var(--nurungji-dark); border: 2px solid var(--nurungji-brown); padding: 12px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .btn-google-login img { width: 18px; height: 18px; }
-        .btn-logout { margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 5px 10px; border-radius: 12px; font-size: 12px; cursor: pointer; }
-        .divider { color: rgba(255,255,255,0.8); font-size: 11px; margin: 10px 0; display: flex; align-items: center; gap: 10px; }
-        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.5); }
+        .btn-logout { margin-top: 20px; background: #a1887f; border: none; color: white; padding: 8px 16px; border-radius: 12px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        .divider { color: var(--nurungji-brown); font-size: 11px; margin: 10px 0; display: flex; align-items: center; gap: 10px; }
+        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--nurungji-brown); opacity: 0.5; }
 
-        /* [도시락 및 식단표 스타일] */
+        /* [누룽지 테마: 도시락 및 식단표] */
         .lunchbox-wrapper {
             width: 330px;
-            background: #fff8e1;
-            border: 4px solid #8d6e63;
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            background: var(--nurungji-bg);
+            border: 4px solid var(--nurungji-brown);
+            border-radius: 20px;
+            padding: 15px 10px;
+            box-shadow: 0 12px 30px rgba(62, 39, 35, 0.4);
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             transition: all 0.3s ease;
-            max-height: 90vh; /* 화면 넘침 방지 */
+            max-height: 90vh;
         }
         .lb-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #5d4037;
+            color: var(--nurungji-dark);
             font-weight: 800;
             font-size: 18px;
             padding: 0 5px;
         }
         .lb-edit-btn {
-            background: transparent;
-            border: 1px solid #8d6e63;
-            color: #5d4037;
+            background: white;
+            border: 2px solid var(--nurungji-brown);
+            color: var(--nurungji-dark);
             border-radius: 15px;
-            padding: 4px 10px;
+            padding: 4px 12px;
             font-size: 13px;
             cursor: pointer;
             transition: all 0.2s;
+            font-weight: 700;
         }
-        .lb-edit-btn.editing {
-            background: #d32f2f;
-            color: white;
-            border-color: #b71c1c;
-        }
+        .lb-edit-btn.editing { background: #ff7043; color: white; border-color: #d84315; }
 
         .lunchbox-grid { 
             width: 100%; 
@@ -646,90 +632,84 @@
             display: grid; 
             grid-template-columns: repeat(6, 1fr); 
             grid-template-rows: 0.8fr 1.2fr;
-            gap: 4px; 
+            gap: 6px; 
             flex-shrink: 0;
         }
         
         .lb-cell { 
-            background: #fff; 
-            border-radius: 6px; 
+            background: white; 
+            border-radius: 12px; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             font-size: 12px; 
             font-weight: 700; 
-            color: #555; 
+            color: var(--nurungji-dark); 
             text-align: center; 
             padding: 4px; 
             cursor: pointer; 
             transition: all 0.1s; 
-            border: 1px solid #e0e0e0; 
+            border: 2px solid #d7ccc8; 
             position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .lb-cell:active { transform: scale(0.98); }
-        .lb-cell.selected { border: 2px solid #e65100; background: #ffe0b2; }
-        .lb-cell.empty { color: #aaa; font-weight: 400; font-size: 11px; line-height: 1.3; }
-        .lb-cell.filled { background: #fffde7; border-color: var(--brand-color); color: #333; }
+        .lb-cell.selected { border: 2px solid var(--urgent-color); background: #ffecb3; }
+        .lb-cell.empty { color: #bcaaa4; font-weight: 500; font-size: 11px; line-height: 1.4; border-style: dashed; background: #fffde7; }
+        .lb-cell.filled { background: white; border-color: var(--nurungji-yellow); color: var(--nurungji-dark); }
         .lb-placeholder { display: block; }
         
         .lb-del-btn {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            width: 20px;
-            height: 20px;
-            background: #ff5252;
-            color: white;
-            border-radius: 50%;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            z-index: 10;
+            position: absolute; top: -6px; right: -6px; width: 22px; height: 22px;
+            background: #ff5252; color: white; border-radius: 50%;
+            font-size: 14px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; border: 2px solid white;
         }
 
-        /* 급식판 배치 */
         .slot-2 { grid-row: 1; grid-column: 1 / span 2; } 
         .slot-3 { grid-row: 1; grid-column: 3 / span 2; } 
         .slot-4 { grid-row: 1; grid-column: 5 / span 2; } 
         .slot-0 { grid-row: 2; grid-column: 1 / span 3; } 
         .slot-1 { grid-row: 2; grid-column: 4 / span 3; } 
 
-        /* [NEW] 식단표(스케줄) 스타일 */
         .diet-toggle-btn {
             text-align: center;
-            background: #d7ccc8;
-            color: #5d4037;
+            background: var(--nurungji-brown);
+            color: white;
             font-weight: 700;
-            padding: 8px;
-            border-radius: 8px;
+            padding: 10px;
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 14px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: background 0.2s;
         }
+        .diet-toggle-btn:active { transform: scale(0.98); background: var(--nurungji-dark); }
+
         .diet-plan-container {
             width: 100%;
             background: white;
-            border-radius: 8px;
+            border-radius: 16px;
             overflow: hidden;
             transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
             height: 0;
             display: flex;
             flex-direction: column;
-            padding: 0 10px; /* 초기 패딩은 toggle시 조절 */
+            border: 1px solid #d7ccc8;
         }
         .diet-header-row {
             display: flex;
-            height: 30px;
-            border-bottom: 2px solid #8d6e63;
+            height: 35px;
+            border-bottom: 2px solid var(--nurungji-brown);
             background: #efebe9;
         }
         .diet-time-col {
             width: 40px;
             flex-shrink: 0;
-            border-right: 1px solid #ddd;
-            background: #fafafa;
+            border-right: 1px solid #d7ccc8;
+            background: #fff8e1;
         }
+        .diet-time-col.header-corner { background: #d7ccc8; }
         .diet-day-col {
             flex: 1;
             display: flex;
@@ -737,29 +717,26 @@
             align-items: center;
             font-size: 12px;
             font-weight: 700;
-            color: #5d4037;
+            color: var(--nurungji-dark);
             position: relative;
-            border-right: 1px solid #eee;
+            border-right: 1px solid #efebe9;
         }
         .diet-day-col.header {
             background: #d7ccc8;
             color: white;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         .diet-body-wrapper {
             flex: 1;
             display: flex;
             overflow-y: auto;
             position: relative;
+            background: white;
         }
         .diet-time-label {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            font-size: 10px;
-            color: #888;
-            padding-top: 2px;
-            border-bottom: 1px solid #eee;
+            display: flex; justify-content: center; align-items: flex-start;
+            font-size: 10px; color: #8d6e63; padding-top: 2px;
+            border-bottom: 1px solid #efebe9; font-weight: 600;
         }
         .diet-grid-line {
             width: 100%;
@@ -768,19 +745,18 @@
         }
         .diet-event {
             position: absolute;
-            font-size: 9px;
-            color: #333;
+            font-size: 10px;
+            color: #3e2723;
             padding: 2px 4px;
             box-sizing: border-box;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; justify-content: center;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
             line-height: 1.1;
         }
         .evt-title { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .evt-time { font-size: 8px; opacity: 0.8; margin-top: 1px; }
+        .evt-time { font-size: 9px; opacity: 0.8; margin-top: 1px; }
 
         .label { padding: 6px 12px; background-color: #fff; border-radius: 20px; font-size: 12px; font-weight: 800; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1); white-space: nowrap; cursor: pointer; transform: translateY(-55px); }
         .label:hover { z-index: 10000 !important; transform: translateY(-57px) scale(1.05); }
@@ -788,12 +764,12 @@
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
 
         .bottom-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; z-index: 200; border-top-left-radius: 24px; border-top-right-radius: 24px; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: height 0.1s linear; height: 0; overflow: hidden; }
-        .sheet-handle-area { width: 100%; padding: 10px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: #fff; }
-        .sheet-handle { width: 36px; height: 4px; background: #e5e5e5; border-radius: 2px; }
+        .sheet-handle-area { width: 100%; padding: 12px 0; display: flex; justify-content: center; cursor: grab; flex-shrink: 0; background: white; }
+        .sheet-handle { width: 40px; height: 5px; background: #e0e0e0; border-radius: 3px; }
         .sheet-content-wrapper { flex: 1; overflow-y: auto; padding: 0 24px 20px 24px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
         .sheet-content-wrapper::-webkit-scrollbar { display: none; }
 
-        .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff5f5; border: 1px solid #ff8787; border-radius: 12px; color: #c92a2a; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }
+        .urgent-banner { margin-bottom: 15px; padding: 12px; background: #fff3e0; border: 1px solid #ffcc80; border-radius: 12px; color: #e64a19; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; line-height: 1.4; }
         .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }
         .sheet-title { font-size: 22px; font-weight: 800; color: #111; margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }
         .instagram { font-size: 26px; width: 1em; height: 1em; display: inline-grid; place-items: center; vertical-align: middle; background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%); border-radius: 0.25em; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
@@ -801,55 +777,56 @@
         .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
 
         .time-morph-container { position: relative; background: transparent; margin-bottom: 20px; transition: height 0.1s linear; overflow: hidden; min-height: 60px; border: none; }
-        .st-bubble { background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px; color: #333; white-space: nowrap; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--brand-color); box-shadow: 0 0 8px rgba(250, 199, 16, 0.4); flex-shrink: 0; }
-        .st-day-text { font-size: 12px; color: var(--brand-color); font-weight: 800; margin-bottom: 2px; }
+        .st-bubble { background: #fff; border-radius: 12px; padding: 10px 16px; font-size: 13px; color: #333; white-space: nowrap; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--nurungji-yellow); box-shadow: 0 4px 10px rgba(250, 199, 16, 0.15); flex-shrink: 0; }
+        .st-day-text { font-size: 12px; color: #f57f17; font-weight: 800; margin-bottom: 2px; }
         .st-time-text { font-size: 14px; font-weight: 700; color: #333; }
         .summary-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; gap: 8px; overflow-x: auto; align-items: center; padding: 5px; scrollbar-width: none; opacity: 1; transition: opacity 0.1s; z-index: 10; }
         .summary-content::-webkit-scrollbar { display: none; }
         .full-content { position: absolute; top: 0; left: 0; width: 100%; opacity: 0; transition: opacity 0.1s; z-index: 5; }
         
-        .ft-container { display: flex; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #f0f0f0; }
-        .ft-header-row-flex { display: flex; height: 35px; border-bottom: 1px solid #eee; }
-        .ft-header-cell { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #888; font-weight: 600; background: #fafafa; }
-        .ft-header-cell.time-col { width: 50px; flex: none; border-right: 1px solid #eee; }
+        /* [개별 팀 시간표 스타일 - 식단표와 통일] */
+        .ft-container { display: flex; flex-direction: column; background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid #d7ccc8; }
+        .ft-header-row-flex { display: flex; height: 35px; border-bottom: 2px solid var(--nurungji-brown); background: #efebe9; }
+        .ft-header-cell { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--nurungji-brown); font-weight: 700; }
+        .ft-header-cell.time-col { width: 50px; flex: none; border-right: 1px solid #d7ccc8; background: #fff8e1; }
         .ft-header-cell.today { background: var(--today-color); color: #fff; font-weight: 800; }
         .ft-body { display: flex; position: relative; }
-        .ft-col-time { width: 50px; flex: none; display: flex; flex-direction: column; border-right: 1px solid #eee; background: #fafafa; }
-        .ft-time-label { display: flex; flex-direction: row; gap: 2px; align-items: center; justify-content: center; font-size: 11px; color: #999; font-weight: 500; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
-        .ft-col-day { flex: 1; position: relative; border-right: 1px solid #f8f8f8; }
+        .ft-col-time { width: 50px; flex: none; display: flex; flex-direction: column; border-right: 1px solid #d7ccc8; background: #fff8e1; }
+        .ft-time-label { display: flex; flex-direction: row; gap: 2px; align-items: center; justify-content: center; font-size: 11px; color: #8d6e63; font-weight: 600; border-bottom: 1px solid #efebe9; white-space: nowrap; }
+        .ft-col-day { flex: 1; position: relative; border-right: 1px solid #efebe9; }
         .ft-col-day:last-child { border-right: none; }
-        .ft-event-block { position: absolute; width: 94%; left: 3%; background: rgba(250, 199, 16, 0.25); border-left: 3px solid var(--brand-color); border-radius: 4px; font-size: 10px; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-weight: 700; line-height: 1.2; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 2px; overflow: hidden; }
+        .ft-event-block { position: absolute; width: 94%; left: 3%; background: #fff9c4; border-left: 4px solid var(--nurungji-yellow); border-radius: 6px; font-size: 10px; color: #3e2723; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-weight: 700; line-height: 1.2; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 2px; overflow: hidden; }
 
         .tag-box { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #555; background: #f1f3f5; }
-        .tag.target { color: #0056b3; background: #e7f5ff; }
+        .tag { font-size: 12px; padding: 6px 10px; border-radius: 8px; font-weight: 600; color: #5d4037; background: #efebe9; }
+        .tag.target { color: #e65100; background: #fff3e0; }
         .info-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 15px; color: #333; }
         .info-icon { width: 20px; text-align: center; font-size: 16px; }
         .action-buttons { display: flex; gap: 12px; margin-top: 20px; }
         .btn { flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.1s; }
         .btn:active { transform: scale(0.98); }
-        .btn-copy { background: #f1f3f5; color: #333; }
-        .btn-way { background: var(--brand-color); color: #000; box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
+        .btn-copy { background: #eceff1; color: #455a64; }
+        .btn-way { background: var(--nurungji-yellow); color: var(--nurungji-dark); box-shadow: 0 4px 10px rgba(250, 199, 16, 0.3); }
         a.insta-link { text-decoration: none; display: flex; align-items: center; }
 
-        .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: #fff; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; }
+        .filter-sheet { position: fixed; top: 0; left: 0; width: 100%; max-height: 85%; background: white; z-index: 300; border-radius: 0 0 24px 24px; box-shadow: 0 5px 30px rgba(0,0,0,0.2); padding: 0; transform: translateY(-100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; will-change: transform; border-bottom: 4px solid var(--nurungji-brown); }
         .filter-sheet.active { transform: translateY(0); }
         .fs-header { padding: 20px 24px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .fs-title { font-size: 20px; font-weight: 800; }
+        .fs-title { font-size: 20px; font-weight: 800; color: var(--nurungji-dark); }
         .fs-body { flex: 1; overflow-y: auto; padding: 0 24px 10px; }
         .fs-section { margin-bottom: 25px; }
-        .fs-label { font-size: 14px; font-weight: 700; color: #888; margin-bottom: 10px; display: block; }
+        .fs-label { font-size: 14px; font-weight: 700; color: #8d6e63; margin-bottom: 10px; display: block; }
         .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
-        .chip { padding: 8px 16px; border-radius: 20px; border: 1px solid #e0e0e0; background: #fff; font-size: 14px; color: #555; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }
-        .chip:hover { background: #f8f9fa; }
-        .chip.selected { background: var(--brand-color); color: #000; border-color: var(--brand-color); box-shadow: 0 2px 6px rgba(250, 199, 16, 0.3); font-weight: 700; }
+        .chip { padding: 8px 16px; border-radius: 20px; border: 2px solid #e0e0e0; background: #fff; font-size: 14px; color: #757575; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .chip:hover { background: #f5f5f5; }
+        .chip.selected { background: var(--nurungji-yellow); color: var(--nurungji-dark); border-color: var(--nurungji-brown); box-shadow: 0 2px 6px rgba(250, 199, 16, 0.3); font-weight: 700; }
         .fs-footer { padding: 10px 24px 10px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white; }
-        .btn-reset { flex: 0.3; background: #f1f3f5; color: #555; }
-        .btn-apply { flex: 1; background: #333; color: white; }
+        .btn-reset { flex: 0.3; background: #f5f5f5; color: #757575; }
+        .btn-apply { flex: 1; background: var(--nurungji-dark); color: white; }
         .fs-handle-area { width: 100%; padding: 10px 0 20px 0; display: flex; justify-content: center; cursor: grab; background: white; border-radius: 0 0 24px 24px; }
-        .fs-handle { width: 40px; height: 5px; background: #e5e5e5; border-radius: 3px; }
+        .fs-handle { width: 40px; height: 5px; background: #bdbdbd; border-radius: 3px; }
         
-        .expand-hint { text-align: center; color: #ccc; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
+        .expand-hint { text-align: center; color: #bdbdbd; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
     </style>
 </head>
 <body>
@@ -1377,7 +1354,7 @@
             });
 
             if (uniqueTickerList.length > 1) {
-                var tickerHeight = 40;
+                var tickerHeight = 44;
                 var currentIndex = 0;
                 setInterval(function() {
                     currentIndex++;
