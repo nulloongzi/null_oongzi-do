@@ -33,20 +33,33 @@
             console.log("🔥 Firebase 연결 성공!");
         } catch (e) { console.error("Firebase 초기화 실패:", e); }
 
+        // [누룽지 테마 색상]
         const riceData = [
-            {name: "현미밥", weight: 50, color: "#d7ccc8"}, {name: "백미밥", weight: 50, color: "#fafafa"}, 
-            {name: "흑미밥", weight: 50, color: "#b39ddb"}, {name: "보리밥", weight: 50, color: "#cfd8dc"}, 
-            {name: "콩밥", weight: 50, color: "#a5d6a7"}, {name: "오곡밥", weight: 50, color: "#ffe0b2"}, 
-            {name: "차조밥", weight: 10, color: "#fff59d"}, {name: "기장밥", weight: 10, color: "#fff9c4"}, 
-            {name: "숭늉", weight: 10, color: "#efebe9"}, {name: "볶음밥", weight: 10, color: "#ffcc80"}, 
-            {name: "비빔밥", weight: 10, color: "#ffab91"}, {name: "김밥", weight: 10, color: "#bdbdbd"},   
-            {name: "주먹밥", weight: 10, color: "#f5f5f5"}, {name: "유부초밥", weight: 10, color: "#ffe082"},
-            {name: "덮밥", weight: 10, color: "#dcedc8"}, {name: "국밥", weight: 10, color: "#cfd8dc"},
-            {name: "솥밥", weight: 10, color: "#bcaaa4"}, {name: "약밥", weight: 10, color: "#8d6e63"},
-            {name: "죽", weight: 10, color: "#e0f2f1"}, {name: "곤드레밥", weight: 10, color: "#81c784"}, 
-            {name: "영양밥", weight: 10, color: "#ffecb3"}, {name: "치밥", weight: 10, color: "#ff8a65"}, 
-            {name: "햇반", weight: 10, color: "#ffffff"}, {name: "고봉밥", weight: 10, color: "#fbe9e7"},
-            {name: "밥아저씨", weight: 1, color: "#4fc3f7"} 
+            {name: "현미밥", weight: 50, color: "#FFF9C4"}, 
+            {name: "백미밥", weight: 50, color: "#FFF59D"}, 
+            {name: "흑미밥", weight: 50, color: "#FFF176"}, 
+            {name: "보리밥", weight: 50, color: "#FFEE58"}, 
+            {name: "콩밥", weight: 50, color: "#FFD54F"},   
+            {name: "오곡밥", weight: 50, color: "#FFCA28"}, 
+            {name: "차조밥", weight: 10, color: "#FFE082"}, 
+            {name: "기장밥", weight: 10, color: "#FFECB3"}, 
+            {name: "숭늉", weight: 10, color: "#FFE0B2"}, 
+            {name: "볶음밥", weight: 10, color: "#FFCC80"}, 
+            {name: "비빔밥", weight: 10, color: "#FFB74D"}, 
+            {name: "김밥", weight: 10, color: "#FFF8E1"},   
+            {name: "주먹밥", weight: 10, color: "#FFECB3"},
+            {name: "유부초밥", weight: 10, color: "#FFE082"},
+            {name: "덮밥", weight: 10, color: "#FFF59D"},
+            {name: "국밥", weight: 10, color: "#FFCCBC"},   
+            {name: "솥밥", weight: 10, color: "#D7CCC8"},   
+            {name: "약밥", weight: 10, color: "#CFD8DC"},   
+            {name: "죽", weight: 10, color: "#F5F5F5"},     
+            {name: "곤드레밥", weight: 10, color: "#C5E1A5"}, 
+            {name: "영양밥", weight: 10, color: "#E6EE9C"}, 
+            {name: "치밥", weight: 10, color: "#FFAB91"}, 
+            {name: "햇반", weight: 10, color: "#FFFFFF"},
+            {name: "고봉밥", weight: 10, color: "#BCAAA4"},
+            {name: "밥아저씨", weight: 1, color: "#81D4FA"} 
         ];
 
         function generateRiceName() {
@@ -65,6 +78,20 @@
         }
 
         const allClubs = __CLUBS_JSON__;
+
+        // [NEW] 팀 찾기 헬퍼 함수 (기존 팀 + 커스텀 팀 통합 검색)
+        function findClub(id) {
+            if (!id) return null;
+            // 1. 등록된 팀에서 찾기
+            let club = allClubs.find(c => c.id === id);
+            if (club) return club;
+
+            // 2. 커스텀 팀에서 찾기 (현재 프로필에 저장된 데이터)
+            if (currentProfileData && currentProfileData.customTeams && currentProfileData.customTeams[id]) {
+                return currentProfileData.customTeams[id];
+            }
+            return null;
+        }
 
         async function checkDuplicateNickname(nickname) {
             if (!db) return false;
@@ -126,6 +153,8 @@
                 const userSnap = await getDoc(userRef);
                 if (userSnap.exists()) {
                     currentProfileData = userSnap.data();
+                    // [NEW] customTeams 초기화 보장
+                    if (!currentProfileData.customTeams) currentProfileData.customTeams = {};
                 } else {
                     let newNameObj = null; let isUnique = false; let retryCount = 0;
                     while (!isUnique && retryCount < 10) {
@@ -135,7 +164,17 @@
                     }
                     if (!isUnique) newNameObj.full += Date.now().toString().slice(-4);
                     const now = new Date();
-                    const userData = { nickname: newNameObj.base, suffix: newNameObj.code, full_nickname: newNameObj.full, color: newNameObj.color, created_at: now, email: user.email, bookmarks: [] };
+                    // [NEW] customTeams 필드 추가
+                    const userData = { 
+                        nickname: newNameObj.base, 
+                        suffix: newNameObj.code, 
+                        full_nickname: newNameObj.full, 
+                        color: newNameObj.color, 
+                        created_at: now, 
+                        email: user.email, 
+                        bookmarks: [],
+                        customTeams: {} 
+                    };
                     await setDoc(userRef, userData);
                     currentProfileData = userData;
                     alert("환영합니다! [" + newNameObj.full + "]님이 되셨습니다! 🍚");
@@ -162,30 +201,34 @@
             const nicknameEl = document.getElementById('pcNickname');
             const dateEl = document.getElementById('pcDate');
             const mainTeamEl = document.getElementById('pcMainTeam');
+            const riceWatermark = document.getElementById('pcRiceWatermark');
 
-            let bgColor = currentProfileData.color;
-            if (!bgColor) {
-                const riceName = currentProfileData.nickname || currentProfileData.full_nickname.split('-')[0];
-                const found = riceData.find(r => r.name === riceName);
-                bgColor = found ? found.color : "#fbc02d";
-            }
-            // 카드 색상은 밥 색상을 유지하되, 테두리와 스타일은 누룽지 테마 적용
-            card.style.backgroundColor = bgColor;
+            const riceName = currentProfileData.nickname || currentProfileData.full_nickname.split('-')[0];
+            const foundRice = riceData.find(r => r.name === riceName);
+            let bgColor = foundRice ? foundRice.color : "#fff9c4"; 
             
+            card.style.backgroundColor = bgColor;
+            riceWatermark.innerText = riceName;
+
             nicknameEl.innerText = currentProfileData.full_nickname;
             if (currentProfileData.created_at) {
                 const d = new Date(currentProfileData.created_at.seconds * 1000);
                 dateEl.innerText = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
             }
+
             const bookmarks = currentProfileData.bookmarks || [];
-            if (bookmarks.length > 0) {
-                // bookmarks 배열에서 null이 아닌 첫 번째 요소 찾기
-                const firstValid = bookmarks.find(b => b !== null);
-                if (firstValid) {
-                    const mainTeam = allClubs.find(c => c.id === firstValid);
-                    mainTeamEl.innerHTML = mainTeam ? "🏆 " + mainTeam.name : "데이터 없음";
+            const validTeamIds = bookmarks.filter(id => id !== null);
+            
+            if (validTeamIds.length > 0) {
+                const mainId = validTeamIds[0];
+                // [수정됨] findClub 함수 사용
+                const mainTeam = findClub(mainId); 
+                if (mainTeam) {
+                    // 커스텀 팀이면 🍙 아이콘 추가
+                    const icon = mainTeam.isCustom ? "🍙 " : "🏆 ";
+                    mainTeamEl.innerHTML = icon + mainTeam.name;
                 } else {
-                    mainTeamEl.innerText = "찜한 팀이 없어요";
+                    mainTeamEl.innerText = "데이터 없음";
                 }
             } else {
                 mainTeamEl.innerText = "찜한 팀이 없어요";
@@ -228,6 +271,41 @@
             }
         };
 
+        // [NEW] 커스텀 팀 추가 함수
+        window.addCustomTeam = async function() {
+            if (!currentUser || !currentProfileData) { alert("로그인이 필요합니다."); return; }
+            
+            // 1. 이름 입력
+            const name = prompt("🍙 추가할 팀/일정 이름을 입력하세요", "개인운동");
+            if (!name || name.trim() === "") return;
+
+            // 2. 시간 입력
+            const schedule = prompt("시간을 입력하세요 (예: 월 19:00~21:00)", "월 19:00~21:00");
+            if (!schedule || schedule.trim() === "") return;
+
+            // 3. 데이터 생성
+            const newId = "custom_" + Date.now(); // 유니크 ID 생성
+            const newTeam = {
+                id: newId,
+                name: name,
+                schedule: schedule,
+                isCustom: true, // 커스텀 플래그
+                target: "나만의 메뉴",
+                address: "사용자 추가",
+                lat: null, lng: null
+            };
+
+            // 4. 로컬 데이터에 저장
+            if (!currentProfileData.customTeams) currentProfileData.customTeams = {};
+            currentProfileData.customTeams[newId] = newTeam;
+
+            // 5. 도시락에 담기 (저장은 bookmarkTeam 내부에서 처리됨)
+            // 단, customTeams 필드 업데이트를 위해 save를 한번 호출해야 할 수도 있으나,
+            // bookmarkTeam 호출 시 전체 저장이 일어나도록 saveLunchboxToDB를 수정했으므로 괜찮음.
+            // 여기서는 bookmarkTeam을 호출하고, 그 안에서 customTeams도 같이 저장되도록 유도.
+            await bookmarkTeam(newId);
+        };
+
         async function saveLunchboxToDB() {
             if (!currentUser || !currentProfileData) return;
             const userRef = doc(db, "users", currentUser.uid);
@@ -236,7 +314,12 @@
                 while(slots.length < 5) slots.push(null);
                 if(slots.length > 5) slots = slots.slice(0, 5);
 
-                await updateDoc(userRef, { bookmarks: slots });
+                // [수정됨] bookmarks 뿐만 아니라 customTeams도 함께 저장
+                await updateDoc(userRef, { 
+                    bookmarks: slots,
+                    customTeams: currentProfileData.customTeams || {}
+                });
+                
                 currentProfileData.bookmarks = slots;
                 renderProfileCard(); 
                 if (isDietPlanOpen) renderCombinedSchedule();
@@ -257,11 +340,29 @@
                 slots[emptyIndex] = teamId;
 
                 const userRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userRef, { bookmarks: slots });
+                // [수정됨] 저장 시 customTeams도 같이 업데이트 (커스텀 추가 직후 호출될 수 있으므로)
+                await updateDoc(userRef, { 
+                    bookmarks: slots,
+                    customTeams: currentProfileData.customTeams || {}
+                });
                 currentProfileData.bookmarks = slots;
                 
-                alert("도시락에 팀을 담았습니다! 🍱");
+                // 커스텀 팀인 경우 메시지 다르게
+                const team = findClub(teamId);
+                const msg = team && team.isCustom ? "나만의 메뉴가 추가되었습니다! 🍙" : "도시락에 팀을 담았습니다! 🍱";
+                alert(msg);
+                
                 renderProfileCard(); 
+                
+                // 도시락이 열려있다면 그리드 갱신 (tempSlots 동기화)
+                if(document.getElementById('lunchboxOverlay').style.display === 'flex') {
+                     // tempSlots 갱신
+                     if(!currentProfileData.tempSlots) currentProfileData.tempSlots = [null,null,null,null,null];
+                     currentProfileData.tempSlots[emptyIndex] = teamId;
+                     renderLunchboxGrid();
+                     if (isDietPlanOpen) renderCombinedSchedule();
+                }
+
             } catch (e) { alert("찜하기 실패: " + e.message); }
         };
 
@@ -282,9 +383,7 @@
             let saved = currentProfileData.bookmarks || [];
             let normalized = [null, null, null, null, null];
             
-            // 기존 데이터가 5개보다 적거나 많을 수 있으므로 안전하게 복사
             if (saved.length > 0) {
-                // saved 배열의 길이가 5라고 가정하지 않고, 최대 5개까지만 복사
                 for(let i=0; i<5; i++) {
                     if (i < saved.length) normalized[i] = saved[i];
                 }
@@ -314,9 +413,12 @@
                 if (selectedSlotIndex === i) div.classList.add('selected');
 
                 if (teamId !== null) {
-                    const team = allClubs.find(c => c.id === teamId);
+                    // [수정됨] findClub 사용
+                    const team = findClub(teamId);
                     if (team) {
-                        div.innerHTML = `<span>${team.name}</span>`;
+                        // 커스텀 팀 아이콘 처리
+                        const displayName = team.isCustom ? "🍙 " + team.name : team.name;
+                        div.innerHTML = `<span>${displayName}</span>`;
                         div.classList.add('filled');
                         
                         if (isEditMode) {
@@ -332,7 +434,8 @@
                         } else {
                             div.onclick = function() { 
                                 document.getElementById('lunchboxOverlay').style.display = 'none'; 
-                                moveToTeamLocation(team.lat, team.lng); 
+                                if(team.lat && team.lng) moveToTeamLocation(team.lat, team.lng);
+                                else alert("위치 정보가 없는 팀입니다 (나만의 메뉴).");
                             };
                         }
                     }
@@ -352,7 +455,6 @@
             container.innerHTML = '';
 
             const slots = currentProfileData.tempSlots || [];
-            // 누룽지 테마에 어울리는 파스텔 톤 색상
             const slotColors = ["#fff9c4", "#ffe0b2", "#dcedc8", "#ffccbc", "#e1bee7"]; 
             const borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
 
@@ -362,7 +464,8 @@
 
             slots.forEach((teamId, idx) => {
                 if(teamId !== null) {
-                    const team = allClubs.find(c => c.id === teamId);
+                    // [수정됨] findClub 사용
+                    const team = findClub(teamId);
                     if(team) {
                         const scheduleMap = parseScheduleText(team.schedule);
                         for (const [day, data] of Object.entries(scheduleMap)) {
@@ -376,21 +479,20 @@
                                 start: data.startH + (data.startM/60),
                                 end: data.endH + (data.endM/60),
                                 text: data.text,
-                                slotIdx: idx
+                                slotIdx: idx,
+                                isCustom: team.isCustom
                             });
                         }
                     }
                 }
             });
 
-            // [동적 시간 범위 계산]
             if (!hasData) { minH = 18; maxH = 22; }
             const displayStart = Math.max(6, Math.floor(minH) - 1); 
             const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
             const ROW_HEIGHT = 40; 
             
-            // 헤더 (누룽지 디자인 적용)
             const days = ['월', '화', '수', '목', '금', '토', '일'];
             const headerRow = document.createElement('div');
             headerRow.className = 'diet-header-row';
@@ -444,7 +546,7 @@
                     const eventDiv = document.createElement('div');
                     eventDiv.className = 'diet-event';
                     eventDiv.style.top = topPx + 'px';
-                    eventDiv.style.height = Math.max(heightPx - 2, 20) + 'px'; // 최소 높이 보장
+                    eventDiv.style.height = Math.max(heightPx - 2, 20) + 'px'; 
                     eventDiv.style.left = (indent * 10) + '%';
                     eventDiv.style.width = (95 - (indent * 5)) + '%';
                     eventDiv.style.zIndex = indent + 1;
@@ -452,7 +554,9 @@
                     eventDiv.style.backgroundColor = slotColors[evt.slotIdx];
                     eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
-                    eventDiv.innerHTML = `<span class="evt-title">${evt.teamName}</span><span class="evt-time">${evt.text}</span>`;
+                    // 커스텀 팀은 이름 앞에 🍙 붙이기
+                    const nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
+                    eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span><span class="evt-time">${evt.text}</span>`;
                     
                     dayCol.appendChild(eventDiv);
                 });
@@ -578,7 +682,9 @@
         .pc-date { color: var(--nurungji-brown); font-size: 12px; font-weight: 600; margin-bottom: 12px; opacity: 0.8; }
         .pc-divider { height: 2px; background: var(--nurungji-brown); width: 40%; margin: 10px auto; border-radius: 1px; opacity: 0.3; }
         .pc-main-team { color: var(--nurungji-dark); font-size: 18px; font-weight: 700; margin-top: 8px; background: rgba(255,255,255,0.4); padding: 5px 10px; border-radius: 10px; display: inline-block; }
-        
+        /* 워터마크 스타일 추가 */
+        .pc-rice-type { position: absolute; top: 12px; left: 15px; font-size: 11px; font-weight: 700; color: rgba(93, 64, 55, 0.25); pointer-events: none; }
+
         .login-section { display: flex; flex-direction: column; gap: 10px; width: 100%; }
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
         .auth-input { padding: 12px 15px; border-radius: 12px; border: 2px solid #d7ccc8; outline: none; font-size: 14px; background: white; color: var(--nurungji-dark); }
@@ -613,18 +719,22 @@
             font-size: 18px;
             padding: 0 5px;
         }
-        .lb-edit-btn {
+        /* 버튼 그룹 */
+        .lb-btn-group { display: flex; gap: 6px; }
+        
+        .lb-edit-btn, .lb-add-btn {
             background: white;
             border: 2px solid var(--nurungji-brown);
             color: var(--nurungji-dark);
             border-radius: 15px;
-            padding: 4px 12px;
-            font-size: 13px;
+            padding: 4px 10px;
+            font-size: 12px;
             cursor: pointer;
             transition: all 0.2s;
             font-weight: 700;
         }
         .lb-edit-btn.editing { background: #ff7043; color: white; border-color: #d84315; }
+        .lb-add-btn { background: #fff9c4; }
 
         .lunchbox-grid { 
             width: 100%; 
@@ -784,7 +894,6 @@
         .summary-content::-webkit-scrollbar { display: none; }
         .full-content { position: absolute; top: 0; left: 0; width: 100%; opacity: 0; transition: opacity 0.1s; z-index: 5; }
         
-        /* [개별 팀 시간표 스타일 - 식단표와 통일] */
         .ft-container { display: flex; flex-direction: column; background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid #d7ccc8; }
         .ft-header-row-flex { display: flex; height: 35px; border-bottom: 2px solid var(--nurungji-brown); background: #efebe9; }
         .ft-header-cell { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--nurungji-brown); font-weight: 700; }
@@ -859,7 +968,10 @@
         <div class="lunchbox-wrapper" onclick="event.stopPropagation()">
             <div class="lb-header">
                 <span>도시락 🍱</span>
-                <button id="lbEditBtn" class="lb-edit-btn" onclick="toggleEditMode()">🍽 편집</button>
+                <div class="lb-btn-group">
+                    <button class="lb-add-btn" onclick="addCustomTeam()">🍙 직접추가</button>
+                    <button id="lbEditBtn" class="lb-edit-btn" onclick="toggleEditMode()">🍽 편집</button>
+                </div>
             </div>
             <div class="lunchbox-grid" id="lunchboxGrid"></div>
             
@@ -872,6 +984,7 @@
 
     <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
         <div class="profile-card" id="myProfileCard" onclick="event.stopPropagation()">
+            <div id="pcRiceWatermark" class="pc-rice-type"></div>
             <div id="loginSection" class="login-section">
                 <button class="btn-google-login" onclick="loginWithGoogle()">
                     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="G">
