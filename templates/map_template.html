@@ -968,10 +968,10 @@
         
         .expand-hint { text-align: center; color: #bdbdbd; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
 
-        /* [수정됨] 캡처 무대 */
+        /* 캡처 무대 설정 */
         #captureStage {
             position: fixed; 
-            top: 0; left: -9999px; /* 화면 밖 숨김 */
+            top: 0; left: -9999px; /* 화면 밖으로 이동 */
             z-index: -9999;
             background-color: #fff8e1;
             font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
@@ -995,20 +995,16 @@
             background-image: radial-gradient(#fff9c4 15%, transparent 15%);
             background-size: 20px 20px; 
         }
-        .mode-story .cap-card { 
+        .mode-story .cap-card, .mode-story .cap-box { 
             margin-bottom: 20px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
             border-radius: 20px; 
             width: 300px !important; 
         }
-        .mode-story .cap-box { 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
-            width: 300px !important; 
-        }
 
-        /* 피드 모드 (4:5) - [수정] 세로 배치로 변경하여 오류 방지 */
+        /* 피드 모드 (4:5) - 세로 배치로 변경하여 오류 방지 */
         .mode-feed {
-            width: 360px; height: 450px; /* 4:5 비율 */
+            width: 360px; height: 450px;
             padding: 15px;
             flex-direction: column;
             align-items: center; justify-content: space-between;
@@ -1016,33 +1012,24 @@
             border: 15px solid #8d6e63;
         }
 
+        /* [핵심 수정] 가로 배치 대신 세로로 쌓아서 안전하게 렌더링 */
         .feed-row-top {
             display: flex; width: 100%;
-            /* [중요] 가로 배치가 좁으면 자동으로 세로로 바뀌도록 wrap 설정하거나 column 권장 */
             flex-direction: column; 
-            align-items: center;
-            justify-content: center; 
-            gap: 10px;
-            margin-top: 5px;
-            /* transform 제거 (좌표 계산 오류의 주범) */
+            align-items: center; justify-content: center; 
+            gap: 10px; margin-top: 5px;
         }
         
-        /* 피드 모드 내부 요소 크기 강제 축소 (무대에 맞추기 위함) */
-        .feed-row-top .cap-card { 
+        /* transform 축소 대신 크기 지정 */
+        .feed-row-top .cap-card, .feed-row-top .cap-box { 
             box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
-            width: 280px !important; /* 약간 줄임 */
-            transform: scale(0.9); /* CSS scale 대신 zoom 효과 */
-            margin: -10px 0; /* 여백 축소 */
-        }
-        .feed-row-top .cap-box { 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
-            width: 280px !important;
-            transform: scale(0.9);
-            margin: -10px 0;
+            width: 280px !important; 
+            margin: -5px 0;
+            transform: scale(0.95); /* 아주 살짝만 축소 */
         }
 
         .feed-row-bottom {
-            width: 100%; height: 120px; /* 높이 약간 줄임 */
+            width: 100%; height: 120px;
             background: white; border-radius: 12px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
             overflow: hidden; display: flex; flex-direction: column;
@@ -1795,16 +1782,16 @@
         }
 
         async function generateShareImage(mode) {
-            // 0. 안전 장치: 라이브러리 로드 확인
+            // [안전장치] 라이브러리 로드 체크
             if (typeof html2canvas === 'undefined') {
-                alert("에러: 캡처 라이브러리가 로드되지 않았습니다.\n인터넷 연결을 확인하거나 새로고침 해주세요.");
+                alert("캡처 라이브러리가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.");
                 return;
             }
 
             const stage = document.getElementById('captureStage');
             stage.innerHTML = ""; // 초기화
             
-            // 1. 데이터 강제 동기화
+            // 1. 데이터 동기화
             if (!currentProfileData.tempSlots) {
                 let saved = currentProfileData.bookmarks || [];
                 let normalized = [null, null, null, null, null];
@@ -1813,31 +1800,31 @@
             }
             renderLunchboxGrid(); 
 
-            // 2. 스테이지 설정
+            // 2. 무대 설정
             stage.className = (mode === 'feed') ? 'mode-feed' : 'mode-story';
 
-            // 3. 요소 복제 및 생성 (중복 ID 제거 필수!)
-            // (A) 네임카드 복제
+            // 3. 요소 복제 (핵심: ID 제거하여 충돌 방지)
+            // (A) 네임카드
             const cardClone = document.getElementById('myProfileCard').cloneNode(true);
-            cardClone.removeAttribute('id'); // [중요] ID 제거 (충돌 방지)
+            cardClone.removeAttribute('id'); // [중요] ID 삭제
             cardClone.className += " cap-card";
             cardClone.style.margin = "0"; 
             
-            // 불필요한 요소 제거
+            // 불필요한 버튼 등 제거
             const removeSelectors = ['#loginSection', '#pcRiceWatermark', '.pc-edit-btn', '.pc-footer'];
             removeSelectors.forEach(sel => {
                 const el = cardClone.querySelector(sel);
                 if(el) el.remove();
             });
 
-            // (B) 도시락통 생성
+            // (B) 도시락통
             const boxContainer = document.createElement('div');
             boxContainer.className = "lunchbox-wrapper cap-box";
             boxContainer.style.border = "4px solid #8d6e63";
             boxContainer.innerHTML = `<div class="lb-header" style="justify-content:center; margin-bottom:10px; font-size:16px;"><span>🍱 나의 도시락</span></div>`;
             
             const gridClone = document.getElementById('lunchboxGrid').cloneNode(true);
-            gridClone.removeAttribute('id'); // [중요] ID 제거
+            gridClone.removeAttribute('id'); // [중요] ID 삭제
             gridClone.style.height = "180px"; 
             gridClone.style.gap = "4px"; 
             gridClone.querySelectorAll('.lb-del-btn').forEach(el => el.remove()); 
@@ -1848,7 +1835,7 @@
             watermark.className = "watermark";
             watermark.innerHTML = `<img src="logo.png" alt="🍚" crossorigin="anonymous" onerror="this.style.display='none'"><span>누룽지도</span>`;
 
-            // 4. 모드별 배치
+            // 4. 배치
             if (mode === 'story') {
                 stage.appendChild(cardClone);
                 stage.appendChild(boxContainer);
@@ -1868,7 +1855,7 @@
                 header.innerText = "📅 주간 식단표";
                 bottomRow.appendChild(header);
 
-                // 식단표 복제
+                // 식단표
                 const dietBody = document.createElement('div');
                 dietBody.style.flex = "1";
                 dietBody.style.width = "100%";
@@ -1877,13 +1864,13 @@
 
                 renderCombinedSchedule(); 
                 const originalDiet = document.getElementById('dietPlanBody');
-                
                 if (originalDiet && originalDiet.innerHTML) {
                     dietBody.innerHTML = originalDiet.innerHTML;
                 } else {
                     dietBody.innerText = "데이터 없음";
                 }
                 
+                // 스크롤바 제거 스타일
                 const wrapper = dietBody.querySelector('.diet-body-wrapper');
                 if(wrapper) {
                     wrapper.style.overflow = "hidden";
@@ -1896,18 +1883,19 @@
                 stage.appendChild(watermark);
             }
 
-            // 5. 오버레이 숨김 (캡처 중 깜빡임 방지)
+            // 5. 오버레이 잠시 숨김 (캡처 방해 금지)
             const overlays = document.querySelectorAll('.profile-overlay, .lunchbox-overlay');
             overlays.forEach(el => el.style.display = 'none');
 
-            // 6. 캡처 실행 (약간의 지연 시간 추가)
+            // 6. 캡처 실행 (0.5초 딜레이로 렌더링 시간 확보)
             setTimeout(() => {
                 html2canvas(stage, { 
                     scale: 3, 
                     useCORS: true, 
                     backgroundColor: null,
-                    logging: false
+                    logging: false // 로그 끔
                 }).then(canvas => {
+                    // [여기가 미리보기 띄우는 로직입니다]
                     const imgData = canvas.toDataURL("image/png");
                     const previewBox = document.getElementById('previewImgBox');
                     if(previewBox) {
@@ -1915,15 +1903,17 @@
                         const img = document.createElement('img');
                         img.src = imgData;
                         previewBox.appendChild(img);
+                        
+                        // 성공 시 미리보기 오버레이 표시
                         document.getElementById('previewOverlay').style.display = 'flex';
                     }
-                    stage.innerHTML = ""; 
+                    stage.innerHTML = ""; // 메모리 정리
                 }).catch(err => {
                     console.error(err);
-                    alert("오류가 발생했습니다: " + err);
+                    alert("이미지 생성 중 오류가 발생했습니다.\n" + err);
                     document.getElementById('profileOverlay').style.display = 'flex';
                 });
-            }, 500); // 0.5초 대기 (렌더링 안정화)
+            }, 500); 
         }
 
         function downloadImage() {
