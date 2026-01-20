@@ -481,8 +481,8 @@
             const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
 
-            // [핵심 변경] 높이 자동 계산 (가용 공간 380px 기준)
-            const availableHeight = 380; 
+            // [핵심 변경] 높이 자동 계산 (가용 공간 300px 기준)
+            const availableHeight = 300;
             const calculatedHeight = availableHeight / totalHours;
             const ROW_HEIGHT = Math.max(30, calculatedHeight); // 최소 30px 보장
             
@@ -861,7 +861,7 @@
             position: absolute;
             font-size: 10px;
             color: #3e2723;
-            padding: 2px 0; /* 좌우 패딩 제거 */
+            padding: 4px 0; /* 좌우 패딩 제거 */
             box-sizing: border-box;
             overflow: hidden;
             display: flex; 
@@ -879,6 +879,8 @@
             writing-mode: vertical-rl; /* 세로 쓰기 모드 */
             text-orientation: upright; /* 글자를 똑바로 세움 */
             letter-spacing: 1px; /* 자간 조정 */
+            width: 100%;
+            text-align: center;
         }
         .evt-time { font-size: 9px; opacity: 0.8; margin-top: 1px; }
 
@@ -1247,13 +1249,16 @@
 
             if (!hasData) { minH = 18; maxH = 22; }
             
-            var displayStart = Math.max(6, minH - 2); 
-            var displayEnd = Math.min(24, maxH + 2);
+            var displayStart = Math.max(6, minH - 1); 
+            var displayEnd = Math.min(24, maxH + 1);
             var totalHours = displayEnd - displayStart;
 
-            var availableHeight = window.innerHeight * 0.55; 
+            // [수정 핵심] 화면 높이에 맞춰 행 높이 자동 조절 (스크롤 방지)
+            // 화면 높이의 50% 정도를 할당하고, 시간에 따라 나눔
+            var availableHeight = window.innerHeight * 0.5; 
             var calculatedRowHeight = availableHeight / totalHours;
-            var ROW_HEIGHT = Math.max(32, Math.min(60, calculatedRowHeight));
+            // 최소 높이 25px은 보장하되, 너무 커지지도 않게 설정
+            var ROW_HEIGHT = Math.max(25, Math.min(50, calculatedRowHeight));
 
             var summaryContainer = document.getElementById('summaryContent');
             summaryContainer.innerHTML = '';
@@ -1294,6 +1299,7 @@
 
             var bodyRow = document.createElement('div');
             bodyRow.className = 'ft-body';
+            // 전체 높이를 내용물에 딱 맞춤
             bodyRow.style.height = (totalHours * ROW_HEIGHT) + 'px';
 
             var timeCol = document.createElement('div');
