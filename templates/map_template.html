@@ -400,28 +400,31 @@
                             const delBtn = document.createElement('div');
                             delBtn.className = 'lb-del-btn';
                             delBtn.innerText = '✕';
-                            delBtn.onclick = (e) => {
-                                e.stopPropagation();
+                            // [핵심] addEventListener로 변경하여 이벤트 전파 확실히 차단
+                            delBtn.addEventListener('click', function(e) {
+                                e.stopPropagation(); 
                                 deleteSlot(i);
-                            };
+                            });
                             div.appendChild(delBtn);
                             div.onclick = () => handleSlotClick(i);
                         } else {
-                            // [수정됨] 마커를 누른 것과 똑같이 상세 페이지(바텀시트)를 엽니다.
                             div.onclick = function() { 
                                 document.getElementById('lunchboxOverlay').style.display = 'none'; 
                                 openClubDetail(team.id); 
                             };
                         }
                     } else {
-                        // ID는 있는데 팀 정보가 없는 경우 (오류 상황)
+                        // 삭제된 팀 처리
                         div.innerHTML = `<span>삭제된 팀</span>`;
                         div.classList.add('filled');
                         if (isEditMode) {
                              const delBtn = document.createElement('div');
                             delBtn.className = 'lb-del-btn';
                             delBtn.innerText = '✕';
-                            delBtn.onclick = (e) => { e.stopPropagation(); deleteSlot(i); };
+                            delBtn.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                deleteSlot(i);
+                            });
                             div.appendChild(delBtn);
                         }
                     }
@@ -963,8 +966,8 @@
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
 
-    <div id="lunchboxOverlay" class="lunchbox-overlay" onclick="closeLunchbox()">
-        <div class="lunchbox-wrapper" onclick="event.stopPropagation()">
+    <div id="lunchboxOverlay" class="lunchbox-overlay">
+        <div class="lunchbox-wrapper">
             <div class="lb-header">
                 <span>도시락 🍱</span>
                 <div class="lb-btn-group">
@@ -1635,6 +1638,15 @@
 
             if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) { map.setBounds(bounds); }
         }
+        
+        // [NEW] 배경 클릭 시 닫기 (안전한 방식)
+        const lbOverlay = document.getElementById('lunchboxOverlay');
+        lbOverlay.addEventListener('click', function(e) {
+            // 내가 클릭한 대상이 오버레이 배경(검은 부분)일 때만 닫기
+            if (e.target === lbOverlay) {
+                window.closeLunchbox();
+            }
+        });
 
         applyFilters();
     </script>
