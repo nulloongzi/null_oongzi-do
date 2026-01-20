@@ -400,28 +400,31 @@
                             const delBtn = document.createElement('div');
                             delBtn.className = 'lb-del-btn';
                             delBtn.innerText = '✕';
-                            delBtn.onclick = (e) => {
-                                e.stopPropagation();
+                            // [핵심] addEventListener로 변경하여 이벤트 전파 확실히 차단
+                            delBtn.addEventListener('click', function(e) {
+                                e.stopPropagation(); 
                                 deleteSlot(i);
-                            };
+                            });
                             div.appendChild(delBtn);
                             div.onclick = () => handleSlotClick(i);
                         } else {
-                            // [수정됨] 마커를 누른 것과 똑같이 상세 페이지(바텀시트)를 엽니다.
                             div.onclick = function() { 
                                 document.getElementById('lunchboxOverlay').style.display = 'none'; 
                                 openClubDetail(team.id); 
                             };
                         }
                     } else {
-                        // ID는 있는데 팀 정보가 없는 경우 (오류 상황)
+                        // 삭제된 팀 처리
                         div.innerHTML = `<span>삭제된 팀</span>`;
                         div.classList.add('filled');
                         if (isEditMode) {
                              const delBtn = document.createElement('div');
                             delBtn.className = 'lb-del-btn';
                             delBtn.innerText = '✕';
-                            delBtn.onclick = (e) => { e.stopPropagation(); deleteSlot(i); };
+                            delBtn.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                deleteSlot(i);
+                            });
                             div.appendChild(delBtn);
                         }
                     }
@@ -441,6 +444,7 @@
             container.innerHTML = '';
 
             const slots = currentProfileData.tempSlots || [];
+            // 누룽지 테마 파스텔 색상
             const slotColors = ["#fff9c4", "#ffe0b2", "#dcedc8", "#ffccbc", "#e1bee7"]; 
             const borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
 
@@ -476,7 +480,11 @@
             const displayStart = Math.max(6, Math.floor(minH) - 1); 
             const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
-            const ROW_HEIGHT = 40; 
+
+            // [핵심 변경] 높이 자동 계산 (가용 공간 300px 기준)
+            const availableHeight = 300;
+            const calculatedHeight = availableHeight / totalHours;
+            const ROW_HEIGHT = Math.max(30, calculatedHeight); // 최소 30px 보장
             
             const days = ['월', '화', '수', '목', '금', '토', '일'];
             const headerRow = document.createElement('div');
@@ -489,10 +497,15 @@
 
             const bodyWrapper = document.createElement('div');
             bodyWrapper.className = 'diet-body-wrapper';
-            bodyWrapper.style.height = (totalHours * ROW_HEIGHT) + 'px';
+            // 부모 높이에 맞춤 (CSS flex)
+            
+            // 내부 컨텐츠의 실제 높이 설정 (스크롤 영역)
+            const totalContentHeight = totalHours * ROW_HEIGHT;
 
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
+            timeCol.style.height = totalContentHeight + 'px'; // 높이 적용
+
             for(let h = displayStart; h < displayEnd; h++) {
                 const label = document.createElement('div');
                 label.className = 'diet-time-label';
@@ -505,6 +518,7 @@
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
+                dayCol.style.height = totalContentHeight + 'px'; // 높이 적용
                 
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
@@ -540,6 +554,7 @@
                     eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
                     const nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
+                    // 시간 텍스트 제거하고 팀 이름만 표시
                     eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span>`;
                     
                     dayCol.appendChild(eventDiv);
@@ -886,7 +901,7 @@
         .instagram:after { content: ""; position: absolute; border-radius: 50%; aspect-ratio: 1; border: 0.08em solid var(--white); width: 35%; height: 35%; box-shadow: 0.22em -0.22em 0 -0.18em var(--white); }
 
         .time-morph-container { position: relative; background: transparent; margin-bottom: 20px; transition: height 0.1s linear; overflow: hidden; min-height: 60px; border: none; }
-        .st-bubble { background: #fff; border-radius: 12px; padding: 10px 16px; font-size: 13px; color: #333; white-space: nowrap; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--nurungji-yellow); box-shadow: 0 4px 10px rgba(250, 199, 16, 0.15); flex-shrink: 0; }
+        .st-bubble { background: #fff; border-radius: 12px; padding: 6px 16px; font-size: 13px; color: #333; white-space: nowrap; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--nurungji-yellow); box-shadow: 0 4px 10px rgba(250, 199, 16, 0.15); flex-shrink: 0; }
         .st-day-text { font-size: 12px; color: #f57f17; font-weight: 800; margin-bottom: 2px; }
         .st-time-text { font-size: 14px; font-weight: 700; color: #333; }
         .summary-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; gap: 8px; overflow-x: auto; align-items: center; padding: 5px; scrollbar-width: none; opacity: 1; transition: opacity 0.1s; z-index: 10; }
@@ -963,8 +978,8 @@
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
 
-    <div id="lunchboxOverlay" class="lunchbox-overlay" onclick="closeLunchbox()">
-        <div class="lunchbox-wrapper" onclick="event.stopPropagation()">
+    <div id="lunchboxOverlay" class="lunchbox-overlay">
+        <div class="lunchbox-wrapper">
             <div class="lb-header">
                 <span>도시락 🍱</span>
                 <div class="lb-btn-group">
@@ -1232,13 +1247,16 @@
 
             if (!hasData) { minH = 18; maxH = 22; }
             
-            var displayStart = Math.max(6, minH - 2); 
-            var displayEnd = Math.min(24, maxH + 2);
+            var displayStart = Math.max(6, minH - 1); 
+            var displayEnd = Math.min(24, maxH + 1);
             var totalHours = displayEnd - displayStart;
 
-            var availableHeight = window.innerHeight * 0.55; 
+            // [수정 핵심] 화면 높이에 맞춰 행 높이 자동 조절 (스크롤 방지)
+            // 화면 높이의 50% 정도를 할당하고, 시간에 따라 나눔
+            var availableHeight = window.innerHeight * 0.5; 
             var calculatedRowHeight = availableHeight / totalHours;
-            var ROW_HEIGHT = Math.max(32, Math.min(60, calculatedRowHeight));
+            // 최소 높이 25px은 보장하되, 너무 커지지도 않게 설정
+            var ROW_HEIGHT = Math.max(25, Math.min(50, calculatedRowHeight));
 
             var summaryContainer = document.getElementById('summaryContent');
             summaryContainer.innerHTML = '';
@@ -1279,6 +1297,7 @@
 
             var bodyRow = document.createElement('div');
             bodyRow.className = 'ft-body';
+            // 전체 높이를 내용물에 딱 맞춤
             bodyRow.style.height = (totalHours * ROW_HEIGHT) + 'px';
 
             var timeCol = document.createElement('div');
@@ -1635,6 +1654,15 @@
 
             if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) { map.setBounds(bounds); }
         }
+        
+        // [NEW] 배경 클릭 시 닫기 (안전한 방식)
+        const lbOverlay = document.getElementById('lunchboxOverlay');
+        lbOverlay.addEventListener('click', function(e) {
+            // 내가 클릭한 대상이 오버레이 배경(검은 부분)일 때만 닫기
+            if (e.target === lbOverlay) {
+                window.closeLunchbox();
+            }
+        });
 
         applyFilters();
     </script>
