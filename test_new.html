@@ -682,7 +682,7 @@
         .pc-divider { height: 2px; background: var(--nurungji-brown); width: 40%; margin: 10px auto; border-radius: 1px; opacity: 0.3; }
         .pc-main-team { color: var(--nurungji-dark); font-size: 18px; font-weight: 700; margin-top: 8px; background: rgba(255,255,255,0.4); padding: 5px 10px; border-radius: 10px; display: inline-block; }
         /* [수정] 네임카드 하단 버튼 그룹 (나란히 배치) */
-        .pc-footer { display: flex; justify-content: center;gap: 10px; margin-top: 20px; width: 100%; }
+        .pc-footer { display: flex; justify-content: center; gap: 10px; margin-top: 20px; width: 100%; }
         /* 워터마크 스타일 추가 */
         .pc-rice-type { position: absolute; top: 12px; left: 15px; font-size: 11px; font-weight: 700; color: rgba(93, 64, 55, 0.25); pointer-events: none; }
 
@@ -992,25 +992,33 @@
         }
         .watermark span { font-size: 36px; font-weight: 900; color: #5d4037; letter-spacing: -1px; }
 
-        /* [수정] 스토리 모드 (세로형) - 겹침 완벽 해결 */
+        /* [수정] 스토리 모드 (9:16) - 겹침 방지 */
         .mode-story {
             width: 1080px; height: 1920px;
             padding: 150px 80px;
             flex-direction: column;
             align-items: center; 
-            justify-content: flex-start; /* 위에서부터 배치 */
-            gap: 120px; /* 요소 간 간격 대폭 증가 */
+            justify-content: flex-start;
             background-image: radial-gradient(#fff9c4 15%, transparent 15%);
             background-size: 50px 50px;
         }
-        .mode-story .cap-card { transform: scale(2.2); box-shadow: 0 20px 60px rgba(0,0,0,0.15); border-radius: 30px; transform-origin: center top; }
-        .mode-story .cap-box { transform: scale(2.2); box-shadow: 0 20px 60px rgba(0,0,0,0.15); width: 330px !important; transform-origin: center top; margin-top: 150px; }
+        /* scale 대신 zoom을 사용하거나, 마진을 넉넉히 줍니다 */
+        .mode-story .cap-card { 
+            transform: scale(2.2); transform-origin: center top;
+            margin-bottom: 350px; /* 겹침 방지: 공간 확보 */
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); border-radius: 30px; 
+        }
+        .mode-story .cap-box { 
+            transform: scale(2.2); transform-origin: center top;
+            width: 330px !important; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15); 
+        }
 
         /* [수정] 피드 모드 (4:5) - 상단 반반 / 하단 넓게 */
         .mode-feed {
             width: 1080px; height: 1350px;
             padding: 60px;
-            flex-direction: column; /* 세로 배치 (상단행/하단행) */
+            flex-direction: column;
             align-items: center; justify-content: space-between;
             background: #fff3e0;
             border: 60px solid #8d6e63;
@@ -1020,22 +1028,29 @@
         /* 상단 행 (네임카드 + 도시락) */
         .feed-row-top {
             display: flex; width: 100%;
-            justify-content: space-around; /* 좌우 균등 배치 */
-            align-items: center;
-            flex: 1; /* 공간 차지 */
-            padding-top: 20px;
+            justify-content: space-around;
+            align-items: flex-start; /* 상단 정렬 */
+            height: 500px; /* 공간 확보 */
+            margin-top: 40px;
         }
-        .feed-row-top .cap-card { transform: scale(1.6); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
-        .feed-row-top .cap-box { transform: scale(1.6); box-shadow: 0 15px 40px rgba(0,0,0,0.15); width: 330px !important; }
+        .feed-row-top .cap-card { 
+            transform: scale(1.6); transform-origin: center top;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1); 
+        }
+        .feed-row-top .cap-box { 
+            transform: scale(1.6); transform-origin: center top;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1); width: 330px !important; 
+        }
 
         /* 하단 행 (식단표) */
         .feed-row-bottom {
-            width: 100%; height: 45%; /* 높이 비율 설정 */
+            width: 90%; height: 40%; /* 높이 비율 설정 */
             background: white; border-radius: 30px;
             box-shadow: 0 15px 50px rgba(0,0,0,0.1);
             overflow: hidden; display: flex; flex-direction: column;
             border-top: 20px solid #fac710;
-            margin-bottom: 60px; /* 워터마크 공간 확보 */
+            margin-bottom: 80px;
+            position: relative;
         }
         .feed-header {
             padding: 20px; text-align: center; font-size: 28px; font-weight: 800; color: #5d4037;
@@ -1857,25 +1872,26 @@
             const stage = document.getElementById('captureStage');
             stage.innerHTML = ""; // 초기화
             
-            // [중요] 1. 데이터 강제 동기화 (한 번도 안 열어봤을 경우 대비)
-            if (!currentProfileData.tempSlots || currentProfileData.tempSlots.every(s => s === null)) {
+            // [중요] 1. 데이터 강제 동기화 (빈 데이터 방지)
+            if (!currentProfileData.tempSlots) {
                 let saved = currentProfileData.bookmarks || [];
                 let normalized = [null, null, null, null, null];
                 for(let i=0; i<5; i++) { if (i < saved.length) normalized[i] = saved[i]; }
                 currentProfileData.tempSlots = normalized;
             }
-            // 그리드 강제 렌더링 (DOM 생성)
+            // 그리드 강제 렌더링
             renderLunchboxGrid(); 
 
             // 2. 스테이지 준비
             stage.style.visibility = "visible"; 
             stage.className = (mode === 'feed') ? 'mode-feed' : 'mode-story';
 
-            // 3. 요소 복제
+            // 3. 요소 복제 및 생성
             // (A) 네임카드
             const cardClone = document.getElementById('myProfileCard').cloneNode(true);
             cardClone.className += " cap-card";
             cardClone.style.margin = "0";
+            // 불필요 요소 제거
             const removeSelectors = ['#loginSection', '#pcRiceWatermark', '.pc-edit-btn', '.pc-footer'];
             removeSelectors.forEach(sel => {
                 const el = cardClone.querySelector(sel);
@@ -1892,20 +1908,19 @@
             gridClone.querySelectorAll('.lb-del-btn').forEach(el => el.remove()); 
             boxContainer.appendChild(gridClone);
 
-            // (C) 워터마크 (로고 파일명 띄어쓰기 주의: 인코딩 적용)
+            // (C) 워터마크 (파일명 띄어쓰기 인코딩 적용 & 확장자 jpg 수정)
             const watermark = document.createElement('div');
             watermark.className = "watermark";
-            // 파일명이 'nulloongzido logo_512px.png' 이므로 그대로 사용
-            watermark.innerHTML = `<img src="nulloongzido logo_512px.png" alt="로고" onerror="this.style.display='none'"><span>누룽지도</span>`;
+            watermark.innerHTML = `<img src="logo.png" alt="로고" crossorigin="anonymous"><span>누룽지도</span>`;
 
             // 4. 모드별 배치
             if (mode === 'story') {
-                // 스토리: 세로 일렬
+                // 스토리 모드: 세로 배치
                 stage.appendChild(cardClone);
                 stage.appendChild(boxContainer);
                 stage.appendChild(watermark);
             } else {
-                // 피드: 상단(반반) / 하단(식단표)
+                // 피드 모드: 상단(반반) / 하단(식단표)
                 const topRow = document.createElement('div');
                 topRow.className = 'feed-row-top';
                 topRow.appendChild(cardClone);
@@ -1919,19 +1934,25 @@
                 header.innerText = "📅 주간 식단표";
                 bottomRow.appendChild(header);
 
-                // 식단표 강제 생성
+                // 식단표 내용 생성
                 const dietBody = document.createElement('div');
                 dietBody.style.flex = "1";
                 dietBody.style.width = "100%";
                 dietBody.style.position = "relative";
                 dietBody.style.backgroundColor = "white";
 
-                // 식단표 내용 생성 (강제 렌더링)
+                // **[핵심] 식단표 강제 렌더링 및 복사**
+                // 1. 임시로 스케줄 렌더링 함수 실행 (데이터가 없어도 실행됨)
                 renderCombinedSchedule(); 
                 const originalDiet = document.getElementById('dietPlanBody');
-                dietBody.innerHTML = originalDiet.innerHTML;
                 
-                // 스타일 보정
+                if (originalDiet && originalDiet.innerHTML) {
+                    dietBody.innerHTML = originalDiet.innerHTML;
+                } else {
+                    dietBody.innerText = "식단표 데이터가 없습니다.";
+                }
+                
+                // 스타일 보정 (스크롤바 제거)
                 const wrapper = dietBody.querySelector('.diet-body-wrapper');
                 if(wrapper) {
                     wrapper.style.overflow = "visible";
@@ -1958,20 +1979,21 @@
                 }).then(canvas => {
                     const imgData = canvas.toDataURL("image/png");
                     const previewBox = document.getElementById('previewImgBox');
-                    previewBox.innerHTML = "";
-                    const img = document.createElement('img');
-                    img.src = imgData;
-                    previewBox.appendChild(img);
-                    
-                    document.getElementById('previewOverlay').style.display = 'flex';
+                    if(previewBox) {
+                        previewBox.innerHTML = "";
+                        const img = document.createElement('img');
+                        img.src = imgData;
+                        previewBox.appendChild(img);
+                        document.getElementById('previewOverlay').style.display = 'flex';
+                    }
                     stage.style.visibility = "hidden";
                     stage.innerHTML = "";
                 }).catch(err => {
-                    alert("오류가 발생했습니다: " + err);
+                    alert("이미지 생성 오류: " + err);
                     stage.style.visibility = "hidden";
                     document.getElementById('profileOverlay').style.display = 'flex';
                 });
-            }, 500); // 로딩 시간 여유 있게
+            }, 500); 
         }
 
         function downloadImage() {
