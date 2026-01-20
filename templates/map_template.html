@@ -978,53 +978,68 @@
             visibility: hidden;
         }
 
-        /* [수정] 워터마크 (로고 이미지 포함) */
+        /* [수정] 워터마크 (로고 크기 조절) */
         .watermark {
-            position: absolute; bottom: 40px; right: 50px;
+            position: absolute; bottom: 30px; right: 40px;
             display: flex; align-items: center; gap: 15px;
-            opacity: 0.8;
+            opacity: 0.9;
         }
-        .watermark img { width: 50px; height: 50px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .watermark span { font-size: 32px; font-weight: 900; color: #5d4037; letter-spacing: -1px; }
+        .watermark img { 
+            width: 60px; height: 60px; 
+            border-radius: 50%; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            object-fit: cover;
+        }
+        .watermark span { font-size: 36px; font-weight: 900; color: #5d4037; letter-spacing: -1px; }
 
-        /* [수정] 스토리 모드 (세로형) - 간격 넓힘 */
+        /* [수정] 스토리 모드 (세로형) - 겹침 완벽 해결 */
         .mode-story {
             width: 1080px; height: 1920px;
-            padding: 120px;
-            flex-direction: column; /* 세로 배치 */
-            align-items: center; justify-content: center;
-            gap: 80px; /* 요소 간 간격 */
+            padding: 150px 80px;
+            flex-direction: column;
+            align-items: center; 
+            justify-content: flex-start; /* 위에서부터 배치 */
+            gap: 120px; /* 요소 간 간격 대폭 증가 */
             background-image: radial-gradient(#fff9c4 15%, transparent 15%);
             background-size: 50px 50px;
         }
-        /* transform 제거하고 줌이나 크기 자체를 제어 (여기선 html2canvas scale 활용하므로 그냥 둠) */
-        .mode-story .cap-card { transform: scale(1.8); box-shadow: 0 20px 60px rgba(0,0,0,0.15); border-radius: 40px; }
-        .mode-story .cap-box { transform: scale(1.8); box-shadow: 0 20px 60px rgba(0,0,0,0.15); width: 350px !important; }
+        .mode-story .cap-card { transform: scale(2.2); box-shadow: 0 20px 60px rgba(0,0,0,0.15); border-radius: 30px; transform-origin: center top; }
+        .mode-story .cap-box { transform: scale(2.2); box-shadow: 0 20px 60px rgba(0,0,0,0.15); width: 330px !important; transform-origin: center top; margin-top: 150px; }
 
-        /* [수정] 피드 모드 (4:5) - 레이아웃 안정화 */
+        /* [수정] 피드 모드 (4:5) - 상단 반반 / 하단 넓게 */
         .mode-feed {
             width: 1080px; height: 1350px;
             padding: 60px;
-            flex-direction: row; /* 가로 배치 */
-            align-items: center; justify-content: center; gap: 50px;
+            flex-direction: column; /* 세로 배치 (상단행/하단행) */
+            align-items: center; justify-content: space-between;
             background: #fff3e0;
             border: 60px solid #8d6e63;
-            box-sizing: border-box; /* 테두리 포함 크기 계산 */
+            box-sizing: border-box;
         }
-        .feed-col-left { 
-            display: flex; flex-direction: column; gap: 60px; 
-            align-items: center; justify-content: center;
-            flex: 1;
-        }
-        .feed-col-left .cap-card { transform: scale(1.5); box-shadow: 0 15px 40px rgba(0,0,0,0.1); }
-        .feed-col-left .cap-box { transform: scale(1.5); box-shadow: 0 15px 40px rgba(0,0,0,0.1); width: 330px !important; }
         
-        .feed-col-right {
-            width: 450px; height: 90%;
+        /* 상단 행 (네임카드 + 도시락) */
+        .feed-row-top {
+            display: flex; width: 100%;
+            justify-content: space-around; /* 좌우 균등 배치 */
+            align-items: center;
+            flex: 1; /* 공간 차지 */
+            padding-top: 20px;
+        }
+        .feed-row-top .cap-card { transform: scale(1.6); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+        .feed-row-top .cap-box { transform: scale(1.6); box-shadow: 0 15px 40px rgba(0,0,0,0.15); width: 330px !important; }
+
+        /* 하단 행 (식단표) */
+        .feed-row-bottom {
+            width: 100%; height: 45%; /* 높이 비율 설정 */
             background: white; border-radius: 30px;
             box-shadow: 0 15px 50px rgba(0,0,0,0.1);
             overflow: hidden; display: flex; flex-direction: column;
             border-top: 20px solid #fac710;
+            margin-bottom: 60px; /* 워터마크 공간 확보 */
+        }
+        .feed-header {
+            padding: 20px; text-align: center; font-size: 28px; font-weight: 800; color: #5d4037;
+            border-bottom: 4px dashed #efebe9; background: #fff;
         }
         .pc-share-btn:active { transform: scale(0.95); }
 
@@ -1842,107 +1857,106 @@
             const stage = document.getElementById('captureStage');
             stage.innerHTML = ""; // 초기화
             
-            // 1. 스테이지 준비 (보이게 설정해야 캡처됨)
+            // [중요] 1. 데이터 강제 동기화 (한 번도 안 열어봤을 경우 대비)
+            if (!currentProfileData.tempSlots || currentProfileData.tempSlots.every(s => s === null)) {
+                let saved = currentProfileData.bookmarks || [];
+                let normalized = [null, null, null, null, null];
+                for(let i=0; i<5; i++) { if (i < saved.length) normalized[i] = saved[i]; }
+                currentProfileData.tempSlots = normalized;
+            }
+            // 그리드 강제 렌더링 (DOM 생성)
+            renderLunchboxGrid(); 
+
+            // 2. 스테이지 준비
             stage.style.visibility = "visible"; 
             stage.className = (mode === 'feed') ? 'mode-feed' : 'mode-story';
 
-            // 2. 요소 복제 (네임카드 & 도시락)
+            // 3. 요소 복제
+            // (A) 네임카드
             const cardClone = document.getElementById('myProfileCard').cloneNode(true);
             cardClone.className += " cap-card";
             cardClone.style.margin = "0";
-            // 불필요한 요소 제거
             const removeSelectors = ['#loginSection', '#pcRiceWatermark', '.pc-edit-btn', '.pc-footer'];
             removeSelectors.forEach(sel => {
                 const el = cardClone.querySelector(sel);
                 if(el) el.remove();
             });
 
-            // 도시락통 새로 그리기 (기존꺼 복제하면 꼬일 수 있어서 새로 생성)
+            // (B) 도시락통
             const boxContainer = document.createElement('div');
             boxContainer.className = "lunchbox-wrapper cap-box";
             boxContainer.style.border = "4px solid #8d6e63";
             boxContainer.innerHTML = `<div class="lb-header" style="justify-content:center; margin-bottom:15px; font-size:20px;"><span>🍱 나의 도시락</span></div>`;
-            
-            // 현재 도시락 상태를 그대로 가져오기
             const gridClone = document.getElementById('lunchboxGrid').cloneNode(true);
             gridClone.style.gap = "8px"; 
-            gridClone.querySelectorAll('.lb-del-btn').forEach(el => el.remove()); // 삭제버튼 제거
+            gridClone.querySelectorAll('.lb-del-btn').forEach(el => el.remove()); 
             boxContainer.appendChild(gridClone);
 
-            // 3. 워터마크 생성 (이미지+텍스트)
+            // (C) 워터마크 (로고 파일명 띄어쓰기 주의: 인코딩 적용)
             const watermark = document.createElement('div');
             watermark.className = "watermark";
-            // [수정] 로고 이미지 경로 확인 (파일명 띄어쓰기 주의)
-            watermark.innerHTML = `<img src="./nulloongzido logo_512px.jpg" alt="로고"><span>누룽지도</span>`;
+            // 파일명이 'nulloongzido logo_512px.png' 이므로 그대로 사용
+            watermark.innerHTML = `<img src="nulloongzido logo_512px.png" alt="로고" onerror="this.style.display='none'"><span>누룽지도</span>`;
 
             // 4. 모드별 배치
             if (mode === 'story') {
+                // 스토리: 세로 일렬
                 stage.appendChild(cardClone);
                 stage.appendChild(boxContainer);
                 stage.appendChild(watermark);
             } else {
-                // 피드 모드 (좌우)
-                const leftCol = document.createElement('div');
-                leftCol.className = 'feed-col-left';
-                leftCol.appendChild(cardClone);
-                leftCol.appendChild(boxContainer);
+                // 피드: 상단(반반) / 하단(식단표)
+                const topRow = document.createElement('div');
+                topRow.className = 'feed-row-top';
+                topRow.appendChild(cardClone);
+                topRow.appendChild(boxContainer);
 
-                const rightCol = document.createElement('div');
-                rightCol.className = 'feed-col-right';
+                const bottomRow = document.createElement('div');
+                bottomRow.className = 'feed-row-bottom';
                 
                 const header = document.createElement('div');
                 header.className = 'feed-header';
                 header.innerText = "📅 주간 식단표";
-                rightCol.appendChild(header);
+                bottomRow.appendChild(header);
 
                 // 식단표 강제 생성
                 const dietBody = document.createElement('div');
                 dietBody.style.flex = "1";
                 dietBody.style.width = "100%";
                 dietBody.style.position = "relative";
-                dietBody.style.backgroundColor = "white"; // 배경색 명시
+                dietBody.style.backgroundColor = "white";
 
-                // *중요* 기존 식단표 컨텐츠를 HTML 문자열로 복사
-                // (display:none 상태여도 innerHTML은 가져올 수 있음)
+                // 식단표 내용 생성 (강제 렌더링)
+                renderCombinedSchedule(); 
                 const originalDiet = document.getElementById('dietPlanBody');
-                
-                // 만약 식단표가 비어있다면(한 번도 안 열었으면) 강제로 데이터를 채움
-                if (!originalDiet.hasChildNodes() || originalDiet.innerHTML.trim() === "") {
-                    renderCombinedSchedule(); // 데이터 생성
-                }
-                
                 dietBody.innerHTML = originalDiet.innerHTML;
                 
-                // 스타일 보정 (스크롤바 제거, 높이 자동)
+                // 스타일 보정
                 const wrapper = dietBody.querySelector('.diet-body-wrapper');
                 if(wrapper) {
                     wrapper.style.overflow = "visible";
-                    wrapper.style.height = "auto";
+                    wrapper.style.height = "100%";
                 }
                 
-                rightCol.appendChild(dietBody);
+                bottomRow.appendChild(dietBody);
 
-                stage.appendChild(leftCol);
-                stage.appendChild(rightCol);
+                stage.appendChild(topRow);
+                stage.appendChild(bottomRow);
                 stage.appendChild(watermark);
             }
 
             // 5. 캡처 실행
-            // 오버레이 숨기기 (캡처 중 화면 깔끔하게)
             const overlays = document.querySelectorAll('.profile-overlay, .lunchbox-overlay');
             overlays.forEach(el => el.style.display = 'none');
 
-            // 폰트 및 이미지 로딩 대기 후 캡처
             setTimeout(() => {
                 html2canvas(stage, { 
-                    scale: 2, // 고해상도
-                    useCORS: true, // 이미지 로딩 허용
-                    backgroundColor: null, // 투명 배경 지원
+                    scale: 2, 
+                    useCORS: true, 
+                    backgroundColor: null,
                     logging: false
                 }).then(canvas => {
                     const imgData = canvas.toDataURL("image/png");
-                    
-                    // 미리보기 창에 표시
                     const previewBox = document.getElementById('previewImgBox');
                     previewBox.innerHTML = "";
                     const img = document.createElement('img');
@@ -1950,16 +1964,14 @@
                     previewBox.appendChild(img);
                     
                     document.getElementById('previewOverlay').style.display = 'flex';
-                    
-                    // 뒷정리
                     stage.style.visibility = "hidden";
-                    stage.innerHTML = ""; // 메모리 해제
+                    stage.innerHTML = "";
                 }).catch(err => {
-                    alert("포장하는 중에 문제가 생겼어요 🥲: " + err);
+                    alert("오류가 발생했습니다: " + err);
                     stage.style.visibility = "hidden";
                     document.getElementById('profileOverlay').style.display = 'flex';
                 });
-            }, 300); // 0.3초 대기 (안정성)
+            }, 500); // 로딩 시간 여유 있게
         }
 
         function downloadImage() {
