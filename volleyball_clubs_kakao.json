@@ -550,48 +550,6 @@
         "urgent_msg": ""
     },
     {
-        "name": "세종 맥스(Team Max)",
-        "target": "성인, 대학생, 선출가능",
-        "address": "세종특별자치시 마음로 284",
-        "schedule": "화 19:00~22:00",
-        "price": "가입비 2만원 / 월 3만원 / 게스트 5천원",
-        "insta": "max_volleyball_",
-        "link": "https://open.kakao.com/o/sT6CiRdf",
-        "lat": 36.519724340798,
-        "lng": 127.236589788899,
-        "id": "9cd7225ca9ca",
-        "is_urgent": false,
-        "urgent_msg": ""
-    },
-    {
-        "name": "세종 맥스(Team Max)",
-        "target": "성인, 대학생, 선출가능",
-        "address": "세종특별자치시 세종로 941",
-        "schedule": "목 18:30~21:00",
-        "price": "가입비 2만원 / 월 3만원 / 게스트 5천원",
-        "insta": "max_volleyball_",
-        "link": "https://open.kakao.com/o/sT6CiRdf",
-        "lat": 36.4877156432012,
-        "lng": 127.243231178402,
-        "id": "212b2cee9a3b",
-        "is_urgent": false,
-        "urgent_msg": ""
-    },
-    {
-        "name": "세종 맥스(Team Max)",
-        "target": "성인, 대학생, 선출가능",
-        "address": "세종특별자치시 아름동 804",
-        "schedule": "일  9:00~12:00 (남) / 12:00~4:00 (여)",
-        "price": "가입비 2만원 / 월 3만원 / 게스트 5천원",
-        "insta": "max_volleyball_",
-        "link": "https://open.kakao.com/o/sT6CiRdf",
-        "lat": 36.523100478656,
-        "lng": 127.255014907693,
-        "id": "a5dde15ce9ec",
-        "is_urgent": false,
-        "urgent_msg": ""
-    },
-    {
         "name": "순천배구클럽",
         "target": "성인, 대학생",
         "address": "전남 순천시 북정2길 20",
@@ -646,5 +604,33 @@
         "id": "a0360369b682",
         "is_urgent": false,
         "urgent_msg": ""
+    },
+    {
+        "name": "NTS",
+        "target": "성인, 대학생",
+        "address": "세종특별자치시 세종로 941",
+        "schedule": "화 18:30~21:00",
+        "price": "4만원 / 대학생 2만원 / 게스트 5천원",
+        "insta": "nts_volleyball_",
+        "link": "https://open.kakao.com/o/sT6CiRdf",
+        "lat": 36.4877156432012,
+        "lng": 127.243231178402,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "56fd850e68d9"
+    },
+    {
+        "name": "NTS",
+        "target": "성인, 대학생",
+        "address": "세종특별자치시 마음로 284",
+        "schedule": "일 9:00~13:00",
+        "price": "4만원 / 대학생 2만원 / 게스트 5천원",
+        "insta": "nts_volleyball_",
+        "link": "https://open.kakao.com/o/sT6CiRdf",
+        "lat": 36.519724340798,
+        "lng": 127.236589788899,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "ffac723eebdb"
     }
 ]
