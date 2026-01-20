@@ -950,6 +950,97 @@
         .fs-handle { width: 40px; height: 5px; background: #bdbdbd; border-radius: 3px; }
         
         .expand-hint { text-align: center; color: #bdbdbd; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
+
+        /* [NEW] 캡처용 컨테이너 (평소엔 숨김) */
+        #captureStage {
+            position: fixed; top: -9999px; left: -9999px; z-index: -1;
+            background-color: #fff8e1; /* 누룽지 배경색 */
+            font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 공통 워터마크 */
+        .watermark {
+            position: absolute; bottom: 20px; right: 20px;
+            font-size: 18px; font-weight: 900; color: #8d6e63; opacity: 0.6;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .watermark span { font-size: 24px; }
+
+        /* --- Option A: 스토리 모드 (세로형) --- */
+        .mode-story {
+            width: 1080px; height: 1920px; /* FHD 세로 */
+            padding: 80px;
+            align-items: center; justify-content: center;
+            gap: 50px;
+            background-image: radial-gradient(#fffde7 10%, transparent 10%); /* 땡땡이 패턴 */
+            background-size: 30px 30px;
+        }
+        .mode-story .cap-card { transform: scale(2.5); margin-bottom: 50px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        .mode-story .cap-box { transform: scale(2.5); box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+
+        /* --- Option B: 피드 모드 (정식 세트 느낌) --- */
+        .mode-feed {
+            width: 1080px; height: 1350px; /* 4:5 비율 */
+            padding: 60px;
+            display: flex; flex-direction: row; /* 가로 배치 */
+            align-items: stretch; gap: 40px;
+            background: #fdf5e6; /* 나무 쟁반 느낌 배경 */
+            border: 40px solid #8d6e63; /* 테두리 */
+            border-radius: 40px;
+        }
+        
+        /* 왼쪽: 네임카드 + 도시락 */
+        .feed-left {
+            flex: 1; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; gap: 60px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 30px; padding: 40px;
+        }
+        .feed-left .cap-card { transform: scale(1.8); }
+        .feed-left .cap-box { transform: scale(1.8); }
+
+        /* 오른쪽: 식단표 (주문서 느낌) */
+        .feed-right {
+            width: 380px; flex-shrink: 0;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            border-top: 10px solid #fac710; /* 포인트 컬러 */
+        }
+        .feed-right-header {
+            background: #fff; padding: 20px; text-align: center;
+            font-weight: 800; font-size: 24px; color: #5d4037;
+            border-bottom: 2px dashed #d7ccc8;
+        }
+        .feed-schedule-area { flex: 1; padding: 20px; }
+
+        /* 미리보기 모달 */
+        .preview-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 2000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .preview-img-box {
+            max-width: 90%; max-height: 80%;
+            overflow: auto; border-radius: 10px; margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        .preview-img-box img { width: 100%; height: auto; display: block; }
+        .preview-btns { display: flex; gap: 15px; }
+        .btn-down { 
+            background: #fac710; color: #000; padding: 12px 24px; 
+            border-radius: 30px; font-weight: 800; border: none; cursor: pointer; 
+            font-size: 16px;
+        }
+        .btn-close {
+            background: #fff; color: #333; padding: 12px 24px;
+            border-radius: 30px; font-weight: 700; border: none; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -983,6 +1074,7 @@
             <div class="lb-header">
                 <span>도시락 🍱</span>
                 <div class="lb-btn-group">
+                    <button class="lb-add-btn" onclick="showShareOptions()">📷 공유</button>
                     <button class="lb-add-btn" onclick="addCustomTeam()">🍙 직접추가</button>
                     <button id="lbEditBtn" class="lb-edit-btn" onclick="toggleEditMode()">🍽 편집</button>
                 </div>
@@ -1098,6 +1190,16 @@
             
             <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
+        </div>
+    </div>
+
+    <div id="captureStage"></div>
+
+    <div id="previewOverlay" class="preview-overlay">
+        <div class="preview-img-box" id="previewImgBox"></div>
+        <div class="preview-btns">
+            <button class="btn-close" onclick="closePreview()">닫기</button>
+            <button class="btn-down" onclick="downloadImage()">💾 저장하기</button>
         </div>
     </div>
 
@@ -1664,6 +1766,132 @@
             }
         });
 
+        // [NEW] 공유 기능 로직
+        function showShareOptions() {
+            // 사용자에게 어떤 모드로 저장할지 물어봅니다.
+            if (confirm("📸 어떤 모양으로 저장할까요?\n\n[확인] = 🍱 누룽지 정식 (피드용/풀세트)\n[취소] = 📱 심플 도시락 (스토리용/네임카드+도시락)")) {
+                generateShareImage('feed');
+            } else {
+                generateShareImage('story');
+            }
+        }
+
+        async function generateShareImage(mode) {
+            const stage = document.getElementById('captureStage');
+            stage.innerHTML = ""; // 초기화
+            stage.className = (mode === 'feed') ? 'mode-feed' : 'mode-story';
+
+            // 1. 요소 복제 및 구성
+            // (1) 네임카드 복제
+            const cardClone = document.getElementById('myProfileCard').cloneNode(true);
+            cardClone.className += " cap-card";
+            cardClone.style.margin = "0"; // 마진 초기화
+            // (로그인/로그아웃 버튼 등 불필요한 요소 제거)
+            const loginSec = cardClone.querySelector('#loginSection'); if(loginSec) loginSec.remove();
+            const logoutBtn = cardClone.querySelector('.btn-logout'); if(logoutBtn) logoutBtn.remove();
+            const editBtn = cardClone.querySelector('.pc-edit-btn'); if(editBtn) editBtn.remove();
+            
+            // (2) 도시락통 복제
+            // 현재 상태의 그리드를 새로 그려서 가져옴 (selected 클래스 등 제거 위해)
+            const boxContainer = document.createElement('div');
+            boxContainer.className = "lunchbox-wrapper cap-box";
+            boxContainer.style.border = "4px solid #8d6e63";
+            boxContainer.innerHTML = `<div class="lb-header" style="justify-content:center; margin-bottom:10px;"><span>🍱 나의 도시락</span></div>`;
+            const gridClone = document.getElementById('lunchboxGrid').cloneNode(true);
+            // 삭제 버튼 등 제거
+            gridClone.querySelectorAll('.lb-del-btn').forEach(el => el.remove());
+            boxContainer.appendChild(gridClone);
+
+            // (3) 로고 워터마크
+            const watermark = document.createElement('div');
+            watermark.className = "watermark";
+            watermark.innerHTML = "<span>🍙</span> 누룽지도";
+
+            // 2. 레이아웃 배치
+            if (mode === 'story') {
+                // 스토리 모드: 세로 일렬 배치
+                stage.appendChild(cardClone);
+                stage.appendChild(boxContainer);
+                stage.appendChild(watermark);
+            } else {
+                // 피드 모드: 좌우 배치
+                const leftPane = document.createElement('div');
+                leftPane.className = 'feed-left';
+                leftPane.appendChild(cardClone);
+                leftPane.appendChild(boxContainer);
+
+                const rightPane = document.createElement('div');
+                rightPane.className = 'feed-right';
+                
+                // 식단표 헤더
+                const dietHeader = document.createElement('div');
+                dietHeader.className = 'feed-right-header';
+                dietHeader.innerText = "📅 주간 식단표";
+                rightPane.appendChild(dietHeader);
+
+                // 식단표 내용 (스크롤 없이 전체 렌더링)
+                const dietBody = document.createElement('div');
+                dietBody.className = 'feed-schedule-area';
+                // 기존 함수 활용하되, 타겟 컨테이너를 임시로 바꿈
+                // 렌더링을 위해 임시로 DOM에 붙였다가 내용만 가져옴
+                const tempContainer = document.createElement('div');
+                tempContainer.id = "tempDietBody";
+                tempContainer.style.height = "100%";
+                // *중요* 기존 renderCombinedSchedule 함수는 ID를 직접 참조하므로,
+                // 여기서는 내용을 복사해오는 방식을 씁니다.
+                // 현재 식단표가 안 열려있으면 잠시 열어서 내용을 만듦
+                const originalContainer = document.getElementById('dietPlanBody');
+                if (!isDietPlanOpen) { renderCombinedSchedule(); } // 강제 렌더링
+                
+                // 원본 내용을 깊은 복사
+                const scheduleClone = originalContainer.cloneNode(true);
+                scheduleClone.style.height = "100%";
+                scheduleClone.style.overflow = "visible"; // 스크롤 없애고 다 보여주기
+                
+                // 내부 요소 스타일 조정 (확대/축소 등)
+                scheduleClone.querySelectorAll('.diet-time-col').forEach(el => el.style.height = 'auto');
+                scheduleClone.querySelectorAll('.diet-day-col').forEach(el => el.style.height = 'auto');
+                
+                dietBody.appendChild(scheduleClone);
+                rightPane.appendChild(dietBody);
+
+                stage.appendChild(leftPane);
+                stage.appendChild(rightPane);
+                stage.appendChild(watermark);
+            }
+
+            // 3. 캡처 실행 (약간의 지연 시간 필요)
+            document.getElementById('lunchboxOverlay').style.display = 'none'; // 오버레이 잠깐 숨김 (깔끔하게)
+            
+            setTimeout(() => {
+                html2canvas(stage, { scale: 2, backgroundColor: null }).then(canvas => {
+                    const imgData = canvas.toDataURL("image/png");
+                    const previewBox = document.getElementById('previewImgBox');
+                    previewBox.innerHTML = "";
+                    const img = document.createElement('img');
+                    img.src = imgData;
+                    previewBox.appendChild(img);
+                    
+                    document.getElementById('previewOverlay').style.display = 'flex';
+                    document.getElementById('lunchboxOverlay').style.display = 'flex'; // 오버레이 복구
+                });
+            }, 100);
+        }
+
+        function downloadImage() {
+            const img = document.querySelector('#previewImgBox img');
+            if (img) {
+                const link = document.createElement('a');
+                link.download = '누룽지도_인증샷.png';
+                link.href = img.src;
+                link.click();
+            }
+        }
+
+        function closePreview() {
+            document.getElementById('previewOverlay').style.display = 'none';
+        }
+        
         applyFilters();
     </script>
 </body>
