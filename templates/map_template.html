@@ -444,6 +444,7 @@
             container.innerHTML = '';
 
             const slots = currentProfileData.tempSlots || [];
+            // 누룽지 테마 파스텔 색상
             const slotColors = ["#fff9c4", "#ffe0b2", "#dcedc8", "#ffccbc", "#e1bee7"]; 
             const borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
 
@@ -479,7 +480,11 @@
             const displayStart = Math.max(6, Math.floor(minH) - 1); 
             const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
-            const ROW_HEIGHT = 40; 
+
+            // [핵심 변경] 높이 자동 계산 (가용 공간 380px 기준)
+            const availableHeight = 380; 
+            const calculatedHeight = availableHeight / totalHours;
+            const ROW_HEIGHT = Math.max(30, calculatedHeight); // 최소 30px 보장
             
             const days = ['월', '화', '수', '목', '금', '토', '일'];
             const headerRow = document.createElement('div');
@@ -492,10 +497,15 @@
 
             const bodyWrapper = document.createElement('div');
             bodyWrapper.className = 'diet-body-wrapper';
-            bodyWrapper.style.height = (totalHours * ROW_HEIGHT) + 'px';
+            // 부모 높이에 맞춤 (CSS flex)
+            
+            // 내부 컨텐츠의 실제 높이 설정 (스크롤 영역)
+            const totalContentHeight = totalHours * ROW_HEIGHT;
 
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
+            timeCol.style.height = totalContentHeight + 'px'; // 높이 적용
+
             for(let h = displayStart; h < displayEnd; h++) {
                 const label = document.createElement('div');
                 label.className = 'diet-time-label';
@@ -508,6 +518,7 @@
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
+                dayCol.style.height = totalContentHeight + 'px'; // 높이 적용
                 
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
@@ -543,6 +554,7 @@
                     eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
                     const nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
+                    // 시간 텍스트 제거하고 팀 이름만 표시
                     eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span>`;
                     
                     dayCol.appendChild(eventDiv);
