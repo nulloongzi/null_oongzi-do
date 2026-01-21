@@ -438,7 +438,7 @@
                 grid.appendChild(div);
             }
         }
-        
+
         function parseScheduleText(text) {
             var scheduleMap = {};
             if (!text) return scheduleMap;
@@ -484,12 +484,57 @@
             return p + ' ' + h12;
         }
 
+        // [1] 식단표 시간 계산 도구 (여기에 있어야 안전합니다)
+        function parseScheduleText(text) {
+            var scheduleMap = {};
+            if (!text) return scheduleMap;
+            var segments = text.split(/\s*\/\s*/); 
+            segments.forEach(function(segment) {
+                var timeReg = /(\d{1,2}):(\d{2})\s*[~-]\s*(\d{1,2}):(\d{2})/;
+                var match = segment.match(timeReg);
+                if (match) {
+                    var startH = parseInt(match[1]);
+                    var startM = parseInt(match[2]);
+                    var endH = parseInt(match[3]);
+                    var endM = parseInt(match[4]);
+                    
+                    function format12(h, m) {
+                        var p = h >= 12 ? 'PM' : 'AM';
+                        var h12 = h % 12;
+                        if (h12 === 0) h12 = 12;
+                        var mStr = m < 10 ? '0'+m : m;
+                        return p + ' ' + h12 + ':' + mStr;
+                    }
+                    
+                    var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
+                    var days = ['월', '화', '수', '목', '금', '토', '일'];
+                    days.forEach(function(day) {
+                        if (segment.includes(day)) {
+                            scheduleMap[day] = { 
+                                startH: startH, startM: startM, 
+                                endH: endH, endM: endM, 
+                                text: displayTime 
+                            };
+                        }
+                    });
+                }
+            });
+            return scheduleMap;
+        }
+
+        function getHourLabel(h) {
+            var p = h >= 12 ? 'PM' : 'AM';
+            var h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            return p + ' ' + h12;
+        }
+
+        // [2] 식단표 렌더링 함수
         function renderCombinedSchedule() {
             const container = document.getElementById('dietPlanBody');
             container.innerHTML = '';
 
             const slots = currentProfileData.tempSlots || [];
-            // 누룽지 테마 파스텔 색상
             const slotColors = ["#fff9c4", "#ffe0b2", "#dcedc8", "#ffccbc", "#e1bee7"]; 
             const borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
 
@@ -526,10 +571,9 @@
             const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
 
-            // [핵심 변경] 높이 자동 계산 (가용 공간 300px 기준)
             const availableHeight = 300;
             const calculatedHeight = availableHeight / totalHours;
-            const ROW_HEIGHT = Math.max(30, calculatedHeight); // 최소 30px 보장
+            const ROW_HEIGHT = Math.max(30, calculatedHeight); 
             
             const days = ['월', '화', '수', '목', '금', '토', '일'];
             const headerRow = document.createElement('div');
@@ -542,14 +586,12 @@
 
             const bodyWrapper = document.createElement('div');
             bodyWrapper.className = 'diet-body-wrapper';
-            // 부모 높이에 맞춤 (CSS flex)
             
-            // 내부 컨텐츠의 실제 높이 설정 (스크롤 영역)
             const totalContentHeight = totalHours * ROW_HEIGHT;
 
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
-            timeCol.style.height = totalContentHeight + 'px'; // 높이 적용
+            timeCol.style.height = totalContentHeight + 'px';
 
             for(let h = displayStart; h < displayEnd; h++) {
                 const label = document.createElement('div');
@@ -563,7 +605,7 @@
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
-                dayCol.style.height = totalContentHeight + 'px'; // 높이 적용
+                dayCol.style.height = totalContentHeight + 'px'; 
                 
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
@@ -599,7 +641,6 @@
                     eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
                     const nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
-                    // 시간 텍스트 제거하고 팀 이름만 표시
                     eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span>`;
                     
                     dayCol.appendChild(eventDiv);
@@ -611,6 +652,7 @@
             container.appendChild(bodyWrapper);
         }
 
+        // [3] 기타 UI 핸들러들
         function handleSlotClick(index) {
             if (selectedSlotIndex === null) {
                 selectedSlotIndex = index;
@@ -670,31 +712,22 @@
             overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
         };
 
-        // [중요] 이 함수들은 반드시 <script type="module"> 태그 안쪽에 있어야 합니다!
-
-        // 1. 포장하기 버튼 (전체 총괄)
+        // [4] 포장하기(공유) 기능 총괄
         window.showShareOptions = function() {
-            // confirm 창을 띄웁니다.
             if (confirm("📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)")) {
-                // 확인 클릭 시: 피드용 생성
                 window.generateShareImage('feed');
             } else {
-                // 취소 클릭 시: 스토리용 생성
                 window.generateShareImage('story');
             }
         };
 
-        // 2. 이미지 생성 담당 (일꾼) - window에 연결 필수
         window.generateShareImage = async function(mode) {
-            // 라이브러리 체크
             if (typeof html2canvas === 'undefined') {
                 alert("캡처 도구(html2canvas)가 로딩되지 않았습니다. 새로고침 후 다시 시도해주세요.");
                 return;
             }
 
-            // 데이터 안전 체크 (로그인이 안되어 있거나 데이터가 없으면 중단)
             if (!currentProfileData || !currentProfileData.tempSlots) {
-                // 데이터가 비어있다면 강제로 동기화 시도
                 if (currentProfileData) {
                     let saved = currentProfileData.bookmarks || [];
                     let normalized = [null, null, null, null, null];
@@ -707,18 +740,13 @@
             }
 
             try {
-                // A. 캡처 무대 초기화
                 const stage = document.getElementById('captureStage');
                 stage.innerHTML = ""; 
 
-                // B. 도시락통 다시 그리기 (데이터 최신화)
                 renderLunchboxGrid(); 
 
-                // C. 모드에 따라 스타일 설정
                 stage.className = (mode === 'feed') ? 'mode-feed' : 'mode-story';
 
-                // D. 요소 복제 및 조립
-                // (1) 프로필 카드 복제 (ID 제거하여 충돌 방지)
                 const sourceCard = document.getElementById('myProfileCard');
                 if (!sourceCard) { alert("프로필 카드를 찾을 수 없습니다."); return; }
                 
@@ -727,14 +755,12 @@
                 cardClone.className += " cap-card";
                 cardClone.style.margin = "0"; 
                 
-                // 불필요한 버튼 제거
                 const removeSelectors = ['#loginSection', '#pcRiceWatermark', '.pc-edit-btn', '.pc-footer'];
                 removeSelectors.forEach(sel => {
                     const el = cardClone.querySelector(sel);
                     if(el) el.remove();
                 });
 
-                // (2) 도시락통 생성
                 const boxContainer = document.createElement('div');
                 boxContainer.className = "lunchbox-wrapper cap-box";
                 boxContainer.style.border = "4px solid #8d6e63";
@@ -747,18 +773,15 @@
                 gridClone.querySelectorAll('.lb-del-btn').forEach(el => el.remove()); 
                 boxContainer.appendChild(gridClone);
 
-                // (3) 워터마크 생성
                 const watermark = document.createElement('div');
                 watermark.className = "watermark";
                 watermark.innerHTML = `<img src="logo.png" alt="🍚" crossorigin="anonymous" onerror="this.style.display='none'"><span>누룽지도</span>`;
 
-                // E. 무대에 배치
                 if (mode === 'story') {
                     stage.appendChild(cardClone);
                     stage.appendChild(boxContainer);
                     stage.appendChild(watermark);
                 } else {
-                    // 피드 모드 배치
                     const topRow = document.createElement('div');
                     topRow.className = 'feed-row-top';
                     topRow.appendChild(cardClone);
@@ -778,8 +801,9 @@
                     dietBody.style.position = "relative";
                     dietBody.style.backgroundColor = "white";
 
-                    // 식단표 렌더링
+                    // 여기서 위에 정의한 함수를 호출합니다
                     renderCombinedSchedule(); 
+                    
                     const originalDiet = document.getElementById('dietPlanBody');
                     if (originalDiet && originalDiet.innerHTML) {
                         dietBody.innerHTML = originalDiet.innerHTML;
@@ -799,11 +823,9 @@
                     stage.appendChild(watermark);
                 }
 
-                // [중요] 여기서 화면이 멈추지 않도록 오버레이 숨기기
                 const overlays = document.querySelectorAll('.profile-overlay, .lunchbox-overlay');
                 overlays.forEach(el => el.style.display = 'none');
 
-                // F. 캡처 실행 (0.5초 뒤)
                 setTimeout(() => {
                     html2canvas(stage, { 
                         scale: 3, 
@@ -831,12 +853,11 @@
             } catch (e) {
                 console.error(e);
                 alert("오류가 발생했습니다: " + e.message);
-                // 오류 나면 다시 프로필 창 띄워주기
                 document.getElementById('profileOverlay').style.display = 'flex';
             }
         };
         
-        // 3. 다운로드 및 닫기 기능도 window에 연결
+        // [5] 미리보기 창 기능들
         window.downloadImage = function() {
             const img = document.querySelector('#previewImgBox img');
             if (img) {
