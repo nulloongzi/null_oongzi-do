@@ -439,51 +439,6 @@
             }
         }
 
-        function parseScheduleText(text) {
-            var scheduleMap = {};
-            if (!text) return scheduleMap;
-            // 역슬래시 한 번만 사용
-            var segments = text.split(/\s*\/\s*/); 
-            segments.forEach(function(segment) {
-                var timeReg = /(\d{1,2}):(\d{2})\s*[~-]\s*(\d{1,2}):(\d{2})/;
-                var match = segment.match(timeReg);
-                if (match) {
-                    var startH = parseInt(match[1]);
-                    var startM = parseInt(match[2]);
-                    var endH = parseInt(match[3]);
-                    var endM = parseInt(match[4]);
-                    
-                    function format12(h, m) {
-                        var p = h >= 12 ? 'PM' : 'AM';
-                        var h12 = h % 12;
-                        if (h12 === 0) h12 = 12;
-                        var mStr = m < 10 ? '0'+m : m;
-                        return p + ' ' + h12 + ':' + mStr;
-                    }
-                    
-                    var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
-                    var days = ['월', '화', '수', '목', '금', '토', '일'];
-                    days.forEach(function(day) {
-                        if (segment.includes(day)) {
-                            scheduleMap[day] = { 
-                                startH: startH, startM: startM, 
-                                endH: endH, endM: endM, 
-                                text: displayTime 
-                            };
-                        }
-                    });
-                }
-            });
-            return scheduleMap;
-        }
-
-        function getHourLabel(h) {
-            var p = h >= 12 ? 'PM' : 'AM';
-            var h12 = h % 12;
-            if (h12 === 0) h12 = 12;
-            return p + ' ' + h12;
-        }
-
         // [1] 식단표 시간 계산 도구 (여기에 있어야 안전합니다)
         function parseScheduleText(text) {
             var scheduleMap = {};
