@@ -696,7 +696,9 @@
 
             try {
                 const stage = document.getElementById('captureStage');
-                stage.innerHTML = ""; 
+                stage.innerHTML = "";
+                
+                stage.style.visibility = "visible";
 
                 renderLunchboxGrid(); 
 
@@ -801,6 +803,8 @@
                     }).catch(err => {
                         console.error(err);
                         alert("이미지 변환 실패: " + err);
+                        // ★ [추가 3] 에러 나도 다시 숨기기
+                        stage.style.visibility = "hidden";
                         document.getElementById('profileOverlay').style.display = 'flex';
                     });
                 }, 500);
@@ -1171,14 +1175,15 @@
         
         .expand-hint { text-align: center; color: #bdbdbd; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
 
-        /* 캡처 무대 설정 */
+        /* [수정 후] 이렇게 바꿔주세요! */
         #captureStage {
             position: fixed; 
-            top: 0; left: -9999px; /* 화면 밖으로 이동 */
+            top: 0; left: 0; 
             z-index: -9999;
             background-color: #fff8e1;
             font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
             display: flex; flex-direction: column;
+            visibility: hidden; /* 화면엔 있지만 눈에만 안 보이게 설정 */
         }
 
         .watermark {
