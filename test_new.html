@@ -1771,15 +1771,14 @@
             }
         });
 
-        // [NEW] 공유 기능 로직 (안정성 강화 버전)
-        function showShareOptions() {
-            // 네임카드 오버레이는 닫지 않고 유지 (사용자가 보면서 선택하게)
+        window.showShareOptions = function() {
+            // 네임카드 오버레이는 닫지 않고 유지
             if (confirm("📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)")) {
                 generateShareImage('feed');
             } else {
                 generateShareImage('story');
             }
-        }
+        };
 
         async function generateShareImage(mode) {
             // [안전장치] 라이브러리 로드 체크
@@ -1916,7 +1915,7 @@
             }, 500); 
         }
 
-        function downloadImage() {
+        window.downloadImage = function() {
             const img = document.querySelector('#previewImgBox img');
             if (img) {
                 const link = document.createElement('a');
@@ -1925,13 +1924,13 @@
                 link.href = img.src;
                 link.click();
             }
-        }
+        };
 
-        function closePreview() {
+        window.closePreview = function() {
             document.getElementById('previewOverlay').style.display = 'none';
             // 미리보기 닫으면 프로필 카드 다시 보여주기
             document.getElementById('profileOverlay').style.display = 'flex';
-        }
+        };
 
         applyFilters();
     </script>
