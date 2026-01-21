@@ -968,16 +968,18 @@
         
         .expand-hint { text-align: center; color: #bdbdbd; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
 
-        /* 캡처 무대 설정 */
+        /* [핵심 수정] 캡처 무대: 화면 밖으로 숨김처리 (visibility 대신 좌표 이동 사용) */
         #captureStage {
             position: fixed; 
-            top: 0; left: -9999px; /* 화면 밖으로 이동 */
+            top: 0; left: -9999px; /* 화면 왼쪽 끝으로 보냄 (렌더링은 유지됨) */
             z-index: -9999;
             background-color: #fff8e1;
             font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
             display: flex; flex-direction: column;
+            /* transform 제거됨 */
         }
 
+        /* 워터마크: 작은 화면에 맞게 크기 재조정 */
         .watermark {
             position: absolute; bottom: 20px; right: 20px;
             font-size: 14px; font-weight: 900; color: #5d4037; opacity: 0.5;
@@ -986,63 +988,133 @@
         .watermark img { width: 30px; height: 30px; }
         .watermark span { font-size: 16px; letter-spacing: -0.5px; }
 
-        /* 스토리 모드 (9:16) */
+        /* Option A: 스토리 모드 (9:16 비율) */
+        /* 원본 1080x1920 -> 1/3 크기인 360x640으로 설정 (나중에 3배 확대 캡처) */
         .mode-story {
             width: 360px; height: 640px;
             padding: 40px 20px;
             align-items: center; justify-content: center;
             gap: 20px;
             background-image: radial-gradient(#fff9c4 15%, transparent 15%);
-            background-size: 20px 20px; 
+            background-size: 20px 20px; /* 패턴 크기 축소 */
         }
-        .mode-story .cap-card, .mode-story .cap-box { 
-            margin-bottom: 20px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
-            border-radius: 20px; 
-            width: 300px !important; 
-        }
+        /* transform: scale() 삭제 및 마진 조정 */
+        .mode-story .cap-card { margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius: 20px; width: 300px !important;}
+        .mode-story .cap-box { box-shadow: 0 10px 30px rgba(0,0,0,0.15); width: 300px !important; }
 
-        /* 피드 모드 (4:5) - 세로 배치로 변경하여 오류 방지 */
+        /* Option B: 피드 모드 (4:5 비율) */
+        /* 원본 1080x1350 -> 1/3 크기인 360x450으로 설정 */
         .mode-feed {
             width: 360px; height: 450px;
-            padding: 15px;
-            flex-direction: column;
+            padding: 20px;
+            flex-direction: column; /* 세로 배치로 변경 (공간 효율 위해) */
             align-items: center; justify-content: space-between;
             background: #fff3e0;
-            border: 15px solid #8d6e63;
+            border: 20px solid #8d6e63;
         }
 
-        /* [핵심 수정] 가로 배치 대신 세로로 쌓아서 안전하게 렌더링 */
         .feed-row-top {
             display: flex; width: 100%;
-            flex-direction: column; 
-            align-items: center; justify-content: center; 
-            gap: 10px; margin-top: 5px;
+            justify-content: center; gap: 10px;
+            align-items: flex-start;
+            margin-top: 10px;
+            transform: scale(0.65); /* 내부 요소만 살짝 축소하여 배치 */
+            transform-origin: top center;
+            height: 220px;
         }
-        
-        /* transform 축소 대신 크기 지정 */
-        .feed-row-top .cap-card, .feed-row-top .cap-box { 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
-            width: 280px !important; 
-            margin: -5px 0;
-            transform: scale(0.95); /* 아주 살짝만 축소 */
-        }
+        /* 불필요한 transform 제거 */
+        .feed-row-top .cap-card { box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 300px !important; }
+        .feed-row-top .cap-box { box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 300px !important; }
 
         .feed-row-bottom {
-            width: 100%; height: 120px;
-            background: white; border-radius: 12px;
+            width: 100%; height: 160px;
+            background: white; border-radius: 15px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
             overflow: hidden; display: flex; flex-direction: column;
-            border-top: 6px solid #fac710;
-            margin-bottom: 15px;
+            border-top: 8px solid #fac710;
+            margin-bottom: 20px;
         }
         .feed-header {
-            padding: 5px; text-align: center; font-size: 12px; font-weight: 800; color: #5d4037;
+            padding: 8px; text-align: center; font-size: 14px; font-weight: 800; color: #5d4037;
             border-bottom: 2px dashed #efebe9; background: #fff;
         }
+        /* 식단표 내부 폰트 사이즈 강제 조절 */
         .feed-row-bottom .diet-time-label, 
         .feed-row-bottom .diet-day-col { font-size: 8px !important; }
+        .pc-share-btn:active { transform: scale(0.95); }
 
+        /* [NEW] 캡처용 숨겨진 무대 (안정성 개선) */
+        #captureStage {
+            position: fixed; top: 0; left: 0; 
+            z-index: -9999; /* 화면 뒤로 숨김 */
+            background-color: #fff8e1;
+            font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            display: flex; flex-direction: column;
+            visibility: hidden; /* display:none 대신 visibility 사용 (렌더링 보장) */
+        }
+
+        /* 워터마크 */
+        .watermark {
+            position: absolute; bottom: 30px; right: 40px;
+            font-size: 24px; font-weight: 900; color: #5d4037; opacity: 0.5;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* Option A: 스토리 모드 (9:16) */
+        .mode-story {
+            width: 1080px; height: 1920px;
+            padding: 100px;
+            align-items: center; justify-content: center;
+            gap: 60px;
+            background-image: radial-gradient(#fff9c4 15%, transparent 15%);
+            background-size: 40px 40px;
+        }
+        .mode-story .cap-card { transform: scale(2.5); margin-bottom: 60px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border-radius: 40px; }
+        .mode-story .cap-box { transform: scale(2.5); box-shadow: 0 20px 60px rgba(0,0,0,0.15); width: 330px !important; }
+
+        /* Option B: 피드 모드 (4:5) */
+        .mode-feed {
+            width: 1080px; height: 1350px;
+            padding: 80px;
+            display: flex; flex-direction: row;
+            align-items: center; justify-content: center; gap: 60px;
+            background: #fff3e0;
+            border: 50px solid #8d6e63;
+        }
+        .feed-col-left { 
+            display: flex; flex-direction: column; gap: 80px; 
+            align-items: center; justify-content: center;
+        }
+        .feed-col-left .cap-card { transform: scale(2.0); box-shadow: 0 15px 40px rgba(0,0,0,0.1); }
+        .feed-col-left .cap-box { transform: scale(2.0); box-shadow: 0 15px 40px rgba(0,0,0,0.1); }
+        
+        .feed-col-right {
+            width: 420px; height: 90%;
+            background: white; border-radius: 30px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+            overflow: hidden; display: flex; flex-direction: column;
+            border-top: 15px solid #fac710;
+        }
+        .feed-header {
+            padding: 30px; text-align: center; font-size: 32px; font-weight: 800; color: #5d4037;
+            border-bottom: 4px dashed #efebe9;
+        }
+
+        /* 미리보기 창 */
+        .preview-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 2000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .preview-img-box {
+            max-width: 85%; max-height: 75%;
+            overflow: hidden; border-radius: 16px; margin-bottom: 20px;
+            box-shadow: 0 0 30px rgba(255,255,255,0.1);
+        }
+        .preview-img-box img { width: 100%; height: auto; display: block; }
+        .preview-btns { display: flex; gap: 20px; }
+        .btn-down { background: #fac710; color: #000; padding: 14px 28px; border-radius: 30px; font-weight: 800; border: none; cursor: pointer; font-size: 16px; }
+        .btn-close { background: white; color: #333; padding: 14px 28px; border-radius: 30px; font-weight: 700; border: none; cursor: pointer; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -1781,16 +1853,10 @@
         };
 
         async function generateShareImage(mode) {
-            // [안전장치] 라이브러리 로드 체크
-            if (typeof html2canvas === 'undefined') {
-                alert("캡처 라이브러리가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.");
-                return;
-            }
-
             const stage = document.getElementById('captureStage');
             stage.innerHTML = ""; // 초기화
             
-            // 1. 데이터 동기화
+            // 1. 데이터 강제 동기화
             if (!currentProfileData.tempSlots) {
                 let saved = currentProfileData.bookmarks || [];
                 let normalized = [null, null, null, null, null];
@@ -1799,17 +1865,14 @@
             }
             renderLunchboxGrid(); 
 
-            // 2. 무대 설정
+            // 2. 스테이지 설정 (CSS에서 visibility 제거했으므로 클래스만 부여)
             stage.className = (mode === 'feed') ? 'mode-feed' : 'mode-story';
 
-            // 3. 요소 복제 (핵심: ID 제거하여 충돌 방지)
+            // 3. 요소 복제 및 생성
             // (A) 네임카드
             const cardClone = document.getElementById('myProfileCard').cloneNode(true);
-            cardClone.removeAttribute('id'); // [중요] ID 삭제
             cardClone.className += " cap-card";
-            cardClone.style.margin = "0"; 
-            
-            // 불필요한 버튼 등 제거
+            cardClone.style.margin = "0"; // 마진 초기화
             const removeSelectors = ['#loginSection', '#pcRiceWatermark', '.pc-edit-btn', '.pc-footer'];
             removeSelectors.forEach(sel => {
                 const el = cardClone.querySelector(sel);
@@ -1820,21 +1883,22 @@
             const boxContainer = document.createElement('div');
             boxContainer.className = "lunchbox-wrapper cap-box";
             boxContainer.style.border = "4px solid #8d6e63";
+            // 캡처용 헤더 스타일 조정
             boxContainer.innerHTML = `<div class="lb-header" style="justify-content:center; margin-bottom:10px; font-size:16px;"><span>🍱 나의 도시락</span></div>`;
             
             const gridClone = document.getElementById('lunchboxGrid').cloneNode(true);
-            gridClone.removeAttribute('id'); // [중요] ID 삭제
-            gridClone.style.height = "180px"; 
+            gridClone.style.height = "180px"; // 높이 강제 조정
             gridClone.style.gap = "4px"; 
             gridClone.querySelectorAll('.lb-del-btn').forEach(el => el.remove()); 
             boxContainer.appendChild(gridClone);
 
-            // (C) 워터마크
+            // (C) 워터마크 (로고 이미지가 없으면 텍스트만 표시되도록 처리)
             const watermark = document.createElement('div');
             watermark.className = "watermark";
+            // 중요: logo.png가 없으면 캡처가 멈출 수 있으므로 onerror 처리 추가
             watermark.innerHTML = `<img src="logo.png" alt="🍚" crossorigin="anonymous" onerror="this.style.display='none'"><span>누룽지도</span>`;
 
-            // 4. 배치
+            // 4. 모드별 배치
             if (mode === 'story') {
                 stage.appendChild(cardClone);
                 stage.appendChild(boxContainer);
@@ -1854,27 +1918,29 @@
                 header.innerText = "📅 주간 식단표";
                 bottomRow.appendChild(header);
 
-                // 식단표
+                // 식단표 복제
                 const dietBody = document.createElement('div');
                 dietBody.style.flex = "1";
                 dietBody.style.width = "100%";
                 dietBody.style.position = "relative";
                 dietBody.style.backgroundColor = "white";
 
-                renderCombinedSchedule(); 
+                renderCombinedSchedule(); // 데이터 갱신
                 const originalDiet = document.getElementById('dietPlanBody');
+                
                 if (originalDiet && originalDiet.innerHTML) {
                     dietBody.innerHTML = originalDiet.innerHTML;
                 } else {
                     dietBody.innerText = "데이터 없음";
                 }
                 
-                // 스크롤바 제거 스타일
+                // 스타일 보정
                 const wrapper = dietBody.querySelector('.diet-body-wrapper');
                 if(wrapper) {
-                    wrapper.style.overflow = "hidden";
+                    wrapper.style.overflow = "hidden"; // 스크롤바 제거
                     wrapper.style.height = "100%";
                 }
+                
                 bottomRow.appendChild(dietBody);
 
                 stage.appendChild(topRow);
@@ -1882,19 +1948,18 @@
                 stage.appendChild(watermark);
             }
 
-            // 5. 오버레이 잠시 숨김 (캡처 방해 금지)
+            // 5. 오버레이 잠시 숨김
             const overlays = document.querySelectorAll('.profile-overlay, .lunchbox-overlay');
             overlays.forEach(el => el.style.display = 'none');
 
-            // 6. 캡처 실행 (0.5초 딜레이로 렌더링 시간 확보)
+            // 6. 캡처 실행 (Scale 3 = 3배 고화질 캡처)
             setTimeout(() => {
                 html2canvas(stage, { 
-                    scale: 3, 
+                    scale: 3,  // [핵심] 360px * 3 = 1080px (고화질)
                     useCORS: true, 
                     backgroundColor: null,
-                    logging: false // 로그 끔
+                    logging: true // 디버깅용 로그 켬
                 }).then(canvas => {
-                    // [여기가 미리보기 띄우는 로직입니다]
                     const imgData = canvas.toDataURL("image/png");
                     const previewBox = document.getElementById('previewImgBox');
                     if(previewBox) {
@@ -1902,17 +1967,15 @@
                         const img = document.createElement('img');
                         img.src = imgData;
                         previewBox.appendChild(img);
-                        
-                        // 성공 시 미리보기 오버레이 표시
                         document.getElementById('previewOverlay').style.display = 'flex';
                     }
                     stage.innerHTML = ""; // 메모리 정리
                 }).catch(err => {
                     console.error(err);
-                    alert("이미지 생성 중 오류가 발생했습니다.\n" + err);
+                    alert("이미지 생성 중 오류가 발생했습니다.\n(logo.png 파일이 없거나 브라우저 보안 설정 문제일 수 있습니다.)");
                     document.getElementById('profileOverlay').style.display = 'flex';
                 });
-            }, 500); 
+            }, 300); 
         }
 
         window.downloadImage = function() {
