@@ -1009,8 +1009,10 @@
         /* scale(2.2)로 설정: 1.8보다는 크고 2.5보다는 작게 
            margin: 상하 160px을 주어 서로 겹치지 않게 밀어냄
         */
-        .mode-story .cap-card { 
-            transform: scale(2.8); 
+        .mode-story .cap-card {
+            width: 340px !important;
+            max-width: none !important; /* 크기 제한 해제 */ 
+            transform: scale(2.9); 
             transform-origin: center center;
             box-shadow: 0 20px 50px rgba(93, 64, 55, 0.25); 
             border-radius: 20px;
@@ -1018,10 +1020,11 @@
         }
 
         .mode-story .cap-box { 
-            transform: scale(2.8); 
+            transform: scale(2.9); 
             transform-origin: center center;
             box-shadow: 0 20px 50px rgba(93, 64, 55, 0.25); 
-            width: 330px !important; 
+            width: 330px !important;
+            max-width: none !important; /* 크기 제한 해제 */  
             margin: 350px 0; /* 위아래 간격 확보 */
         }
 
