@@ -811,8 +811,8 @@
                 alert("포장하기 기능 오류: " + e); // 에러가 나면 이유를 알려줍니다.
             }
         };
-
-        function downloadImage() {
+        // [수정] 이미지 저장 함수 (창고에 등록)
+        window.downloadImage = function() {
             const img = document.querySelector('#previewImgBox img');
             if (img) {
                 const link = document.createElement('a');
@@ -821,14 +821,14 @@
                 link.href = img.src;
                 link.click();
             }
-        }
+        };
 
-        function closePreview() {
+        // [수정] 미리보기 닫기 함수 (창고에 등록)
+        window.closePreview = function() {
             document.getElementById('previewOverlay').style.display = 'none';
             // 미리보기 닫으면 프로필 카드 다시 보여주기
             document.getElementById('profileOverlay').style.display = 'flex';
-        }
-
+        };
         applyFilters();
     </script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
