@@ -999,9 +999,19 @@
             background-image: radial-gradient(#fff9c4 15%, transparent 15%);
             background-size: 50px 50px;
         }
-        /* transform 제거하고 줌이나 크기 자체를 제어 (여기선 html2canvas scale 활용하므로 그냥 둠) */
-        .mode-story .cap-card { transform: scale(1.8); box-shadow: 0 20px 60px rgba(0,0,0,0.15); border-radius: 40px; }
-        .mode-story .cap-box { transform: scale(1.8); box-shadow: 0 20px 60px rgba(0,0,0,0.15); width: 350px !important; }
+        /* [수정된 코드] transform을 zoom으로 변경하여 실제 공간도 같이 늘어나게 처리 */
+        .mode-story .cap-card { 
+            zoom: 1.8; /* transform: scale(1.8) 대신 사용 */
+            margin-bottom: 0; /* 불필요한 마진 제거 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+            border-radius: 24px; /* zoom이 되면 border-radius도 같이 커지므로 적당히 조절 */
+        }
+
+        .mode-story .cap-box { 
+            zoom: 1.8; /* transform: scale(1.8) 대신 사용 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+            width: 330px !important; 
+        }
 
         /* [수정] 피드 모드 (4:5) - 레이아웃 안정화 */
         .mode-feed {
@@ -1841,22 +1851,6 @@
         }
 
         async function generateShareImage(mode) {
-            
-            // [1번 문제 해결 로직 추가] -----------------------------------------
-            // 도시락을 한 번도 안 열었을 경우를 대비해 데이터를 동기화하고 강제로 렌더링합니다.
-            if (!currentProfileData.tempSlots) {
-                let saved = currentProfileData.bookmarks || [];
-                let normalized = [null, null, null, null, null];
-                if (saved.length > 0) {
-                    for(let i=0; i<5; i++) {
-                        if (i < saved.length) normalized[i] = saved[i];
-                    }
-                }
-                currentProfileData.tempSlots = normalized;
-            }
-            // 화면에 보이지 않아도 DOM을 구성하기 위해 렌더링 함수 호출
-            renderLunchboxGrid(); 
-            // -----------------------------------------------------------------
             
             const stage = document.getElementById('captureStage');
             stage.innerHTML = ""; // 초기화
