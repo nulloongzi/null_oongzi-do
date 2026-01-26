@@ -1164,7 +1164,11 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 30px;
+            /* 2. 전체적인 위치를 위로 올리는 핵심 (아래쪽 공백을 강제로 늘림) */
+            padding-top: 50px;     /* 위쪽은 적당히 */
+            padding-bottom: 250px; /* 아래쪽을 두껍게 줘서 내용물을 위로 밀어버림 */
+            padding-left: 50px;
+            padding-right: 50px;
             gap: 100px;
         }
 
