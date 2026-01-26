@@ -636,47 +636,48 @@
             }
         };
 
-        // [최종 수정] DOM 복제 방식을 사용한 고화질 포장하기 기능
+        // [최종 수정] DOM 복제 + ID 충돌 방지 로직 추가
         window.generateShareImage = async function(mode) {
             try {
-                // 1. 데이터 동기화 (도시락/식단표를 열지 않았어도 데이터가 렌더링되도록 강제)
+                // 1. 데이터 동기화
                 if (!currentProfileData) { alert("로그인이 필요합니다."); return; }
                 
-                // 1-1. 북마크 데이터가 있다면 tempSlots에 로드
                 if (!currentProfileData.tempSlots && currentProfileData.bookmarks) {
                     currentProfileData.tempSlots = [...currentProfileData.bookmarks];
                     while(currentProfileData.tempSlots.length < 5) currentProfileData.tempSlots.push(null);
                 }
                 
-                // 1-2. 강제 렌더링 (DOM에 내용을 채움)
                 renderLunchboxGrid();
                 renderCombinedSchedule();
 
-                // 2. 캡처 무대(Stage) 초기화
+                // 2. 캡처 무대 초기화
                 const stage = document.getElementById('captureStage');
-                stage.innerHTML = ""; // 기존 내용 삭제
-                
-                // 모드별 클래스 적용 (크기 및 배경 설정)
+                stage.innerHTML = ""; 
                 stage.className = (mode === 'story') ? 'capture-mode-story' : 'capture-mode-feed';
 
-                // 3. 요소 복제 (cloneNode true) - 핵심!
+                // 3. 요소 복제 및 [ID 충돌 방지 처리]
                 // [A] 네임카드 복제
                 const originalCard = document.getElementById('myProfileCard');
                 const clonedCard = originalCard.cloneNode(true);
                 clonedCard.classList.add('cloned-element', 'cloned-card');
                 
-                // [B] 도시락통 복제 (Wrapper 통째로)
+                // ★ 핵심 수정: 복제된 카드에서 ID 충돌을 일으키는 로그인 섹션/입력창 삭제 ★
+                // (캡처 이미지에는 로그인 입력창이 필요 없으므로 제거해도 디자인에 영향 없음)
+                const loginSectionInClone = clonedCard.querySelector('#loginSection');
+                if (loginSectionInClone) loginSectionInClone.remove();
+
+                // [B] 도시락통 복제
                 const originalBox = document.querySelector('.lunchbox-wrapper');
                 const clonedBox = originalBox.cloneNode(true);
                 clonedBox.classList.add('cloned-element', 'cloned-box');
                 
-                // 도시락통 내부의 불필요한 요소 제거 (식단표 컨테이너 등)
+                // 도시락통 내부 불필요 요소 제거
                 const dietContainer = clonedBox.querySelector('#dietPlanContainer');
                 if(dietContainer) dietContainer.remove(); 
                 const dietBtn = clonedBox.querySelector('#dietToggleBtn');
                 if(dietBtn) dietBtn.remove();
                 
-                // [C] 로고 워터마크 생성
+                // [C] 로고 워터마크
                 const logoBox = document.createElement('div');
                 logoBox.className = 'capture-watermark';
                 logoBox.innerHTML = `
@@ -686,21 +687,15 @@
 
                 // 4. 레이아웃 조립
                 if (mode === 'story') {
-                    // [스토리 모드]: 세로 배치
                     stage.appendChild(clonedCard);
                     stage.appendChild(clonedBox);
                     stage.appendChild(logoBox);
-
                 } else {
-                    // [피드 모드]: 좌측(카드+도시락) / 우측(식단표)
-                    
-                    // 좌측 컬럼
                     const leftCol = document.createElement('div');
                     leftCol.className = 'feed-left-col';
                     leftCol.appendChild(clonedCard);
                     leftCol.appendChild(clonedBox);
                     
-                    // 우측 컬럼 (식단표)
                     const rightCol = document.createElement('div');
                     rightCol.className = 'feed-right-col';
                     
@@ -711,9 +706,7 @@
                     const dietBody = document.createElement('div');
                     dietBody.className = 'feed-diet-body';
                     
-                    // 식단표 내용 복제 (스크롤 제거 및 전체 표시를 위해)
                     const originalDietBody = document.getElementById('dietPlanBody');
-                    // 복제 전에 스타일 강제 조정 (확장된 상태로)
                     const wrapper = originalDietBody.querySelector('.diet-body-wrapper');
                     if(wrapper) wrapper.style.overflow = 'visible'; 
                     
@@ -727,40 +720,32 @@
                     stage.appendChild(logoBox);
                 }
 
-                // 5. html2canvas 실행
-                // 프로필 오버레이 등이 캡처에 걸리지 않도록 잠시 숨김 처리 필요 없음 (Stage가 좌표 밖에 있음)
-                
+                // 5. 캡처 실행
                 setTimeout(() => {
                     html2canvas(stage, {
-                        scale: 1, // 이미 CSS transform으로 확대했으므로 scale은 1 유지
+                        scale: 1, 
                         useCORS: true,
-                        backgroundColor: null, // 투명 배경 허용
+                        backgroundColor: null, 
                         logging: false
                     }).then(canvas => {
                         const imgData = canvas.toDataURL("image/png");
-                        
-                        // 미리보기 창에 표시
                         const previewBox = document.getElementById('previewImgBox');
                         previewBox.innerHTML = "";
                         const img = document.createElement('img');
                         img.src = imgData;
                         previewBox.appendChild(img);
                         
-                        // 미리보기 오버레이 열기
-                        document.getElementById('profileOverlay').style.display = 'none'; // 프로필 창 닫기
+                        document.getElementById('profileOverlay').style.display = 'none';
                         document.getElementById('previewOverlay').style.display = 'flex';
                         
-                        // 무대 청소
                         stage.innerHTML = "";
                     }).catch(err => {
-                        alert("이미지 생성 중 오류가 발생했습니다: " + err);
-                        console.error(err);
+                        alert("오류: " + err);
                     });
-                }, 300); // 렌더링 안정화를 위한 짧은 지연
+                }, 300);
 
             } catch (e) {
                 alert("포장하기 실패: " + e.message);
-                console.error(e);
             }
         };
         applyFilters();
