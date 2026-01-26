@@ -636,18 +636,39 @@
             }
         };
 
-// [완전 개편] 고화질 레이아웃 재생성 방식
+        // [수정] 고화질 레이아웃 (데이터 안전 조회 방식 적용)
         window.generateShareImage = async function(mode) {
             try {
-                // 1. 데이터 준비
+                // 1. 데이터 준비 (안전 장치 추가)
                 if (!currentProfileData) { alert("로그인이 필요합니다."); return; }
                 
-                // DOM에서 현재 보여지는 텍스트 정보 긁어오기 (화면과 똑같은 데이터 사용)
-                const nickName = document.getElementById('pcNickname').innerText;
-                const level = document.getElementById('pcLevel').innerText;
-                const riceType = currentProfileData.ricePayment || "쌀밥"; // 밥 종류 (데이터에서 직접 가져옴)
-                const avatarSrc = document.querySelector('.pc-avatar').src;
-                const hashtags = document.getElementById('pcHashtags').innerText;
+                // [수정 핵심] 화면(DOM) ID를 찾지 않고, 데이터 변수에서 직접 가져옵니다.
+                // 혹시 데이터가 없을 경우를 대비해 '||' 뒤에 기본값을 넣어두었습니다.
+                
+                // 닉네임 & 레벨
+                const nickName = currentProfileData.nickname || "익명";
+                const level = currentProfileData.level || "Lv.1";
+                const riceType = currentProfileData.ricePayment || "쌀밥"; 
+                
+                // 해시태그 (배열로 되어있을 수 있으므로 문자열로 변환)
+                let hashtags = "";
+                if (currentProfileData.hashtags) {
+                    if (Array.isArray(currentProfileData.hashtags)) {
+                        hashtags = currentProfileData.hashtags.join(" ");
+                    } else {
+                        hashtags = currentProfileData.hashtags;
+                    }
+                } else {
+                    hashtags = "#누룽지도 #맛있는도시락"; // 기본값
+                }
+
+                // 아바타 이미지 (프로필 이미지 URL이 없으면 화면에서 찾기 시도)
+                let avatarSrc = currentProfileData.profileImg || "./img/default_avatar.png";
+                // 만약 데이터에 이미지가 없다면, 최후의 수단으로 화면의 #myProfileCard 안의 이미지를 찾습니다.
+                if (!currentProfileData.profileImg) {
+                    const imgInCard = document.querySelector('#myProfileCard img');
+                    if (imgInCard) avatarSrc = imgInCard.src;
+                }
 
                 // 도시락 그리드 확보
                 const gridEl = document.getElementById('lunchboxGrid');
@@ -658,36 +679,35 @@
                 stage.innerHTML = ""; 
                 stage.style.visibility = "visible";
                 
-                // 배경 스타일 설정 (공통)
+                // 배경 스타일
                 stage.style.width = "1080px";
                 stage.style.height = (mode === 'story') ? "1920px" : "1350px";
-                stage.style.background = "#fff9c4"; // 전체 배경색
+                stage.style.background = "#fff9c4"; 
                 stage.style.backgroundImage = "radial-gradient(#fff59d 15%, transparent 15%)";
                 stage.style.backgroundSize = "60px 60px";
                 stage.style.display = "flex";
                 stage.style.boxSizing = "border-box";
                 
-                // 모드별 레이아웃 방향 설정
+                // 모드별 레이아웃 방향
                 if (mode === 'story') {
                     stage.style.flexDirection = "column";
                     stage.style.alignItems = "center";
-                    stage.style.justifyContent = "center"; // 중앙 정렬
+                    stage.style.justifyContent = "center";
                     stage.style.padding = "100px";
-                    stage.style.gap = "80px"; // 카드와 도시락 사이 간격
+                    stage.style.gap = "80px"; 
                 } else {
-                    // 피드 모드
                     stage.style.flexDirection = "row";
                     stage.style.alignItems = "center";
                     stage.style.justifyContent = "center";
                     stage.style.padding = "60px";
                     stage.style.gap = "60px"; 
-                    stage.style.border = "60px solid #8d6e63"; // 피드용 액자 테두리
+                    stage.style.border = "60px solid #8d6e63"; 
                     stage.style.background = "#fff3e0"; 
                     stage.style.backgroundImage = "none";
                 }
 
                 // ============================================================
-                // [3. 새로운 프로필 카드 조립] - 복사가 아니라 새로 만듦
+                // [3. 프로필 카드 조립]
                 // ============================================================
                 const newCard = document.createElement('div');
                 newCard.style.cssText = `
@@ -703,7 +723,7 @@
                     overflow: hidden;
                 `;
 
-                // 밥 종류 워터마크 (배경에 은은하게 깔기)
+                // 밥 종류 워터마크 (배경)
                 const riceBg = document.createElement('div');
                 riceBg.innerText = riceType;
                 riceBg.style.cssText = `
@@ -712,20 +732,21 @@
                     transform: translate(-50%, -50%) rotate(-15deg);
                     font-size: ${mode === 'story' ? '200px' : '120px'};
                     font-weight: 900;
-                    color: rgba(0,0,0,0.03); /* 아주 연한 회색 */
+                    color: rgba(0,0,0,0.03); 
                     white-space: nowrap;
                     z-index: 0;
                     pointer-events: none;
                 `;
                 newCard.appendChild(riceBg);
 
-                // 내용물 컨테이너 (z-index로 워터마크 위로 올림)
+                // 내용물
                 const cardContent = document.createElement('div');
                 cardContent.style.cssText = "z-index: 1; display:flex; flex-direction:column; align-items:center; width:100%;";
 
                 // 아바타
                 const newAvatar = document.createElement('img');
                 newAvatar.src = avatarSrc;
+                newAvatar.crossOrigin = "anonymous"; // 이미지 CORS 문제 방지
                 newAvatar.style.cssText = `
                     width: ${mode === 'story' ? '220px' : '150px'};
                     height: ${mode === 'story' ? '220px' : '150px'};
@@ -761,7 +782,7 @@
                 newCard.appendChild(cardContent);
 
                 // ============================================================
-                // [4. 새로운 도시락통 조립]
+                // [4. 도시락통 조립]
                 // ============================================================
                 const newBox = document.createElement('div');
                 newBox.style.cssText = `
@@ -775,27 +796,20 @@
                     flex-direction: column;
                 `;
 
-                // 도시락 헤더
                 newBox.innerHTML = `<div style="text-align:center; font-size:${mode === 'story'?'40px':'28px'}; font-weight:bold; color:#5d4037; margin-bottom:30px;">🍱 오늘의 도시락</div>`;
 
-                // 그리드 컨테이너 (CSS Grid 사용)
                 const newGrid = document.createElement('div');
                 newGrid.style.cssText = `
                     display: grid;
-                    grid-template-columns: ${mode === 'story' ? 'repeat(5, 1fr)' : 'repeat(2, 1fr)'}; /* 스토리는 5열, 피드는 2열 */
+                    grid-template-columns: ${mode === 'story' ? 'repeat(5, 1fr)' : 'repeat(2, 1fr)'};
                     gap: 20px;
                 `;
                 
-                // 기존 그리드 아이템들을 가져와서 새로 포장
-                // (기존 lunchboxGrid의 innerHTML을 활용하되, 스타일은 리셋)
                 const originalItems = document.querySelectorAll('#lunchboxGrid .lunchbox-slot');
-                originalItems.forEach((item, index) => {
-                    // 피드 모드일 때 5개 다 보여주기엔 공간이 애매하면 4개만 보여주거나 조정 가능
-                    // 여기서는 일단 다 넣습니다.
+                originalItems.forEach((item) => {
                     const slot = document.createElement('div');
                     slot.innerHTML = item.innerHTML;
                     
-                    // 슬롯 내부 스타일 재정의 (아이콘 크기 키우기)
                     const img = slot.querySelector('img');
                     if(img) {
                         img.style.width = "100%";
@@ -803,14 +817,13 @@
                         img.style.objectFit = "contain";
                     }
                     
-                    // 삭제 버튼 제거
                     const delBtn = slot.querySelector('.lb-del-btn');
                     if(delBtn) delBtn.remove();
 
                     slot.style.cssText = `
                         background: white;
                         border-radius: 20px;
-                        aspect-ratio: 1/1; /* 정사각형 유지 */
+                        aspect-ratio: 1/1;
                         display: flex; align-items: center; justify-content: center;
                         box-shadow: inset 0 5px 10px rgba(0,0,0,0.05);
                         border: 2px solid #efebe9;
@@ -820,12 +833,9 @@
                 });
                 newBox.appendChild(newGrid);
 
-
                 // ============================================================
                 // [5. 배치 및 로고]
                 // ============================================================
-                
-                // 로고
                 const logoBox = document.createElement('div');
                 logoBox.innerHTML = `<img src="./nulloongzido logo_512px.png" style="height:60px; vertical-align:middle; margin-right:15px;"><span style="font-size:40px; font-weight:900; color:#5d4037; vertical-align:middle;">누룽지도</span>`;
                 logoBox.style.cssText = `
@@ -840,18 +850,16 @@
                     stage.appendChild(newBox);
                     stage.appendChild(logoBox);
                 } else {
-                    // 피드 모드 레이아웃 (왼쪽 카드+도시락 / 오른쪽 식단표)
                     const leftCol = document.createElement('div');
                     leftCol.style.cssText = "display:flex; flex-direction:column; gap:40px; align-items:center;";
                     leftCol.appendChild(newCard);
-                    newBox.style.width = "400px"; // 피드에선 크기 고정
-                    newGrid.style.gridTemplateColumns = "repeat(3, 1fr)"; // 피드에선 3열로 변경 (예쁨)
+                    newBox.style.width = "400px"; 
+                    newGrid.style.gridTemplateColumns = "repeat(3, 1fr)"; 
                     leftCol.appendChild(newBox);
                     
                     const rightCol = document.createElement('div');
                     rightCol.style.cssText = "width:450px; height:90%; background:white; border-radius:30px; overflow:hidden; border:6px solid #8d6e63;";
                     
-                    // 식단표 가져오기
                     const dietHeader = document.createElement('div');
                     dietHeader.innerText = "📅 주간 식단표";
                     dietHeader.style.cssText = "background:#fac710; padding:20px; text-align:center; font-size:30px; font-weight:900; color:#5d4037;";
@@ -859,10 +867,8 @@
 
                     const dietBody = document.createElement('div');
                     dietBody.style.padding = "20px";
-                    // 기존 식단표 복사
                     if(document.getElementById('dietPlanBody')) {
                         dietBody.innerHTML = document.getElementById('dietPlanBody').innerHTML;
-                        // 식단표 내부 글자 뻥튀기
                         dietBody.style.zoom = "1.3"; 
                     }
                     rightCol.appendChild(dietBody);
@@ -870,19 +876,17 @@
                     stage.appendChild(leftCol);
                     stage.appendChild(rightCol);
                     
-                    // 피드용 로고 위치 조정
                     logoBox.style.bottom = "20px";
                     logoBox.style.right = "40px";
                     stage.appendChild(logoBox);
                 }
 
-
                 // [6. 캡처 실행]
-                document.getElementById('profileOverlay').style.display = 'none'; // 기존창 숨김
+                document.getElementById('profileOverlay').style.display = 'none';
 
                 setTimeout(() => {
                     html2canvas(stage, { 
-                        scale: 1, // 이미 1080px로 크게 만들었으므로 scale 1이면 충분
+                        scale: 1, 
                         useCORS: true, 
                         backgroundColor: null 
                     })
@@ -905,6 +909,7 @@
                 }, 500);
 
             } catch (e) {
+                console.error(e);
                 alert("포장하기 오류: " + e);
             }
         };
