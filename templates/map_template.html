@@ -2043,6 +2043,38 @@
             if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) { map.setBounds(bounds); }
         }
         
+        // [추가] 미리보기 창 닫기 기능
+        window.closePreview = function() {
+            const overlay = document.getElementById('previewOverlay');
+            overlay.style.display = 'none'; // 창 숨기기
+            
+            // (선택) 메모리 절약을 위해 기존 이미지 삭제
+            document.getElementById('previewImgBox').innerHTML = ""; 
+        };
+
+        // [추가] 이미지 다운로드 기능 (기기에 저장)
+        window.downloadImage = function() {
+            const imgBox = document.getElementById('previewImgBox');
+            const img = imgBox.querySelector('img');
+            
+            if (img) {
+                // 가상의 링크 태그를 만들어 클릭하게 함
+                const link = document.createElement('a');
+                link.href = img.src;
+                
+                // 파일명 생성: nulloong_날짜_시간.png
+                const now = new Date();
+                const fileName = `nulloong_${now.getFullYear()}${now.getMonth()+1}${now.getDate()}_${now.getHours()}${now.getMinutes()}.png`;
+                
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click(); // 다운로드 실행
+                document.body.removeChild(link); // 링크 삭제
+            } else {
+                alert("저장할 이미지가 없습니다.");
+            }
+        };
+
         // [NEW] 배경 클릭 시 닫기 (안전한 방식)
         const lbOverlay = document.getElementById('lunchboxOverlay');
         lbOverlay.addEventListener('click', function(e) {
