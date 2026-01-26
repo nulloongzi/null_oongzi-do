@@ -1199,8 +1199,8 @@
             align-items: center;
             justify-content: center;
             
-            gap: 80px; /* 왼쪽(카드+도시락)과 오른쪽(식단표) 사이 간격 */
-            padding: 80px; /* 쟁반 안쪽 여백 */
+            gap: 120px; /* 왼쪽(카드+도시락)과 오른쪽(식단표) 사이 간격 */
+            padding: 150px; /* 쟁반 안쪽 여백 */
             box-sizing: border-box;
         }
 
@@ -1212,18 +1212,18 @@
             justify-content: center;
             width: 600px; /* 너비 확보 */
             height: 100%;
-            gap: 120px; /* 네임카드와 도시락 사이 간격 */
+            gap: 300px; /* 네임카드와 도시락 사이 간격 */
         }
 
         /* 왼쪽 컬럼 요소 확대/축소 */
         .capture-mode-feed .cloned-card {
-            transform: scale(2.2); /* 공간이 넓어져서 좀 더 키움 */
+            transform: scale(2.0); /* 공간이 넓어져서 좀 더 키움 */
             transform-origin: center center;
             box-shadow: 0 20px 40px rgba(93,64,55,0.2) !important;
         }
 
         .capture-mode-feed .cloned-box {
-            transform: scale(2.2);
+            transform: scale(2.0);
             transform-origin: center center;
         }
 
@@ -1258,7 +1258,7 @@
             position: relative;
             background: white;
             /* 식단표 내용물을 꽉 차게 보여주기 위해 확대 */
-            zoom: 1.8; 
+            zoom: 2.0; 
         }
 
         /* 4. 복제된 요소 클린업 (버튼 숨기기 등) */
