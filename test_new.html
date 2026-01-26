@@ -636,193 +636,142 @@
             }
         };
 
-// [정석 수정] 데이터 원본 직접 사용 방식
+        // [최종 완성] 누룽지도 디자인 정체성 유지 + 데이터 자동 동기화
         window.generateShareImage = async function(mode) {
             try {
-                // 1. 데이터 안전 점검
+                // 1. 데이터 안전 점검 및 자동 동기화 (도시락 안 열어도 되게 수정)
                 if (!currentProfileData) { alert("로그인이 필요합니다."); return; }
                 
-                // --- [핵심] 원본 데이터에서 정보 추출 ---
-                
-                // (1) 닉네임
-                const dbNickname = currentProfileData.full_nickname || "익명";
-                
-                // (2) 밥 종류 (로직 재현)
-                // renderProfileCard 함수에 있는 로직을 그대로 가져옵니다.
-                const dbRiceName = currentProfileData.nickname || (currentProfileData.full_nickname ? currentProfileData.full_nickname.split('-')[0] : "쌀밥");
-                
-                // (3) 가입일 (Timestamp 변환)
-                let dbDate = "가입일: -";
-                if (currentProfileData.created_at) {
-                    const d = new Date(currentProfileData.created_at.seconds * 1000);
-                    dbDate = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
+                // ★ 핵심 수정: 도시락을 한 번도 안 열었을 때, 북마크 데이터를 tempSlots로 가져옴
+                if (!currentProfileData.tempSlots) {
+                    let saved = currentProfileData.bookmarks || [];
+                    let normalized = [null, null, null, null, null];
+                    // 데이터 채우기
+                    if (saved.length > 0) {
+                        for(let i=0; i<5; i++) {
+                            if (i < saved.length) normalized[i] = saved[i];
+                        }
+                    }
+                    currentProfileData.tempSlots = normalized;
                 }
 
-                // (4) 메인 팀 (첫 번째 북마크)
-                let dbMainTeam = "찜한 팀이 없어요";
-                const bookmarks = currentProfileData.bookmarks || [];
-                // null이 아닌 첫 번째 아이템 찾기
-                const validTeamId = bookmarks.find(id => id !== null);
-                if (validTeamId) {
-                    const team = findClub(validTeamId); // findClub 함수 활용
-                    if (team) dbMainTeam = (team.isCustom ? "🍙 " : "🏆 ") + team.name;
-                }
-
-                // (5) 배경색 (밥 종류에 따른 색상)
-                const riceObj = riceData.find(r => r.name === dbRiceName);
-                const dbBgColor = riceObj ? riceObj.color : "#fff9c4";
-
-
-                // 도시락 그리드가 비어있으면 데이터 기반으로 렌더링 (화면 갱신용)
-                const gridEl = document.getElementById('lunchboxGrid');
-                if (!gridEl || gridEl.children.length === 0) {
-                    renderLunchboxGrid();
-                }
-
-                // 2. 캡처 무대 초기화
+                // 2. 캡처 무대(Stage) 초기화
                 const stage = document.getElementById('captureStage');
                 stage.innerHTML = ""; 
                 stage.style.visibility = "visible"; 
                 
-                // 배경 설정
+                // 배경 설정 (누룽지도 테마색)
                 stage.style.width = "1080px";
                 stage.style.height = (mode === 'story') ? "1920px" : "1350px";
-                stage.style.background = "#fff9c4"; 
-                stage.style.backgroundImage = "radial-gradient(#fff59d 15%, transparent 15%)";
-                stage.style.backgroundSize = "60px 60px";
+                stage.style.background = "#fff8e1"; 
+                stage.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
                 stage.style.display = "flex";
                 stage.style.boxSizing = "border-box";
 
+                // 모드별 레이아웃 방향
                 if (mode === 'story') {
                     stage.style.flexDirection = "column";
                     stage.style.alignItems = "center";
-                    stage.style.justifyContent = "flex-start";
-                    stage.style.paddingTop = "250px";
+                    stage.style.justifyContent = "center"; // 중앙 정렬
+                    stage.style.padding = "100px";
                     stage.style.gap = "80px"; 
                 } else {
                     stage.style.flexDirection = "row";
-                    stage.style.alignItems = "center";
-                    stage.style.justifyContent = "center";
+                    stage.style.alignItems = "center"; // 수직 중앙
+                    stage.style.justifyContent = "center"; // 수평 중앙
                     stage.style.padding = "60px";
                     stage.style.gap = "60px"; 
+                    // 피드 모드 외곽 테두리 (인스타 감성)
                     stage.style.border = "60px solid #8d6e63"; 
                     stage.style.background = "#fff3e0"; 
-                    stage.style.backgroundImage = "none";
                 }
 
                 // ============================================================
-                // [3. 프로필 카드 그리기] (데이터 사용)
+                // [A. 프로필 카드 조립] (기존 디자인 100% 복원)
                 // ============================================================
+                // 데이터 추출
+                const nickName = currentProfileData.full_nickname || "익명";
+                const riceName = currentProfileData.nickname || (currentProfileData.full_nickname ? currentProfileData.full_nickname.split('-')[0] : "쌀밥");
+                const riceObj = riceData.find(r => r.name === riceName);
+                const bgColor = riceObj ? riceObj.color : "#fff9c4";
+                
+                let dateStr = "가입일: -";
+                if (currentProfileData.created_at) {
+                    const d = new Date(currentProfileData.created_at.seconds * 1000);
+                    dateStr = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
+                }
+
+                let mainTeamText = "찜한 팀이 없어요";
+                const bookmarks = currentProfileData.bookmarks || [];
+                const validTeamId = bookmarks.find(id => id !== null);
+                if (validTeamId) {
+                    const team = findClub(validTeamId);
+                    if (team) mainTeamText = (team.isCustom ? "🍙 " : "🏆 ") + team.name;
+                }
+
+                // 카드 HTML 생성
                 const newCard = document.createElement('div');
+                // 기존 CSS 스타일 직접 주입 (크기 확대)
                 newCard.style.cssText = `
-                    width: 850px;
-                    background: ${dbBgColor}; /* 데이터에서 가져온 색상 적용 */
+                    width: ${mode === 'story' ? '800px' : '400px'}; 
+                    background: ${bgColor};
                     border: 12px solid #8d6e63;
                     border-radius: 60px;
-                    padding: 80px 40px;
-                    box-shadow: 0 40px 100px rgba(93,64,55,0.25);
+                    padding: 60px 40px;
+                    box-shadow: 0 30px 60px rgba(93,64,55,0.2);
                     display: flex; flex-direction: column; align-items: center;
                     position: relative;
                     flex-shrink: 0;
                 `;
-                if(mode !== 'story') {
-                    newCard.style.width = "400px";
-                    newCard.style.borderWidth = "8px";
-                    newCard.style.borderRadius = "40px";
-                    newCard.style.padding = "50px 20px";
-                }
 
-                // (1) 워터마크 (좌측 상단)
-                const riceMark = document.createElement('div');
-                riceMark.innerText = dbRiceName; // 데이터 값 사용
-                riceMark.style.cssText = `
-                    position: absolute;
-                    top: 30px; left: 40px;
-                    font-size: ${mode === 'story' ? '40px' : '20px'};
-                    font-weight: 800;
-                    color: rgba(93, 64, 55, 0.3);
+                newCard.innerHTML = `
+                    <div style="position:absolute; top:35px; left:45px; font-size:28px; font-weight:800; color:rgba(93,64,55,0.3);">${riceName}</div>
+                    <div style="font-size: ${mode === 'story' ? '80px' : '42px'}; font-weight:900; color:#5d4037; margin-bottom:15px;">${nickName}</div>
+                    <div style="font-size: ${mode === 'story' ? '36px' : '20px'}; font-weight:600; color:#8d6e63; opacity:0.8; margin-bottom:30px;">${dateStr}</div>
+                    <div style="width:40%; height:6px; background:#8d6e63; opacity:0.3; border-radius:3px; margin-bottom:30px;"></div>
+                    <div style="font-size: ${mode === 'story' ? '54px' : '28px'}; font-weight:800; color:#5d4037; background:rgba(255,255,255,0.5); padding:15px 40px; border-radius:30px;">${mainTeamText}</div>
                 `;
-                newCard.appendChild(riceMark);
-
-                // (2) 닉네임
-                const nameDiv = document.createElement('div');
-                nameDiv.innerText = dbNickname; // 데이터 값 사용
-                nameDiv.style.cssText = `
-                    font-size: ${mode === 'story' ? '90px' : '45px'};
-                    font-weight: 900;
-                    color: #5d4037;
-                    margin-bottom: 20px;
-                `;
-                newCard.appendChild(nameDiv);
-
-                // (3) 가입일
-                const dateDiv = document.createElement('div');
-                dateDiv.innerText = dbDate; // 데이터 값 사용
-                dateDiv.style.cssText = `
-                    font-size: ${mode === 'story' ? '40px' : '20px'};
-                    font-weight: 600;
-                    color: #8d6e63;
-                    margin-bottom: 40px;
-                    opacity: 0.8;
-                `;
-                newCard.appendChild(dateDiv);
-
-                // (4) 구분선
-                const divider = document.createElement('div');
-                divider.style.cssText = `width: 40%; height: 6px; background: #8d6e63; border-radius: 3px; opacity: 0.3; margin-bottom: 40px;`;
-                if(mode !== 'story') divider.style.height = "3px";
-                newCard.appendChild(divider);
-
-                // (5) 메인 팀
-                const teamDiv = document.createElement('div');
-                teamDiv.innerText = dbMainTeam; // 데이터 값 사용
-                teamDiv.style.cssText = `
-                    font-size: ${mode === 'story' ? '60px' : '30px'};
-                    font-weight: 800;
-                    color: #5d4037;
-                    background: rgba(255,255,255,0.6);
-                    padding: 15px 40px;
-                    border-radius: 30px;
-                `;
-                newCard.appendChild(teamDiv);
 
 
                 // ============================================================
-                // [4. 도시락통 그리기] (데이터 사용)
+                // [B. 도시락통 조립] (CSS Grid 레이아웃 완벽 복원)
                 // ============================================================
                 const newBox = document.createElement('div');
                 newBox.style.cssText = `
-                    width: 850px;
+                    width: ${mode === 'story' ? '800px' : '400px'}; 
                     background: #fff8e1;
                     border: 12px solid #8d6e63;
                     border-radius: 60px;
-                    padding: 50px;
-                    box-shadow: 0 40px 100px rgba(93,64,55,0.25);
-                    display: flex; flex-direction: column;
+                    padding: ${mode === 'story' ? '40px' : '20px'};
+                    box-shadow: 0 30px 60px rgba(93,64,55,0.25);
+                    display: flex; flex-direction: column; gap: 20px;
                     flex-shrink: 0;
                 `;
-                if(mode !== 'story') {
-                    newBox.style.width = "400px";
-                    newBox.style.borderWidth = "8px";
-                    newBox.style.borderRadius = "40px";
-                    newBox.style.padding = "30px";
-                }
 
-                newBox.innerHTML = `<div style="text-align:center; margin-bottom:40px; font-size:${mode==='story'?'60px':'32px'}; font-weight:900; color:#5d4037;">🍱 나의 도시락</div>`;
+                // 헤더
+                newBox.innerHTML = `<div style="text-align:center; font-size:${mode==='story'?'50px':'28px'}; font-weight:900; color:#5d4037; margin-bottom:10px;">🍱 나의 도시락</div>`;
 
+                // 그리드 컨테이너 (기존 CSS Grid 로직 그대로 적용)
                 const gridDiv = document.createElement('div');
-                gridDiv.style.display = "flex";
-                gridDiv.style.flexWrap = "wrap";
-                gridDiv.style.justifyContent = "center";
-                gridDiv.style.gap = mode === 'story' ? '30px' : '15px';
+                // 기존 .lunchbox-grid 스타일 + 비율 확대
+                gridDiv.style.cssText = `
+                    display: grid;
+                    width: 100%;
+                    height: ${mode === 'story' ? '600px' : '300px'}; 
+                    grid-template-columns: repeat(6, 1fr);
+                    grid-template-rows: 0.8fr 1.2fr;
+                    gap: ${mode === 'story' ? '20px' : '10px'};
+                `;
 
-                // ★ 데이터(tempSlots)를 순회하며 직접 생성 ★
-                const slotsData = currentProfileData.tempSlots || [null, null, null, null, null];
-                const placeholders = ["밥🍚", "국🥘", "반찬1🍳", "반찬2🥗", "반찬3🥢"]; // 간략 텍스트
+                const slotsData = currentProfileData.tempSlots;
+                const placeholders = ["밥🍚", "국🥘", "반찬1🍳", "반찬2🥗", "반찬3🥢"]; 
 
-                slotsData.forEach((teamId, index) => {
+                // 슬롯 5개 생성 및 배치
+                for (let i = 0; i < 5; i++) {
+                    const teamId = slotsData[i];
                     const cell = document.createElement('div');
-                    let displayText = placeholders[index];
+                    
+                    let displayText = placeholders[i];
                     let isFilled = false;
 
                     if (teamId) {
@@ -835,87 +784,101 @@
                         }
                     }
 
-                    // 스타일 설정
+                    // 스타일 (lb-cell 클래스 복원)
                     cell.style.cssText = `
                         background: white;
-                        border: ${mode==='story'?'6px':'3px'} solid ${isFilled ? '#fac710' : '#d7ccc8'};
-                        border-radius: 30px;
-                        aspect-ratio: 1/1;
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: ${mode==='story'?'40px':'20px'};
-                        font-weight: 700;
-                        color: #5d4037;
+                        border-radius: ${mode === 'story' ? '30px' : '16px'};
+                        display: flex; justify-content: center; align-items: center;
                         text-align: center;
-                        padding: 10px;
-                        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+                        font-weight: 800;
+                        color: #5d4037;
+                        font-size: ${mode === 'story' ? '36px' : '18px'};
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+                        border: ${mode === 'story' ? '6px' : '3px'} solid ${isFilled ? '#fac710' : '#d7ccc8'};
+                        ${!isFilled ? 'background: #fffde7; border-style: dashed; color: #bcaaa4;' : ''}
                     `;
+                    cell.innerHTML = `<span>${displayText}</span>`;
 
-                    // 크기 지정 (상단 3개 작은거, 하단 2개 큰거)
-                    if (index < 3) cell.style.width = "30%"; // 반찬
-                    else cell.style.width = "46%"; // 밥, 국
+                    // 그리드 위치 지정 (기존 CSS와 동일)
+                    // slot-0 (밥): 2행, 1~3열
+                    // slot-1 (국): 2행, 4~6열
+                    // slot-2 (반찬1): 1행, 1~2열
+                    // slot-3 (반찬2): 1행, 3~4열
+                    // slot-4 (반찬3): 1행, 5~6열
+                    if (i === 0) { cell.style.gridRow = "2"; cell.style.gridColumn = "1 / span 3"; }
+                    else if (i === 1) { cell.style.gridRow = "2"; cell.style.gridColumn = "4 / span 3"; }
+                    else if (i === 2) { cell.style.gridRow = "1"; cell.style.gridColumn = "1 / span 2"; }
+                    else if (i === 3) { cell.style.gridRow = "1"; cell.style.gridColumn = "3 / span 2"; }
+                    else if (i === 4) { cell.style.gridRow = "1"; cell.style.gridColumn = "5 / span 2"; }
 
-                    cell.innerText = displayText;
                     gridDiv.appendChild(cell);
-                });
-
+                }
                 newBox.appendChild(gridDiv);
 
 
                 // ============================================================
-                // [5. 로고 및 식단표]
+                // [C. 로고 및 식단표 (피드모드용)]
                 // ============================================================
                 const logoBox = document.createElement('div');
-                logoBox.innerHTML = `<img src="./nulloongzido logo_512px.png" style="height:${mode==='story'?'80px':'50px'}; vertical-align:middle; margin-right:15px; border-radius:50%;">
-                                     <span style="font-size:${mode==='story'?'60px':'30px'}; font-weight:900; color:#5d4037; vertical-align:middle;">누룽지도</span>`;
-                logoBox.style.cssText = `position: absolute; bottom: 60px; right: 60px; opacity: 0.8; display: flex; align-items: center;`;
+                logoBox.innerHTML = `<img src="./nulloongzido logo_512px.png" style="height:${mode==='story'?'80px':'50px'}; vertical-align:middle; margin-right:15px; border-radius:50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                                     <span style="font-size:${mode==='story'?'50px':'30px'}; font-weight:900; color:#5d4037; vertical-align:middle; letter-spacing:-1px;">누룽지도</span>`;
+                logoBox.style.cssText = `position: absolute; bottom: ${mode==='story'?'80px':'30px'}; right: ${mode==='story'?'80px':'50px'}; opacity: 0.9; display: flex; align-items: center;`;
 
                 if (mode === 'story') {
                     stage.appendChild(newCard);
                     stage.appendChild(newBox);
                     stage.appendChild(logoBox);
                 } else {
+                    // 피드 모드: 좌측(카드+도시락) / 우측(식단표)
                     const leftCol = document.createElement('div');
-                    leftCol.style.cssText = "display:flex; flex-direction:column; gap:60px; align-items:center;";
+                    leftCol.style.cssText = "display:flex; flex-direction:column; gap:50px; align-items:center; justify-content:center;";
                     leftCol.appendChild(newCard);
                     leftCol.appendChild(newBox);
                     
                     const rightCol = document.createElement('div');
-                    rightCol.style.cssText = "width:450px; height:90%; background:white; border-radius:40px; overflow:hidden; border:8px solid #8d6e63; display:flex; flex-direction:column;";
+                    rightCol.style.cssText = "width:480px; height:90%; background:white; border-radius:40px; overflow:hidden; border:10px solid #8d6e63; display:flex; flex-direction:column; box-shadow: 0 20px 50px rgba(0,0,0,0.1);";
                     
+                    // 식단표 헤더
                     const dietHeader = document.createElement('div');
                     dietHeader.innerText = "📅 주간 식단표";
-                    dietHeader.style.cssText = "background:#fac710; padding:25px; text-align:center; font-size:36px; font-weight:900; color:#5d4037;";
+                    dietHeader.style.cssText = "background:#fac710; padding:25px; text-align:center; font-size:32px; font-weight:800; color:#5d4037; border-bottom: 4px dashed #efebe9;";
                     rightCol.appendChild(dietHeader);
 
+                    // 식단표 바디 (기존 로직 활용하여 렌더링 후 HTML 복사)
                     const dietBody = document.createElement('div');
-                    dietBody.style.cssText = "flex:1; background:white; position:relative;";
+                    dietBody.style.cssText = "flex:1; background:white; position:relative; width:100%;";
                     
-                    // 식단표는 DOM 구조가 복잡하므로 기존 함수 활용하여 렌더링된 결과를 가져옴
-                    // (단, 데이터가 최신인지 확인하기 위해 재렌더링 수행)
-                    renderCombinedSchedule();
+                    // 숨겨져 있는 식단표를 강제로 갱신 (데이터가 없을 수 있으므로)
+                    renderCombinedSchedule(); 
+                    
+                    // 렌더링된 HTML 가져오기
                     dietBody.innerHTML = document.getElementById('dietPlanBody').innerHTML;
                     
-                    if(dietBody.querySelector('.diet-body-wrapper')) {
-                        dietBody.querySelector('.diet-body-wrapper').style.overflow = "visible";
-                        dietBody.querySelector('.diet-body-wrapper').style.zoom = "1.5";
+                    // 캡처용 스타일 보정 (확대 및 스크롤 제거)
+                    const wrapper = dietBody.querySelector('.diet-body-wrapper');
+                    if(wrapper) {
+                        wrapper.style.overflow = "visible";
+                        wrapper.style.height = "auto";
+                        wrapper.style.zoom = "1.6"; // 내용물 확대
+                        
+                        // 시간표 라벨 등 미세 조정
+                        const timeLabels = wrapper.querySelectorAll('.diet-time-label');
+                        timeLabels.forEach(el => el.style.fontSize = "10px");
                     }
                     rightCol.appendChild(dietBody);
 
                     stage.appendChild(leftCol);
                     stage.appendChild(rightCol);
-                    
-                    logoBox.style.bottom = "30px";
-                    logoBox.style.right = "50px";
                     stage.appendChild(logoBox);
                 }
 
-                // 6. 캡처 실행
+                // 3. 캡처 실행
                 const overlays = document.querySelectorAll('.profile-overlay, .lunchbox-overlay');
                 overlays.forEach(el => el.style.display = 'none');
 
                 setTimeout(() => {
                     html2canvas(stage, { 
-                        scale: 1, 
+                        scale: 1, // 이미 고해상도로 그렸으므로 1배율
                         useCORS: true, 
                         backgroundColor: null 
                     })
