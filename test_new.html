@@ -636,48 +636,58 @@
             }
         };
 
-        // [최종 수정] DOM 복제 + ID 충돌 방지 로직 추가
+        // [최종 수정] ID 충돌 완벽 방지 + 캡처 안정화
         window.generateShareImage = async function(mode) {
             try {
-                // 1. 데이터 동기화
+                // 1. 데이터 준비
                 if (!currentProfileData) { alert("로그인이 필요합니다."); return; }
                 
+                // 데이터가 없으면 초기화
                 if (!currentProfileData.tempSlots && currentProfileData.bookmarks) {
                     currentProfileData.tempSlots = [...currentProfileData.bookmarks];
                     while(currentProfileData.tempSlots.length < 5) currentProfileData.tempSlots.push(null);
                 }
                 
+                // 원본 화면 강제 렌더링 (데이터 최신화)
                 renderLunchboxGrid();
                 renderCombinedSchedule();
 
-                // 2. 캡처 무대 초기화
+                // 2. 캡처 무대 설정
                 const stage = document.getElementById('captureStage');
-                stage.innerHTML = ""; 
+                stage.innerHTML = ""; // 초기화
                 stage.className = (mode === 'story') ? 'capture-mode-story' : 'capture-mode-feed';
 
-                // 3. 요소 복제 및 [ID 충돌 방지 처리]
+                // 3. 요소 복제 및 [모든 ID 제거] 함수
+                function cloneAndStripIds(elementId, customClass) {
+                    const original = document.getElementById(elementId) || document.querySelector(elementId);
+                    if (!original) return null;
+                    
+                    const clone = original.cloneNode(true);
+                    clone.classList.add('cloned-element', customClass);
+                    
+                    // ★ 핵심: 복제본과 그 하위 모든 요소의 ID를 제거하여 충돌 방지 ★
+                    clone.removeAttribute('id');
+                    const allDescendants = clone.querySelectorAll('*');
+                    allDescendants.forEach(el => el.removeAttribute('id'));
+                    
+                    return clone;
+                }
+
                 // [A] 네임카드 복제
-                const originalCard = document.getElementById('myProfileCard');
-                const clonedCard = originalCard.cloneNode(true);
-                clonedCard.classList.add('cloned-element', 'cloned-card');
-                
-                // ★ 핵심 수정: 복제된 카드에서 ID 충돌을 일으키는 로그인 섹션/입력창 삭제 ★
-                // (캡처 이미지에는 로그인 입력창이 필요 없으므로 제거해도 디자인에 영향 없음)
-                const loginSectionInClone = clonedCard.querySelector('#loginSection');
-                if (loginSectionInClone) loginSectionInClone.remove();
+                const clonedCard = cloneAndStripIds('#myProfileCard', 'cloned-card');
+                // 로그인 섹션 등 불필요한 부분 제거 (클래스로 찾기)
+                const loginSection = clonedCard.querySelector('.login-section'); 
+                if(loginSection) loginSection.remove();
 
                 // [B] 도시락통 복제
-                const originalBox = document.querySelector('.lunchbox-wrapper');
-                const clonedBox = originalBox.cloneNode(true);
-                clonedBox.classList.add('cloned-element', 'cloned-box');
-                
-                // 도시락통 내부 불필요 요소 제거
-                const dietContainer = clonedBox.querySelector('#dietPlanContainer');
-                if(dietContainer) dietContainer.remove(); 
-                const dietBtn = clonedBox.querySelector('#dietToggleBtn');
+                const clonedBox = cloneAndStripIds('.lunchbox-wrapper', 'cloned-box');
+                // 불필요한 버튼/식단표 제거
+                const dietContainer = clonedBox.querySelector('.diet-plan-container');
+                if(dietContainer) dietContainer.remove();
+                const dietBtn = clonedBox.querySelector('.diet-toggle-btn');
                 if(dietBtn) dietBtn.remove();
-                
-                // [C] 로고 워터마크
+
+                // [C] 로고 생성
                 const logoBox = document.createElement('div');
                 logoBox.className = 'capture-watermark';
                 logoBox.innerHTML = `
@@ -687,10 +697,12 @@
 
                 // 4. 레이아웃 조립
                 if (mode === 'story') {
+                    // 스토리: 세로 배치
                     stage.appendChild(clonedCard);
                     stage.appendChild(clonedBox);
                     stage.appendChild(logoBox);
                 } else {
+                    // 피드: 가로 배치
                     const leftCol = document.createElement('div');
                     leftCol.className = 'feed-left-col';
                     leftCol.appendChild(clonedCard);
@@ -706,12 +718,16 @@
                     const dietBody = document.createElement('div');
                     dietBody.className = 'feed-diet-body';
                     
+                    // 식단표는 내용물만 복사
                     const originalDietBody = document.getElementById('dietPlanBody');
-                    const wrapper = originalDietBody.querySelector('.diet-body-wrapper');
-                    if(wrapper) wrapper.style.overflow = 'visible'; 
-                    
                     dietBody.innerHTML = originalDietBody.innerHTML;
+                    // 식단표 내부 ID도 제거
+                    dietBody.querySelectorAll('*').forEach(el => el.removeAttribute('id'));
                     
+                    // 스크롤 방지 스타일 강제
+                    const wrapper = dietBody.querySelector('.diet-body-wrapper');
+                    if(wrapper) wrapper.style.overflow = 'visible'; 
+
                     rightCol.appendChild(dietHeader);
                     rightCol.appendChild(dietBody);
 
@@ -720,15 +736,18 @@
                     stage.appendChild(logoBox);
                 }
 
-                // 5. 캡처 실행
+                // 5. 이미지 생성 (시간차를 약간 둬서 렌더링 안정화)
                 setTimeout(() => {
                     html2canvas(stage, {
                         scale: 1, 
                         useCORS: true,
-                        backgroundColor: null, 
+                        allowTaint: true,
+                        backgroundColor: null,
                         logging: false
                     }).then(canvas => {
                         const imgData = canvas.toDataURL("image/png");
+                        
+                        // 미리보기 창 표시
                         const previewBox = document.getElementById('previewImgBox');
                         previewBox.innerHTML = "";
                         const img = document.createElement('img');
@@ -738,14 +757,16 @@
                         document.getElementById('profileOverlay').style.display = 'none';
                         document.getElementById('previewOverlay').style.display = 'flex';
                         
+                        // 캡처 후 무대 청소
                         stage.innerHTML = "";
                     }).catch(err => {
-                        alert("오류: " + err);
+                        console.error(err);
+                        alert("이미지 생성 중 오류가 발생했습니다.\n" + err);
                     });
-                }, 300);
+                }, 500); // 0.5초 대기 (안정성 확보)
 
             } catch (e) {
-                alert("포장하기 실패: " + e.message);
+                alert("기능 실행 실패: " + e.message);
             }
         };
         applyFilters();
