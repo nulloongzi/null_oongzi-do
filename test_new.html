@@ -1184,64 +1184,81 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (1080 x 1350) - 가로 배치 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 밥상 차림 스타일 */
         .capture-mode-feed {
-            width: 1080px;
-            height: 1350px;
-            background: #fff3e0;
-            border: 60px solid #8d6e63; /* 액자 테두리 */
-            flex-direction: row;
+            width: 1600px;
+            height: 1200px;
+            background: #fff8e1; /* 따뜻한 배경색 */
+            
+            /* 나무 쟁반 느낌의 테두리 */
+            border: 60px solid #8d6e63; 
+            border-radius: 40px; /* 쟁반 모서리 둥글게 */
+            
+            display: flex;
+            flex-direction: row; /* 가로 배치 */
             align-items: center;
             justify-content: center;
-            gap: 50px;
-            padding: 60px;
+            
+            gap: 80px; /* 왼쪽(카드+도시락)과 오른쪽(식단표) 사이 간격 */
+            padding: 80px; /* 쟁반 안쪽 여백 */
+            box-sizing: border-box;
         }
 
-        /* 피드 모드: 왼쪽 컬럼 (카드+도시락) */
+        /* 피드 모드: 왼쪽 컬럼 (카드 + 도시락) */
         .feed-left-col {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 500px; /* 영역 확보 */
+            width: 600px; /* 너비 확보 */
+            height: 100%;
+            gap: 120px; /* 네임카드와 도시락 사이 간격 */
         }
+
+        /* 왼쪽 컬럼 요소 확대/축소 */
         .capture-mode-feed .cloned-card {
-            transform: scale(1.7); /* 1.7배 확대 */
+            transform: scale(2.2); /* 공간이 넓어져서 좀 더 키움 */
             transform-origin: center center;
-            margin-bottom: 120px;
+            box-shadow: 0 20px 40px rgba(93,64,55,0.2) !important;
         }
+
         .capture-mode-feed .cloned-box {
-            transform: scale(1.7);
-            transform-origin: center top;
+            transform: scale(2.2);
+            transform-origin: center center;
         }
 
         /* 피드 모드: 오른쪽 컬럼 (식단표) */
         .feed-right-col {
-            width: 450px;
-            height: 90%;
+            width: 550px; /* 식단표 너비 */
+            height: 95%; /* 쟁반 높이에 거의 꽉 차게 */
+            
             background: white;
             border-radius: 30px;
-            border: 8px solid #8d6e63;
+            border: 6px solid #8d6e63;
+            
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15); /* 종이 그림자 효과 */
         }
+
         .feed-diet-header {
             background: #fac710;
-            padding: 20px;
+            padding: 30px;
             text-align: center;
-            font-size: 28px;
+            font-size: 36px;
             font-weight: 800;
             color: #5d4037;
             border-bottom: 4px dashed #efebe9;
+            flex-shrink: 0;
         }
+
         .feed-diet-body {
             flex: 1;
             position: relative;
             background: white;
-            /* 식단표 내부 요소 확대 */
-            zoom: 1.5; 
+            /* 식단표 내용물을 꽉 차게 보여주기 위해 확대 */
+            zoom: 1.8; 
         }
 
         /* 4. 복제된 요소 클린업 (버튼 숨기기 등) */
