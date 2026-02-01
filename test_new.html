@@ -1191,7 +1191,7 @@
             background: #fff8e1; /* 따뜻한 배경색 */
             
             /* 나무 쟁반 느낌의 테두리 */
-            border: 60px solid #8d6e63; 
+            border: 40px solid #8d6e63; 
             border-radius: 40px; /* 쟁반 모서리 둥글게 */
             
             display: flex;
@@ -1210,27 +1210,27 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 600px; /* 너비 확보 */
+            width: 400px; /* 너비 확보 */
             height: 100%;
-            gap: 300px; /* 네임카드와 도시락 사이 간격 */
+            gap: 100px; /* 네임카드와 도시락 사이 간격 */
         }
 
         /* 왼쪽 컬럼 요소 확대/축소 */
         .capture-mode-feed .cloned-card {
-            transform: scale(2.0); /* 공간이 넓어져서 좀 더 키움 */
+            transform: scale(1.8); /* 공간이 넓어져서 좀 더 키움 */
             transform-origin: center center;
             box-shadow: 0 20px 40px rgba(93,64,55,0.2) !important;
         }
 
         .capture-mode-feed .cloned-box {
-            transform: scale(2.0);
+            transform: scale(1.8);
             transform-origin: center center;
         }
 
         /* 피드 모드: 오른쪽 컬럼 (식단표) */
         .feed-right-col {
-            width: 550px; /* 식단표 너비 */
-            height: 95%; /* 쟁반 높이에 거의 꽉 차게 */
+            width: 650px; /* 식단표 너비 */
+            height: 100%; /* 쟁반 높이에 거의 꽉 차게 */
             
             background: white;
             border-radius: 30px;
@@ -1246,7 +1246,7 @@
             background: #fac710;
             padding: 30px;
             text-align: center;
-            font-size: 36px;
+            font-size: 60px;
             font-weight: 800;
             color: #5d4037;
             border-bottom: 4px dashed #efebe9;
@@ -1258,7 +1258,7 @@
             position: relative;
             background: white;
             /* 식단표 내용물을 꽉 차게 보여주기 위해 확대 */
-            zoom: 2.0; 
+            zoom: 4.0; 
         }
 
         /* 4. 복제된 요소 클린업 (버튼 숨기기 등) */
@@ -1272,7 +1272,7 @@
         }
         /* 복제된 도시락통 스타일 보정 */
         .cloned-box {
-            width: 330px !important; /* 원본 너비 고정 */
+            width: 500px !important; /* 원본 너비 고정 */
             background: #fff8e1 !important;
         }
         /* =========================================
