@@ -1184,24 +1184,25 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 최종 수정본 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 최종 완성본 */
         .capture-mode-feed {
             width: 1600px;
             height: 1200px;
-            background: #fff8e1; /* 따뜻한 배경색 */
+            background: #fff8e1;
             
-            /* 나무 쟁반 스타일 */
+            /* 쟁반 스타일 */
             border: 50px solid #8d6e63; 
             border-radius: 50px; 
             
             display: flex;
-            flex-direction: row; /* 가로 배치 */
+            flex-direction: row;
             align-items: center;
-            justify-content: center;
+            justify-content: center; /* 전체 중앙 정렬 */
             
-            gap: 80px; /* 좌우 기둥 사이 간격 */
-            padding: 80px; /* 쟁반 안쪽 여백 */
+            gap: 100px; /* 좌우 기둥 사이 간격 */
+            padding: 80px 100px; /* 상하 80, 좌우 100 여백으로 균형 맞춤 */
             box-sizing: border-box;
+            position: relative; /* 워터마크 위치 기준 */
         }
 
         /* 1. 왼쪽 기둥 (네임카드 + 도시락통) */
@@ -1211,15 +1212,15 @@
             align-items: center;
             justify-content: center;
             
-            /* 너비를 충분히 확보해서 겹침 방지 */
+            /* 너비와 높이를 꽉 채워서 정렬 기준 잡기 */
             width: 600px; 
             height: 100%;
             
-            /* 요소 사이 간격 (스케일 감안해서 넉넉하게) */
-            gap: 150px; 
+            /* ★겹침 해결 핵심: 간격을 220px로 대폭 늘림 */
+            gap: 220px; 
         }
 
-        /* 왼쪽 요소들 확대 (적정 비율: 1.9배) */
+        /* 왼쪽 요소들 확대 (비율 유지) */
         .capture-mode-feed .cloned-card {
             transform: scale(1.9); 
             transform-origin: center center;
@@ -1229,21 +1230,18 @@
         .capture-mode-feed .cloned-box {
             transform: scale(1.9);
             transform-origin: center center;
-            /* 중요: 마진을 줘서 위아래 요소와 겹치지 않게 밀어내기 */
-            margin-top: 20px; 
-            margin-bottom: 20px;
         }
 
         /* 2. 오른쪽 기둥 (주간 식단표) */
         .feed-right-col {
-            flex: 1; /* 남은 공간 꽉 채우기 */
-            height: 95%; /* 세로로 꽉 차게 */
+            width: 650px; /* 왼쪽과 비슷한 너비로 균형 맞춤 */
+            height: 92%; /* 쟁반 위아래 여백 살짝 줌 */
             
             background: white;
-            border-radius: 30px;
+            border-radius: 35px;
             border: 8px solid #8d6e63;
             
-            overflow: hidden; /* 내용 넘침 방지 */
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             box-shadow: 0 20px 50px rgba(0,0,0,0.15);
@@ -1251,13 +1249,13 @@
 
         .feed-diet-header {
             background: #fac710;
-            padding: 25px 0; /* 상하 패딩만 줌 */
+            padding: 30px 0;
             text-align: center;
-            font-size: 38px; /* 글자 크기 적당히 조절 */
-            font-weight: 800;
+            font-size: 42px; /* 헤더 글씨도 시원하게 */
+            font-weight: 900;
             color: #5d4037;
-            border-bottom: 5px dashed #efebe9;
-            flex-shrink: 0; /* 헤더 찌그러짐 방지 */
+            border-bottom: 6px dashed #efebe9;
+            flex-shrink: 0;
         }
 
         .feed-diet-body {
@@ -1265,12 +1263,25 @@
             position: relative;
             background: white;
             
-            /* 식단표 내부 확대 (1.6배가 적당함) */
-            /* zoom이 너무 크면 글자가 터집니다 */
-            zoom: 1.6; 
+            /* ★식단표 글씨 확대: 2.2배 */
+            zoom: 2.2; 
         }
 
-        /* 3. 복제된 요소 클린업 (버튼 숨기기) */
+        /* 3. 워터마크 축소 및 위치 조정 (피드 모드 전용) */
+        .capture-mode-feed .capture-watermark {
+            bottom: 40px;
+            right: 50px;
+            gap: 10px;
+        }
+        .capture-mode-feed .capture-watermark img {
+            width: 45px; /* 60px -> 45px 축소 */
+            height: 45px;
+        }
+        .capture-mode-feed .capture-watermark span {
+            font-size: 28px; /* 40px -> 28px 축소 */
+        }
+
+        /* 4. 클린업 & 도시락통 너비 고정 */
         .cloned-element .btn-logout,
         .cloned-element .pc-share-btn,
         .cloned-element .pc-edit-btn,
@@ -1280,8 +1291,6 @@
             display: none !important;
         }
 
-        /* 중요: 도시락통 너비 원상복구 */
-        /* 500px로 강제하면 스케일 때문에 너무 커집니다. 원래 크기(330px)로 되돌림 */
         .cloned-box {
             width: 330px !important; 
             background: #fff8e1 !important;
