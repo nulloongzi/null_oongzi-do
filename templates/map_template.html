@@ -1345,72 +1345,37 @@
             white-space: nowrap;
         }
 
-        /* 3. 팀 이름 (이벤트 블록) - 색상 완화 & 회색박스/그림자 완전 제거 */
+        /* 피드 캡처 모드에서 팀 블록 텍스트 스타일 수정 */
         .capture-mode-feed .evt-title {
-            /* [1] 폰트 및 색상 수정: 진한 갈색(#5d4037) -> 부드러운 갈색(#8d6e63) */
-            color: #8d6e63 !important; 
-            font-size: 22px !important; /* 글자 크기 살짝 키움 */
-            font-weight: 800 !important;
+            /* [수정] 짙은 갈색에서 도시락통과 유사한 부드러운 색상으로 변경 */
+            color: #5d4037 !important; 
+            font-size: 16px !important; /* 글자 크기를 적절히 조절 */
+            font-weight: 700 !important;
             
-            /* [2] 폰트 설정: 이모지와 한글 높이 밸런스 */
-            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Sans KR", "Malgun Gothic", sans-serif !important;
-            line-height: 1.2 !important;
-            letter-spacing: 0px !important;
-
-            /* [3] 정렬: Flexbox로 수직/수평 중앙 정렬 강력 고정 */
+            /* [수정] 세로 쓰기를 해제하고 일반적인 중앙 정렬로 변경 */
+            writing-mode: horizontal-tb !important; 
             display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
             align-items: center !important;
+            justify-content: center !important;
             text-align: center !important;
             
-            /* [4] 크기: 부모 칸을 꽉 채우되 넘치지 않게 */
+            /* 배경 및 그림자 제거 (깔끔하게) */
+            background: transparent !important;
+            box-shadow: none !important;
             width: 100% !important;
             height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-
-            /* [5] ★ 회색 박스/음영 원인 100% 차단 ★ */
-            writing-mode: horizontal-tb !important; 
-            background: transparent !important;
-            background-color: rgba(255, 255, 255, 0) !important; /* 투명도 명시 */
-            box-shadow: none !important;
-            text-shadow: none !important;
-            border: none !important;
-            
             white-space: normal !important;
+            word-break: keep-all;
         }
 
-        /* 이 부분도 꼭 적용되어 있어야 합니다 */
+        /* 팀 블록(이벤트 박스) 자체의 외곽선 및 그림자 완화 */
         .capture-mode-feed .diet-event {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            padding: 0 !important;
-            box-shadow: none !important; 
-            border-radius: 6px !important; 
-            background-image: none !important;
-            
-            /* 텍스트 색상 강제 지정 (부드러운 갈색) */
-            color: #8d6e63 !important; 
-        }
-
-        /* [추가] 이벤트 박스 자체의 정렬 보정 */
-        .capture-mode-feed .diet-event {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 0 !important; /* 내부 패딩 제거하여 정중앙 유도 */
-            box-shadow: none !important; /* 혹시 모를 박스 그림자 제거 */
-        }
-
-        /* 이벤트 블록 스타일 */
-        .capture-mode-feed .diet-event {
-            width: 90% !important; 
-            left: 5% !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
-            /* JS에서 top과 height를 재계산하므로 여기선 건드리지 않음 */
+            padding: 2px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; /* 그림자 연하게 */
+            border-radius: 6px !important;
         }
 
         /* 워터마크 위치 */
