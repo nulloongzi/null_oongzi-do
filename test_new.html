@@ -636,7 +636,7 @@
             }
         };
 
-        // [최종 수정] 세로쓰기 깨짐 방지 (BR 태그 변환 방식) + 높이 보정
+        // [최종 수정] 이모지 깨짐 방지 (Array.from 사용) + 세로쓰기 완벽 구현
         window.generateShareImage = async function(mode) {
             try {
                 // 1. 데이터 준비
@@ -714,8 +714,9 @@
                     
                     // 식단표 내용 복제
                     const originalDietBody = document.getElementById('dietPlanBody');
-                    const originalCol = originalDietBody.querySelector('.diet-body-wrapper .diet-day-col');
                     
+                    // 높이 계산 (body-wrapper 내부 기준)
+                    const originalCol = originalDietBody.querySelector('.diet-body-wrapper .diet-day-col');
                     let originalFullHeight = 1;
                     if (originalCol && originalCol.style.height) {
                         originalFullHeight = parseFloat(originalCol.style.height);
@@ -739,14 +740,18 @@
                         el.style.height = heightPercent + '%';
                     });
 
-                    // ★ (2) 글자 세로쓰기 변환 (CSS writing-mode 제거용) ★
+                    // ★ (2) 이모지 깨짐 방지 문자 변환 ★
                     const titles = dietBody.querySelectorAll('.evt-title');
                     titles.forEach(span => {
-                        // 기존 텍스트 가져오기 (이모지 포함될 수 있음)
+                        // 이모지 포함 텍스트 가져오기
                         const text = span.innerText.trim();
-                        // 한 글자씩 쪼개서 <br> 태그로 연결 (물리적 줄바꿈)
-                        // 🍙 이모지가 있으면 같이 처리됨
-                        const verticalText = text.split('').join('<br>');
+                        
+                        // [핵심] split('') 대신 Array.from() 사용
+                        // Array.from은 이모지(Surrogate Pair)를 하나의 문자로 인식해서 잘라줍니다.
+                        const charArray = Array.from(text);
+                        
+                        // 한 글자씩 <br>로 연결
+                        const verticalText = charArray.join('<br>');
                         span.innerHTML = verticalText;
                     });
 
@@ -1331,35 +1336,37 @@
             line-height: 1.2 !important;
             white-space: nowrap;
         }
-        /* 3. 팀 이름 (이벤트 블록) - 수정됨 */
+        /* 3. 팀 이름 (이벤트 블록) - 이모지 렌더링 최적화 */
         .capture-mode-feed .evt-title {
-            font-size: 20px !important; /* 글자 크기 살짝 조정 */
+            font-size: 20px !important; 
             font-weight: 900 !important;
-            letter-spacing: 0px !important; /* 자간 초기화 */
-            line-height: 1.1 !important; /* 줄 간격 */
+            letter-spacing: 0px !important; 
+            line-height: 1.2 !important; /* 이모지가 잘리지 않게 높이 살짝 여유 */
             
-            /* ★ 핵심: 세로쓰기 모드 제거 (회색박스 원인) ★ */
+            /* 세로쓰기 모드 제거 (회색박스 원인 차단) */
             writing-mode: horizontal-tb !important; 
             text-orientation: mixed !important;
             
             /* Flex로 중앙 정렬 */
             display: flex !important;
-            flex-direction: column !important; /* 어차피 br태그가 있지만 확실하게 */
+            flex-direction: column !important; 
             justify-content: center !important;
             align-items: center !important;
             
             width: 100% !important;
             height: 100% !important;
             
-            /* 배경 및 그림자 제거 (회색박스 완벽 제거) */
-            background: transparent !important;
+            /* ★ 이모지 폰트 지원 추가 ★ */
+            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Malgun Gothic", sans-serif !important;
+            
+            /* 배경 및 그림자 완벽 제거 */
+            background-color: transparent !important;
             box-shadow: none !important;
             text-shadow: none !important;
             border: none !important;
             
-            /* 긴 이름도 줄바꿈 허용 */
             white-space: normal !important; 
-            word-break: break-all !important;
+            word-break: keep-all !important;
         }
 
         /* 이벤트 블록 스타일 */
