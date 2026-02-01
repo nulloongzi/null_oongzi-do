@@ -749,19 +749,19 @@
                     });
 
                     // ★ (2) 이모지 깨짐 방지 문자 변환 ★
-                    const titles = dietBody.querySelectorAll('.evt-title');
-                    titles.forEach(span => {
+                    //const titles = dietBody.querySelectorAll('.evt-title');
+                    //titles.forEach(span => {
                         // 이모지 포함 텍스트 가져오기
-                        const text = span.innerText.trim();
+                    //    const text = span.innerText.trim();
                         
                         // [핵심] split('') 대신 Array.from() 사용
                         // Array.from은 이모지(Surrogate Pair)를 하나의 문자로 인식해서 잘라줍니다.
-                        const charArray = Array.from(text);
+                    //    const charArray = Array.from(text);
                         
                         // 한 글자씩 <br>로 연결
-                        const verticalText = charArray.join('<br>');
-                        span.innerHTML = verticalText;
-                    });
+                    //    const verticalText = charArray.join('<br>');
+                    //    span.innerHTML = verticalText;
+                    //});
 
                     rightCol.appendChild(dietHeader);
                     rightCol.appendChild(dietBody);
