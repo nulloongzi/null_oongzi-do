@@ -110,6 +110,10 @@
                     currentUser = null;
                     currentProfileData = null;
                     updateProfileUI(false);
+                    
+                    // [추가] 로그아웃 시 워터마크 텍스트 및 스타일 초기화
+                    document.getElementById('pcRiceWatermark').innerText = ""; 
+                    document.getElementById('myProfileCard').style.backgroundColor = "#fff9c4"; // 기본 배경색으로 복귀
                 }
             });
         }
@@ -439,13 +443,22 @@
             }
         }
 
+        // [최종 수정] 식단표 색상 변경 (진한 파스텔 -> 아주 연한 우유빛 파스텔)
         function renderCombinedSchedule() {
             const container = document.getElementById('dietPlanBody');
             container.innerHTML = '';
 
             const slots = currentProfileData.tempSlots || [];
-            // 누룽지 테마 파스텔 색상
-            const slotColors = ["#fff9c4", "#ffe0b2", "#dcedc8", "#ffccbc", "#e1bee7"]; 
+            
+            // ★ 여기가 핵심! 색상을 아주 연하게 변경했습니다 ★
+            const slotColors = [
+                "#fffde7", // 아주 연한 노랑 (기존 #fff9c4)
+                "#fff3e0", // 아주 연한 주황 (기존 #ffe0b2)
+                "#f1f8e9", // 아주 연한 초록 (기존 #dcedc8)
+                "#fbe9e7", // 아주 연한 분홍 (기존 #ffccbc)
+                "#f3e5f5"  // 아주 연한 보라 (기존 #e1bee7)
+            ];
+            // 왼쪽 띠 색상은 그대로 유지 (포인트)
             const borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
 
             let allEvents = [];
@@ -481,10 +494,10 @@
             const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
 
-            // [핵심 변경] 높이 자동 계산 (가용 공간 300px 기준)
+            // 높이 계산 로직 유지
             const availableHeight = 300;
             const calculatedHeight = availableHeight / totalHours;
-            const ROW_HEIGHT = Math.max(30, calculatedHeight); // 최소 30px 보장
+            const ROW_HEIGHT = Math.max(30, calculatedHeight); 
             
             const days = ['월', '화', '수', '목', '금', '토', '일'];
             const headerRow = document.createElement('div');
@@ -497,14 +510,12 @@
 
             const bodyWrapper = document.createElement('div');
             bodyWrapper.className = 'diet-body-wrapper';
-            // 부모 높이에 맞춤 (CSS flex)
             
-            // 내부 컨텐츠의 실제 높이 설정 (스크롤 영역)
             const totalContentHeight = totalHours * ROW_HEIGHT;
 
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
-            timeCol.style.height = totalContentHeight + 'px'; // 높이 적용
+            timeCol.style.height = totalContentHeight + 'px'; 
 
             for(let h = displayStart; h < displayEnd; h++) {
                 const label = document.createElement('div');
@@ -518,7 +529,7 @@
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
-                dayCol.style.height = totalContentHeight + 'px'; // 높이 적용
+                dayCol.style.height = totalContentHeight + 'px'; 
                 
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
@@ -550,11 +561,12 @@
                     eventDiv.style.width = (95 - (indent * 5)) + '%';
                     eventDiv.style.zIndex = indent + 1;
                     
+                    // 수정된 slotColors 적용
                     eventDiv.style.backgroundColor = slotColors[evt.slotIdx];
                     eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
                     const nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
-                    // 시간 텍스트 제거하고 팀 이름만 표시
+                    // 중요: evt-title 클래스 적용
                     eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span>`;
                     
                     dayCol.appendChild(eventDiv);
@@ -565,6 +577,8 @@
 
             container.appendChild(bodyWrapper);
         }
+
+        window.renderCombinedSchedule = renderCombinedSchedule;
 
         function handleSlotClick(index) {
             if (selectedSlotIndex === null) {
@@ -624,8 +638,175 @@
             const overlay = document.getElementById('profileOverlay');
             overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
         };
-    </script>
+        // [수정] 공유 옵션창 (창고에 등록)
+        window.showShareOptions = function() {
+            // 네임카드 오버레이는 유지
+            if (confirm("📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)")) {
+                generateShareImage('feed');
+            } else {
+                generateShareImage('story');
+            }
+        };
 
+        // [최종 수정] 이모지 깨짐 방지 (Array.from 사용) + 세로쓰기 완벽 구현
+        window.generateShareImage = async function(mode) {
+            try {
+                // 1. 데이터 준비
+                if (!currentProfileData) { alert("로그인이 필요합니다."); return; }
+                
+                if (!currentProfileData.tempSlots && currentProfileData.bookmarks) {
+                    currentProfileData.tempSlots = [...currentProfileData.bookmarks];
+                    while(currentProfileData.tempSlots.length < 5) currentProfileData.tempSlots.push(null);
+                }
+                
+                renderLunchboxGrid();
+                renderCombinedSchedule();
+
+                // 2. 캡처 무대 설정
+                const stage = document.getElementById('captureStage');
+                stage.innerHTML = ""; 
+                stage.className = (mode === 'story') ? 'capture-mode-story' : 'capture-mode-feed';
+
+                // 3. 요소 복제 함수
+                function cloneAndStripIds(elementId, customClass) {
+                    const original = document.getElementById(elementId) || document.querySelector(elementId);
+                    if (!original) return null;
+                    
+                    const clone = original.cloneNode(true);
+                    clone.classList.add('cloned-element', customClass);
+                    
+                    clone.removeAttribute('id');
+                    const allDescendants = clone.querySelectorAll('*');
+                    allDescendants.forEach(el => el.removeAttribute('id'));
+                    
+                    return clone;
+                }
+
+                // [A] 네임카드 복제
+                const clonedCard = cloneAndStripIds('#myProfileCard', 'cloned-card');
+                const loginSection = clonedCard.querySelector('.login-section'); 
+                if(loginSection) loginSection.remove();
+
+                // [B] 도시락통 복제
+                const clonedBox = cloneAndStripIds('.lunchbox-wrapper', 'cloned-box');
+                const dietContainer = clonedBox.querySelector('.diet-plan-container');
+                if(dietContainer) dietContainer.remove(); 
+                const dietBtn = clonedBox.querySelector('.diet-toggle-btn');
+                if(dietBtn) dietBtn.remove();
+                
+                // [C] 로고 생성
+                const logoBox = document.createElement('div');
+                logoBox.className = 'capture-watermark';
+                logoBox.innerHTML = `
+                    <img src="./nulloongzido logo_512px.png" onerror="this.style.display='none'">
+                    <span>누룽지도</span>
+                `;
+
+                // 4. 레이아웃 조립
+                if (mode === 'story') {
+                    stage.appendChild(clonedCard);
+                    stage.appendChild(clonedBox);
+                    stage.appendChild(logoBox);
+                } else {
+                    // [피드 모드]
+                    const leftCol = document.createElement('div');
+                    leftCol.className = 'feed-left-col';
+                    leftCol.appendChild(clonedCard);
+                    leftCol.appendChild(clonedBox);
+                    
+                    const rightCol = document.createElement('div');
+                    rightCol.className = 'feed-right-col';
+                    
+                    const dietHeader = document.createElement('div');
+                    dietHeader.className = 'feed-diet-header';
+                    dietHeader.innerText = "📅 주간 식단표";
+                    
+                    const dietBody = document.createElement('div');
+                    dietBody.className = 'feed-diet-body';
+                    
+                    // 식단표 내용 복제
+                    const originalDietBody = document.getElementById('dietPlanBody');
+                    
+                    // 높이 계산 (body-wrapper 내부 기준)
+                    const originalCol = originalDietBody.querySelector('.diet-body-wrapper .diet-day-col');
+                    let originalFullHeight = 1;
+                    if (originalCol && originalCol.style.height) {
+                        originalFullHeight = parseFloat(originalCol.style.height);
+                    } else if (originalCol) {
+                        originalFullHeight = originalCol.scrollHeight;
+                    }
+                    if (originalFullHeight < 100) originalFullHeight = 300; 
+
+                    // HTML 복사
+                    dietBody.innerHTML = originalDietBody.innerHTML;
+                    dietBody.querySelectorAll('*').forEach(el => el.removeAttribute('id'));
+                    
+                    // (1) 위치/높이 보정
+                    const events = dietBody.querySelectorAll('.diet-event');
+                    events.forEach(el => {
+                        const oldTop = parseFloat(el.style.top);
+                        const oldHeight = parseFloat(el.style.height);
+                        const topPercent = (oldTop / originalFullHeight) * 100;
+                        const heightPercent = (oldHeight / originalFullHeight) * 100;
+                        el.style.top = topPercent + '%';
+                        el.style.height = heightPercent + '%';
+                    });
+
+                    // ★ (2) 이모지 깨짐 방지 문자 변환 ★
+                    const titles = dietBody.querySelectorAll('.evt-title');
+                    titles.forEach(span => {
+                        // 이모지 포함 텍스트 가져오기
+                        const text = span.innerText.trim();
+                        
+                        // [핵심] split('') 대신 Array.from() 사용
+                        // Array.from은 이모지(Surrogate Pair)를 하나의 문자로 인식해서 잘라줍니다.
+                        const charArray = Array.from(text);
+                        
+                        // 한 글자씩 <br>로 연결
+                        const verticalText = charArray.join('<br>');
+                        span.innerHTML = verticalText;
+                    });
+
+                    rightCol.appendChild(dietHeader);
+                    rightCol.appendChild(dietBody);
+
+                    stage.appendChild(leftCol);
+                    stage.appendChild(rightCol);
+                    stage.appendChild(logoBox);
+                }
+
+                // 5. 이미지 생성
+                setTimeout(() => {
+                    html2canvas(stage, {
+                        scale: 1, 
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: null,
+                        logging: false
+                    }).then(canvas => {
+                        const imgData = canvas.toDataURL("image/png");
+                        const previewBox = document.getElementById('previewImgBox');
+                        previewBox.innerHTML = "";
+                        const img = document.createElement('img');
+                        img.src = imgData;
+                        previewBox.appendChild(img);
+                        
+                        document.getElementById('profileOverlay').style.display = 'none';
+                        document.getElementById('previewOverlay').style.display = 'flex';
+                        stage.innerHTML = "";
+                    }).catch(err => {
+                        console.error(err);
+                        alert("오류 발생: " + err);
+                    });
+                }, 500);
+
+            } catch (e) {
+                alert("기능 실행 실패: " + e.message);
+            }
+        };
+        applyFilters();
+    </script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #fff8e1; }
@@ -681,6 +862,8 @@
         .pc-date { color: var(--nurungji-brown); font-size: 12px; font-weight: 600; margin-bottom: 12px; opacity: 0.8; }
         .pc-divider { height: 2px; background: var(--nurungji-brown); width: 40%; margin: 10px auto; border-radius: 1px; opacity: 0.3; }
         .pc-main-team { color: var(--nurungji-dark); font-size: 18px; font-weight: 700; margin-top: 8px; background: rgba(255,255,255,0.4); padding: 5px 10px; border-radius: 10px; display: inline-block; }
+        /* [수정] 네임카드 하단 버튼 그룹 (나란히 배치) */
+        .pc-footer { display: flex; justify-content: center;gap: 10px; margin-top: 20px; width: 100%; }
         /* 워터마크 스타일 추가 */
         .pc-rice-type { position: absolute; top: 12px; left: 15px; font-size: 11px; font-weight: 700; color: rgba(93, 64, 55, 0.25); pointer-events: none; }
 
@@ -691,7 +874,22 @@
         .btn-auth { flex: 1; padding: 12px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 13px; color: var(--nurungji-dark); background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 2px solid var(--nurungji-brown); }
         .btn-google-login { background: white; color: var(--nurungji-dark); border: 2px solid var(--nurungji-brown); padding: 12px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .btn-google-login img { width: 18px; height: 18px; }
-        .btn-logout { margin-top: 20px; background: #a1887f; border: none; color: white; padding: 8px 16px; border-radius: 12px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        /* 기존 절대위치 속성 제거 및 스타일 통일 */
+        .btn-logout, .pc-share-btn {
+            position: static; /* 절대 위치 해제 */
+            margin: 0;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+        .btn-logout { background: #d7ccc8; color: white; }
+        .pc-share-btn { background: #8d6e63; color: white; }
+        .btn-logout:active, .pc-share-btn:active { transform: scale(0.95); }
         .divider { color: var(--nurungji-brown); font-size: 11px; margin: 10px 0; display: flex; align-items: center; gap: 10px; }
         .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--nurungji-brown); opacity: 0.5; }
 
@@ -950,6 +1148,332 @@
         .fs-handle { width: 40px; height: 5px; background: #bdbdbd; border-radius: 3px; }
         
         .expand-hint { text-align: center; color: #bdbdbd; font-size: 11px; margin-top: 5px; margin-bottom: 0px; }
+
+        /* =========================================
+        [포장하기(캡처) 전용 스타일]
+        ========================================= */
+
+        /* 1. 캡처 무대 (사용자 눈에는 안 보이지만 렌더링은 되는 공간) */
+        #captureStage {
+            position: fixed;
+            top: 0;
+            left: -9999px; /* 화면 밖으로 보냄 */
+            z-index: 9999;
+            background-color: #fff8e1; /* 누룽지 배경색 */
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            display: flex; /* 중요: visibility:hidden 대신 좌표이동 사용 */
+            box-sizing: border-box;
+        }
+
+        /* 2. 공통 워터마크 (로고) */
+        .capture-watermark {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            opacity: 0.9;
+            z-index: 50;
+        }
+        .capture-watermark img {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .capture-watermark span {
+            font-size: 40px;
+            font-weight: 900;
+            color: #5d4037;
+            letter-spacing: -1px;
+        }
+
+        /* 3. 모드별 레이아웃 설정 */
+
+        /* [A] 스토리 모드 (1080 x 1920) - 세로 배치 */
+        .capture-mode-story {
+            width: 1080px;
+            height: 1920px;
+            background-image: radial-gradient(#fff9c4 15%, transparent 15%); /* 배경 패턴 */
+            background-size: 50px 50px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* 2. 전체적인 위치를 위로 올리는 핵심 (아래쪽 공백을 강제로 늘림) */
+            padding-top: 50px;     /* 위쪽은 적당히 */
+            padding-bottom: 450px; /* 아래쪽을 두껍게 줘서 내용물을 위로 밀어버림 */
+            padding-left: 50px;
+            padding-right: 50px;
+            gap: 100px;
+        }
+
+        /* 스토리 모드: 요소 확대 및 간격 조정 */
+        .capture-mode-story .cloned-card {
+            transform: scale(2.8); /* 2.8배 확대 */
+            transform-origin: center center;
+            box-shadow: 0 30px 60px rgba(93,64,55,0.3) !important; /* 그림자 진하게 */
+        }
+        .capture-mode-story .cloned-box {
+            transform: scale(2.8);
+            transform-origin: center top; /* 위쪽 기준 확대 */
+            margin-top: 150px;
+        }
+
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 높이 고정 및 Flex 정렬 */
+        .capture-mode-feed {
+            width: 1600px;
+            height: 1200px;
+            background: #fff8e1;
+            border: 25px solid #8d6e63; 
+            border-radius: 50px; 
+            display: flex;
+            flex-direction: row;
+            align-items: center; 
+            justify-content: center;
+            padding: 0; 
+            gap: 60px;  
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* 1. 왼쪽 기둥 */
+        .feed-left-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 940px; 
+            justify-content: space-between; 
+            width: 600px; 
+        }
+        .capture-mode-feed .cloned-card {
+            transform: scale(1.8); 
+            transform-origin: top center; 
+            box-shadow: 0 25px 50px rgba(93,64,55,0.25) !important;
+            margin: 0; 
+        }
+        .capture-mode-feed .cloned-box {
+            transform: scale(1.8);
+            transform-origin: bottom center; 
+            margin: 0;
+        }
+
+        /* 2. 오른쪽 기둥 (주간 식단표) */
+        .feed-right-col {
+            width: 650px; 
+            height: 940px; /* 전체 높이 940px */
+            background: white;
+            border-radius: 35px;
+            border: 8px solid #8d6e63;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        }
+
+        .feed-diet-header {
+            background: #fac710;
+            /* 헤더 높이를 80px로 고정 (패딩 포함) */
+            height: 80px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px; 
+            font-weight: 900;
+            color: #5d4037;
+            border-bottom: 6px dashed #efebe9;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        /* ★ 식단표 본문 높이 860px 고정 (940 - 80 = 860) ★ */
+        .feed-diet-body {
+            height: 860px !important; 
+            position: relative;
+            background: white;
+            zoom: 1; /* 줌 제거 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 내부 Wrapper */
+        .capture-mode-feed .diet-body-wrapper {
+            display: flex;
+            flex-direction: row;
+            height: 100% !important; 
+            width: 100%;
+        }
+
+        /* 컬럼 스타일 */
+        .capture-mode-feed .diet-time-col {
+            width: 65px !important;
+            display: flex;
+            flex-direction: column;
+            height: 100% !important;
+            border-right: 2px solid #efebe9;
+            background: #fff8e1;
+        }
+        .capture-mode-feed .diet-day-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100% !important;
+            border-right: 1px solid #f5f5f5;
+        }
+
+        /* 격자 라인 균등 분배 */
+        .capture-mode-feed .diet-time-label,
+        .capture-mode-feed .diet-grid-line {
+            flex: 1 !important;        /* 남은 공간을 N등분 */
+            height: auto !important;   
+            min-height: 0;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            /* ★ 테두리 두께를 높이에 포함시켜 계산 오차 방지 ★ */
+            box-sizing: border-box !important; 
+            border-bottom: 1px solid #f5f5f5; /* 테두리 명시 */
+        }
+
+        /* 폰트 스타일 */
+        .capture-mode-feed .diet-day-col.header {
+            font-size: 20px !important; 
+            padding: 10px 0 !important;
+            background: #d7ccc8;
+            color: white;
+        }
+        .capture-mode-feed .diet-time-label {
+            font-size: 15px !important; 
+            font-weight: 800 !important;
+            color: #8d6e63;
+            line-height: 1.2 !important;
+            white-space: nowrap;
+        }
+
+        /* ★ 팀 블록 텍스트 스타일 (제시해드린 부드러운 스타일) ★ */
+        .capture-mode-feed .evt-title {
+            color: #5d4037 !important; /* 부드러운 갈색 */
+            font-size: 16px !important; 
+            font-weight: 700 !important;
+            writing-mode: horizontal-tb !important; /* 가로쓰기 고정 */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            text-shadow: none !important; /* 텍스트 번짐 방지 */
+            background: transparent !important;
+            width: 100% !important;
+            height: 100% !important;
+            white-space: normal !important;
+            word-break: keep-all;
+        }
+
+        .capture-mode-feed .diet-event {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 2px !important;
+            box-shadow: none !important; /* 블록 그림자 제거하여 깔끔하게 */
+            border-radius: 6px !important;
+            border: 1px solid rgba(0,0,0,0.05) !important;
+        }
+
+        /* 워터마크 위치 */
+        .capture-mode-feed .capture-watermark {
+            bottom: 30px; 
+            right: 40px;
+            gap: 10px;
+        }
+        .capture-mode-feed .capture-watermark img {
+            width: 45px;
+            height: 45px;
+        }
+        .capture-mode-feed .capture-watermark span {
+            font-size: 28px;
+        }
+
+        /* 클린업 */
+        .cloned-element .btn-logout,
+        .cloned-element .pc-share-btn,
+        .cloned-element .pc-edit-btn,
+        .cloned-element .login-section, 
+        .cloned-element .lb-btn-group,
+        .cloned-element .diet-toggle-btn {
+            display: none !important;
+        }
+        .cloned-box {
+            width: 330px !important; 
+            background: #fff8e1 !important;
+        }
+        /* =========================================
+        [5. 결과 확인(프리뷰) 오버레이 스타일] 
+        - 이 부분이 없어서 화면에 안 보였던 것입니다.
+        ========================================= */
+        .preview-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85); /* 배경 어둡게 */
+            z-index: 99999; /* 지도보다 훨씬 위에 배치 */
+            display: none; /* 평소엔 숨김 */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .preview-img-box {
+            width: 85%;
+            height: 70%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            margin-bottom: 25px;
+            background: transparent;
+        }
+
+        .preview-img-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* 비율 유지하며 화면에 맞춤 */
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .preview-btns {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-close, .btn-down {
+            padding: 12px 25px;
+            border-radius: 30px;
+            border: none;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn-close {
+            background: #eceff1;
+            color: #455a64;
+        }
+
+        .btn-down {
+            background: #fac710; /* 누룽지 옐로우 */
+            color: #5d4037;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-close:active, .btn-down:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
@@ -1022,7 +1546,11 @@
                 <div id="pcDate" class="pc-date">가입일: -</div>
                 <div class="pc-divider"></div>
                 <div id="pcMainTeam" class="pc-main-team">찜한 팀이 없어요</div>
-                <button class="btn-logout" onclick="logout()">로그아웃</button>
+                
+                <div class="pc-footer">
+                    <button class="btn-logout" onclick="logout()">로그아웃</button>
+                    <div class="pc-share-btn" onclick="showShareOptions()">🎁 포장하기</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1098,6 +1626,16 @@
             
             <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
+        </div>
+    </div>
+
+    <div id="captureStage"></div>
+
+    <div id="previewOverlay" class="preview-overlay">
+        <div class="preview-img-box" id="previewImgBox"></div>
+        <div class="preview-btns">
+            <button class="btn-close" onclick="closePreview()">닫기</button>
+            <button class="btn-down" onclick="downloadImage()">💾 저장하기</button>
         </div>
     </div>
 
@@ -1655,6 +2193,38 @@
             if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) { map.setBounds(bounds); }
         }
         
+        // [추가] 미리보기 창 닫기 기능
+        window.closePreview = function() {
+            const overlay = document.getElementById('previewOverlay');
+            overlay.style.display = 'none'; // 창 숨기기
+            
+            // (선택) 메모리 절약을 위해 기존 이미지 삭제
+            document.getElementById('previewImgBox').innerHTML = ""; 
+        };
+
+        // [추가] 이미지 다운로드 기능 (기기에 저장)
+        window.downloadImage = function() {
+            const imgBox = document.getElementById('previewImgBox');
+            const img = imgBox.querySelector('img');
+            
+            if (img) {
+                // 가상의 링크 태그를 만들어 클릭하게 함
+                const link = document.createElement('a');
+                link.href = img.src;
+                
+                // 파일명 생성: nulloong_날짜_시간.png
+                const now = new Date();
+                const fileName = `nulloong_${now.getFullYear()}${now.getMonth()+1}${now.getDate()}_${now.getHours()}${now.getMinutes()}.png`;
+                
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click(); // 다운로드 실행
+                document.body.removeChild(link); // 링크 삭제
+            } else {
+                alert("저장할 이미지가 없습니다.");
+            }
+        };
+
         // [NEW] 배경 클릭 시 닫기 (안전한 방식)
         const lbOverlay = document.getElementById('lunchboxOverlay');
         lbOverlay.addEventListener('click', function(e) {
@@ -1662,9 +2232,8 @@
             if (e.target === lbOverlay) {
                 window.closeLunchbox();
             }
+        
         });
-
-        applyFilters();
     </script>
 </body>
 </html>
