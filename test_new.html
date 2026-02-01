@@ -636,7 +636,7 @@
             }
         };
 
-        // [최종 수정] 높이 오차 0% 완벽 보정 (style.height 사용)
+        // [최종 수정] 높이 기준점 선택 오류 수정 (헤더가 아닌 몸통 높이 참조)
         window.generateShareImage = async function(mode) {
             try {
                 // 1. 데이터 준비
@@ -715,18 +715,19 @@
                     // 식단표 내용 복제
                     const originalDietBody = document.getElementById('dietPlanBody');
                     
-                    // ★ 핵심 로직 수정: scrollHeight 대신 style.height 사용 ★
-                    // renderCombinedSchedule 함수가 style.height를 정확하게 'px' 단위로 꽂아줍니다.
-                    // 이걸 가져와야 패딩/마진 오차 없이 정확한 비율이 나옵니다.
-                    const originalCol = originalDietBody.querySelector('.diet-day-col');
+                    // ★ 핵심 버그 수정: 헤더가 아닌 '몸통(wrapper)' 안의 컬럼을 선택하도록 명시 ★
+                    const originalCol = originalDietBody.querySelector('.diet-body-wrapper .diet-day-col');
                     
-                    // style.height에서 'px'를 떼고 숫자로 변환 (없으면 scrollHeight로 방어)
+                    // 정확한 높이값 추출
                     let originalFullHeight = 1;
                     if (originalCol && originalCol.style.height) {
                         originalFullHeight = parseFloat(originalCol.style.height);
                     } else if (originalCol) {
                         originalFullHeight = originalCol.scrollHeight;
                     }
+                    
+                    // 안전장치: 높이가 0이거나 너무 작으면 강제로 보정 (최소 100px)
+                    if (originalFullHeight < 100) originalFullHeight = 300; // 기본값
 
                     // HTML 복사
                     dietBody.innerHTML = originalDietBody.innerHTML;
