@@ -636,7 +636,7 @@
             }
         };
 
-        // [최종 수정] 위치 보정 로직이 추가된 포장하기 기능
+        // [최종 수정] 위치 오차 완벽 해결 (퍼센트 변환 방식)
         window.generateShareImage = async function(mode) {
             try {
                 // 1. 데이터 준비
@@ -655,7 +655,7 @@
                 stage.innerHTML = ""; 
                 stage.className = (mode === 'story') ? 'capture-mode-story' : 'capture-mode-feed';
 
-                // 3. 요소 복제 및 ID 제거 함수
+                // 3. 요소 복제 함수
                 function cloneAndStripIds(elementId, customClass) {
                     const original = document.getElementById(elementId) || document.querySelector(elementId);
                     if (!original) return null;
@@ -678,10 +678,10 @@
                 // [B] 도시락통 복제
                 const clonedBox = cloneAndStripIds('.lunchbox-wrapper', 'cloned-box');
                 const dietContainer = clonedBox.querySelector('.diet-plan-container');
-                if(dietContainer) dietContainer.remove();
+                if(dietContainer) dietContainer.remove(); 
                 const dietBtn = clonedBox.querySelector('.diet-toggle-btn');
                 if(dietBtn) dietBtn.remove();
-
+                
                 // [C] 로고 생성
                 const logoBox = document.createElement('div');
                 logoBox.className = 'capture-watermark';
@@ -713,27 +713,33 @@
                     dietBody.className = 'feed-diet-body';
                     
                     // 식단표 내용 복제
-                    const originalDietWrapper = document.querySelector('#dietPlanBody .diet-body-wrapper');
-                    // ★ 중요: 원본의 실제 렌더링 높이를 가져옵니다 (비율 계산용)
-                    const originalHeight = originalDietWrapper ? originalDietWrapper.scrollHeight : 1;
-
                     const originalDietBody = document.getElementById('dietPlanBody');
+                    
+                    // ★ 핵심 로직 수정: 픽셀 계산 대신 퍼센트(%) 변환 ★
+                    // 원본 식단표의 '실제 전체 높이'를 구함 (스크롤 영역 포함)
+                    // 주의: .diet-day-col 중 하나를 기준으로 잡아야 정확함
+                    const originalCol = originalDietBody.querySelector('.diet-day-col');
+                    const originalFullHeight = originalCol ? originalCol.scrollHeight : 1;
+
+                    // HTML 복사
                     dietBody.innerHTML = originalDietBody.innerHTML;
                     dietBody.querySelectorAll('*').forEach(el => el.removeAttribute('id'));
                     
-                    // ★ 핵심 로직: 일정 블록 위치 재조정 (Rescaling) ★
-                    // 피드 모드의 식단표 몸체 높이는 CSS에서 860px로 고정됨
-                    const TARGET_HEIGHT = 860; 
-                    const ratio = TARGET_HEIGHT / originalHeight;
-
+                    // 복제된 이벤트 블록들을 찾아서 %로 변환
                     const events = dietBody.querySelectorAll('.diet-event');
                     events.forEach(el => {
+                        // 원래 픽셀 값 읽기
                         const oldTop = parseFloat(el.style.top);
                         const oldHeight = parseFloat(el.style.height);
                         
-                        // 비율에 맞춰 좌표와 크기를 늘림
-                        el.style.top = (oldTop * ratio) + 'px';
-                        el.style.height = (oldHeight * ratio) + 'px';
+                        // 전체 높이 대비 몇 %인지 계산
+                        const topPercent = (oldTop / originalFullHeight) * 100;
+                        const heightPercent = (oldHeight / originalFullHeight) * 100;
+
+                        // 픽셀(px) 대신 퍼센트(%)로 재설정
+                        // 이제 부모 높이가 860px이든 뭐든 자동으로 비율에 맞춰 늘어남
+                        el.style.top = topPercent + '%';
+                        el.style.height = heightPercent + '%';
                     });
 
                     rightCol.appendChild(dietHeader);
