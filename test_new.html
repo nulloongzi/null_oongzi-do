@@ -1184,58 +1184,63 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 최종 완성본 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 정밀 균형 버전 */
         .capture-mode-feed {
             width: 1600px;
             height: 1200px;
             background: #fff8e1;
             
-            /* 쟁반 스타일 */
-            border: 50px solid #8d6e63; 
+            /* 1. 테두리 두께 반으로 축소 (50px -> 25px) */
+            border: 25px solid #8d6e63; 
             border-radius: 50px; 
             
             display: flex;
             flex-direction: row;
             align-items: center;
-            justify-content: center; /* 전체 중앙 정렬 */
+            justify-content: center;
             
-            gap: 100px; /* 좌우 기둥 사이 간격 */
-            padding: 80px 100px; /* 상하 80, 좌우 100 여백으로 균형 맞춤 */
+            /* 2. 간격 통일: 좌측여백 = 기둥간격 = 우측여백 = 60px */
+            padding: 60px;       /* 상하좌우 여백 60px */
+            gap: 60px;           /* 좌우 기둥 사이 간격 60px */
+            
             box-sizing: border-box;
-            position: relative; /* 워터마크 위치 기준 */
+            position: relative;
         }
 
-        /* 1. 왼쪽 기둥 (네임카드 + 도시락통) */
+        /* 왼쪽 기둥 (네임카드 + 도시락통) */
         .feed-left-col {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             
-            /* 너비와 높이를 꽉 채워서 정렬 기준 잡기 */
+            /* 3. 높이 맞춤: 식단표와 동일한 높이(100%)를 쓰되, 양끝으로 배치 */
+            height: 100%; 
+            justify-content: space-between; /* 네임카드는 위로, 도시락은 아래로 붙임 */
+            
             width: 600px; 
-            height: 100%;
-            
-            /* ★겹침 해결 핵심: 간격을 220px로 대폭 늘림 */
-            gap: 220px; 
+            /* gap 제거: space-between으로 제어함 */
         }
 
-        /* 왼쪽 요소들 확대 (비율 유지) */
+        /* 왼쪽 요소들 확대 및 기준점 변경 (핵심) */
         .capture-mode-feed .cloned-card {
             transform: scale(1.9); 
-            transform-origin: center center;
+            /* 네임카드는 위쪽 끝을 기준으로 확대 (위쪽 라인 맞춤) */
+            transform-origin: top center; 
             box-shadow: 0 25px 50px rgba(93,64,55,0.25) !important;
+            margin: 0; /* 마진 제거 (space-between 효과 극대화) */
         }
 
         .capture-mode-feed .cloned-box {
             transform: scale(1.9);
-            transform-origin: center center;
+            /* 도시락통은 아래쪽 끝을 기준으로 확대 (아래쪽 라인 맞춤) */
+            transform-origin: bottom center; 
+            margin: 0;
         }
 
-        /* 2. 오른쪽 기둥 (주간 식단표) */
+        /* 오른쪽 기둥 (주간 식단표) */
         .feed-right-col {
-            width: 650px; /* 왼쪽과 비슷한 너비로 균형 맞춤 */
-            height: 92%; /* 쟁반 위아래 여백 살짝 줌 */
+            flex: 1; /* 남은 너비 꽉 채움 */
+            height: 100%; /* 부모 높이(100%) 꽉 채움 */
             
             background: white;
             border-radius: 35px;
@@ -1249,9 +1254,10 @@
 
         .feed-diet-header {
             background: #fac710;
-            padding: 30px 0;
+            padding: 25px 0;
             text-align: center;
-            font-size: 42px; /* 헤더 글씨도 시원하게 */
+            /* 4-1. 식단표 제목 글씨 줄이기 (42px -> 32px) */
+            font-size: 32px; 
             font-weight: 900;
             color: #5d4037;
             border-bottom: 6px dashed #efebe9;
@@ -1263,25 +1269,26 @@
             position: relative;
             background: white;
             
-            /* ★식단표 글씨 확대: 2.2배 */
-            zoom: 2.2; 
+            /* 4-2. 식단표 내용 글씨 더 키우기 (2.2 -> 2.6) */
+            /* zoom을 키우면 내부의 요일, 시간, 팀명 모두 커집니다 */
+            zoom: 2.6; 
         }
 
-        /* 3. 워터마크 축소 및 위치 조정 (피드 모드 전용) */
+        /* 5. 워터마크 위치 더 아래로 */
         .capture-mode-feed .capture-watermark {
-            bottom: 40px;
-            right: 50px;
+            bottom: 25px; /* 40px -> 25px 로 내림 (테두리가 얇아져서 더 내려도 됨) */
+            right: 40px;
             gap: 10px;
         }
         .capture-mode-feed .capture-watermark img {
-            width: 45px; /* 60px -> 45px 축소 */
+            width: 45px;
             height: 45px;
         }
         .capture-mode-feed .capture-watermark span {
-            font-size: 28px; /* 40px -> 28px 축소 */
+            font-size: 28px;
         }
 
-        /* 4. 클린업 & 도시락통 너비 고정 */
+        /* 클린업 & 도시락통 너비 고정 */
         .cloned-element .btn-logout,
         .cloned-element .pc-share-btn,
         .cloned-element .pc-edit-btn,
