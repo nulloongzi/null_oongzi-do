@@ -1184,7 +1184,7 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 글자 확대 최종판 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 시간표 풀(Full) 버전 */
         .capture-mode-feed {
             width: 1600px;
             height: 1200px;
@@ -1205,16 +1205,13 @@
             position: relative;
         }
 
-        /* 1. 왼쪽 기둥 (높이 940px 유지) */
+        /* 1. 왼쪽 기둥 */
         .feed-left-col {
             display: flex;
             flex-direction: column;
             align-items: center;
-            
-            /* 높이를 940px로 고정하여 식단표와 라인을 맞춤 */
             height: 940px; 
             justify-content: space-between; 
-            
             width: 600px; 
         }
 
@@ -1234,7 +1231,7 @@
         /* 2. 오른쪽 기둥 (주간 식단표) */
         .feed-right-col {
             width: 650px; 
-            height: 940px; /* 왼쪽 기둥과 높이 동일 */
+            height: 940px;
             
             background: white;
             border-radius: 35px;
@@ -1248,36 +1245,62 @@
 
         .feed-diet-header {
             background: #fac710;
-            padding: 25px 0;
+            padding: 20px 0; /* 패딩을 살짝 줄임 */
             text-align: center;
-            font-size: 30px; /* 제목 크기는 유지 */
+            font-size: 32px; 
             font-weight: 900;
             color: #5d4037;
             border-bottom: 6px dashed #efebe9;
             flex-shrink: 0;
         }
 
+        /* ★ 핵심 수정: 식단표 본문 ★ */
         .feed-diet-body {
-            flex: 1;
+            flex: 1; /* 남은 높이(약 800px)를 다 씁니다 */
             position: relative;
             background: white;
             
-            /* ★ 핵심 수정: 2.8배 -> 3.5배로 대폭 확대 ★ */
-            /* 이 수치를 높이면 식단표 안의 모든 내용(칸, 글씨)이 커집니다 */
-            zoom: 3.5; 
+            /* zoom을 2.0으로 낮춰서 전체가 다 보이게 함 */
+            zoom: 2.0; 
+            
+            display: flex;
+            flex-direction: column;
         }
 
-        /* [추가] 캡처 모드에서만 폰트 자체 체급을 키움 (zoom과 곱해져서 훨씬 커짐) */
+        /* 내부 요소 강제 조정 (스크롤 없이 한 화면에 구겨 넣기) */
+        .capture-mode-feed .diet-body-wrapper {
+            height: 100% !important; /* 높이 강제 고정 */
+            overflow: hidden !important; /* 스크롤바 제거 */
+        }
+
+        .capture-mode-feed .diet-time-col,
+        .capture-mode-feed .diet-day-col {
+            height: 100% !important; /* 컬럼 높이도 100% */
+        }
+
+        /* 각 시간 칸의 높이를 줄여서 전체 시간(06~24시)이 다 들어오게 함 */
+        /* 기존에는 JS에서 30px로 잡혔지만, CSS로 덮어씌움 */
+        .capture-mode-feed .diet-time-label,
+        .capture-mode-feed .diet-grid-line {
+            height: 4.5% !important; /* 퍼센트로 설정하여 유동적으로 맞춤 */
+            min-height: 0 !important;
+        }
+
+        /* 글자 크기 보정 (zoom이 줄었으므로 font-size를 키워서 보완) */
         .capture-mode-feed .diet-day-col.header {
-            font-size: 13px !important; /* 요일 */
+            font-size: 14px !important; 
+            padding: 5px 0 !important;
         }
         .capture-mode-feed .diet-time-label {
-            font-size: 12px !important; /* 시간 */
+            font-size: 11px !important; 
             font-weight: 800 !important;
+            align-items: center !important; /* 시간 숫자 수직 중앙 정렬 */
         }
         .capture-mode-feed .evt-title {
-            font-size: 11px !important; /* 팀 이름 (기본 10px -> 11px로 증가) */
+            font-size: 12px !important; 
+            letter-spacing: -1px !important;
         }
+
 
         /* 3. 워터마크 위치 */
         .capture-mode-feed .capture-watermark {
