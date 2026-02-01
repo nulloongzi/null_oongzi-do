@@ -110,6 +110,10 @@
                     currentUser = null;
                     currentProfileData = null;
                     updateProfileUI(false);
+                    
+                    // [추가] 로그아웃 시 워터마크 텍스트 및 스타일 초기화
+                    document.getElementById('pcRiceWatermark').innerText = ""; 
+                    document.getElementById('myProfileCard').style.backgroundColor = "#fff9c4"; // 기본 배경색으로 복귀
                 }
             });
         }
@@ -509,9 +513,11 @@
             
             const totalContentHeight = totalHours * ROW_HEIGHT;
 
+            const finalHeight = totalContentHeight + 50;
+
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
-            timeCol.style.height = totalContentHeight + 'px'; 
+            timeCol.style.height = finalHeight + 'px'; // 수정된 높이 적용
 
             for(let h = displayStart; h < displayEnd; h++) {
                 const label = document.createElement('div');
@@ -525,7 +531,7 @@
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
-                dayCol.style.height = totalContentHeight + 'px'; 
+                dayCol.style.height = finalHeight + 'px'; // 수정된 높이 적용
                 
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
@@ -1371,16 +1377,6 @@
             box-shadow: none !important; /* 블록 그림자 제거하여 깔끔하게 */
             border-radius: 6px !important;
             border: 1px solid rgba(0,0,0,0.05) !important;
-        }
-
-        /* 팀 블록(이벤트 박스) 자체의 외곽선 및 그림자 완화 */
-        .capture-mode-feed .diet-event {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 2px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; /* 그림자 연하게 */
-            border-radius: 6px !important;
         }
 
         /* 워터마크 위치 */
