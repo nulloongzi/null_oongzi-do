@@ -1345,27 +1345,32 @@
             white-space: nowrap;
         }
 
-        /* 피드 캡처 모드에서 팀 블록 텍스트 스타일 수정 */
+        /* ★ 팀 블록 텍스트 스타일 (제시해드린 부드러운 스타일) ★ */
         .capture-mode-feed .evt-title {
-            /* [수정] 짙은 갈색에서 도시락통과 유사한 부드러운 색상으로 변경 */
-            color: #5d4037 !important; 
-            font-size: 16px !important; /* 글자 크기를 적절히 조절 */
+            color: #5d4037 !important; /* 부드러운 갈색 */
+            font-size: 16px !important; 
             font-weight: 700 !important;
-            
-            /* [수정] 세로 쓰기를 해제하고 일반적인 중앙 정렬로 변경 */
-            writing-mode: horizontal-tb !important; 
+            writing-mode: horizontal-tb !important; /* 가로쓰기 고정 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             text-align: center !important;
-            
-            /* 배경 및 그림자 제거 (깔끔하게) */
+            text-shadow: none !important; /* 텍스트 번짐 방지 */
             background: transparent !important;
-            box-shadow: none !important;
             width: 100% !important;
             height: 100% !important;
             white-space: normal !important;
             word-break: keep-all;
+        }
+
+        .capture-mode-feed .diet-event {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 2px !important;
+            box-shadow: none !important; /* 블록 그림자 제거하여 깔끔하게 */
+            border-radius: 6px !important;
+            border: 1px solid rgba(0,0,0,0.05) !important;
         }
 
         /* 팀 블록(이벤트 박스) 자체의 외곽선 및 그림자 완화 */
