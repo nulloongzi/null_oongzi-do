@@ -1200,129 +1200,114 @@
             margin-top: 150px;
         }
 
-            /* [피드 모드 통합 수정본] */
-            .capture-mode-feed {
-                width: 1600px;
-                height: 1200px;
-                background: #fff8e1;
-                border: 25px solid #8d6e63; 
-                border-radius: 50px; 
-                display: flex;
-                flex-direction: row;
-                align-items: center; 
-                justify-content: center;
-                gap: 60px;  
-                box-sizing: border-box;
-            }
+        /* [피드 모드 통합 수정본 - 왼쪽 레이아웃 복구 버전] */
+        .capture-mode-feed {
+            width: 1600px;
+            height: 1200px;
+            background: #fff8e1;
+            border: 25px solid #8d6e63; 
+            border-radius: 50px; 
+            display: flex;
+            flex-direction: row;
+            align-items: center; 
+            justify-content: center;
+            gap: 80px; /* 왼쪽과 오른쪽 사이 간격 확보 */
+            box-sizing: border-box;
+        }
 
-            .feed-left-col {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                height: 940px; 
-                justify-content: space-between; 
-                width: 600px; 
-            }
+        /* 왼쪽 컬럼: 카드와 도시락통이 위아래로 꽉 차게 */
+        .feed-left-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 940px; 
+            justify-content: space-between; /* 카드와 도시락 사이 공간 배분 */
+            width: 600px; 
+        }
 
-            .feed-right-col {
-                width: 650px; 
-                height: 940px;
-                background: white;
-                border-radius: 35px;
-                border: 8px solid #8d6e63;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-                box-shadow: 0 20px 50px rgba(0,0,0,0.15);
-            }
+        /* 네임카드: 크기 복구 및 그림자 */
+        .capture-mode-feed .cloned-card {
+            width: 550px !important;
+            transform: scale(1.6) !important; /* 크기를 기존처럼 크게 확대 */
+            transform-origin: center center;
+            margin-top: 80px; /* 상단 여백 */
+        }
 
-            .feed-diet-header {
-                background: #fac710;
-                height: 80px; 
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 36px; 
-                font-weight: 900;
-                color: #5d4037;
-                border-bottom: 6px dashed #efebe9;
-                flex-shrink: 0;
-            }
+        /* 도시락통: 크기 복구 */
+        .capture-mode-feed .cloned-box {
+            width: 480px !important; /* 도시락통 가로폭 확장 */
+            transform: scale(1.5) !important; 
+            transform-origin: center center;
+            margin-bottom: 60px; /* 하단 여백 */
+            background: #fff8e1 !important;
+        }
 
-            .feed-diet-body {
-                flex: 1;
-                position: relative;
-                background: white;
-                display: flex;
-                flex-direction: column;
-            }
+        /* 오른쪽 컬럼: 식단표 영역 */
+        .feed-right-col {
+            width: 650px; 
+            height: 940px;
+            background: white;
+            border-radius: 35px;
+            border: 8px solid #8d6e63;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        }
 
-            .capture-mode-feed .diet-body-wrapper {
-                display: flex;
-                flex-direction: row;
-                height: 100% !important;
-            }
+        /* 식단표 헤더 스타일 */
+        .feed-diet-header {
+            background: #fac710;
+            height: 80px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px; 
+            font-weight: 900;
+            color: #5d4037;
+            border-bottom: 6px dashed #efebe9;
+            flex-shrink: 0;
+        }
 
-            .capture-mode-feed .diet-time-col {
-                width: 65px !important;
-                display: flex;
-                flex-direction: column;
-                height: 100% !important;
-                border-right: 2px solid #efebe9;
-                background: #fff8e1;
-            }
+        .feed-diet-body {
+            flex: 1;
+            position: relative;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
 
-            .capture-mode-feed .diet-day-col {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                height: 100% !important;
-                border-right: 1px solid #f5f5f5;
-            }
+        /* 식단표 내부 줄 맞춤 및 글자 스타일 (요청하신 설정 유지) */
+        .capture-mode-feed .diet-body-wrapper {
+            display: flex;
+            flex-direction: row;
+            height: 100% !important;
+        }
 
-            /* ★ 줄 어긋남 방지 핵심: box-sizing 추가 ★ */
-            .capture-mode-feed .diet-time-label,
-            .capture-mode-feed .diet-grid-line {
-                flex: 1 !important;
-                height: auto !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                box-sizing: border-box !important; 
-                border-bottom: 1px solid #f5f5f5 !important;
-            }
+        .capture-mode-feed .diet-time-col {
+            width: 65px !important;
+            background: #fff8e1;
+            border-right: 2px solid #efebe9;
+        }
 
-            .capture-mode-feed .diet-day-col.header {
-                font-size: 20px !important; 
-                padding: 10px 0 !important;
-                background: #d7ccc8;
-                color: white;
-                border-bottom: 2px solid #8d6e63 !important;
-            }
+        .capture-mode-feed .diet-time-label,
+        .capture-mode-feed .diet-grid-line {
+            flex: 1 !important;
+            box-sizing: border-box !important; 
+            border-bottom: 1px solid #f5f5f5 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
 
-            .capture-mode-feed .diet-time-label {
-                font-size: 15px !important; 
-                font-weight: 800 !important;
-                color: #8d6e63;
-            }
-
-            /* ★ 글자 짙어짐 해결: 세로쓰기 해제 및 그림자 제거 ★ */
-            .capture-mode-feed .evt-title {
-                color: #5d4037 !important; 
-                font-size: 16px !important; 
-                font-weight: 700 !important;
-                writing-mode: horizontal-tb !important; /* 가로쓰기로 복구 */
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                text-align: center !important;
-                text-shadow: none !important; 
-                background: transparent !important;
-                width: 100% !important;
-                height: 100% !important;
-                white-space: normal !important;
-                word-break: keep-all;
-            }
+        .capture-mode-feed .evt-title {
+            color: #5d4037 !important; 
+            font-size: 16px !important; 
+            font-weight: 700 !important;
+            writing-mode: horizontal-tb !important; /* 세로쓰기 해제 유지 */
+            text-align: center !important;
+            text-shadow: none !important; 
+        }
 
             .capture-mode-feed .diet-event {
                 display: flex !important;
