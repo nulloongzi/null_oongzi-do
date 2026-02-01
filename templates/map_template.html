@@ -1337,43 +1337,55 @@
             white-space: nowrap;
         }
 
-        /* 3. 팀 이름 (이벤트 블록) - 회색박스 제거 & 중앙 정렬 & 색상 완화 */
+        /* 3. 팀 이름 (이벤트 블록) - 색상 완화 & 회색박스/그림자 완전 제거 */
         .capture-mode-feed .evt-title {
-            /* [1] 폰트 및 색상 설정 */
-            font-size: 20px !important;
-            font-weight: 800 !important; /* 900에서 800으로 줄여 뭉개짐 방지 */
-            color: #5d4037 !important;   /* 너무 진한 검은색 대신 부드러운 갈색 적용 */
+            /* [1] 폰트 및 색상 수정: 진한 갈색(#5d4037) -> 부드러운 갈색(#8d6e63) */
+            color: #8d6e63 !important; 
+            font-size: 22px !important; /* 글자 크기 살짝 키움 */
+            font-weight: 800 !important;
             
-            /* [2] 줄 간격 및 폰트 통일 */
-            line-height: 1.2 !important; /* 이모지와 한글 높이 균형 */
+            /* [2] 폰트 설정: 이모지와 한글 높이 밸런스 */
+            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+            line-height: 1.2 !important;
             letter-spacing: 0px !important;
-            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Malgun Gothic", sans-serif !important;
 
-            /* [3] 정렬 (Flexbox 완벽 중앙 정렬) */
+            /* [3] 정렬: Flexbox로 수직/수평 중앙 정렬 강력 고정 */
             display: flex !important;
             flex-direction: column !important;
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
             
-            /* [4] 크기 강제 지정 (부모 칸에 꽉 차게) */
+            /* [4] 크기: 부모 칸을 꽉 채우되 넘치지 않게 */
             width: 100% !important;
             height: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
 
-            /* [5] ★ 회색 박스(고스트) 원인 완벽 차단 ★ */
-            writing-mode: horizontal-tb !important; /* 가로쓰기 강제 */
-            background-color: transparent !important; /* 배경 투명 */
-            background: none !important;
-            box-shadow: none !important; /* 그림자 제거 */
-            text-shadow: none !important; /* 텍스트 그림자 제거 */
+            /* [5] ★ 회색 박스/음영 원인 100% 차단 ★ */
+            writing-mode: horizontal-tb !important; 
+            background: transparent !important;
+            background-color: rgba(255, 255, 255, 0) !important; /* 투명도 명시 */
+            box-shadow: none !important;
+            text-shadow: none !important;
             border: none !important;
-            outline: none !important;
             
-            /* 줄바꿈 허용 */
             white-space: normal !important;
-            word-break: keep-all !important;
+        }
+
+        /* [추가] 이벤트 박스 자체의 그림자도 제거 (회색 띠 원인 차단) */
+        .capture-mode-feed .diet-event {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            
+            /* 박스 그림자 제거로 깔끔하게 */
+            box-shadow: none !important; 
+            border-radius: 6px !important; /* 모서리 둥글게 유지 */
+            
+            /* 혹시 모를 배경색 간섭 방지 */
+            background-image: none !important; 
         }
 
         /* [추가] 이벤트 박스 자체의 정렬 보정 */
