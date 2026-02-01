@@ -1336,37 +1336,53 @@
             line-height: 1.2 !important;
             white-space: nowrap;
         }
-        /* 3. 팀 이름 (이벤트 블록) - 이모지 렌더링 최적화 */
+
+        /* 3. 팀 이름 (이벤트 블록) - 회색박스 제거 & 중앙 정렬 & 색상 완화 */
         .capture-mode-feed .evt-title {
-            font-size: 20px !important; 
-            font-weight: 900 !important;
-            letter-spacing: 0px !important; 
-            line-height: 1.2 !important; /* 이모지가 잘리지 않게 높이 살짝 여유 */
+            /* [1] 폰트 및 색상 설정 */
+            font-size: 20px !important;
+            font-weight: 800 !important; /* 900에서 800으로 줄여 뭉개짐 방지 */
+            color: #5d4037 !important;   /* 너무 진한 검은색 대신 부드러운 갈색 적용 */
             
-            /* 세로쓰기 모드 제거 (회색박스 원인 차단) */
-            writing-mode: horizontal-tb !important; 
-            text-orientation: mixed !important;
-            
-            /* Flex로 중앙 정렬 */
+            /* [2] 줄 간격 및 폰트 통일 */
+            line-height: 1.2 !important; /* 이모지와 한글 높이 균형 */
+            letter-spacing: 0px !important;
+            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Malgun Gothic", sans-serif !important;
+
+            /* [3] 정렬 (Flexbox 완벽 중앙 정렬) */
             display: flex !important;
-            flex-direction: column !important; 
+            flex-direction: column !important;
             justify-content: center !important;
             align-items: center !important;
+            text-align: center !important;
             
+            /* [4] 크기 강제 지정 (부모 칸에 꽉 차게) */
             width: 100% !important;
             height: 100% !important;
-            
-            /* ★ 이모지 폰트 지원 추가 ★ */
-            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Malgun Gothic", sans-serif !important;
-            
-            /* 배경 및 그림자 완벽 제거 */
-            background-color: transparent !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+
+            /* [5] ★ 회색 박스(고스트) 원인 완벽 차단 ★ */
+            writing-mode: horizontal-tb !important; /* 가로쓰기 강제 */
+            background-color: transparent !important; /* 배경 투명 */
+            background: none !important;
+            box-shadow: none !important; /* 그림자 제거 */
+            text-shadow: none !important; /* 텍스트 그림자 제거 */
             border: none !important;
+            outline: none !important;
             
-            white-space: normal !important; 
+            /* 줄바꿈 허용 */
+            white-space: normal !important;
             word-break: keep-all !important;
+        }
+
+        /* [추가] 이벤트 박스 자체의 정렬 보정 */
+        .capture-mode-feed .diet-event {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important; /* 내부 패딩 제거하여 정중앙 유도 */
+            box-shadow: none !important; /* 혹시 모를 박스 그림자 제거 */
         }
 
         /* 이벤트 블록 스타일 */
