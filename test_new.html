@@ -1184,63 +1184,62 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 정밀 균형 버전 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 여백 확보 및 높이 최적화 */
         .capture-mode-feed {
             width: 1600px;
             height: 1200px;
             background: #fff8e1;
             
-            /* 1. 테두리 두께 반으로 축소 (50px -> 25px) */
             border: 25px solid #8d6e63; 
             border-radius: 50px; 
             
             display: flex;
             flex-direction: row;
-            align-items: center;
+            align-items: center; /* 수직 중앙 정렬 (내용물을 쟁반 가운데로) */
             justify-content: center;
             
-            /* 2. 간격 통일: 좌측여백 = 기둥간격 = 우측여백 = 60px */
-            padding: 60px;       /* 상하좌우 여백 60px */
-            gap: 60px;           /* 좌우 기둥 사이 간격 60px */
+            padding: 0; /* 패딩 제거 (내부 요소 크기로 제어) */
+            gap: 60px;  /* 좌우 기둥 사이 간격 */
             
             box-sizing: border-box;
             position: relative;
         }
 
-        /* 왼쪽 기둥 (네임카드 + 도시락통) */
+        /* 1. 왼쪽 기둥 (네임카드 + 도시락통) */
         .feed-left-col {
             display: flex;
             flex-direction: column;
             align-items: center;
             
-            /* 3. 높이 맞춤: 식단표와 동일한 높이(100%)를 쓰되, 양끝으로 배치 */
-            height: 100%; 
-            justify-content: space-between; /* 네임카드는 위로, 도시락은 아래로 붙임 */
+            /* ★ 높이를 100%에서 940px로 줄임 
+            - 결과 1: 네임카드와 도시락 사이 간격이 자연스럽게 줄어듦 (space-between 효과)
+            - 결과 2: 위아래로 여백이 생겨 워터마크가 겹치지 않음
+            */
+            height: 940px; 
+            justify-content: space-between; /* 양 끝으로 배치 */
             
             width: 600px; 
-            /* gap 제거: space-between으로 제어함 */
         }
 
-        /* 왼쪽 요소들 확대 및 기준점 변경 (핵심) */
+        /* 왼쪽 요소들 확대 (간격이 좁아졌으므로 1.8배로 살짝 축소하여 밸런스 맞춤) */
         .capture-mode-feed .cloned-card {
-            transform: scale(1.9); 
-            /* 네임카드는 위쪽 끝을 기준으로 확대 (위쪽 라인 맞춤) */
-            transform-origin: top center; 
+            transform: scale(1.8); 
+            transform-origin: top center; /* 위쪽 끝 기준 확대 */
             box-shadow: 0 25px 50px rgba(93,64,55,0.25) !important;
-            margin: 0; /* 마진 제거 (space-between 효과 극대화) */
+            margin: 0; 
         }
 
         .capture-mode-feed .cloned-box {
-            transform: scale(1.9);
-            /* 도시락통은 아래쪽 끝을 기준으로 확대 (아래쪽 라인 맞춤) */
-            transform-origin: bottom center; 
+            transform: scale(1.8);
+            transform-origin: bottom center; /* 아래쪽 끝 기준 확대 */
             margin: 0;
         }
 
-        /* 오른쪽 기둥 (주간 식단표) */
+        /* 2. 오른쪽 기둥 (주간 식단표) */
         .feed-right-col {
-            flex: 1; /* 남은 너비 꽉 채움 */
-            height: 100%; /* 부모 높이(100%) 꽉 채움 */
+            width: 650px; 
+            /* 왼쪽 기둥과 높이를 똑같이 맞춰서 라인을 정렬 */
+            height: 940px; 
             
             background: white;
             border-radius: 35px;
@@ -1256,8 +1255,8 @@
             background: #fac710;
             padding: 25px 0;
             text-align: center;
-            /* 4-1. 식단표 제목 글씨 줄이기 (42px -> 32px) */
-            font-size: 32px; 
+            /* 제목 글씨 크기 더 축소 (부담스럽지 않게) */
+            font-size: 30px; 
             font-weight: 900;
             color: #5d4037;
             border-bottom: 6px dashed #efebe9;
@@ -1269,14 +1268,14 @@
             position: relative;
             background: white;
             
-            /* 4-2. 식단표 내용 글씨 더 키우기 (2.2 -> 2.6) */
-            /* zoom을 키우면 내부의 요일, 시간, 팀명 모두 커집니다 */
-            zoom: 2.6; 
+            /* 내용물 폰트 확대: 2.8배 (요일, 시간, 팀명 아주 잘 보임) */
+            zoom: 2.8; 
         }
 
-        /* 5. 워터마크 위치 더 아래로 */
+        /* 3. 워터마크 위치 조정 */
         .capture-mode-feed .capture-watermark {
-            bottom: 25px; /* 40px -> 25px 로 내림 (테두리가 얇아져서 더 내려도 됨) */
+            /* 쟁반 테두리 근처 바닥에 붙임 */
+            bottom: 30px; 
             right: 40px;
             gap: 10px;
         }
