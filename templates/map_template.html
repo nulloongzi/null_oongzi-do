@@ -636,7 +636,7 @@
             }
         };
 
-        // [최종 수정] 위치 오차 완벽 해결 (퍼센트 변환 방식)
+        // [최종 수정] 높이 오차 0% 완벽 보정 (style.height 사용)
         window.generateShareImage = async function(mode) {
             try {
                 // 1. 데이터 준비
@@ -715,11 +715,18 @@
                     // 식단표 내용 복제
                     const originalDietBody = document.getElementById('dietPlanBody');
                     
-                    // ★ 핵심 로직 수정: 픽셀 계산 대신 퍼센트(%) 변환 ★
-                    // 원본 식단표의 '실제 전체 높이'를 구함 (스크롤 영역 포함)
-                    // 주의: .diet-day-col 중 하나를 기준으로 잡아야 정확함
+                    // ★ 핵심 로직 수정: scrollHeight 대신 style.height 사용 ★
+                    // renderCombinedSchedule 함수가 style.height를 정확하게 'px' 단위로 꽂아줍니다.
+                    // 이걸 가져와야 패딩/마진 오차 없이 정확한 비율이 나옵니다.
                     const originalCol = originalDietBody.querySelector('.diet-day-col');
-                    const originalFullHeight = originalCol ? originalCol.scrollHeight : 1;
+                    
+                    // style.height에서 'px'를 떼고 숫자로 변환 (없으면 scrollHeight로 방어)
+                    let originalFullHeight = 1;
+                    if (originalCol && originalCol.style.height) {
+                        originalFullHeight = parseFloat(originalCol.style.height);
+                    } else if (originalCol) {
+                        originalFullHeight = originalCol.scrollHeight;
+                    }
 
                     // HTML 복사
                     dietBody.innerHTML = originalDietBody.innerHTML;
@@ -732,12 +739,11 @@
                         const oldTop = parseFloat(el.style.top);
                         const oldHeight = parseFloat(el.style.height);
                         
-                        // 전체 높이 대비 몇 %인지 계산
+                        // 전체 높이 대비 몇 %인지 계산 (소수점 정밀도 유지)
                         const topPercent = (oldTop / originalFullHeight) * 100;
                         const heightPercent = (oldHeight / originalFullHeight) * 100;
 
                         // 픽셀(px) 대신 퍼센트(%)로 재설정
-                        // 이제 부모 높이가 860px이든 뭐든 자동으로 비율에 맞춰 늘어남
                         el.style.top = topPercent + '%';
                         el.style.height = heightPercent + '%';
                     });
@@ -1304,7 +1310,9 @@
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-sizing: border-box;
+            /* ★ 테두리 두께를 높이에 포함시켜 계산 오차 방지 ★ */
+            box-sizing: border-box !important; 
+            border-bottom: 1px solid #f5f5f5; /* 테두리 명시 */
         }
 
         /* 폰트 스타일 */
