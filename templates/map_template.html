@@ -439,13 +439,22 @@
             }
         }
 
+        // [최종 수정] 식단표 색상 변경 (진한 파스텔 -> 아주 연한 우유빛 파스텔)
         function renderCombinedSchedule() {
             const container = document.getElementById('dietPlanBody');
             container.innerHTML = '';
 
             const slots = currentProfileData.tempSlots || [];
-            // 누룽지 테마 파스텔 색상
-            const slotColors = ["#fff9c4", "#ffe0b2", "#dcedc8", "#ffccbc", "#e1bee7"]; 
+            
+            // ★ 여기가 핵심! 색상을 아주 연하게 변경했습니다 ★
+            const slotColors = [
+                "#fffde7", // 아주 연한 노랑 (기존 #fff9c4)
+                "#fff3e0", // 아주 연한 주황 (기존 #ffe0b2)
+                "#f1f8e9", // 아주 연한 초록 (기존 #dcedc8)
+                "#fbe9e7", // 아주 연한 분홍 (기존 #ffccbc)
+                "#f3e5f5"  // 아주 연한 보라 (기존 #e1bee7)
+            ];
+            // 왼쪽 띠 색상은 그대로 유지 (포인트)
             const borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
 
             let allEvents = [];
@@ -481,10 +490,10 @@
             const displayEnd = Math.min(24, Math.ceil(maxH) + 1);
             const totalHours = displayEnd - displayStart;
 
-            // [핵심 변경] 높이 자동 계산 (가용 공간 300px 기준)
+            // 높이 계산 로직 유지
             const availableHeight = 300;
             const calculatedHeight = availableHeight / totalHours;
-            const ROW_HEIGHT = Math.max(30, calculatedHeight); // 최소 30px 보장
+            const ROW_HEIGHT = Math.max(30, calculatedHeight); 
             
             const days = ['월', '화', '수', '목', '금', '토', '일'];
             const headerRow = document.createElement('div');
@@ -497,14 +506,12 @@
 
             const bodyWrapper = document.createElement('div');
             bodyWrapper.className = 'diet-body-wrapper';
-            // 부모 높이에 맞춤 (CSS flex)
             
-            // 내부 컨텐츠의 실제 높이 설정 (스크롤 영역)
             const totalContentHeight = totalHours * ROW_HEIGHT;
 
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
-            timeCol.style.height = totalContentHeight + 'px'; // 높이 적용
+            timeCol.style.height = totalContentHeight + 'px'; 
 
             for(let h = displayStart; h < displayEnd; h++) {
                 const label = document.createElement('div');
@@ -518,7 +525,7 @@
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
-                dayCol.style.height = totalContentHeight + 'px'; // 높이 적용
+                dayCol.style.height = totalContentHeight + 'px'; 
                 
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
@@ -550,11 +557,12 @@
                     eventDiv.style.width = (95 - (indent * 5)) + '%';
                     eventDiv.style.zIndex = indent + 1;
                     
+                    // 수정된 slotColors 적용
                     eventDiv.style.backgroundColor = slotColors[evt.slotIdx];
                     eventDiv.style.borderLeft = `4px solid ${borderColors[evt.slotIdx]}`;
                     
                     const nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
-                    // 시간 텍스트 제거하고 팀 이름만 표시
+                    // 중요: evt-title 클래스 적용
                     eventDiv.innerHTML = `<span class="evt-title">${nameDisplay}</span>`;
                     
                     dayCol.appendChild(eventDiv);
@@ -1373,19 +1381,18 @@
             white-space: normal !important;
         }
 
-        /* [추가] 이벤트 박스 자체의 그림자도 제거 (회색 띠 원인 차단) */
+        /* 이 부분도 꼭 적용되어 있어야 합니다 */
         .capture-mode-feed .diet-event {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             padding: 0 !important;
-            
-            /* 박스 그림자 제거로 깔끔하게 */
             box-shadow: none !important; 
-            border-radius: 6px !important; /* 모서리 둥글게 유지 */
+            border-radius: 6px !important; 
+            background-image: none !important;
             
-            /* 혹시 모를 배경색 간섭 방지 */
-            background-image: none !important; 
+            /* 텍스트 색상 강제 지정 (부드러운 갈색) */
+            color: #8d6e63 !important; 
         }
 
         /* [추가] 이벤트 박스 자체의 정렬 보정 */
