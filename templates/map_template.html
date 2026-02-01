@@ -636,28 +636,26 @@
             }
         };
 
-        // [최종 수정] ID 충돌 완벽 방지 + 캡처 안정화
+        // [최종 수정] 위치 보정 로직이 추가된 포장하기 기능
         window.generateShareImage = async function(mode) {
             try {
                 // 1. 데이터 준비
                 if (!currentProfileData) { alert("로그인이 필요합니다."); return; }
                 
-                // 데이터가 없으면 초기화
                 if (!currentProfileData.tempSlots && currentProfileData.bookmarks) {
                     currentProfileData.tempSlots = [...currentProfileData.bookmarks];
                     while(currentProfileData.tempSlots.length < 5) currentProfileData.tempSlots.push(null);
                 }
                 
-                // 원본 화면 강제 렌더링 (데이터 최신화)
                 renderLunchboxGrid();
                 renderCombinedSchedule();
 
                 // 2. 캡처 무대 설정
                 const stage = document.getElementById('captureStage');
-                stage.innerHTML = ""; // 초기화
+                stage.innerHTML = ""; 
                 stage.className = (mode === 'story') ? 'capture-mode-story' : 'capture-mode-feed';
 
-                // 3. 요소 복제 및 [모든 ID 제거] 함수
+                // 3. 요소 복제 및 ID 제거 함수
                 function cloneAndStripIds(elementId, customClass) {
                     const original = document.getElementById(elementId) || document.querySelector(elementId);
                     if (!original) return null;
@@ -665,7 +663,6 @@
                     const clone = original.cloneNode(true);
                     clone.classList.add('cloned-element', customClass);
                     
-                    // ★ 핵심: 복제본과 그 하위 모든 요소의 ID를 제거하여 충돌 방지 ★
                     clone.removeAttribute('id');
                     const allDescendants = clone.querySelectorAll('*');
                     allDescendants.forEach(el => el.removeAttribute('id'));
@@ -675,13 +672,11 @@
 
                 // [A] 네임카드 복제
                 const clonedCard = cloneAndStripIds('#myProfileCard', 'cloned-card');
-                // 로그인 섹션 등 불필요한 부분 제거 (클래스로 찾기)
                 const loginSection = clonedCard.querySelector('.login-section'); 
                 if(loginSection) loginSection.remove();
 
                 // [B] 도시락통 복제
                 const clonedBox = cloneAndStripIds('.lunchbox-wrapper', 'cloned-box');
-                // 불필요한 버튼/식단표 제거
                 const dietContainer = clonedBox.querySelector('.diet-plan-container');
                 if(dietContainer) dietContainer.remove();
                 const dietBtn = clonedBox.querySelector('.diet-toggle-btn');
@@ -697,12 +692,11 @@
 
                 // 4. 레이아웃 조립
                 if (mode === 'story') {
-                    // 스토리: 세로 배치
                     stage.appendChild(clonedCard);
                     stage.appendChild(clonedBox);
                     stage.appendChild(logoBox);
                 } else {
-                    // 피드: 가로 배치
+                    // [피드 모드]
                     const leftCol = document.createElement('div');
                     leftCol.className = 'feed-left-col';
                     leftCol.appendChild(clonedCard);
@@ -718,15 +712,29 @@
                     const dietBody = document.createElement('div');
                     dietBody.className = 'feed-diet-body';
                     
-                    // 식단표는 내용물만 복사
+                    // 식단표 내용 복제
+                    const originalDietWrapper = document.querySelector('#dietPlanBody .diet-body-wrapper');
+                    // ★ 중요: 원본의 실제 렌더링 높이를 가져옵니다 (비율 계산용)
+                    const originalHeight = originalDietWrapper ? originalDietWrapper.scrollHeight : 1;
+
                     const originalDietBody = document.getElementById('dietPlanBody');
                     dietBody.innerHTML = originalDietBody.innerHTML;
-                    // 식단표 내부 ID도 제거
                     dietBody.querySelectorAll('*').forEach(el => el.removeAttribute('id'));
                     
-                    // 스크롤 방지 스타일 강제
-                    const wrapper = dietBody.querySelector('.diet-body-wrapper');
-                    if(wrapper) wrapper.style.overflow = 'visible'; 
+                    // ★ 핵심 로직: 일정 블록 위치 재조정 (Rescaling) ★
+                    // 피드 모드의 식단표 몸체 높이는 CSS에서 860px로 고정됨
+                    const TARGET_HEIGHT = 860; 
+                    const ratio = TARGET_HEIGHT / originalHeight;
+
+                    const events = dietBody.querySelectorAll('.diet-event');
+                    events.forEach(el => {
+                        const oldTop = parseFloat(el.style.top);
+                        const oldHeight = parseFloat(el.style.height);
+                        
+                        // 비율에 맞춰 좌표와 크기를 늘림
+                        el.style.top = (oldTop * ratio) + 'px';
+                        el.style.height = (oldHeight * ratio) + 'px';
+                    });
 
                     rightCol.appendChild(dietHeader);
                     rightCol.appendChild(dietBody);
@@ -736,7 +744,7 @@
                     stage.appendChild(logoBox);
                 }
 
-                // 5. 이미지 생성 (시간차를 약간 둬서 렌더링 안정화)
+                // 5. 이미지 생성
                 setTimeout(() => {
                     html2canvas(stage, {
                         scale: 1, 
@@ -746,8 +754,6 @@
                         logging: false
                     }).then(canvas => {
                         const imgData = canvas.toDataURL("image/png");
-                        
-                        // 미리보기 창 표시
                         const previewBox = document.getElementById('previewImgBox');
                         previewBox.innerHTML = "";
                         const img = document.createElement('img');
@@ -756,14 +762,12 @@
                         
                         document.getElementById('profileOverlay').style.display = 'none';
                         document.getElementById('previewOverlay').style.display = 'flex';
-                        
-                        // 캡처 후 무대 청소
                         stage.innerHTML = "";
                     }).catch(err => {
                         console.error(err);
-                        alert("이미지 생성 중 오류가 발생했습니다.\n" + err);
+                        alert("오류 발생: " + err);
                     });
-                }, 500); // 0.5초 대기 (안정성 확보)
+                }, 500);
 
             } catch (e) {
                 alert("기능 실행 실패: " + e.message);
@@ -1184,23 +1188,19 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 줌 제거 & Flex 완벽 정렬 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 높이 고정 및 Flex 정렬 */
         .capture-mode-feed {
             width: 1600px;
             height: 1200px;
             background: #fff8e1;
-            
             border: 25px solid #8d6e63; 
             border-radius: 50px; 
-            
             display: flex;
             flex-direction: row;
             align-items: center; 
             justify-content: center;
-            
             padding: 0; 
             gap: 60px;  
-            
             box-sizing: border-box;
             position: relative;
         }
@@ -1214,14 +1214,12 @@
             justify-content: space-between; 
             width: 600px; 
         }
-
         .capture-mode-feed .cloned-card {
             transform: scale(1.8); 
             transform-origin: top center; 
             box-shadow: 0 25px 50px rgba(93,64,55,0.25) !important;
             margin: 0; 
         }
-
         .capture-mode-feed .cloned-box {
             transform: scale(1.8);
             transform-origin: bottom center; 
@@ -1231,12 +1229,10 @@
         /* 2. 오른쪽 기둥 (주간 식단표) */
         .feed-right-col {
             width: 650px; 
-            height: 940px;
-            
+            height: 940px; /* 전체 높이 940px */
             background: white;
             border-radius: 35px;
             border: 8px solid #8d6e63;
-            
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -1245,25 +1241,30 @@
 
         .feed-diet-header {
             background: #fac710;
-            padding: 25px 0; /* 헤더 높이 확보 */
-            text-align: center;
-            font-size: 36px; /* 제목 폰트 키움 */
+            /* 헤더 높이를 80px로 고정 (패딩 포함) */
+            height: 80px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px; 
             font-weight: 900;
             color: #5d4037;
             border-bottom: 6px dashed #efebe9;
             flex-shrink: 0;
+            box-sizing: border-box;
         }
 
-        /* ★ 핵심 수정: zoom 제거하고 Flex로 높이 균등 분배 ★ */
+        /* ★ 식단표 본문 높이 860px 고정 (940 - 80 = 860) ★ */
         .feed-diet-body {
-            flex: 1;
+            height: 860px !important; 
             position: relative;
             background: white;
-            zoom: 1; /* 줌 제거 (깨짐 방지) */
+            zoom: 1; /* 줌 제거 */
             display: flex;
             flex-direction: column;
         }
 
+        /* 내부 Wrapper */
         .capture-mode-feed .diet-body-wrapper {
             display: flex;
             flex-direction: row;
@@ -1271,16 +1272,15 @@
             width: 100%;
         }
 
-        /* 시간 기둥 (AM 9, 10...) 너비 늘림 (글자 줄바꿈 방지) */
+        /* 컬럼 스타일 */
         .capture-mode-feed .diet-time-col {
-            width: 65px !important; /* 40px -> 65px 확장 */
+            width: 65px !important;
             display: flex;
             flex-direction: column;
             height: 100% !important;
             border-right: 2px solid #efebe9;
             background: #fff8e1;
         }
-
         .capture-mode-feed .diet-day-col {
             flex: 1;
             display: flex;
@@ -1289,61 +1289,51 @@
             border-right: 1px solid #f5f5f5;
         }
 
-        /* 각 시간 칸(Cell)을 균등하게 늘리기 (flex: 1) */
+        /* 격자 라인 균등 분배 */
         .capture-mode-feed .diet-time-label,
         .capture-mode-feed .diet-grid-line {
-            flex: 1 !important;        /* 남은 공간을 똑같이 나눠가짐 */
-            height: auto !important;   /* 고정 높이 제거 */
+            flex: 1 !important;        /* 남은 공간을 N등분 */
+            height: auto !important;   
             min-height: 0;
-            
-            /* 폰트 및 정렬 설정 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            box-sizing: border-box;
         }
 
-        /* ★ 폰트 크기 "직접" 설정 (zoom 없이도 크게) ★ */
-
-        /* 1. 요일 (월, 화...) */
+        /* 폰트 스타일 */
         .capture-mode-feed .diet-day-col.header {
             font-size: 20px !important; 
             padding: 10px 0 !important;
             background: #d7ccc8;
             color: white;
         }
-
-        /* 2. 시간 (AM 9...) */
         .capture-mode-feed .diet-time-label {
-            font-size: 15px !important; /* 잘 보임 */
+            font-size: 15px !important; 
             font-weight: 800 !important;
             color: #8d6e63;
-            line-height: 1.2 !important; /* 겹침 방지 */
-            flex-direction: column; /* AM과 숫자를 위아래로? 아니면 나란히 */
+            line-height: 1.2 !important;
             white-space: nowrap;
         }
-
-        /* 3. 팀 이름 (이벤트 블록) */
         .capture-mode-feed .evt-title {
-            font-size: 24px !important; /* ★ 아주 크게 설정 ★ */
+            font-size: 24px !important; 
             font-weight: 900 !important;
             letter-spacing: -1px !important;
             line-height: 1.1 !important;
-            
-            /* 세로쓰기 유지하되, 블록 크기에 맞게 */
             writing-mode: vertical-rl; 
             text-orientation: upright;
         }
 
-        /* 이벤트 블록 위치 미세 조정 */
+        /* 이벤트 블록 스타일 */
         .capture-mode-feed .diet-event {
-            width: 90% !important; /* 너비 꽉 차게 */
+            width: 90% !important; 
             left: 5% !important;
             border-radius: 8px !important;
             box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+            /* JS에서 top과 height를 재계산하므로 여기선 건드리지 않음 */
         }
 
-
-        /* 3. 워터마크 위치 */
+        /* 워터마크 위치 */
         .capture-mode-feed .capture-watermark {
             bottom: 30px; 
             right: 40px;
@@ -1366,7 +1356,6 @@
         .cloned-element .diet-toggle-btn {
             display: none !important;
         }
-
         .cloned-box {
             width: 330px !important; 
             background: #fff8e1 !important;
