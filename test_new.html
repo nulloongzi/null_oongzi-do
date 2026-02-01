@@ -513,11 +513,9 @@
             
             const totalContentHeight = totalHours * ROW_HEIGHT;
 
-            const finalHeight = totalContentHeight + 50;
-
             const timeCol = document.createElement('div');
             timeCol.className = 'diet-time-col';
-            timeCol.style.height = finalHeight + 'px'; // 수정된 높이 적용
+            timeCol.style.height = totalContentHeight + 'px'; 
 
             for(let h = displayStart; h < displayEnd; h++) {
                 const label = document.createElement('div');
@@ -531,7 +529,7 @@
             days.forEach(day => {
                 const dayCol = document.createElement('div');
                 dayCol.className = 'diet-day-col';
-                dayCol.style.height = finalHeight + 'px'; // 수정된 높이 적용
+                dayCol.style.height = totalContentHeight + 'px'; 
                 
                 for(let h = displayStart; h < displayEnd; h++) {
                     const line = document.createElement('div');
