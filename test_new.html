@@ -1184,7 +1184,7 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 폰트 슈퍼 사이즈 버전 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 줌 제거 & Flex 완벽 정렬 */
         .capture-mode-feed {
             width: 1600px;
             height: 1200px;
@@ -1245,63 +1245,101 @@
 
         .feed-diet-header {
             background: #fac710;
-            padding: 20px 0;
+            padding: 25px 0; /* 헤더 높이 확보 */
             text-align: center;
-            font-size: 32px; 
+            font-size: 36px; /* 제목 폰트 키움 */
             font-weight: 900;
             color: #5d4037;
             border-bottom: 6px dashed #efebe9;
             flex-shrink: 0;
         }
 
-        /* 식단표 본문 */
+        /* ★ 핵심 수정: zoom 제거하고 Flex로 높이 균등 분배 ★ */
         .feed-diet-body {
             flex: 1;
             position: relative;
             background: white;
-            
-            /* zoom 2.0 유지 (전체 레이아웃 크기 유지) */
-            zoom: 2.0; 
-            
+            zoom: 1; /* 줌 제거 (깨짐 방지) */
             display: flex;
             flex-direction: column;
         }
 
-        /* 레이아웃 강제 고정 (스크롤 방지) */
         .capture-mode-feed .diet-body-wrapper {
+            display: flex;
+            flex-direction: row;
             height: 100% !important; 
-            overflow: hidden !important; 
+            width: 100%;
         }
-        .capture-mode-feed .diet-time-col,
+
+        /* 시간 기둥 (AM 9, 10...) 너비 늘림 (글자 줄바꿈 방지) */
+        .capture-mode-feed .diet-time-col {
+            width: 65px !important; /* 40px -> 65px 확장 */
+            display: flex;
+            flex-direction: column;
+            height: 100% !important;
+            border-right: 2px solid #efebe9;
+            background: #fff8e1;
+        }
+
         .capture-mode-feed .diet-day-col {
-            height: 100% !important; 
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100% !important;
+            border-right: 1px solid #f5f5f5;
         }
+
+        /* 각 시간 칸(Cell)을 균등하게 늘리기 (flex: 1) */
         .capture-mode-feed .diet-time-label,
         .capture-mode-feed .diet-grid-line {
-            height: 4.5% !important; 
-            min-height: 0 !important;
+            flex: 1 !important;        /* 남은 공간을 똑같이 나눠가짐 */
+            height: auto !important;   /* 고정 높이 제거 */
+            min-height: 0;
+            
+            /* 폰트 및 정렬 설정 */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
 
-        /* ★ 폰트 크기 대폭 확대 설정 (zoom 2.0과 곱해져서 매우 커짐) ★ */
+        /* ★ 폰트 크기 "직접" 설정 (zoom 없이도 크게) ★ */
 
-        /* 1. 요일 (월, 화, 수...) */
+        /* 1. 요일 (월, 화...) */
         .capture-mode-feed .diet-day-col.header {
-            font-size: 20px !important; /* 기존 대비 약 1.5배 확대 */
-            padding: 6px 0 !important;
+            font-size: 20px !important; 
+            padding: 10px 0 !important;
+            background: #d7ccc8;
+            color: white;
         }
 
-        /* 2. 시간 (AM 9, 10...) */
+        /* 2. 시간 (AM 9...) */
         .capture-mode-feed .diet-time-label {
-            font-size: 16px !important; /* 숫자가 아주 잘 보이게 확대 */
-            font-weight: 900 !important;
+            font-size: 15px !important; /* 잘 보임 */
+            font-weight: 800 !important;
+            color: #8d6e63;
+            line-height: 1.2 !important; /* 겹침 방지 */
+            flex-direction: column; /* AM과 숫자를 위아래로? 아니면 나란히 */
+            white-space: nowrap;
         }
 
-        /* 3. 팀 이름 (시간 블록 안의 글씨) - 가장 중요! */
+        /* 3. 팀 이름 (이벤트 블록) */
         .capture-mode-feed .evt-title {
-            font-size: 19px !important; /* 19px * 2.0 = 38px (도시락통 글씨보다 훨씬 큼) */
+            font-size: 24px !important; /* ★ 아주 크게 설정 ★ */
             font-weight: 900 !important;
-            letter-spacing: -1px !important; /* 자간을 좁혀서 긴 이름도 잘 들어가게 */
+            letter-spacing: -1px !important;
             line-height: 1.1 !important;
+            
+            /* 세로쓰기 유지하되, 블록 크기에 맞게 */
+            writing-mode: vertical-rl; 
+            text-orientation: upright;
+        }
+
+        /* 이벤트 블록 위치 미세 조정 */
+        .capture-mode-feed .diet-event {
+            width: 90% !important; /* 너비 꽉 차게 */
+            left: 5% !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
         }
 
 
