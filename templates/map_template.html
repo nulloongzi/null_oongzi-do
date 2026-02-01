@@ -1184,7 +1184,7 @@
             margin-top: 150px;
         }
 
-        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 여백 확보 및 높이 최적화 */
+        /* [B] 피드 모드 (4:3 비율 - 1600 x 1200) - 글자 확대 최종판 */
         .capture-mode-feed {
             width: 1600px;
             height: 1200px;
@@ -1195,51 +1195,46 @@
             
             display: flex;
             flex-direction: row;
-            align-items: center; /* 수직 중앙 정렬 (내용물을 쟁반 가운데로) */
+            align-items: center; 
             justify-content: center;
             
-            padding: 0; /* 패딩 제거 (내부 요소 크기로 제어) */
-            gap: 60px;  /* 좌우 기둥 사이 간격 */
+            padding: 0; 
+            gap: 60px;  
             
             box-sizing: border-box;
             position: relative;
         }
 
-        /* 1. 왼쪽 기둥 (네임카드 + 도시락통) */
+        /* 1. 왼쪽 기둥 (높이 940px 유지) */
         .feed-left-col {
             display: flex;
             flex-direction: column;
             align-items: center;
             
-            /* ★ 높이를 100%에서 940px로 줄임 
-            - 결과 1: 네임카드와 도시락 사이 간격이 자연스럽게 줄어듦 (space-between 효과)
-            - 결과 2: 위아래로 여백이 생겨 워터마크가 겹치지 않음
-            */
+            /* 높이를 940px로 고정하여 식단표와 라인을 맞춤 */
             height: 940px; 
-            justify-content: space-between; /* 양 끝으로 배치 */
+            justify-content: space-between; 
             
             width: 600px; 
         }
 
-        /* 왼쪽 요소들 확대 (간격이 좁아졌으므로 1.8배로 살짝 축소하여 밸런스 맞춤) */
         .capture-mode-feed .cloned-card {
             transform: scale(1.8); 
-            transform-origin: top center; /* 위쪽 끝 기준 확대 */
+            transform-origin: top center; 
             box-shadow: 0 25px 50px rgba(93,64,55,0.25) !important;
             margin: 0; 
         }
 
         .capture-mode-feed .cloned-box {
             transform: scale(1.8);
-            transform-origin: bottom center; /* 아래쪽 끝 기준 확대 */
+            transform-origin: bottom center; 
             margin: 0;
         }
 
         /* 2. 오른쪽 기둥 (주간 식단표) */
         .feed-right-col {
             width: 650px; 
-            /* 왼쪽 기둥과 높이를 똑같이 맞춰서 라인을 정렬 */
-            height: 940px; 
+            height: 940px; /* 왼쪽 기둥과 높이 동일 */
             
             background: white;
             border-radius: 35px;
@@ -1255,8 +1250,7 @@
             background: #fac710;
             padding: 25px 0;
             text-align: center;
-            /* 제목 글씨 크기 더 축소 (부담스럽지 않게) */
-            font-size: 30px; 
+            font-size: 30px; /* 제목 크기는 유지 */
             font-weight: 900;
             color: #5d4037;
             border-bottom: 6px dashed #efebe9;
@@ -1268,13 +1262,25 @@
             position: relative;
             background: white;
             
-            /* 내용물 폰트 확대: 2.8배 (요일, 시간, 팀명 아주 잘 보임) */
-            zoom: 2.8; 
+            /* ★ 핵심 수정: 2.8배 -> 3.5배로 대폭 확대 ★ */
+            /* 이 수치를 높이면 식단표 안의 모든 내용(칸, 글씨)이 커집니다 */
+            zoom: 3.5; 
         }
 
-        /* 3. 워터마크 위치 조정 */
+        /* [추가] 캡처 모드에서만 폰트 자체 체급을 키움 (zoom과 곱해져서 훨씬 커짐) */
+        .capture-mode-feed .diet-day-col.header {
+            font-size: 13px !important; /* 요일 */
+        }
+        .capture-mode-feed .diet-time-label {
+            font-size: 12px !important; /* 시간 */
+            font-weight: 800 !important;
+        }
+        .capture-mode-feed .evt-title {
+            font-size: 11px !important; /* 팀 이름 (기본 10px -> 11px로 증가) */
+        }
+
+        /* 3. 워터마크 위치 */
         .capture-mode-feed .capture-watermark {
-            /* 쟁반 테두리 근처 바닥에 붙임 */
             bottom: 30px; 
             right: 40px;
             gap: 10px;
@@ -1287,7 +1293,7 @@
             font-size: 28px;
         }
 
-        /* 클린업 & 도시락통 너비 고정 */
+        /* 클린업 */
         .cloned-element .btn-logout,
         .cloned-element .pc-share-btn,
         .cloned-element .pc-edit-btn,
