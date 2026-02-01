@@ -636,7 +636,7 @@
             }
         };
 
-        // [최종 수정] 높이 기준점 선택 오류 수정 (헤더가 아닌 몸통 높이 참조)
+        // [최종 수정] 세로쓰기 깨짐 방지 (BR 태그 변환 방식) + 높이 보정
         window.generateShareImage = async function(mode) {
             try {
                 // 1. 데이터 준비
@@ -714,39 +714,40 @@
                     
                     // 식단표 내용 복제
                     const originalDietBody = document.getElementById('dietPlanBody');
-                    
-                    // ★ 핵심 버그 수정: 헤더가 아닌 '몸통(wrapper)' 안의 컬럼을 선택하도록 명시 ★
                     const originalCol = originalDietBody.querySelector('.diet-body-wrapper .diet-day-col');
                     
-                    // 정확한 높이값 추출
                     let originalFullHeight = 1;
                     if (originalCol && originalCol.style.height) {
                         originalFullHeight = parseFloat(originalCol.style.height);
                     } else if (originalCol) {
                         originalFullHeight = originalCol.scrollHeight;
                     }
-                    
-                    // 안전장치: 높이가 0이거나 너무 작으면 강제로 보정 (최소 100px)
-                    if (originalFullHeight < 100) originalFullHeight = 300; // 기본값
+                    if (originalFullHeight < 100) originalFullHeight = 300; 
 
                     // HTML 복사
                     dietBody.innerHTML = originalDietBody.innerHTML;
                     dietBody.querySelectorAll('*').forEach(el => el.removeAttribute('id'));
                     
-                    // 복제된 이벤트 블록들을 찾아서 %로 변환
+                    // (1) 위치/높이 보정
                     const events = dietBody.querySelectorAll('.diet-event');
                     events.forEach(el => {
-                        // 원래 픽셀 값 읽기
                         const oldTop = parseFloat(el.style.top);
                         const oldHeight = parseFloat(el.style.height);
-                        
-                        // 전체 높이 대비 몇 %인지 계산 (소수점 정밀도 유지)
                         const topPercent = (oldTop / originalFullHeight) * 100;
                         const heightPercent = (oldHeight / originalFullHeight) * 100;
-
-                        // 픽셀(px) 대신 퍼센트(%)로 재설정
                         el.style.top = topPercent + '%';
                         el.style.height = heightPercent + '%';
+                    });
+
+                    // ★ (2) 글자 세로쓰기 변환 (CSS writing-mode 제거용) ★
+                    const titles = dietBody.querySelectorAll('.evt-title');
+                    titles.forEach(span => {
+                        // 기존 텍스트 가져오기 (이모지 포함될 수 있음)
+                        const text = span.innerText.trim();
+                        // 한 글자씩 쪼개서 <br> 태그로 연결 (물리적 줄바꿈)
+                        // 🍙 이모지가 있으면 같이 처리됨
+                        const verticalText = text.split('').join('<br>');
+                        span.innerHTML = verticalText;
                     });
 
                     rightCol.appendChild(dietHeader);
@@ -1330,13 +1331,35 @@
             line-height: 1.2 !important;
             white-space: nowrap;
         }
+        /* 3. 팀 이름 (이벤트 블록) - 수정됨 */
         .capture-mode-feed .evt-title {
-            font-size: 24px !important; 
+            font-size: 20px !important; /* 글자 크기 살짝 조정 */
             font-weight: 900 !important;
-            letter-spacing: -1px !important;
-            line-height: 1.1 !important;
-            writing-mode: vertical-rl; 
-            text-orientation: upright;
+            letter-spacing: 0px !important; /* 자간 초기화 */
+            line-height: 1.1 !important; /* 줄 간격 */
+            
+            /* ★ 핵심: 세로쓰기 모드 제거 (회색박스 원인) ★ */
+            writing-mode: horizontal-tb !important; 
+            text-orientation: mixed !important;
+            
+            /* Flex로 중앙 정렬 */
+            display: flex !important;
+            flex-direction: column !important; /* 어차피 br태그가 있지만 확실하게 */
+            justify-content: center !important;
+            align-items: center !important;
+            
+            width: 100% !important;
+            height: 100% !important;
+            
+            /* 배경 및 그림자 제거 (회색박스 완벽 제거) */
+            background: transparent !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+            border: none !important;
+            
+            /* 긴 이름도 줄바꿈 허용 */
+            white-space: normal !important; 
+            word-break: break-all !important;
         }
 
         /* 이벤트 블록 스타일 */
