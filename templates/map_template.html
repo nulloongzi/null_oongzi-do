@@ -209,18 +209,9 @@
             card.style.backgroundColor = bgColor;
             riceWatermark.innerText = riceName;
 
-            // [수정 후] 두 가지 날짜 형식을 모두 대응하도록 변경
+            nicknameEl.innerText = currentProfileData.full_nickname;
             if (currentProfileData.created_at) {
-                let d;
-                // 1. Firestore Timestamp 형식인 경우 (seconds 속성 존재)
-                if (currentProfileData.created_at.seconds) {
-                    d = new Date(currentProfileData.created_at.seconds * 1000);
-                } 
-                // 2. 방금 가입해서 자바스크립트 Date 객체인 경우
-                else {
-                    d = new Date(currentProfileData.created_at);
-                }
-                
+                const d = new Date(currentProfileData.created_at.seconds * 1000);
                 dateEl.innerText = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
             }
 
