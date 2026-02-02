@@ -632,5 +632,19 @@
         "is_urgent": false,
         "urgent_msg": "",
         "id": "ffac723eebdb"
+    },
+    {
+        "name": "서울배구클럽",
+        "target": "성인, 대학생",
+        "address": "서울 송파구 위례북로 10",
+        "schedule": "토 13:00~18:00",
+        "price": "월 3만원, 게스트 1만원",
+        "insta": "seoulvc_official",
+        "link": "https://open.kakao.com/o/gxsX83qh",
+        "lat": 37.4855916213524,
+        "lng": 127.1470595726,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "049cbf226d3f"
     }
 ]
