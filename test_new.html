@@ -196,34 +196,50 @@
 
         function renderProfileCard() {
             if (!currentProfileData) return;
+            
+            // HTML 요소 가져오기
             const card = document.getElementById('myProfileCard');
             const nicknameEl = document.getElementById('pcNickname');
             const dateEl = document.getElementById('pcDate');
             const mainTeamEl = document.getElementById('pcMainTeam');
             const riceWatermark = document.getElementById('pcRiceWatermark');
 
-            const riceName = currentProfileData.nickname || currentProfileData.full_nickname.split('-')[0];
+            // [핵심 수정 1] 닉네임 표시하기 (이 줄이 없으면 "..."으로 나옵니다)
+            // full_nickname이 있으면 쓰고, 없으면 nickname, 둘 다 없으면 "손님"
+            const displayName = currentProfileData.full_nickname || currentProfileData.nickname || "손님";
+            nicknameEl.innerText = displayName;
+
+            // [핵심 수정 2] 밥 종류(배경색) 결정 로직
+            let riceName = "백미밥"; // 기본값
+            if (currentProfileData.nickname) {
+                // 구버전 데이터(nickname만 있는 경우)
+                riceName = currentProfileData.nickname;
+            } else if (currentProfileData.full_nickname) {
+                // 신버전 데이터(full_nickname: 현미밥-a1b) -> 앞부분만 추출
+                riceName = currentProfileData.full_nickname.split('-')[0];
+            }
+
+            // 배경색 적용
             const foundRice = riceData.find(r => r.name === riceName);
             let bgColor = foundRice ? foundRice.color : "#fff9c4"; 
-            
             card.style.backgroundColor = bgColor;
             riceWatermark.innerText = riceName;
 
-            // [수정 후] 두 가지 날짜 형식을 모두 대응하도록 변경
+            // [핵심 수정 3] 가입일 오류(NaN) 방지 로직
             if (currentProfileData.created_at) {
                 let d;
-                // 1. Firestore Timestamp 형식인 경우 (seconds 속성 존재)
+                // DB에서 가져온 경우 (Timestamp: seconds 있음)
                 if (currentProfileData.created_at.seconds) {
                     d = new Date(currentProfileData.created_at.seconds * 1000);
                 } 
-                // 2. 방금 가입해서 자바스크립트 Date 객체인 경우
+                // 방금 가입한 경우 (Date 객체: seconds 없음)
                 else {
                     d = new Date(currentProfileData.created_at);
                 }
-                
                 dateEl.innerText = "가입일: " + d.getFullYear() + "." + (d.getMonth()+1) + "." + d.getDate();
             }
 
+            // [기타] 찜한 팀 표시 로직 (기존 유지)
             const bookmarks = currentProfileData.bookmarks || [];
             const validTeamIds = bookmarks.filter(id => id !== null);
             
