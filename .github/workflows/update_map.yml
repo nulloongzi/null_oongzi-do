@@ -28,7 +28,7 @@ jobs:
 
     # 4. 파이썬 파일(manage_map.py)을 실행합니다.
     - name: Run update script
-      run: python manage_map.py
+      run: python main.py
 
     # 5. 변경된 파일(index.html 등)이 있으면 깃허브에 저장(Commit & Push)합니다.
     - name: Commit and Push changes
