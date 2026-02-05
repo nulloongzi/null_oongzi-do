@@ -646,5 +646,19 @@
         "is_urgent": false,
         "urgent_msg": "",
         "id": "049cbf226d3f"
+    },
+    {
+        "name": "평택BLANK",
+        "target": "성인, 대학생",
+        "address": "경기 평택시 함박산로 10",
+        "schedule": "화 19:00~21:00 / 목 19:00~21:00",
+        "price": "월2만원/게스트1만원",
+        "insta": "blank_volleyball",
+        "link": "https://open.kakao.com/o/sIAltE9h",
+        "lat": 37.0426733968881,
+        "lng": 127.043483106027,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "24cc56787b76"
     }
 ]
