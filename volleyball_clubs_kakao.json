@@ -295,36 +295,6 @@
         "urgent_msg": ""
     },
     {
-        "name": "하이발리",
-        "target": "성인",
-        "address": "경기 파주시 다율로30",
-        "schedule": "수 19:00~21:00",
-        "price": "월 4만원 / 게스트 1만원",
-        "insta": "high.volley",
-        "link": "",
-        "lat": 37.7379799283829,
-        "lng": 126.727030320218,
-        "id": "f4346956e4eb",
-        "is_urgent": false,
-        "urgent_msg": "",
-        "angle": 0.0
-    },
-    {
-        "name": "하이발리",
-        "target": "성인, 남(구력 1년 이상), 여(구력 2년 이상)",
-        "address": "경기 파주시 다율로 30",
-        "schedule": "수 19:00~21:00",
-        "price": "월 4만원 / 게스트 1만원",
-        "insta": "high.volley",
-        "link": "",
-        "lat": 37.7379799283829,
-        "lng": 126.726830320218,
-        "is_urgent": false,
-        "urgent_msg": "",
-        "angle": 3.141592653589793,
-        "id": "e1e788052a3c"
-    },
-    {
         "name": "임팩트",
         "target": "성인, 대학생, 청소년",
         "address": "경기 파주시 월롱면 휴암로 434",
@@ -676,5 +646,20 @@
         "is_urgent": false,
         "urgent_msg": "",
         "id": "24cc56787b76"
+    },
+    {
+        "name": "하이발리",
+        "target": "성인, 남(구력 1년 이상), 여(구력 2년 이상)",
+        "address": "경기 파주시 다율로 30",
+        "schedule": "수 19:00~21:00",
+        "price": "월 4만원 / 게스트 1만원",
+        "insta": "high.volley",
+        "link": "",
+        "lat": 37.7379799283829,
+        "lng": 126.726830320218,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "angle": 3.141592653589793,
+        "id": "e1e788052a3c"
     }
 ]
