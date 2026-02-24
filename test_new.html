@@ -16,6 +16,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, collection, addDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCnzjy0jzK6HD34Z-i7tapG3y-hkrA-XaM",
@@ -39,6 +40,11 @@
             window.firebaseSetDoc = setDoc;
             window.firebaseCollection = collection;
             window.firebaseServerTimestamp = serverTimestamp;
+            const storage = getStorage(app);
+            window.firebaseStorage = storage;
+            window.firebaseRef = ref;
+            window.firebaseUploadBytes = uploadBytes;
+            window.firebaseGetDownloadURL = getDownloadURL;
             // 앱 구동 시 데이터 즉시 불러오기
             getDocs(collection(db, "clubs")).then(snapshot => {
                 const clubsData = snapshot.docs.map(doc => {
@@ -329,6 +335,7 @@
                 id: newId,
                 name: name,
                 schedule: schedule,
+                schedule_raw: schedule_raw,
                 isCustom: true,
                 target: "나만의 메뉴",
                 address: "사용자 추가",
@@ -2743,6 +2750,39 @@
             background: #ccc;
             cursor: not-allowed;
         }
+
+        .sched-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .sched-row select {
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .sched-row select:focus {
+            border-color: var(--nurungji-brown);
+        }
+
+        .sched-row .del-btn {
+            background: #ff5252;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: auto;
+        }
     </style>
 
 </head>
@@ -2970,6 +3010,7 @@
 
                 var labelClass = club.is_urgent ? 'label urgent' : 'label';
                 var iconHtml = club.is_urgent ? '🔥 ' : '';
+                if (club.is_verified) iconHtml = '🎗️ ' + iconHtml;
                 var content = '<div class="' + labelClass + '" onclick="triggerMarkerClick(\'' + club.id + '\')">' + iconHtml + club.name + '</div>';
                 var xAnc = 0.5; var yAnc = 1;
                 if (club.angle !== undefined) { xAnc = 0.5 - (Math.cos(club.angle) * 0.5); }
@@ -3235,6 +3276,48 @@
             }
         }
 
+
+        async function toggleClubUrgentState(club) {
+            var pin = prompt("팀 관리자 PIN 번호 4자리를 입력해주세요.\n(기본 핀번호: 1234)");
+            if (pin !== "1234") {
+                alert("PIN 번호가 일치하지 않습니다.");
+                return;
+            }
+
+            var newStatus = !club.is_urgent;
+            var newMsg = "";
+            if (newStatus) {
+                newMsg = prompt("급구 메시지를 입력해주세요! (예: 라이트 1명 급구)", "센터 1명 급구합니다!");
+                if (!newMsg) return; // 취소
+            }
+
+            // Firestore 연동
+            try {
+                var clubRef = window.firebaseDoc(window.firebaseDB, 'clubs', club.id);
+                await window.firebaseSetDoc(clubRef, {
+                    is_urgent: newStatus,
+                    urgent_msg: newMsg
+                }, { merge: true });
+
+                alert(newStatus ? "🔥 급구가 등록되었습니다!" : "급구가 마감되었습니다.");
+                // 로컬 데이터 갱신 및 리렌더링
+                club.is_urgent = newStatus;
+                club.urgent_msg = newMsg;
+
+                // 마커 리렌더링 위해 초기화
+                markers.forEach(m => m.marker.setMap(null));
+                markers.forEach(m => m.overlay.setMap(null));
+                clusterer.clear();
+                markers = [];
+                initMarkers();
+                openClubDetail(club.id);
+
+            } catch (e) {
+                console.error(e);
+                alert("업데이트 중 오류가 발생했습니다.");
+            }
+        }
+
         function toggleTimeExpand() {
             if (sheetState === 'PEEK') updateSheetState('EXPANDED');
             else if (sheetState === 'EXPANDED') updateSheetState('PEEK');
@@ -3244,7 +3327,7 @@
             document.getElementById('topSearchInput').blur();
             var club = clubs.find(c => c.id === id);
 
-            var titleHtml = club.name;
+            var titleHtml = club.is_verified ? "🎗️ " + club.name : club.name;
             if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + instaCssIcon + '</a>';
             document.getElementById('sheetTitle').innerHTML = titleHtml;
             document.getElementById('sheetPrice').innerText = club.price || "회비 정보 없음";
@@ -3262,6 +3345,21 @@
                 urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
                 urgentArea.style.display = 'block';
             } else { urgentArea.style.display = 'none'; }
+
+            // 급구 관리 버튼 (인증팀 한정)
+            var actionBtns = document.querySelector('.action-buttons');
+            var existingManageBtn = document.getElementById('btnManageUrgent');
+            if (existingManageBtn) existingManageBtn.remove();
+
+            if (club.is_verified) {
+                var manageBtn = document.createElement('button');
+                manageBtn.id = 'btnManageUrgent';
+                manageBtn.className = 'btn';
+                manageBtn.style = 'background: #ff5252; color: #fff; margin-left: 10px;';
+                manageBtn.innerText = club.is_urgent ? '🔥 급구 내리기' : '🔥 급구 올리기';
+                manageBtn.onclick = function () { toggleClubUrgentState(club); };
+                actionBtns.appendChild(manageBtn);
+            }
 
             // [NEW] 찜하기 버튼에 onclick 이벤트 연결
             var btnBookmark = document.getElementById('btnBookmark');
@@ -3539,6 +3637,10 @@
                 <span class="reg-modal-close" onclick="closeRegistrationModal()">×</span>
             </div>
             <div class="reg-modal-body">
+                <div
+                    style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px 15px; margin-bottom: 20px; font-size: 13px; color: #555; line-height: 1.4; border-radius: 4px;">
+                    <strong>💡 팁:</strong> 요일별로 체육관 위치가 다른 경우, 정확한 핀 표시를 위해 <strong>장소별로 각각 등록</strong> 부탁드립니다!
+                </div>
                 <div class="reg-form-group">
                     <label>팀 이름 (필수)</label>
                     <input type="text" id="regName" placeholder="예: GVT 배구클럽">
@@ -3549,11 +3651,25 @@
                 </div>
                 <div class="reg-form-group">
                     <label>주소 (필수) - 실제 체육관 주소</label>
-                    <input type="text" id="regAddress" placeholder="예: 서울 송파구 올림픽로 424">
+                    <div style="display: flex; gap: 10px; align-items: stretch;">
+                        <input type="text" id="regAddress" placeholder="예: 서울 송파구 올림픽로 424" style="flex:1;"
+                            oninput="window.selectedCoords=null;">
+                        <button type="button" onclick="startMapPicker()"
+                            style="padding: 0 15px; background: #fff; border: 1px solid var(--nurungji-brown); color: var(--nurungji-brown); border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; white-space: nowrap;">📍
+                            지도에서 찾기</button>
+                    </div>
                 </div>
                 <div class="reg-form-group">
-                    <label>운동 시간 (스케줄)</label>
-                    <input type="text" id="regSchedule" placeholder="예: 화 19:00~22:00 / 토 14:00~18:00">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>운동 시간 (스케줄)</span>
+                        <button type="button" onclick="addScheduleRow()"
+                            style="background: var(--nurungji-brown); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">+
+                            추가</button>
+                    </label>
+                    <div id="scheduleContainer"
+                        style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                        <!-- JS에서 동적으로 채워짐 -->
+                    </div>
                 </div>
                 <div class="reg-form-group">
                     <label>회비 및 게스트비</label>
@@ -3567,13 +3683,12 @@
                     <label>가입/문의 링크 (선택)</label>
                     <input type="text" id="regLink" placeholder="예: https://open.kakao.com/o/...">
                 </div>
-                <div class="reg-form-group" style="display:flex; align-items:center;">
-                    <label style="margin-bottom:0; margin-right:10px;">팀원 급구 중인가요?</label>
-                    <input type="checkbox" id="regIsUrgent" onchange="toggleUrgentMsgInput()">
-                </div>
-                <div class="reg-form-group" id="regUrgentMsgGroup" style="display:none;">
-                    <label>급구 메시지</label>
-                    <input type="text" id="regUrgentMsg" placeholder="예: 남자부 모집중!! 게스트 환영!!">
+                <div class="reg-form-group">
+                    <label>팀 활동/체육관 사진 첨부 (필수)</label>
+                    <input type="file" id="regPhoto" accept="image/*"
+                        style="width:100%; padding:10px; background:rgba(255,255,255,0.7); border-radius:10px; border:1px solid #e0e0e0; font-size:14px;">
+                    <div style="font-size:12px; color:#888; margin-top:5px;">※ 사진 확인 후 🎗️인증 마크가 부여됩니다. 인증팀만 급구 등록이
+                        가능합니다.</div>
                 </div>
                 <button id="regSubmitBtn" class="reg-submit-btn" onclick="submitRegistration()">등록하기</button>
             </div>
@@ -3582,9 +3697,65 @@
 
     <script>
         // --- 팀 등록 관련 스크립트 ---
+
+        function generateTimeOptions() {
+            let options = '';
+            for (let i = 6; i <= 23; i++) {
+                let hour = i.toString().padStart(2, '0');
+                options += `<option value="${hour}:00">${hour}:00</option>`;
+                options += `<option value="${hour}:30">${hour}:30</option>`;
+            }
+            return options;
+        }
+
+        function addScheduleRow() {
+            var container = document.getElementById('scheduleContainer');
+            var rowCount = container.children.length;
+            var row = document.createElement('div');
+            row.className = 'sched-row';
+            row.id = 'schedRow_' + Date.now() + Math.random().toString(36).substr(2, 5);
+
+            var timeOpts = generateTimeOptions();
+
+            row.innerHTML = `
+                <select class="sched-day">
+                    <option value="월">월</option><option value="화">화</option><option value="수">수</option>
+                    <option value="목">목</option><option value="금">금</option><option value="토">토</option><option value="일">일</option>
+                </select>
+                <select class="sched-start">${timeOpts.replace('"19:00"', '"19:00" selected')}</select>
+                <span>~</span>
+                <select class="sched-end">${timeOpts.replace('"22:00"', '"22:00" selected')}</select>
+                ${rowCount > 0 ? `<button type="button" class="del-btn" onclick="this.parentElement.remove()">🗑</button>` : `<div style="width:33px; margin-left:auto;"></div>`}
+            `;
+            container.appendChild(row);
+        }
+
+        function getScheduleData() {
+            var container = document.getElementById('scheduleContainer');
+            var rawList = [];
+            var textParts = [];
+
+            Array.from(container.children).forEach(row => {
+                var day = row.querySelector('.sched-day').value;
+                var start = row.querySelector('.sched-start').value;
+                var end = row.querySelector('.sched-end').value;
+                rawList.push({ day: day, start: start, end: end });
+                textParts.push(`${day} ${start}~${end}`);
+            });
+
+            return {
+                raw: rawList,
+                text: textParts.join(', ') // "월 19:00~21:00, 목 20:00~22:00" 형태
+            };
+        }
+
         function openRegistrationModal(isUrgent) {
             document.getElementById('regModalTitle').innerText = isUrgent ? '급구/제보하기' : '팀 등록하기';
-            document.getElementById('regIsUrgent').checked = isUrgent;
+
+            var schedContainer = document.getElementById('scheduleContainer');
+            if (schedContainer && schedContainer.children.length === 0) {
+                addScheduleRow(); // 첫 번째 행 자동 생성
+            }
             toggleUrgentMsgInput();
             document.getElementById('regModalOverlay').style.display = 'flex';
         }
@@ -3594,7 +3765,7 @@
         }
 
         function toggleUrgentMsgInput() {
-            var isUrgent = document.getElementById('regIsUrgent').checked;
+            var isUrgent = false;
             document.getElementById('regUrgentMsgGroup').style.display = isUrgent ? 'block' : 'none';
         }
 
@@ -3602,16 +3773,65 @@
             return Math.random().toString(36).substring(2, 14);
         }
 
+
+        // --- 지도 기반 주소 선택 로직 ---
+        window.selectedCoords = null;
+        document.getElementById('scheduleContainer').innerHTML = '';
+        document.getElementById("regPhoto").value = "";
+        addScheduleRow(); // 저장할 좌표
+
+        function startMapPicker() {
+            closeRegistrationModal(); // 폼 닫기
+            document.getElementById('mapPickerOverlay').style.display = 'block';
+        }
+
+        function cancelMapPicker() {
+            document.getElementById('mapPickerOverlay').style.display = 'none';
+            openRegistrationModal(false); // 다시 폼 열기
+        }
+
+        function confirmMapPicker() {
+            if (!map) return;
+            var center = map.getCenter();
+            var lat = center.getLat();
+            var lng = center.getLng();
+            window.selectedCoords = { lat: lat, lng: lng }; // 직접 저장
+
+            // 도로명 주소 가져오기 (리버스 지오코딩)
+            var geocoder = new kakao.maps.services.Geocoder();
+            geocoder.coord2Address(lng, lat, function (result, status) {
+                var detailAddr = "지도에서 선택된 위치";
+                if (status === kakao.maps.services.Status.OK && result[0]) {
+                    detailAddr = !!result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
+                }
+                document.getElementById('regAddress').value = detailAddr;
+
+                document.getElementById('mapPickerOverlay').style.display = 'none';
+                openRegistrationModal(false);
+            });
+        }
+
         async function submitRegistration() {
             var name = document.getElementById('regName').value.trim();
             var target = document.getElementById('regTarget').value.trim();
             var address = document.getElementById('regAddress').value.trim();
-            var schedule = document.getElementById('regSchedule').value.trim();
+
+            var photoInput = document.getElementById('regPhoto');
+            var photoFile = photoInput.files[0];
+            if (!photoFile) {
+                alert("팀 활동/체육관 사진을 꼭 첨부해주세요! (인증용)");
+                submitBtn.innerText = '등록하기';
+                submitBtn.disabled = false;
+                return;
+            }
+            var scheduleData = getScheduleData();
+            var schedule = scheduleData.text; // UI 반영용 기존 텍스트 포맷
+            var schedule_raw = scheduleData.raw; // 향후 확장을 위한 DB 보관용 배열 데이터
             var price = document.getElementById('regPrice').value.trim();
             var insta = document.getElementById('regInsta').value.trim();
             var link = document.getElementById('regLink').value.trim();
-            var is_urgent = document.getElementById('regIsUrgent').checked;
-            var urgent_msg = document.getElementById('regUrgentMsg').value.trim();
+            var is_urgent = false;
+            var urgent_msg = "";
 
             if (!name || !target || !address) {
                 alert("팀 이름, 대상, 주소는 필수 입력값입니다.");
@@ -3639,9 +3859,12 @@
                     id: generateId(),
                     name: name,
                     target: target,
+                    is_verified: false,
+                    photo_url: photo_url,
                     address: address,
                     coordinates: coords,
                     schedule: schedule,
+                    schedule_raw: schedule_raw,
                     price: price,
                     contact: { insta: insta, link: link },
                     is_urgent: is_urgent,
@@ -3695,7 +3918,11 @@
 
                 // 입력 필드 초기화
                 ['regName', 'regTarget', 'regAddress', 'regSchedule', 'regPrice', 'regInsta', 'regLink', 'regUrgentMsg'].forEach(id => document.getElementById(id).value = '');
-                document.getElementById('regIsUrgent').checked = false;
+                window.selectedCoords = null;
+                document.getElementById('scheduleContainer').innerHTML = '';
+                document.getElementById("regPhoto").value = "";
+                addScheduleRow();
+
                 toggleUrgentMsgInput();
 
             } catch (error) {
@@ -3707,6 +3934,24 @@
             }
         }
     </script>
+
+    <!-- Map Picker UI -->
+    <div id="mapPickerOverlay"
+        style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; pointer-events: none;">
+        <!-- 중앙 타겟 핀 -->
+        <img src="./marker_yellow.png"
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); width: 40px; opacity: 0.6; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));">
+        <!-- 하단 버튼들 -->
+        <div
+            style="position: absolute; bottom: 40px; left: 0; right: 0; display: flex; justify-content: center; gap: 15px; pointer-events: auto;">
+            <button onclick="confirmMapPicker()"
+                style="padding: 15px 30px; background: var(--nurungji-brown); color: white; border: none; border-radius: 30px; font-weight: 800; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 16px; cursor: pointer; transition: transform 0.2s;">이
+                위치로 주소 설정</button>
+            <button onclick="cancelMapPicker()"
+                style="padding: 15px 25px; background: #fff; color: #555; border: none; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 15px; cursor: pointer; transition: transform 0.2s;">취소</button>
+        </div>
+    </div>
+
 </body>
 
 
