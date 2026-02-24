@@ -282,17 +282,16 @@
     {
         "name": "안성 넘버나인",
         "target": "성인, 대학생",
-        "address": "경기 안성시 비룡로 78",
-        "schedule": "수 19:00~21:40",
+        "address": "경기 안성시 공도읍 서동대로 4424",
+        "schedule": "화 18:00~21:30 / 목 18:00~21:30",
         "price": "",
         "insta": "anseong_no9_volleyballclub",
         "link": "https://www.youtube.com/@%EC%95%88%EC%84%B1%EB%84%98%EB%B2%84%EB%82%98%EC%9D%B89",
-        "lat": 37.015078008763,
-        "lng": 127.263020902801,
-        "angle": 0.0,
-        "id": "c6cababe4328",
+        "lat": 37.0076572494439,
+        "lng": 127.193917399026,
         "is_urgent": false,
-        "urgent_msg": ""
+        "urgent_msg": "",
+        "id": "8f0025b6fbaa"
     },
     {
         "name": "임팩트",
