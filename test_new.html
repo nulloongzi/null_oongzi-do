@@ -2810,9 +2810,11 @@
     <div class="fab-profile" onclick="toggleProfileCard()">🍚</div>
 
     <div class="fab-group">
-        <div class="fab-btn fab-urgent" title="팀 등록하기" onclick="openRegistrationModal(false)">📝</div>
-        <div class="fab-btn fab-report" title="급구/제보하기" onclick="openRegistrationModal(true)">📢</div>
-        <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
+        <div class="fab-btn fab-urgent" title="팀 등록하기" onclick="openRegistrationModal(false)"
+            ontouchend="openRegistrationModal(false)">📝</div>
+        <div class="fab-btn fab-report" title="급구/제보하기" onclick="openRegistrationModal(true)"
+            ontouchend="openRegistrationModal(true)">📢</div>
+        <div class="fab-btn" onclick="moveToMyLocation()" ontouchend="moveToMyLocation()">📍</div>
     </div>
 
     <div id="lunchboxOverlay" class="lunchbox-overlay">
@@ -3750,23 +3752,23 @@
         }
 
         function openRegistrationModal(isUrgent) {
-            document.getElementById('regModalTitle').innerText = isUrgent ? '급구/제보하기' : '팀 등록하기';
+            try {
+                document.getElementById('regModalTitle').innerText = isUrgent ? '급구/제보하기' : '팀 등록하기';
 
-            var schedContainer = document.getElementById('scheduleContainer');
-            if (schedContainer && schedContainer.children.length === 0) {
-                addScheduleRow(); // 첫 번째 행 자동 생성
+                var schedContainer = document.getElementById('scheduleContainer');
+                if (schedContainer && schedContainer.children.length === 0) {
+                    addScheduleRow(); // 첫 번째 행 자동 생성
+                }
+
+                document.getElementById('regModalOverlay').style.display = 'flex';
+                console.log('Successfully opened registration modal');
+            } catch (e) {
+                console.error('Error opening registration modal:', e);
             }
-            toggleUrgentMsgInput();
-            document.getElementById('regModalOverlay').style.display = 'flex';
         }
 
         function closeRegistrationModal() {
             document.getElementById('regModalOverlay').style.display = 'none';
-        }
-
-        function toggleUrgentMsgInput() {
-            var isUrgent = false;
-            document.getElementById('regUrgentMsgGroup').style.display = isUrgent ? 'block' : 'none';
         }
 
         function generateId() {
@@ -3776,9 +3778,6 @@
 
         // --- 지도 기반 주소 선택 로직 ---
         window.selectedCoords = null;
-        document.getElementById('scheduleContainer').innerHTML = '';
-        document.getElementById("regPhoto").value = "";
-        addScheduleRow(); // 저장할 좌표
 
         function startMapPicker() {
             closeRegistrationModal(); // 폼 닫기
