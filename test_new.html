@@ -110,8 +110,9 @@
 
         function findClub(id) {
             if (!id) return null;
-            // 1. 문자열 ID로 변경되었으므로 타입 변환 없이 바로 비교
-            let club = allClubs.find(c => c.id === id);
+            let strId = String(id).trim();
+            // 타입, 공백 차이에 의한 탐색 실패 방지를 위해 강제 형변환 조회
+            let club = allClubs.find(c => String(c.id).trim() === strId && strId !== "undefined");
             if (club) return club;
 
             if (currentProfileData && currentProfileData.customTeams && currentProfileData.customTeams[id]) {
@@ -349,7 +350,7 @@
             await bookmarkTeam(newId);
         };
 
-        async function saveLunchboxToDB() {
+        function saveLunchboxToDB() {
             if (!currentUser || !currentProfileData) return;
             const userRef = doc(db, "users", currentUser.uid);
             try {
@@ -357,14 +358,16 @@
                 while (slots.length < 5) slots.push(null);
                 if (slots.length > 5) slots = slots.slice(0, 5);
 
-                await updateDoc(userRef, {
-                    bookmarks: slots,
-                    customTeams: currentProfileData.customTeams || {}
-                });
-
+                // [Optimistic UI] DB 통신 결과 상관없이 즉시 로컬 메모리에 반영
                 currentProfileData.bookmarks = slots;
                 renderProfileCard();
                 if (isDietPlanOpen) renderCombinedSchedule();
+
+                // DB 업데이트는 비동기로 처리
+                updateDoc(userRef, {
+                    bookmarks: slots,
+                    customTeams: currentProfileData.customTeams || {}
+                }).catch(e => console.error("Firebase save failed, but UI applied:", e));
             } catch (e) { console.error("Save Error:", e); }
         }
 
@@ -381,11 +384,7 @@
 
                 slots[emptyIndex] = teamId;
 
-                const userRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userRef, {
-                    bookmarks: slots,
-                    customTeams: currentProfileData.customTeams || {}
-                });
+                // [Optimistic UI] 즉시 로컬 메모리에 배열 반영 (DB 통신 지연/에러 시에도 UI는 정상 렌더링되게 보장)
                 currentProfileData.bookmarks = slots;
 
                 const team = findClub(teamId);
@@ -393,6 +392,13 @@
                 alert(msg);
 
                 renderProfileCard();
+
+                // DB 업데이트는 비동기로 나중에 처리
+                const userRef = doc(db, "users", currentUser.uid);
+                updateDoc(userRef, {
+                    bookmarks: slots,
+                    customTeams: currentProfileData.customTeams || {}
+                }).catch(e => console.error("Firebase update failed, but optimistic UI applied:", e));
 
                 if (document.getElementById('lunchboxOverlay').style.display === 'flex') {
                     if (!currentProfileData.tempSlots) currentProfileData.tempSlots = [null, null, null, null, null];
