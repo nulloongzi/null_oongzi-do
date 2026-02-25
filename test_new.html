@@ -49,6 +49,7 @@
             getDocs(collection(db, "clubs")).then(snapshot => {
                 const clubsData = snapshot.docs.map(doc => {
                     let d = doc.data();
+                    d.id = doc.id; // [핵심 Fix] Firebase 문서 ID를 객체에 주입해야 findClub이 작동함
                     if (d.coordinates) {
                         d.lat = d.coordinates.lat;
                         d.lng = d.coordinates.lng;
