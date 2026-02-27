@@ -660,5 +660,19 @@
         "urgent_msg": "",
         "angle": 3.141592653589793,
         "id": "e1e788052a3c"
+    },
+    {
+        "name": "피터팬",
+        "target": "성인",
+        "address": "경기 용인시 기흥구 강남동로140번길 1-7",
+        "schedule": "화 18:00~2100",
+        "price": "월 3만원 / 게스트 1만원",
+        "insta": "peterpan_vbc",
+        "link": "",
+        "lat": 37.2771824981245,
+        "lng": 127.134687230002,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "946b791a9d19"
     }
 ]
