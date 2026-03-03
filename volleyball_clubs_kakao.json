@@ -674,5 +674,19 @@
         "is_urgent": true,
         "urgent_msg": "🔥3월 게스트비 무료🔥",
         "id": "946b791a9d19"
+    },
+    {
+        "name": "TVT",
+        "target": "무관",
+        "address": "경기도 구리시 벌말로 168",
+        "schedule": "일 09:00~13:00",
+        "price": "월 3만원 / 게스트 1만원",
+        "insta": "tvt_top.volleyball.team",
+        "link": "https://form.naver.com/response/_mTsRzfyqAcw_-_wF6d1Xw",
+        "lat": 37.5914306625287,
+        "lng": 127.152048504701,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "eb51c870a0c3"
     }
 ]
