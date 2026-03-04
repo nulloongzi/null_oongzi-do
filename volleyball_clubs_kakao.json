@@ -688,5 +688,19 @@
         "is_urgent": false,
         "urgent_msg": "",
         "id": "eb51c870a0c3"
+    },
+    {
+        "name": "챔스",
+        "target": "성인, 대학생",
+        "address": "경기도 고양시 덕양구 행신로311번길 78",
+        "schedule": "화 18:00~21:00",
+        "price": "월 2 만원 / 게스트 5천원",
+        "insta": "champs.vc",
+        "link": "https://open.kakao.com/o/szY1nQ2h",
+        "lat": 37.6237194495748,
+        "lng": 126.842224411918,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "908ceb689179"
     }
 ]
