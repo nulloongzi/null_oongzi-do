@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>눌룽지도 - 어드민 대시보드</title>
+    <!-- Kakao Map Geocoder (주소->좌표 변환용) -->
+    <script type="text/javascript"
+        src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=7eb7aeb7ff1dc52a46cc05364ce3ca18&libraries=services"></script>
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #f1f3f5;
+        }
+
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            width: 300px;
+        }
+
+        .login-box input {
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 95%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 로그인 오버레이 -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <h2>어드민 로그인</h2>
+            <input type="email" id="adminEmail" placeholder="이메일">
+            <input type="password" id="adminPw" placeholder="비밀번호">
+            <button id="loginBtn" class="btn btn-primary" style="width: 100%;">로그인</button>
+        </div>
+    </div>
+
+    <!-- 대시보드 메인 -->
+    <div class="container" id="dashboardContent" style="display: none;">
+        <div class="header">
+            <h1>눌룽지도 어드민 대시보드 🛠</h1>
+            <div>
+                <button class="btn btn-primary" onclick="openModal()">+ 새 팀 추가</button>
+                <button class="btn btn-danger" onclick="adminLogout()">로그아웃</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>이름 / ID</th>
+                        <th>지역</th>
+                        <th>대상</th>
+                        <th>안내(시간표 등)</th>
+                        <th>비용</th>
+                        <th>긴급 구인</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="clubTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center;">데이터를 불러오는 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 추가/수정 모달 -->
+    <div id="clubModal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 id="modalTitle">팀 추가/수정</h2>
+            <input type="hidden" id="modalId">
+            <div class="form-group"><label>팀 이름</label><input type="text" id="modalName"></div>
+            <div class="form-group"><label>주소 (도로명 전제, 좌표 변환 사용됨)</label><input type="text" id="modalAddress"></div>
+            <div class="form-group"><label>대상 (예: 성인부, 무관)</label><input type="text" id="modalTarget"></div>
+            <div class="form-group"><label>비용 (예: 월 3만원)</label><input type="text" id="modalPrice"></div>
+            <div class="form-group"><label>스케줄 정보</label><textarea id="modalSchedule" rows="3"></textarea></div>
+            <div class="form-group"><label>인스타 ID</label><input type="text" id="modalInsta"></div>
+            <div class="form-group"><label>참가 링크 (소모임/단톡방)</label><input type="text" id="modalLink"></div>
+            <div class="form-group" style="display:flex; align-items:center; gap: 8px;">
+                <label style="margin:0;"><input type="checkbox" id="modalIsUrgent"> 긴급 구인 중</label>
+            </div>
+            <div class="form-group"><label>긴급 구인 메시지 (짧게)</label><input type="text" id="modalUrgentMsg"></div>
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+                <button class="btn btn-success" onclick="saveClub()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db, signInWithEmailAndPassword, onAuthStateChanged, signOut, collection, getDocs, doc, setDoc, deleteDoc, updateDoc } from './js/firebase_init.js';
+
+        console.log("Admin module script started.");
+
+        const ADMIN_EMAILS = ["admin@nulloongzi.com", "null@oongzi.com"];
+        let clubDataList = [];
+
+        document.getElementById('loginBtn').addEventListener('click', async function () {
+            const email = document.getElementById('adminEmail').value;
+            const pw = document.getElementById('adminPw').value;
+            if (!email || !pw) return alert('입력해주세요');
+            try { await signInWithEmailAndPassword(auth, email, pw); }
+            catch (e) { alert("로그인 실패: " + e.message); }
+        });
+
+        window.adminLogout = function () { signOut(auth); };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user && ADMIN_EMAILS.includes(user.email)) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                loadAdminData();
+            } else {
+                if (user) { alert("어드민 권한이 없는 계정입니다."); signOut(auth); }
+                document.getElementById('loginOverlay').style.display = 'flex';
+                document.getElementById('dashboardContent').style.display = 'none';
+            }
+        });
+
+        async function loadAdminData() {
+            const tbody = document.getElementById('clubTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">로딩 중...</td></tr>';
+            try {
+                const snapshot = await getDocs(collection(db, "clubs"));
+                clubDataList = [];
+                snapshot.forEach(docSnap => {
+                    let item = docSnap.data();
+                    item.id = docSnap.id;
+                    clubDataList.push(item);
+                });
+
+                // 이름순으로 정렬
+                clubDataList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                renderTable();
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="7" style="color:red;">오류: ${e.message}</td></tr>`; }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('clubTableBody');
+            tbody.innerHTML = '';
+            clubDataList.forEach(data => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${data.name}</strong><br><small style="color:#888;">${data.id}</small></td>
+                    <td style="font-size:12px;">${data.address}</td>
+                    <td>${data.target}</td>
+                    <td style="font-size:12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${data.schedule || ''}</td>
+                    <td>${data.price || ''}</td>
+                    <td>${data.is_urgent ? '🔥<br><small>' + (data.urgent_msg || '') + '</small>' : '-'}</td>
+                    <td>
+                        <button class="btn btn-primary" style="padding: 5px 10px; font-size: 12px; margin-bottom: 5px;" onclick="editClub('${data.id}')">수정</button><br>
+                        <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteClub('${data.id}')">삭제</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.openModal = function () {
+            document.getElementById('modalTitle').innerText = '새 팀 추가';
+            document.getElementById('modalId').value = '';
+            document.getElementById('modalName').value = '';
+            document.getElementById('modalAddress').value = '';
+            document.getElementById('modalTarget').value = '';
+            document.getElementById('modalPrice').value = '';
+            document.getElementById('modalSchedule').value = '';
+            document.getElementById('modalInsta').value = '';
+            document.getElementById('modalLink').value = '';
+            document.getElementById('modalIsUrgent').checked = false;
+            document.getElementById('modalUrgentMsg').value = '';
+            document.getElementById('clubModal').style.display = 'flex';
+        };
+
+        window.closeModal = function () { document.getElementById('clubModal').style.display = 'none'; };
+
+        window.editClub = function (id) {
+            const data = clubDataList.find(c => c.id === id);
+            if (!data) return;
+            document.getElementById('modalTitle').innerText = '팀 수정';
+            document.getElementById('modalId').value = data.id;
+            document.getElementById('modalName').value = data.name || '';
+            document.getElementById('modalAddress').value = data.address || '';
+            document.getElementById('modalTarget').value = data.target || '';
+            document.getElementById('modalPrice').value = data.price || '';
+            document.getElementById('modalSchedule').value = data.schedule || '';
+            document.getElementById('modalInsta').value = (data.contact && data.contact.insta) ? data.contact.insta : '';
+            document.getElementById('modalLink').value = (data.contact && data.contact.link) ? data.contact.link : '';
+            document.getElementById('modalIsUrgent').checked = !!data.is_urgent;
+            document.getElementById('modalUrgentMsg').value = data.urgent_msg || '';
+            document.getElementById('clubModal').style.display = 'flex';
+        };
+
+        window.saveClub = async function () {
+            const id = document.getElementById('modalId').value;
+            const isNew = !id;
+
+            const name = document.getElementById('modalName').value.trim();
+            const address = document.getElementById('modalAddress').value.trim();
+            if (!name || !address) return alert("이름과 주소는 필수입니다.");
+
+            let lat = null, lng = null;
+
+            // 기존 데이터의 좌표 유지
+            if (!isNew) {
+                const existingData = clubDataList.find(c => c.id === id);
+                if (existingData && existingData.address === address) {
+                    lat = existingData.lat;
+                    lng = existingData.lng;
+                }
+            }
+
+            // 카카오 맵 지오코더를 이용해 주소가 바뀌었거나 새롬 생성일 때 좌표 변환
+            if (!lat || !lng) {
+                const geocoder = new kakao.maps.services.Geocoder();
+                await new Promise((resolve) => {
+                    geocoder.addressSearch(address, function (result, status) {
+                        if (status === kakao.maps.services.Status.OK) {
+                            lat = parseFloat(result[0].y);
+                            lng = parseFloat(result[0].x);
+                        }
+                        resolve();
+                    });
+                });
+            }
+
+            if (!lat || !lng) {
+                alert("주소를 좌표로 변환할 수 없습니다. 정확한 도로명/지번 주소를 입력해주세요.");
+                return;
+            }
+
+            const clubData = {
+                name: name,
+                address: address,
+                target: document.getElementById('modalTarget').value.trim(),
+                price: document.getElementById('modalPrice').value.trim(),
+                schedule: document.getElementById('modalSchedule').value.trim(),
+                contact: {
+                    insta: document.getElementById('modalInsta').value.trim(),
+                    link: document.getElementById('modalLink').value.trim()
+                },
+                is_urgent: document.getElementById('modalIsUrgent').checked,
+                urgent_msg: document.getElementById('modalUrgentMsg').value.trim(),
+                lat: lat,
+                lng: lng,
+                coordinates: { lat: lat, lng: lng },
+                metadata: {
+                    status: 'approved',
+                    submitted_by: 'admin_panel'
+                }
+            };
+
+            try {
+                let docId = id;
+                if (isNew) {
+                    docId = "NUL" + Date.now().toString().slice(-6); // 간단한 로컬 ID
+                    clubData.id = docId;
+                    await setDoc(doc(db, "clubs", docId), clubData);
+                    alert("팀이 추가되었습니다.");
+                } else {
+                    clubData.id = docId;
+                    await updateDoc(doc(db, "clubs", docId), clubData);
+                    alert("팀 정보가 수정되었습니다.");
+                }
+                closeModal();
+                loadAdminData();
+            } catch (e) {
+                alert("저장 실패: " + e.message);
+                console.error(e);
+            }
+        };
+
+        window.deleteClub = async function (id) {
+            if (confirm("정말로 이 팀을 삭제하시겠습니까?")) {
+                try {
+                    await deleteDoc(doc(db, "clubs", id));
+                    alert("삭제되었습니다.");
+                    loadAdminData();
+                } catch (e) { alert("삭제 실패: " + e.message); }
+            }
+        };
+    </script>
+</body>
+
+</html>
