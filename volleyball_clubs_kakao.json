@@ -361,8 +361,8 @@
         "lng": 126.940926768444,
         "angle": 0.0,
         "id": "b3803d20fb60",
-        "is_urgent": false,
-        "urgent_msg": ""
+        "is_urgent": true,
+        "urgent_msg": "3/22 게임데이 모집 (남 9:30~12:00 / 여 12:00~14:20)"
     },
     {
         "name": "여수에이스",
@@ -488,8 +488,8 @@
         "link": "https://open.kakao.com/o/s2KVlj0h",
         "lat": 37.3561223736247,
         "lng": 126.72513118927,
-        "is_urgent": false,
-        "urgent_msg": "",
+        "is_urgent": true,
+        "urgent_msg": "남자 회원모집! 20세이상 1년이상 경력자만!",
         "id": "b2f8f9bbcda7"
     },
     {
@@ -672,7 +672,7 @@
         "lat": 37.2771824981245,
         "lng": 127.134687230002,
         "is_urgent": true,
-        "urgent_msg": "🔥3월 게스트비 무료‼️남녀회원 모집‼️🔥",
+        "urgent_msg": "3월 게스트비 무료‼️남녀회원 모집‼️",
         "id": "946b791a9d19"
     },
     {
