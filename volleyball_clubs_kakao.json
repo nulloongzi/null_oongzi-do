@@ -361,8 +361,8 @@
         "lng": 126.940926768444,
         "angle": 0.0,
         "id": "b3803d20fb60",
-        "is_urgent": true,
-        "urgent_msg": "3/22 게임데이 모집 (남 9:30~12:00 / 여 12:00~14:20)"
+        "is_urgent": false,
+        "urgent_msg": ""
     },
     {
         "name": "여수에이스",
