@@ -1,0 +1,32 @@
+name: Update Club Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: pip install requests
+
+    - name: Run data pipeline
+      run: cd pipeline && python main.py
+
+    - name: Commit and Push data
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add data/volleyball_clubs_kakao.json
+        git commit -m "Auto-update club data" || exit 0
+        git push
