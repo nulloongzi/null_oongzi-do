@@ -17,15 +17,15 @@
         "name": "브이홀릭",
         "target": "성인, 대학생",
         "address": "경기도 성남시 분당구 양현로 262",
-        "schedule": "화 19:00~22:00 / 금 19:00~22:00 / 일 14:00~18:00",
+        "schedule": "화 19:00~22:00 / 금 19:00~22:00 / 일 16:00~20:00",
         "price": "월 4만원 / 게스트 1만원",
         "insta": "v_holic_2010",
         "link": "",
         "lat": 37.4073263996148,
         "lng": 127.126612716157,
         "id": "d629a8c51635",
-        "is_urgent": true,
-        "urgent_msg": "2,3월 게스트비 면제‼ 남녀 선착순 3명‼ 신청은 DM (화 제외)"
+        "is_urgent": false,
+        "urgent_msg": ""
     },
     {
         "name": "H_B",
@@ -38,8 +38,8 @@
         "lat": 37.3073441859489,
         "lng": 127.015667305962,
         "id": "5ffa19423790",
-        "is_urgent": false,
-        "urgent_msg": ""
+        "is_urgent": true,
+        "urgent_msg": "HB 남녀회원 모집! 게스트 환영!"
     },
     {
         "name": "H_B",
@@ -52,8 +52,8 @@
         "lat": 37.2518258783031,
         "lng": 126.909629549921,
         "id": "d53fc4cc5c9a",
-        "is_urgent": false,
-        "urgent_msg": ""
+        "is_urgent": true,
+        "urgent_msg": "HB 남녀회원 모집! 게스트 환영!"
     },
     {
         "name": "동두천화목배구클럽",
@@ -282,31 +282,16 @@
     {
         "name": "안성 넘버나인",
         "target": "성인, 대학생",
-        "address": "경기 안성시 비룡로 78",
-        "schedule": "수 19:00~21:40",
+        "address": "경기 안성시 공도읍 서동대로 4424",
+        "schedule": "화 18:00~21:30 / 목 18:00~21:30",
         "price": "",
         "insta": "anseong_no9_volleyballclub",
         "link": "https://www.youtube.com/@%EC%95%88%EC%84%B1%EB%84%98%EB%B2%84%EB%82%98%EC%9D%B89",
-        "lat": 37.015078008763,
-        "lng": 127.263020902801,
-        "angle": 0.0,
-        "id": "c6cababe4328",
+        "lat": 37.0076572494439,
+        "lng": 127.193917399026,
         "is_urgent": false,
-        "urgent_msg": ""
-    },
-    {
-        "name": "하이발리",
-        "target": "성인",
-        "address": "경기 파주시 다율로30",
-        "schedule": "수 19:00~21:00",
-        "price": "월 4만원 / 게스트 1만원",
-        "insta": "high.volley",
-        "link": "",
-        "lat": 37.7379799283829,
-        "lng": 126.726930320218,
-        "id": "f4346956e4eb",
-        "is_urgent": false,
-        "urgent_msg": ""
+        "urgent_msg": "",
+        "id": "8f0025b6fbaa"
     },
     {
         "name": "임팩트",
@@ -494,18 +479,32 @@
         "urgent_msg": ""
     },
     {
-        "name": "시흥 수요배구회 픽업게임",
+        "name": "시흥 픽업게임 (격주)",
         "target": "성인, 대학생",
-        "address": "경기 시흥시 장곡로54번길 14",
-        "schedule": "수 17:50~20:50",
+        "address": "경기 시흥시 장곡로70번길 8",
+        "schedule": "월 17:50~20:50",
         "price": "없음",
         "insta": "volleyball_pickup_siheung",
         "link": "https://open.kakao.com/o/s2KVlj0h",
-        "lat": 37.380779446634,
-        "lng": 126.78327876897,
-        "id": "587d9b25876e",
-        "is_urgent": false,
-        "urgent_msg": ""
+        "lat": 37.3800412358371,
+        "lng": 126.782344990345,
+        "is_urgent": true,
+        "urgent_msg": "남자 회원모집! 20세이상 1년이상 경력자만!",
+        "id": "a974f57817d9"
+    },
+    {
+        "name": "시흥 픽업게임 (격주)",
+        "target": "성인, 대학생",
+        "address": "경기 시흥시 포도원로 50",
+        "schedule": "월 17:50~20:50",
+        "price": "없음",
+        "insta": "volleyball_pickup_siheung",
+        "link": "https://open.kakao.com/o/s2KVlj0h",
+        "lat": 37.4351037039142,
+        "lng": 126.778397821095,
+        "is_urgent": true,
+        "urgent_msg": "남자 회원모집! 20세이상 1년이상 경력자만!",
+        "id": "9edf0b3eea75"
     },
     {
         "name": "군포배구클럽",
@@ -646,5 +645,75 @@
         "is_urgent": false,
         "urgent_msg": "",
         "id": "049cbf226d3f"
+    },
+    {
+        "name": "평택BLANK",
+        "target": "성인, 대학생",
+        "address": "경기 평택시 함박산로 10",
+        "schedule": "화 19:00~21:00 / 목 19:00~21:00",
+        "price": "월2만원/게스트1만원",
+        "insta": "blank_volleyball",
+        "link": "https://open.kakao.com/o/sIAltE9h",
+        "lat": 37.0426733968881,
+        "lng": 127.043483106027,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "24cc56787b76"
+    },
+    {
+        "name": "하이발리",
+        "target": "성인, 남(구력 1년 이상), 여(구력 2년 이상)",
+        "address": "경기 파주시 다율로 30",
+        "schedule": "수 19:00~21:00",
+        "price": "월 4만원 / 게스트 1만원",
+        "insta": "high.volley",
+        "link": "",
+        "lat": 37.7379799283829,
+        "lng": 126.726930320218,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "e1e788052a3c"
+    },
+    {
+        "name": "피터팬",
+        "target": "성인",
+        "address": "경기 용인시 기흥구 강남동로140번길 1-7",
+        "schedule": "화 18:00~21:00",
+        "price": "월 3만원 / 게스트 1만원",
+        "insta": "peterpan_vc",
+        "link": "",
+        "lat": 37.2771824981245,
+        "lng": 127.134687230002,
+        "is_urgent": true,
+        "urgent_msg": "3월 게스트비 무료‼️남녀회원 모집‼️",
+        "id": "946b791a9d19"
+    },
+    {
+        "name": "TVT",
+        "target": "무관",
+        "address": "경기도 구리시 벌말로 168",
+        "schedule": "일 09:00~13:00",
+        "price": "월 3만원 / 게스트 1만원",
+        "insta": "tvt_top.volleyball.team",
+        "link": "https://form.naver.com/response/_mTsRzfyqAcw_-_wF6d1Xw",
+        "lat": 37.5914306625287,
+        "lng": 127.152048504701,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "eb51c870a0c3"
+    },
+    {
+        "name": "챔스",
+        "target": "성인, 대학생",
+        "address": "경기도 고양시 덕양구 행신로311번길 78",
+        "schedule": "화 18:00~21:00",
+        "price": "월 2 만원 / 게스트 5천원",
+        "insta": "champs.vc",
+        "link": "https://open.kakao.com/o/szY1nQ2h",
+        "lat": 37.6237194495748,
+        "lng": 126.842224411918,
+        "is_urgent": false,
+        "urgent_msg": "",
+        "id": "908ceb689179"
     }
 ]
