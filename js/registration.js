@@ -136,11 +136,7 @@ window.submitRegistration = async function () {
     }
 
     var photoInput = document.getElementById('regPhoto');
-    var photoFile = photoInput.files[0];
-    if (!photoFile) {
-        alert("팀 활동/체육관 사진을 꼭 첨부해주세요! (인증용)");
-        return;
-    }
+    var photoFile = photoInput.files[0]; // 선택사항 (인증 배지용)
 
     var scheduleData = window.getScheduleData();
     var schedule = scheduleData.text;
@@ -156,12 +152,16 @@ window.submitRegistration = async function () {
     btn.disabled = true;
 
     try {
-        // Upload photo to Firebase Storage
+        // Upload photo to Firebase Storage (선택사항)
         var photo_url = '';
-        if (window.firebaseStorage && window.firebaseRef) {
-            var photoRef = window.firebaseRef(window.firebaseStorage, 'club_photos/' + Date.now() + '_' + photoFile.name);
-            var snapshot = await window.firebaseUploadBytes(photoRef, photoFile);
-            photo_url = await snapshot.ref.getDownloadURL();
+        if (photoFile && window.firebaseStorage && window.firebaseRef) {
+            try {
+                var photoRef = window.firebaseRef(window.firebaseStorage, 'club_photos/' + Date.now() + '_' + photoFile.name);
+                var snapshot = await window.firebaseUploadBytes(photoRef, photoFile);
+                photo_url = await snapshot.ref.getDownloadURL();
+            } catch (photoErr) {
+                console.warn('사진 업로드 실패 (등록은 계속 진행):', photoErr.message);
+            }
         }
 
         // Geocode address to coordinates
