@@ -1,22 +1,66 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // 관리자 체크 함수: /admins/{uid} 문서 존재 여부
+    function isAdmin() {
+      return request.auth != null
+             && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // clubs: 모두 읽기, 소유자/관리자만 수정
     match /clubs/{clubId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
+
+      // 새 팀 등록: 인증된 사용자가 자신을 registered_by로 기록, is_verified=false 강제
+      allow create: if request.auth != null
+                    && request.resource.data.registered_by == request.auth.uid
+                    && request.resource.data.is_verified == false;
+
+      // 업데이트: 관리자는 모든 필드, 소유자는 is_verified 제외 수정 가능
+      allow update: if isAdmin()
+                    || (request.auth != null
+                        && resource.data.registered_by != null
+                        && resource.data.registered_by == request.auth.uid
+                        && request.resource.data.is_verified == resource.data.is_verified);
+
+      // 삭제: 관리자 또는 소유자
+      allow delete: if isAdmin()
+                    || (request.auth != null
+                        && resource.data.registered_by == request.auth.uid);
     }
+
+    // verification_requests: 신청자 본인/관리자만 읽기, Cloud Functions만 update
     match /verification_requests/{requestId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if true;
+      allow read: if isAdmin()
+                  || (request.auth != null
+                      && resource.data.requested_by == request.auth.uid);
+
+      allow create: if request.auth != null
+                    && request.resource.data.requested_by == request.auth.uid
+                    && request.resource.data.status == "pending";
+
+      // update/delete: Cloud Functions(admin SDK)만 가능
+      allow update, delete: if false;
     }
+
+    // users: 공개 프로필 (닉네임 등)
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // admins: 관리자 목록 (콘솔/admin SDK에서만 쓰기 가능)
+    match /admins/{userId} {
+      allow read: if true; // 클라이언트가 자신이 관리자인지 확인 가능
+      allow write: if false;
+    }
+
+    // system: Cloud Functions만 접근 (토큰 캐시 등)
     match /system/{docId} {
       allow read, write: if false;
     }
-    match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
+
+    // 명시되지 않은 컬렉션은 기본적으로 차단 (catch-all 제거)
   }
 }

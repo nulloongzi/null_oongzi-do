@@ -1,13 +1,21 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /club_photos/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
+
+    // 인증 사진: 챗봇 캐러셀 썸네일에 필요 → 공개 읽기
     match /verification_photos/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+    }
+
+    // 팀 사진
+    match /club_photos/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
     }
   }
 }
