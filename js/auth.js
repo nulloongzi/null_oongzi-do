@@ -10,6 +10,29 @@ var LS_CUSTOM_TEAMS_KEY = 'nulloong_custom_teams';
 
 window.currentUser = null;
 window.currentProfileData = null;
+window.isAdmin = false;
+
+// /admins/{uid} 문서 존재 여부로 관리자 판별 (로그인 시 1회 체크해서 캐시)
+window.checkIsAdmin = async function (user) {
+    if (!user) { window.isAdmin = false; return false; }
+    try {
+        var adminRef = window.firebaseDoc(window.firebaseDB, 'admins', user.uid);
+        var snap = await adminRef.get();
+        window.isAdmin = snap.exists;
+        return window.isAdmin;
+    } catch (e) {
+        console.warn('checkIsAdmin error:', e && e.message);
+        window.isAdmin = false;
+        return false;
+    }
+};
+
+// 특정 팀에 대해 현재 유저가 삭제/수정 권한이 있는지
+window.canModifyClub = function (club) {
+    if (!window.currentUser || !club) return false;
+    if (window.isAdmin) return true;
+    return club.registered_by && club.registered_by === window.currentUser.uid;
+};
 
 window.loginWithGoogle = async function () {
     var provider = new firebase.auth.GoogleAuthProvider();
@@ -132,10 +155,12 @@ window.setupAuthListener = function () {
         if (user) {
             window.currentUser = user;
             await window.loadOrCreateUserProfile(user);
+            await window.checkIsAdmin(user);
             window.updateProfileUI(true);
         } else {
             window.currentUser = null;
             window.currentProfileData = null;
+            window.isAdmin = false;
             window.updateProfileUI(false);
             // Reset watermark and background on logout
             var wm = document.getElementById('pcRiceWatermark');

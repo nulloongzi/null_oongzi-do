@@ -335,6 +335,22 @@ window.openClubDetail = function (id) {
         });
     }
 
+    // Delete button (owner or admin only)
+    var existingDeleteBtn = document.getElementById('btnDeleteClub');
+    if (existingDeleteBtn) existingDeleteBtn.remove();
+
+    if (window.canModifyClub && window.canModifyClub(club)) {
+        var deleteBtn = document.createElement('button');
+        deleteBtn.id = 'btnDeleteClub';
+        deleteBtn.className = 'btn';
+        deleteBtn.style = 'background:#fff; color:#d32f2f; border:1px solid #d32f2f; margin-top:8px; width:100%; font-weight:600;';
+        deleteBtn.innerText = '🗑 팀 삭제';
+        deleteBtn.onclick = function () { window.deleteClub(club); };
+        // verifyStatusArea 다음, 아니면 action-buttons 다음에 삽입
+        var anchor = document.getElementById('verifyStatusArea') || actionBtns;
+        anchor.parentElement.insertBefore(deleteBtn, anchor.nextSibling);
+    }
+
     // Bookmark button
     var btnBookmark = document.getElementById('btnBookmark');
     if (btnBookmark) {
@@ -427,6 +443,49 @@ window.initUrgentTicker = function () {
 };
 
 // ── Toggle urgent state ──
+
+// Delete a club (owner or admin only; rules enforce this)
+window.deleteClub = async function (club) {
+    if (!club || !club.id) return;
+    if (!window.canModifyClub(club)) {
+        alert('삭제 권한이 없습니다.');
+        return;
+    }
+
+    var roleLabel = window.isAdmin ? '관리자' : '소유자';
+    var msg = '[' + club.name + ']\n정말 이 팀을 삭제하시겠습니까?\n\n(삭제 후 복구 불가 · ' + roleLabel + ' 권한)';
+    if (!confirm(msg)) return;
+
+    try {
+        await window.firebaseDB.collection('clubs').doc(club.id).delete();
+
+        // Remove from in-memory data
+        ['allClubs', 'clubs'].forEach(function (key) {
+            if (Array.isArray(window[key])) {
+                window[key] = window[key].filter(function (c) { return String(c.id) !== String(club.id); });
+            }
+        });
+
+        // Close bottom sheet
+        var sheet = document.getElementById('bottomSheet');
+        if (sheet) sheet.classList.remove('open');
+
+        // Re-render markers
+        if (window.markers) {
+            window.markers.forEach(function (m) { if (m.marker) m.marker.setMap(null); });
+            window.markers.forEach(function (m) { if (m.overlay) m.overlay.setMap(null); });
+            window.markers = [];
+        }
+        if (window.clusterer) window.clusterer.clear();
+        if (window.initMarkers) window.initMarkers();
+        if (window.initUrgentTicker) window.initUrgentTicker();
+
+        alert('팀이 삭제되었습니다.');
+    } catch (e) {
+        console.error('팀 삭제 오류:', e);
+        alert('삭제 중 오류가 발생했습니다: ' + (e.message || e.code || '알 수 없음'));
+    }
+};
 
 window.toggleClubUrgentState = function (club) {
     var pin = prompt("팀 관리자 PIN 번호 4자리를 입력해주세요.\n(기본 핀번호: 1234)");
