@@ -282,6 +282,59 @@ window.openClubDetail = function (id) {
         actionBtns.appendChild(manageBtn);
     }
 
+    // Verification status area (registered owner only, unverified clubs)
+    var existingVerifyArea = document.getElementById('verifyStatusArea');
+    if (existingVerifyArea) existingVerifyArea.remove();
+
+    if (!club.is_verified
+        && window.currentUser
+        && club.registered_by === window.currentUser.uid) {
+        var verifyArea = document.createElement('div');
+        verifyArea.id = 'verifyStatusArea';
+        verifyArea.style = 'margin-top:8px;';
+        actionBtns.parentElement.insertBefore(verifyArea, actionBtns.nextSibling);
+
+        // Firestore에서 최신 인증 요청 상태 조회
+        window.firebaseDB.collection('verification_requests')
+            .where('club_id', '==', club.id)
+            .orderBy('requested_at', 'desc')
+            .limit(1)
+            .get().then(function (snap) {
+            if (snap.empty) {
+                // 신청 이력 없음 → 인증 신청 버튼
+                verifyArea.innerHTML =
+                    '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
+                    '✅ 인증 신청</button>';
+                document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+            } else {
+                var reqData = snap.docs[0].data();
+                if (reqData.status === 'pending') {
+                    // 심사 중
+                    verifyArea.innerHTML =
+                        '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:12px 15px;border-radius:4px;font-size:13px;color:#1565c0;line-height:1.5;">' +
+                        '⏳ 인증 심사 중입니다.<br><span style="font-size:12px;color:#666;">관리자 확인 후 인증 배지가 부여됩니다.</span></div>';
+                } else if (reqData.status === 'rejected') {
+                    // 거절됨 → 사유 표시 + 재신청 버튼
+                    var reasonText = reqData.reject_reason || '사유가 기재되지 않았습니다.';
+                    verifyArea.innerHTML =
+                        '<div style="background:rgba(244,67,54,0.08);border-left:3px solid #f44336;padding:12px 15px;border-radius:4px;margin-bottom:8px;font-size:13px;line-height:1.5;">' +
+                        '<div style="color:#d32f2f;font-weight:600;margin-bottom:4px;">❌ 인증이 거절되었습니다</div>' +
+                        '<div style="color:#555;">사유: ' + reasonText + '</div></div>' +
+                        '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
+                        '🔄 인증 재신청</button>';
+                    document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+                }
+            }
+        }).catch(function (err) {
+            console.error('인증 상태 조회 오류:', err);
+            // 조회 실패 시 기본 인증 신청 버튼 표시
+            verifyArea.innerHTML =
+                '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
+                '✅ 인증 신청</button>';
+            document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+        });
+    }
+
     // Bookmark button
     var btnBookmark = document.getElementById('btnBookmark');
     if (btnBookmark) {

@@ -126,6 +126,11 @@ window.confirmMapPicker = function () {
 // ── Submit registration ──
 
 window.submitRegistration = async function () {
+    if (!window.currentUser) {
+        alert("팀을 등록하려면 먼저 로그인해주세요.");
+        return;
+    }
+
     var name = document.getElementById('regName').value.trim();
     var target = document.getElementById('regTarget').value.trim();
     var address = document.getElementById('regAddress').value.trim();
@@ -134,9 +139,6 @@ window.submitRegistration = async function () {
         alert("팀 이름, 대상, 주소는 필수 입력값입니다.");
         return;
     }
-
-    var photoInput = document.getElementById('regPhoto');
-    var photoFile = photoInput.files[0]; // 선택사항 (인증 배지용)
 
     var scheduleData = window.getScheduleData();
     var schedule = scheduleData.text;
@@ -152,18 +154,6 @@ window.submitRegistration = async function () {
     btn.disabled = true;
 
     try {
-        // Upload photo to Firebase Storage (선택사항)
-        var photo_url = '';
-        if (photoFile && window.firebaseStorage && window.firebaseRef) {
-            try {
-                var photoRef = window.firebaseRef(window.firebaseStorage, 'club_photos/' + Date.now() + '_' + photoFile.name);
-                var snapshot = await window.firebaseUploadBytes(photoRef, photoFile);
-                photo_url = await snapshot.ref.getDownloadURL();
-            } catch (photoErr) {
-                console.warn('사진 업로드 실패 (등록은 계속 진행):', photoErr.message);
-            }
-        }
-
         // Geocode address to coordinates
         var coords;
         if (window.selectedCoords) {
@@ -186,7 +176,7 @@ window.submitRegistration = async function () {
             name: name,
             target: target,
             is_verified: false,
-            photo_url: photo_url,
+            registered_by: window.currentUser.uid,
             address: address,
             coordinates: coords,
             schedule: schedule,
@@ -199,7 +189,7 @@ window.submitRegistration = async function () {
                 created_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
                 updated_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
                 status: "approved",
-                submitted_by: "in_app_form"
+                submitted_by: window.currentUser.uid
             }
         };
 
@@ -243,7 +233,6 @@ window.submitRegistration = async function () {
         }
         window.selectedCoords = null;
         document.getElementById('scheduleContainer').innerHTML = '';
-        document.getElementById('regPhoto').value = '';
         window.addScheduleRow();
 
     } catch (error) {

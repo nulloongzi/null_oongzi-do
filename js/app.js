@@ -1,5 +1,7 @@
 // app.js - 초기화 오케스트레이션
-// Depends on: firebase-init.js, auth.js, data.js, map-core.js, club-detail.js, filters.js, registration.js, profile.js
+// Depends on: firebase-init.js, auth.js, data.js, map-core.js, club-detail.js, filters.js, registration.js, verification.js, profile.js
+
+window.VERIFICATION_WEBHOOK_URL = "https://verificationnotify-s6piatsfbq-uc.a.run.app";
 
 (function () {
     // 1. Firebase 인증 리스너 설정

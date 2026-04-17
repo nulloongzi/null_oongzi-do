@@ -1,0 +1,11 @@
+.env
+functions/node_modules/
+
+# Firebase / Claude local state
+.claude/
+firestore-debug.log
+firebase-debug.log
+*.log
+
+# Windows junk
+nul
