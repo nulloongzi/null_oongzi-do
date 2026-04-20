@@ -17,12 +17,13 @@ service cloud.firestore {
                     && request.resource.data.registered_by == request.auth.uid
                     && request.resource.data.is_verified == false;
 
-      // 업데이트: 관리자는 모든 필드, 소유자는 is_verified 제외 수정 가능
+      // 업데이트: 관리자는 모든 필드, 소유자는 is_verified/registered_by 제외 수정 가능
       allow update: if isAdmin()
                     || (request.auth != null
                         && resource.data.registered_by != null
                         && resource.data.registered_by == request.auth.uid
-                        && request.resource.data.is_verified == resource.data.is_verified);
+                        && request.resource.data.is_verified == resource.data.is_verified
+                        && request.resource.data.registered_by == resource.data.registered_by);
 
       // 삭제: 관리자 또는 소유자
       allow delete: if isAdmin()

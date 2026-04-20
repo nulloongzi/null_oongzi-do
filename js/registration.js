@@ -75,6 +75,9 @@ window.openRegistrationModal = function (isUrgent) {
         var submitBtn = document.getElementById('regSubmitBtn');
         if (submitBtn) submitBtn.innerText = '등록하기';
         document.getElementById('regModalTitle').innerText = isUrgent ? '급구/제보하기' : '팀 등록하기';
+        // 관리자 전용 필드는 신규 등록 시에는 숨김
+        var ownerGroup = document.getElementById('adminOwnerGroup');
+        if (ownerGroup) ownerGroup.style.display = 'none';
 
         var schedContainer = document.getElementById('scheduleContainer');
         if (schedContainer && schedContainer.children.length === 0) {
@@ -122,6 +125,29 @@ window.openEditModal = function (club) {
         var link = club.link || (club.contact && club.contact.link) || '';
         document.getElementById('regInsta').value = insta;
         document.getElementById('regLink').value = link;
+
+        // 관리자 전용: 소유자 지정 필드
+        var ownerGroup = document.getElementById('adminOwnerGroup');
+        var ownerInput = document.getElementById('regOwnerEmail');
+        if (ownerGroup && ownerInput) {
+            if (window.isAdmin) {
+                ownerGroup.style.display = 'block';
+                ownerInput.value = ''; // 기본 비움 (미변경)
+                // 현재 소유자 이메일 조회해서 힌트로 표시
+                if (club.registered_by) {
+                    window.firebaseDB.collection('users').doc(club.registered_by).get()
+                        .then(function (d) {
+                            if (d.exists && d.data().email) {
+                                ownerInput.placeholder = '현재 소유자: ' + d.data().email + ' (비우면 변경 안 됨)';
+                            }
+                        }).catch(function () { /* ignore */ });
+                } else {
+                    ownerInput.placeholder = '소유자 없음 (레거시) · 이메일 입력하여 지정';
+                }
+            } else {
+                ownerGroup.style.display = 'none';
+            }
+        }
 
         // 스케줄 행 재구성
         var sc = document.getElementById('scheduleContainer');
@@ -246,6 +272,23 @@ window.submitRegistration = async function () {
                 "metadata.updated_at": window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date()
             };
 
+            // 관리자 전용: 소유자 지정 처리 (이메일로 users 조회 → uid)
+            var newOwnerUid = null;
+            if (window.isAdmin) {
+                var ownerEmailEl = document.getElementById('regOwnerEmail');
+                var ownerEmail = ownerEmailEl ? ownerEmailEl.value.trim().toLowerCase() : '';
+                if (ownerEmail) {
+                    var usersSnap = await window.firebaseDB.collection('users')
+                        .where('email', '==', ownerEmail)
+                        .limit(1).get();
+                    if (usersSnap.empty) {
+                        throw new Error("해당 이메일 사용자를 찾을 수 없습니다: " + ownerEmail + "\n(사용자가 먼저 로그인해야 합니다)");
+                    }
+                    newOwnerUid = usersSnap.docs[0].id;
+                    updatePayload.registered_by = newOwnerUid;
+                }
+            }
+
             await window.firebaseDB.collection("clubs").doc(clubId).update(updatePayload);
 
             alert("팀 정보가 수정되었습니다!");
@@ -265,6 +308,7 @@ window.submitRegistration = async function () {
                 existing.contact = { insta: insta, link: link };
                 existing.insta = insta;
                 existing.link = link;
+                if (newOwnerUid) existing.registered_by = newOwnerUid;
             }
         } else {
             // 신규 등록 모드

@@ -227,6 +227,11 @@
                     <label>가입/문의 링크 (선택)</label>
                     <input type="text" id="regLink" placeholder="예: https://open.kakao.com/o/...">
                 </div>
+                <div id="adminOwnerGroup" class="reg-form-group" style="display:none; background:rgba(244,67,54,0.05); border-left:3px solid #d32f2f; padding:10px 12px; border-radius:4px;">
+                    <label style="color:#d32f2f; font-weight:600;">⚠️ 관리자 전용: 소유자 지정</label>
+                    <input type="text" id="regOwnerEmail" placeholder="예: paul@example.com (비우면 변경 안 됨)">
+                    <div style="font-size:12px; color:#666; margin-top:4px;">이메일로 사용자를 찾아 팀 소유자로 지정합니다. 사용자는 먼저 로그인해야 합니다.</div>
+                </div>
                 <button id="regSubmitBtn" class="reg-submit-btn" onclick="submitRegistration()">등록하기</button>
             </div>
         </div>
