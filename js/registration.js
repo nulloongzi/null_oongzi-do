@@ -177,14 +177,16 @@ function generateId() {
 
 // ── Map picker ──
 
+// 지도 picker 사용 중에도 편집 모드 상태를 보존하기 위해, 모달 닫기/재열기 대신
+// overlay visibility만 토글 (editingClubId 유지)
 window.startMapPicker = function () {
-    window.closeRegistrationModal();
+    document.getElementById('regModalOverlay').style.display = 'none';
     document.getElementById('mapPickerOverlay').style.display = 'block';
 };
 
 window.cancelMapPicker = function () {
     document.getElementById('mapPickerOverlay').style.display = 'none';
-    window.openRegistrationModal(false);
+    document.getElementById('regModalOverlay').style.display = 'flex';
 };
 
 window.confirmMapPicker = function () {
@@ -203,7 +205,7 @@ window.confirmMapPicker = function () {
         document.getElementById('regAddress').value = detailAddr;
 
         document.getElementById('mapPickerOverlay').style.display = 'none';
-        window.openRegistrationModal(false);
+        document.getElementById('regModalOverlay').style.display = 'flex';
     });
 };
 
@@ -214,6 +216,9 @@ window.submitRegistration = async function () {
         alert("팀을 등록하려면 먼저 로그인해주세요.");
         return;
     }
+
+    // 편집 모드 여부를 진입 시점에 즉시 캡처 (async 흐름 중 변경 방지)
+    var __capturedEditingClubId = window.editingClubId;
 
     var name = document.getElementById('regName').value.trim();
     var target = document.getElementById('regTarget').value.trim();
@@ -255,8 +260,8 @@ window.submitRegistration = async function () {
             });
         }
 
-        var isEditing = !!window.editingClubId;
-        var clubId = isEditing ? window.editingClubId : generateId();
+        var isEditing = !!__capturedEditingClubId;
+        var clubId = isEditing ? __capturedEditingClubId : generateId();
 
         if (isEditing) {
             // 편집 모드: 소유자/관리자 필드만 업데이트, metadata/is_verified/registered_by 보존
