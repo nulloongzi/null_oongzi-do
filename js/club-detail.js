@@ -335,20 +335,32 @@ window.openClubDetail = function (id) {
         });
     }
 
-    // Delete button (owner or admin only)
+    // Edit + Delete buttons (owner or admin only)
+    var existingEditBtn = document.getElementById('btnEditClub');
+    if (existingEditBtn) existingEditBtn.remove();
     var existingDeleteBtn = document.getElementById('btnDeleteClub');
     if (existingDeleteBtn) existingDeleteBtn.remove();
 
     if (window.canModifyClub && window.canModifyClub(club)) {
+        var anchor = document.getElementById('verifyStatusArea') || actionBtns;
+
+        // ✏ 수정 버튼
+        var editBtn = document.createElement('button');
+        editBtn.id = 'btnEditClub';
+        editBtn.className = 'btn';
+        editBtn.style = 'background:var(--nurungji-yellow); color:var(--nurungji-dark); margin-top:8px; width:100%; font-weight:600;';
+        editBtn.innerText = '✏ 팀 정보 수정';
+        editBtn.onclick = function () { window.openEditModal(club); };
+        anchor.parentElement.insertBefore(editBtn, anchor.nextSibling);
+
+        // 🗑 삭제 버튼 (수정 버튼 다음에 위치)
         var deleteBtn = document.createElement('button');
         deleteBtn.id = 'btnDeleteClub';
         deleteBtn.className = 'btn';
         deleteBtn.style = 'background:#fff; color:#d32f2f; border:1px solid #d32f2f; margin-top:8px; width:100%; font-weight:600;';
         deleteBtn.innerText = '🗑 팀 삭제';
         deleteBtn.onclick = function () { window.deleteClub(club); };
-        // verifyStatusArea 다음, 아니면 action-buttons 다음에 삽입
-        var anchor = document.getElementById('verifyStatusArea') || actionBtns;
-        anchor.parentElement.insertBefore(deleteBtn, anchor.nextSibling);
+        editBtn.parentElement.insertBefore(deleteBtn, editBtn.nextSibling);
     }
 
     // Bookmark button

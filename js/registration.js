@@ -3,6 +3,7 @@
 // Depends on: firebase-init.js, map-core.js (window.map, window.allClubs, window.refreshMarkers, window.initMarkers, window.clusterer, window.markers)
 
 window.selectedCoords = null;
+window.editingClubId = null; // 편집 모드: club.id 설정 시 submitRegistration이 수정 경로로 분기
 
 window.generateTimeOptions = function () {
     var options = '';
@@ -69,6 +70,10 @@ window.getScheduleData = function () {
 
 window.openRegistrationModal = function (isUrgent) {
     try {
+        // 편집 모드 초기화 (이전 openEditModal 흔적 제거)
+        window.editingClubId = null;
+        var submitBtn = document.getElementById('regSubmitBtn');
+        if (submitBtn) submitBtn.innerText = '등록하기';
         document.getElementById('regModalTitle').innerText = isUrgent ? '급구/제보하기' : '팀 등록하기';
 
         var schedContainer = document.getElementById('scheduleContainer');
@@ -85,6 +90,59 @@ window.openRegistrationModal = function (isUrgent) {
 
 window.closeRegistrationModal = function () {
     document.getElementById('regModalOverlay').style.display = 'none';
+    window.editingClubId = null; // 편집 모드 초기화
+    window.selectedCoords = null;
+};
+
+// 편집 모달 열기: 기존 등록 폼에 값 미리 채우고, submit 시 update 경로로 분기
+window.openEditModal = function (club) {
+    if (!club) return;
+    if (!window.canModifyClub || !window.canModifyClub(club)) {
+        alert('수정 권한이 없습니다.');
+        return;
+    }
+    try {
+        // 제목과 버튼 라벨 변경
+        var titleEl = document.getElementById('regModalTitle');
+        if (titleEl) titleEl.innerText = '팀 정보 수정';
+        var submitBtn = document.getElementById('regSubmitBtn');
+        if (submitBtn) submitBtn.innerText = '수정하기';
+
+        // 편집 대상 id 설정
+        window.editingClubId = club.id;
+        window.selectedCoords = null;
+
+        // 기본 필드 채우기
+        document.getElementById('regName').value = club.name || '';
+        document.getElementById('regTarget').value = club.target || '';
+        document.getElementById('regAddress').value = club.address || '';
+        document.getElementById('regPrice').value = club.price || '';
+        // insta/link는 평탄화된 값이 있을 수 있고, contact 중첩 객체에 있을 수도 있음
+        var insta = club.insta || (club.contact && club.contact.insta) || '';
+        var link = club.link || (club.contact && club.contact.link) || '';
+        document.getElementById('regInsta').value = insta;
+        document.getElementById('regLink').value = link;
+
+        // 스케줄 행 재구성
+        var sc = document.getElementById('scheduleContainer');
+        if (sc) sc.innerHTML = '';
+        if (Array.isArray(club.schedule_raw) && club.schedule_raw.length > 0) {
+            club.schedule_raw.forEach(function (row) {
+                window.addScheduleRow();
+                var rows = sc.children;
+                var last = rows[rows.length - 1];
+                if (row.day) last.querySelector('.sched-day').value = row.day;
+                if (row.start) last.querySelector('.sched-start').value = row.start;
+                if (row.end) last.querySelector('.sched-end').value = row.end;
+            });
+        } else {
+            window.addScheduleRow();
+        }
+
+        document.getElementById('regModalOverlay').style.display = 'flex';
+    } catch (e) {
+        console.error('Error opening edit modal:', e);
+    }
 };
 
 function generateId() {
@@ -171,53 +229,94 @@ window.submitRegistration = async function () {
             });
         }
 
-        var newClub = {
-            id: generateId(),
-            name: name,
-            target: target,
-            is_verified: false,
-            registered_by: window.currentUser.uid,
-            address: address,
-            coordinates: coords,
-            schedule: schedule,
-            schedule_raw: schedule_raw,
-            price: price,
-            contact: { insta: insta, link: link },
-            is_urgent: is_urgent,
-            urgent_msg: urgent_msg,
-            metadata: {
-                created_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
-                updated_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
-                status: "approved",
-                submitted_by: window.currentUser.uid
-            }
-        };
+        var isEditing = !!window.editingClubId;
+        var clubId = isEditing ? window.editingClubId : generateId();
 
-        // Save to Firestore
-        if (window.firebaseSetDoc && window.firebaseDoc && window.firebaseDB) {
-            await window.firebaseSetDoc(window.firebaseDoc(window.firebaseDB, "clubs", newClub.id), newClub);
-        } else if (window.firebaseAddDoc && window.firebaseDB) {
-            await window.firebaseAddDoc(window.firebaseCollection(window.firebaseDB, "clubs"), newClub);
+        if (isEditing) {
+            // 편집 모드: 소유자/관리자 필드만 업데이트, metadata/is_verified/registered_by 보존
+            var updatePayload = {
+                name: name,
+                target: target,
+                address: address,
+                coordinates: coords,
+                schedule: schedule,
+                schedule_raw: schedule_raw,
+                price: price,
+                contact: { insta: insta, link: link },
+                "metadata.updated_at": window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date()
+            };
+
+            await window.firebaseDB.collection("clubs").doc(clubId).update(updatePayload);
+
+            alert("팀 정보가 수정되었습니다!");
+
+            // 메모리 내 객체 업데이트 (lat/lng 평탄화 포함)
+            var existing = window.allClubs.find(function (c) { return String(c.id) === String(clubId); });
+            if (existing) {
+                existing.name = name;
+                existing.target = target;
+                existing.address = address;
+                existing.coordinates = coords;
+                existing.lat = coords.lat;
+                existing.lng = coords.lng;
+                existing.schedule = schedule;
+                existing.schedule_raw = schedule_raw;
+                existing.price = price;
+                existing.contact = { insta: insta, link: link };
+                existing.insta = insta;
+                existing.link = link;
+            }
         } else {
-            console.error("Firebase DB is not initialized properly");
+            // 신규 등록 모드
+            var newClub = {
+                id: clubId,
+                name: name,
+                target: target,
+                is_verified: false,
+                registered_by: window.currentUser.uid,
+                address: address,
+                coordinates: coords,
+                schedule: schedule,
+                schedule_raw: schedule_raw,
+                price: price,
+                contact: { insta: insta, link: link },
+                is_urgent: is_urgent,
+                urgent_msg: urgent_msg,
+                metadata: {
+                    created_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
+                    updated_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
+                    status: "approved",
+                    submitted_by: window.currentUser.uid
+                }
+            };
+
+            if (window.firebaseSetDoc && window.firebaseDoc && window.firebaseDB) {
+                await window.firebaseSetDoc(window.firebaseDoc(window.firebaseDB, "clubs", newClub.id), newClub);
+            } else if (window.firebaseAddDoc && window.firebaseDB) {
+                await window.firebaseAddDoc(window.firebaseCollection(window.firebaseDB, "clubs"), newClub);
+            } else {
+                console.error("Firebase DB is not initialized properly");
+            }
+
+            alert("팀 정보가 성공적으로 등록되었습니다!");
+
+            // Update frontend: add to map
+            newClub.lat = coords.lat;
+            newClub.lng = coords.lng;
+            newClub.insta = insta;
+            newClub.link = link;
+            window.clubs.push(newClub);
+            window.allClubs.push(newClub);
         }
 
-        alert("팀 정보가 성공적으로 등록되었습니다!");
-
-        // Update frontend: add to map
-        newClub.lat = coords.lat;
-        newClub.lng = coords.lng;
-        newClub.insta = insta;
-        newClub.link = link;
-        window.clubs.push(newClub);
-        window.allClubs.push(newClub);
-
-        // Re-render markers
-        window.clusterer.clear();
-        window.markers.forEach(function (m) { m.marker.setMap(null); });
-        window.markers.forEach(function (m) { if (m.overlay) m.overlay.setMap(null); });
-        window.markers = [];
-        window.initMarkers();
+        // Re-render markers (수정/등록 모두)
+        if (window.clusterer) window.clusterer.clear();
+        if (window.markers) {
+            window.markers.forEach(function (m) { if (m.marker) m.marker.setMap(null); });
+            window.markers.forEach(function (m) { if (m.overlay) m.overlay.setMap(null); });
+            window.markers = [];
+        }
+        if (window.initMarkers) window.initMarkers();
 
         if (is_urgent && window.initUrgentTicker) {
             window.initUrgentTicker();

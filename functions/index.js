@@ -555,6 +555,7 @@ var TEAM_LIST_BLOCK_ID = "69e62f64d2b391b64c603714";       // 팀관리 블록 (
 var TEAM_DELETE_ASK_BLOCK_ID = "69e62f884cb5cb85009b4b19";  // 팀삭제확인 블록 (action=block 전용)
 var TEAM_DELETE_BLOCK_ID = "69e62fa62ba171220dde09da";     // 팀삭제완료 블록 (action=block 전용)
 
+
 // ── 스킬 5: 팀 목록 (최신 10개) ──
 exports.chatbotTeamList = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
     try {
@@ -582,6 +583,7 @@ exports.chatbotTeamList = onRequest({ cors: true, invoker: "public" }, async fun
         clubs.sort(function (a, b) { return b._createdMs - a._createdMs; });
         var top = clubs.slice(0, 10);
 
+        var DEFAULT_THUMB = "https://nulloongzi.github.io/null_oongzi-do/app_ui/nulloongzido%20logo_512px.png";
         var items = top.map(function (c) {
             var verifyText = c.is_verified ? "✅ 인증됨" : "⏳ 미인증";
             var ownerText = c.registered_by ? "" : " · 레거시";
@@ -589,12 +591,15 @@ exports.chatbotTeamList = onRequest({ cors: true, invoker: "public" }, async fun
             return {
                 title: c.name || "이름 없음",
                 description: desc,
-                buttons: [{
-                    label: "🗑 삭제",
-                    action: "block",
-                    blockId: TEAM_DELETE_ASK_BLOCK_ID,
-                    extra: { club_id: c._id, club_name: c.name || "" }
-                }]
+                thumbnail: { imageUrl: DEFAULT_THUMB },
+                buttons: [
+                    {
+                        label: "🗑 삭제",
+                        action: "block",
+                        blockId: TEAM_DELETE_ASK_BLOCK_ID,
+                        extra: { club_id: c._id, club_name: c.name || "" }
+                    }
+                ]
             };
         });
 
@@ -717,3 +722,4 @@ exports.chatbotTeamDelete = onRequest({ cors: true, invoker: "public" }, async f
         });
     }
 });
+
