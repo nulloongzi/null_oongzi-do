@@ -37,25 +37,16 @@
     };
 
     window.loadAllClubs = function () {
-        var staticPromise = fetch('data/volleyball_clubs_kakao.json')
-            .then(function (res) { return res.json(); })
-            .catch(function (e) {
-                console.error("Static clubs JSON fetch error:", e);
-                return [];
-            });
-
         var firestorePromise = window.firebaseDB
             ? window.firebaseDB.collection('clubs').get()
                 .then(function (snapshot) {
                     return snapshot.docs.map(function (doc) {
                         var d = doc.data();
-                        d.id = doc.id; // Firebase 문서 ID를 객체에 주입
-                        // coordinates 필드 → lat/lng 평탄화
+                        d.id = doc.id;
                         if (d.coordinates) {
                             d.lat = d.coordinates.lat;
                             d.lng = d.coordinates.lng;
                         }
-                        // contact 필드 → insta/link 평탄화
                         if (d.contact) {
                             if (d.contact.insta) d.insta = d.contact.insta;
                             if (d.contact.link) d.link = d.contact.link;
@@ -69,36 +60,15 @@
                 })
             : Promise.resolve([]);
 
-        return Promise.all([staticPromise, firestorePromise]).then(function (results) {
-            var staticClubs = results[0];
-            var firestoreClubs = results[1];
+        return firestorePromise.then(function (clubs) {
+            window.allClubs = clubs;
+            window.clubs = clubs;
 
-            // Merge: start with static JSON, then overlay/append Firestore clubs
-            var merged = staticClubs.slice(); // shallow copy
-            var idMap = {};
-            merged.forEach(function (c, idx) {
-                if (c.id) idMap[String(c.id).trim()] = idx;
-            });
-
-            firestoreClubs.forEach(function (fc) {
-                var key = String(fc.id).trim();
-                if (idMap.hasOwnProperty(key)) {
-                    // Override: Firestore data takes precedence
-                    merged[idMap[key]] = fc;
-                } else {
-                    merged.push(fc);
-                }
-            });
-
-            window.allClubs = merged;
-            window.clubs = merged;
-
-            // Notify map if ready
             if (typeof window.refreshMarkers === 'function') {
                 window.refreshMarkers();
             }
 
-            return merged;
+            return clubs;
         });
     };
 })();
