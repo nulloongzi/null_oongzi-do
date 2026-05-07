@@ -1,6 +1,7 @@
 // JSON-only clubs migration script
 // Run in browser console while logged in as admin on the app
-// Pastes 6 legacy clubs into Firestore, then marks them is_verified=true
+// 1) Migrates legacy JSON clubs to Firestore
+// 2) Deletes stale Firestore entries
 
 (async function () {
   if (!window.firebaseDB || !window.currentUser) {
@@ -57,11 +58,36 @@
       is_urgent: false,
       urgent_msg: "",
     },
+    {
+      id: "a974f57817d9",
+      name: "시흥 픽업게임 (격주)",
+      target: "성인, 대학생",
+      address: "경기 시흥시 장곡로70번길 8",
+      schedule: "월 17:50~20:50",
+      price: "없음",
+      contact: { insta: "volleyball_pickup_siheung", link: "https://open.kakao.com/o/s2KVlj0h" },
+      coordinates: { lat: 37.3800412358371, lng: 126.782344990345 },
+      is_urgent: true,
+      urgent_msg: "남자 회원모집! 20세이상 1년이상 경력자만!",
+    },
+    {
+      id: "9edf0b3eea75",
+      name: "시흥 픽업게임 (격주)",
+      target: "성인, 대학생",
+      address: "경기 시흥시 포도원로 50",
+      schedule: "월 17:50~20:50",
+      price: "없음",
+      contact: { insta: "volleyball_pickup_siheung", link: "https://open.kakao.com/o/s2KVlj0h" },
+      coordinates: { lat: 37.4351037039142, lng: 126.778397821095 },
+      is_urgent: true,
+      urgent_msg: "남자 회원모집! 20세이상 1년이상 경력자만!",
+    },
   ];
 
   const uid = window.currentUser.uid;
   const now = firebase.firestore.FieldValue.serverTimestamp();
 
+  // 1) 마이그레이션
   for (const club of clubs) {
     const { id, ...data } = club;
     const docRef = window.firebaseDB.collection("clubs").doc(id);
@@ -81,5 +107,12 @@
     console.log(`✅ ${club.name} (${id}) 마이그레이션 완료`);
   }
 
-  console.log("🎉 전체 마이그레이션 완료!");
+  // 2) 구버전 항목 삭제 (시흥 수요배구회 픽업게임)
+  const staleIds = ["587d9b25876e"];
+  for (const id of staleIds) {
+    await window.firebaseDB.collection("clubs").doc(id).delete();
+    console.log(`🗑️ 삭제 완료: ${id}`);
+  }
+
+  console.log("🎉 전체 완료!");
 })();
