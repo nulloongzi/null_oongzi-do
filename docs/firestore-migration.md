@@ -22,14 +22,14 @@
 | 피터팬 | 946b791a9d19 | ✅ 마이그레이션 완료 |
 | TVT | eb51c870a0c3 | ✅ 마이그레이션 완료 |
 | 챔스 | 908ceb689179 | ✅ 마이그레이션 완료 |
-| 시흥 픽업게임 (격주) — 장곡로70번길 8 | a974f57817d9 | ⏳ 미완료 |
-| 시흥 픽업게임 (격주) — 포도원로 50 | 9edf0b3eea75 | ⏳ 미완료 |
+| 시흥 픽업게임 (격주) — 장곡로70번길 8 | a974f57817d9 | ✅ 마이그레이션 완료 |
+| 시흥 픽업게임 (격주) — 포도원로 50 | 9edf0b3eea75 | ✅ 마이그레이션 완료 |
 
 ### Firestore에서 삭제할 항목
 
 | 이름 | ID | 상태 |
 |------|----|------|
-| 시흥 수요배구회 픽업게임 | 587d9b25876e | ⏳ 미완료 (구버전, 이름/장소 변경된 클럽) |
+| 시흥 수요배구회 픽업게임 | 587d9b25876e | ✅ 삭제 완료 |
 
 ## 마이그레이션 스크립트
 
@@ -38,10 +38,10 @@
 - 6개 클럽 Firestore 마이그레이션 (이미 존재하면 덮어쓰기)
 - `시흥 수요배구회 픽업게임` 삭제
 
-## 남은 작업
+## 완료된 작업
 
-1. **브라우저 콘솔에서 `migrate_to_firestore.js` 실행** (시흥 픽업게임 2개 + 삭제)
-2. `update_data.yml` GitHub Actions 워크플로우 비활성화 또는 삭제
-3. `js/data.js`에서 JSON fetch 코드 제거, Firestore 단독 로드로 변경
-4. `data/volleyball_clubs_kakao.json` 삭제
-5. `pipeline/` 디렉토리 정리 (main.py 등 불필요 파일 삭제)
+1. ✅ 브라우저 콘솔에서 `migrate_to_firestore.js` 실행 (전체 클럽 마이그레이션 + 구버전 삭제)
+2. ✅ `update_data.yml` GitHub Actions 파이프라인 삭제
+3. ✅ `js/data.js` JSON fetch 제거, Firestore 단독 로드로 변경
+4. ✅ `data/volleyball_clubs_kakao.json` 삭제
+5. ✅ `pipeline/` 스크립트 정리 (migrate_to_firestore.js만 보존)
