@@ -21,6 +21,53 @@
 
 ---
 
+## 자동 검증 결과 (Claude Code, 2026-05-12)
+
+### 정적 분석: `/security-review` 스킬 재실행
+- **결과**: ✅ PASS — Phase 1-4 변경분에서 **새로 추가된 HIGH/MEDIUM 취약점 0건**
+- **요약**: 보안 패치 자체가 사전 결함(저장형 XSS, 가짜 PIN, 무인증 엔드포인트, 느슨한 Storage 룰, 공개 이메일, admins 열거)을 닫는 PR이며 새 공격면 도입 없음
+- **분석 대상**: 7 커밋(8548879..ed4e134), 17개 변경 파일
+
+### 단위 테스트: `tests/dom-utils.test.js`
+- **실행**: `node --test tests/dom-utils.test.js`
+- **결과**: ✅ **50/50 PASS** (duration ≈ 170ms)
+- **커버 시나리오** (XSS-1/2/4, IN-2/3 대응):
+  - `escapeHtml`: 5종 HTML 특수문자, `<img onerror>`, `<script>`, 속성 깨기 따옴표, null/undefined, 한글 보존, 숫자 강제 변환
+  - `sanitizeUrl`: http(s)/mailto/tel 통과, `javascript:`(대소문자/공백선행), `data:`, `vbscript:`, `file:`, `ftp:`, protocol-relative, 상대경로 차단
+  - `sanitizeInstaHandle`: 유효 핸들/`@` 제거/HTML 태그 거부/하이픈 거부/공백 거부/슬래시 거부/30자 경계
+  - `sanitizeFilename`: 슬래시·백슬래시·콜론·제어문자 제거, 영숫자·_-. 보존, 80자 truncate(확장자 보존), 한글 _ 치환
+  - **XSS payload regression matrix**: 8개 알려진 페이로드(`<svg onload>`, `<iframe javascript:>`, `<details ontoggle>` 등) 모두 escape 통과
+
+### Firestore Rules 테스트: `tests/firestore-rules.test.js`
+- **실행**: `firebase emulators:exec --only firestore "node --test tests/firestore-rules.test.js"`
+- **결과**: ✅ **21/21 PASS** (PIN-3, PR-1/2/3/5 자동화 + 회귀 케이스 다수)
+- **커버**:
+  - Phase 1-1 (clubs update): 비owner update 거부 / owner 정상 / admin 모든 필드 / owner는 is_verified·registered_by 변경 거부
+  - Phase 4 (users 분리): 공개 doc hasOnly(5필드) / 6번째 필드(`email`) 추가 시도 거부 / 본인 private read·write 통과 / 타인 private read·write 거부 / 타 uid 공개 doc write 거부
+  - Phase 4 (admins): 본인 get 통과(false 반환) / list 거부 / 타인 get 거부 / write 거부(admin 본인도)
+  - verification_requests 회귀: 정상 create / `requested_by` 위조 거부 / `status='approved'` 스푸핑 거부 / 클라이언트 update 거부
+
+### Storage Rules 테스트: `tests/storage-rules.test.js`
+- **실행**: `firebase emulators:exec --only storage "node --test tests/storage-rules.test.js"`
+- **결과**: ✅ **20/20 PASS** (ST-1/2/3 자동화 + 추가 회귀)
+- **커버**:
+  - verification_photos: jpeg/png/webp/gif 통과 / svg+xml 거부 / text/html 거부 / pdf 거부 / 5MB 초과 거부 / 5MB 경계 거부 / 타 uid 경로 거부 / 비로그인 거부 / 평면 경로 write 거부 / 서브디렉터리 traversal 거부 / 레거시 평면 경로 public read 유지
+  - club_photos: 본인 jpeg 통과 / 타uid 거부 / SVG 거부
+  - 미정의 경로: write/read 모두 거부
+
+### 종합
+| 검증 | PASS | FAIL | 비고 |
+|---|---|---|---|
+| `/security-review` | ✅ | — | 새 취약점 0건 |
+| dom-utils 단위 테스트 | 50 | 0 | XSS/URL/Insta/Filename |
+| firestore-rules 테스트 | 21 | 0 | Phase 1-1, 4 룰 |
+| storage-rules 테스트 | 20 | 0 | Phase 3 룰 |
+| **합계** | **91** | **0** | |
+
+**룰·로직 차원의 자동 검증 완료.** UI/UX·실제 카카오톡·실제 마이그레이션 흐름은 아래 수동 시나리오로 보완 필요.
+
+---
+
 ## Phase 1-3 — 저장형 XSS
 
 ### XSS-1: 팀 이름에 onerror 페이로드
@@ -126,6 +173,8 @@
 - **관찰**: _____
 
 ### PIN-3: 직접 Firestore 쓰기 시도 (devtools)
+✅ **자동 검증으로 보장됨** (`tests/firestore-rules.test.js` — `PIN-3: 비owner는 clubs.is_urgent 업데이트 거부`)
+운영 환경에서 스팟체크 권장:
 **사용자 작업:** B 계정으로 로그인 상태에서 devtools 콘솔에 입력:
 ```js
 firebase.firestore().collection('clubs').doc('<A의 팀 id>').update({is_urgent: true, urgent_msg: 'hack'})
@@ -166,6 +215,8 @@ firebase.firestore().collection('clubs').doc('<A의 팀 id>').update({is_urgent:
 ## Phase 3 — Storage rules
 
 ### ST-1: SVG 업로드 차단
+✅ **자동 검증으로 보장됨** (`tests/storage-rules.test.js` — `image/svg+xml 거부 (XSS 호스팅 방지)`)
+운영 환경 스팟체크용 시나리오:
 **Extension 프롬프트:**
 > A 계정으로 인증 신청 모달 열고 파일 첨부에서 `.svg` 파일 선택(없으면 임의 SVG 텍스트를 .svg로 저장하여 사용).
 > 제출 시 에러 메시지 확인. Firebase Storage 룰에 의해 차단되어야 정답.
@@ -175,6 +226,7 @@ firebase.firestore().collection('clubs').doc('<A의 팀 id>').update({is_urgent:
 - **관찰**: _____
 
 ### ST-2: 5MB 초과 이미지 차단
+✅ **자동 검증으로 보장됨** (`tests/storage-rules.test.js` — `ST-2: 5MB 초과 jpeg 거부`)
 **Extension 프롬프트:**
 > 6MB 이상의 JPEG 파일을 인증 사진으로 첨부 후 제출. 5MB 한도에 막혀야 정답.
 
@@ -183,6 +235,7 @@ firebase.firestore().collection('clubs').doc('<A의 팀 id>').update({is_urgent:
 - **관찰**: _____
 
 ### ST-3: 다른 uid 경로 쓰기 시도
+✅ **자동 검증으로 보장됨** (`tests/storage-rules.test.js` — `ST-3: 다른 uid 디렉터리 쓰기 거부`)
 **사용자 작업:** B 계정 로그인 상태에서 devtools 콘솔:
 ```js
 var file = new Blob(['fake'], {type: 'image/jpeg'});
@@ -208,6 +261,7 @@ firebase.storage().ref('verification_photos/<A의 uid>/hack.jpg').put(file)
 ## Phase 4 — users 공개/비공개 분리 + admins list 차단
 
 ### PR-1: 비로그인 상태에서 users 컬렉션에 email 없음
+✅ **룰 차원 자동 검증** (`tests/firestore-rules.test.js` — `공개 doc에 email 필드 추가 시도 거부 (hasOnly)` 등). 단, 마이그레이션 전 데이터에 남은 email은 룰만으로 즉시 사라지지 않으니 실데이터 확인 필요.
 **사용자 작업:** 시크릿 창에서 비로그인 상태로 staging 접속, devtools 콘솔:
 ```js
 firebase.firestore().collection('users').limit(5).get().then(s => s.docs.map(d => d.data()))
@@ -220,6 +274,7 @@ firebase.firestore().collection('users').limit(5).get().then(s => s.docs.map(d =
 - **관찰**: _____
 
 ### PR-2: 본인 private 서브컬렉션 읽기 가능
+✅ **자동 검증으로 보장됨** (`tests/firestore-rules.test.js` — `PR-2: 본인은 private/profile read 통과`)
 **사용자 작업:** A 계정 로그인 후 devtools 콘솔:
 ```js
 firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/private/profile').get().then(d => d.data())
@@ -232,6 +287,7 @@ firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/private/
 - **관찰**: _____
 
 ### PR-3: 타인 private 서브컬렉션 거부
+✅ **자동 검증으로 보장됨** (`tests/firestore-rules.test.js` — `PR-3: 타인은 private/profile read 거부` + write 거부)
 **사용자 작업:** B 계정 로그인 상태에서 devtools 콘솔:
 ```js
 firebase.firestore().doc('users/<A의 uid>/private/profile').get().catch(e => e.code)
@@ -256,6 +312,7 @@ firebase.firestore().doc('users/<A의 uid>/private/profile').get().catch(e => e.
 - **관찰**: _____
 
 ### PR-5: admins list 차단
+✅ **자동 검증으로 보장됨** (`tests/firestore-rules.test.js` — `PR-5: admins list 거부`, `본인 uid get 통과`, `타인 admins doc get 거부`)
 **사용자 작업:** 비관리자(A) 로그인 상태에서 devtools 콘솔:
 ```js
 firebase.firestore().collection('admins').limit(5).get().catch(e => e.code)
