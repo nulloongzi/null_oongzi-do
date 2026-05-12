@@ -65,6 +65,7 @@
 
         .main-search-input {
             flex: 1;
+            min-width: 0; /* 좁은 모바일 화면에서 placeholder 본질 너비가 flex 항목을 부풀려 ⚙ 필터 버튼이 잘려 보이는 문제 해결 */
             border: none;
             outline: none;
             font-size: 16px;
