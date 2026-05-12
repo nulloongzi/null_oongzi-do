@@ -13,12 +13,15 @@
         measurementId: "G-L1KWREQEMW"
     };
 
-    var app, auth, db, storage;
+    var app, auth, db, storage, functions;
     try {
         app = firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
         db = firebase.firestore();
         storage = firebase.storage();
+        if (typeof firebase.functions === "function") {
+            functions = firebase.functions();
+        }
         console.log("Firebase compat SDK 연결 성공!");
     } catch (e) {
         console.error("Firebase 초기화 실패:", e);
@@ -78,6 +81,13 @@
 
     window.firebaseServerTimestamp = function () {
         return firebase.firestore.FieldValue.serverTimestamp();
+    };
+
+    // ── Functions: 호출 가능한 콜러블 래퍼 ──
+    window.firebaseFunctions = functions;
+    window.firebaseCallable = function (name) {
+        if (!functions) return null;
+        return functions.httpsCallable(name);
     };
 
     // ── Storage: modular-API-compatible wrappers ──

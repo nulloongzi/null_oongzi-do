@@ -194,13 +194,12 @@ function saveLunchboxToDB() {
         if (typeof window.renderProfileCard === 'function') window.renderProfileCard();
         if (isDietPlanOpen) renderCombinedSchedule();
 
-        // Firestore 비동기 저장
-        if (window.currentUser && window.firebaseDB) {
-            var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
-            window.firebaseUpdateDoc(userRef, {
+        // Firestore 비동기 저장 (private 서브컬렉션)
+        if (window.currentUser && window.firebaseDB && window.userPrivateRef) {
+            window.userPrivateRef(window.currentUser.uid).set({
                 bookmarks: slots,
                 customTeams: window.currentProfileData.customTeams || {}
-            }).catch(function (e) { console.error("Firebase save failed, but UI applied:", e); });
+            }, { merge: true }).catch(function (e) { console.error("Firebase save failed, but UI applied:", e); });
         }
     } else {
         // localStorage fallback
@@ -231,13 +230,12 @@ window.bookmarkTeam = async function (teamId) {
 
             if (typeof window.renderProfileCard === 'function') window.renderProfileCard();
 
-            // Firestore 비동기 저장
-            if (window.currentUser && window.firebaseDB) {
-                var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
-                window.firebaseUpdateDoc(userRef, {
+            // Firestore 비동기 저장 (private 서브컬렉션)
+            if (window.currentUser && window.firebaseDB && window.userPrivateRef) {
+                window.userPrivateRef(window.currentUser.uid).set({
                     bookmarks: slots,
                     customTeams: window.currentProfileData.customTeams || {}
-                }).catch(function (e) { console.error("Firebase update failed, but optimistic UI applied:", e); });
+                }, { merge: true }).catch(function (e) { console.error("Firebase update failed, but optimistic UI applied:", e); });
             }
         } else {
             // localStorage fallback

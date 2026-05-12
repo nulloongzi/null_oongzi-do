@@ -1,4 +1,4 @@
-var { onRequest } = require("firebase-functions/v2/https");
+var { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 var { onDocumentCreated } = require("firebase-functions/v2/firestore");
 var { defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin");
@@ -730,5 +730,50 @@ exports.chatbotTeamDelete = onRequest({ cors: true, invoker: "public" }, async f
             template: { outputs: [{ simpleText: { text: "삭제 처리 중 오류: " + error.message } }] }
         });
     }
+});
+
+// ══════════════════════════════════════════════════════════
+// 관리자 전용: 팀 소유자 재할당 (이메일 → uid)
+// users.email이 비공개 서브컬렉션으로 옮겨져 클라이언트에서 직접
+// 이메일로 uid를 조회할 수 없으므로 Admin SDK를 통한 onCall로 제공.
+// ══════════════════════════════════════════════════════════
+exports.adminReassignOwner = onCall(async function (request) {
+    var auth = request.auth;
+    if (!auth) {
+        throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    var adminSnap = await db.collection("admins").doc(auth.uid).get();
+    if (!adminSnap.exists) {
+        throw new HttpsError("permission-denied", "관리자만 사용할 수 있습니다.");
+    }
+    var data = request.data || {};
+    var clubId = data.clubId;
+    var email = data.email;
+    if (!clubId || !email) {
+        throw new HttpsError("invalid-argument", "clubId와 email이 필요합니다.");
+    }
+    var emailNorm = String(email).trim().toLowerCase();
+    var userRecord;
+    try {
+        userRecord = await admin.auth().getUserByEmail(emailNorm);
+    } catch (e) {
+        if (e && e.code === "auth/user-not-found") {
+            throw new HttpsError(
+                "not-found",
+                "해당 이메일의 사용자를 찾을 수 없습니다. (사용자가 먼저 한 번 로그인해야 합니다)"
+            );
+        }
+        console.error("adminReassignOwner getUserByEmail 오류:", e);
+        throw new HttpsError("internal", "사용자 조회 중 오류가 발생했습니다.");
+    }
+    try {
+        await db.collection("clubs").doc(clubId).update({
+            registered_by: userRecord.uid
+        });
+    } catch (e) {
+        console.error("adminReassignOwner clubs.update 오류:", e);
+        throw new HttpsError("internal", "팀 소유자 업데이트 중 오류가 발생했습니다.");
+    }
+    return { ok: true, uid: userRecord.uid };
 });
 

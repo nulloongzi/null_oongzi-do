@@ -86,14 +86,21 @@ window.updateProfileUI = function (isLoggedIn) {
     }
 };
 
+// users 비공개 필드(email/bookmarks/customTeams)는 /users/{uid}/private/profile에 저장.
+// 공개 doc(/users/{uid})에는 닉네임/색상만 둔다. window.currentProfileData는
+// 두 곳을 머지한 뷰로 유지하여 호출자 인터페이스는 동일하게 보존.
+window.userPrivateRef = function (uid) {
+    return window.firebaseDB.collection('users').doc(uid).collection('private').doc('profile');
+};
+
 window.loadOrCreateUserProfile = async function (user) {
     var userRef = window.firebaseDoc(window.firebaseDB, 'users', user.uid);
+    var privateRef = window.userPrivateRef(user.uid);
     try {
         var userSnap = await userRef.get();
-        if (userSnap.exists) {
-            window.currentProfileData = userSnap.data();
-            if (!window.currentProfileData.customTeams) window.currentProfileData.customTeams = {};
-        } else {
+
+        if (!userSnap.exists) {
+            // 신규 가입: 닉네임 생성 + 공개/비공개 doc 분리 저장
             var newNameObj = null;
             var isUnique = false;
             var retryCount = 0;
@@ -104,28 +111,81 @@ window.loadOrCreateUserProfile = async function (user) {
             }
             if (!isUnique) newNameObj.full += Date.now().toString().slice(-4);
             var now = new Date();
-            var userData = {
+            var publicData = {
                 nickname: newNameObj.base,
                 suffix: newNameObj.code,
                 full_nickname: newNameObj.full,
                 color: newNameObj.color,
-                created_at: now,
+                created_at: now
+            };
+            var privateData = {
                 email: user.email,
                 bookmarks: [],
                 customTeams: {}
             };
-            await window.firebaseSetDoc(userRef, userData);
-            window.currentProfileData = userData;
+            await window.firebaseSetDoc(userRef, publicData);
+            await window.firebaseSetDoc(privateRef, privateData);
+            window.currentProfileData = Object.assign({}, publicData, privateData);
             alert("환영합니다! [" + newNameObj.full + "]님이 되셨습니다!");
+        } else {
+            // 기존 가입자: 공개 + 비공개 머지, 필요 시 lazy migration
+            var publicData2 = userSnap.data();
+            var privateSnap = await privateRef.get();
+            var privateData2 = privateSnap.exists ? privateSnap.data() : {};
+
+            var needsMigration =
+                publicData2.email !== undefined ||
+                publicData2.bookmarks !== undefined ||
+                publicData2.customTeams !== undefined;
+
+            if (needsMigration) {
+                // 1) public에 있던 비공개 필드를 private로 복사 (private에 이미 값이 있으면 우선)
+                var migrated = {};
+                if (publicData2.email !== undefined && privateData2.email === undefined) {
+                    migrated.email = publicData2.email;
+                }
+                if (publicData2.bookmarks !== undefined && privateData2.bookmarks === undefined) {
+                    migrated.bookmarks = publicData2.bookmarks;
+                }
+                if (publicData2.customTeams !== undefined && privateData2.customTeams === undefined) {
+                    migrated.customTeams = publicData2.customTeams;
+                }
+                if (Object.keys(migrated).length > 0) {
+                    await privateRef.set(migrated, { merge: true });
+                    privateData2 = Object.assign({}, privateData2, migrated);
+                }
+                // 2) public에서 비공개 필드 제거 (rules의 hasOnly 통과를 위해)
+                var del = firebase.firestore.FieldValue.delete();
+                var cleanup = {};
+                if (publicData2.email !== undefined) cleanup.email = del;
+                if (publicData2.bookmarks !== undefined) cleanup.bookmarks = del;
+                if (publicData2.customTeams !== undefined) cleanup.customTeams = del;
+                try {
+                    await userRef.update(cleanup);
+                } catch (cleanupErr) {
+                    // 정리 실패해도 사용자 경험은 영향 없음 (다음 로그인 때 재시도)
+                    console.warn("public users doc 정리 실패:", cleanupErr && cleanupErr.message);
+                }
+            }
+
+            if (!privateData2.customTeams) privateData2.customTeams = {};
+            if (!privateData2.bookmarks) privateData2.bookmarks = [];
+            // 공개 doc에서 비공개 필드를 제거한 클린 카피
+            var publicClean = {
+                nickname: publicData2.nickname,
+                suffix: publicData2.suffix,
+                full_nickname: publicData2.full_nickname,
+                color: publicData2.color,
+                created_at: publicData2.created_at
+            };
+            window.currentProfileData = Object.assign({}, publicClean, privateData2);
         }
 
-        // PR #1: localStorage merge logic
+        // localStorage 머지 (북마크/customTeams) - private 경로로 저장
         var localBM = JSON.parse(localStorage.getItem(LS_BOOKMARKS_KEY) || 'null');
         var localCT = JSON.parse(localStorage.getItem(LS_CUSTOM_TEAMS_KEY) || 'null');
         if ((localBM && localBM.some(function (b) { return b !== null; })) || (localCT && Object.keys(localCT).length > 0)) {
-            // merge custom teams
             var mergedCT = Object.assign({}, localCT || {}, window.currentProfileData.customTeams || {});
-            // merge bookmarks - Firestore priority, fill empty slots with local
             var mergedBM = (window.currentProfileData.bookmarks || []).slice();
             while (mergedBM.length < 5) mergedBM.push(null);
             (localBM || []).forEach(function (localId) {
@@ -134,12 +194,9 @@ window.loadOrCreateUserProfile = async function (user) {
                     if (idx !== -1) mergedBM[idx] = localId;
                 }
             });
-            // save to Firestore
-            var mergeRef = window.firebaseDoc(window.firebaseDB, 'users', user.uid);
-            await window.firebaseUpdateDoc(mergeRef, { bookmarks: mergedBM, customTeams: mergedCT });
+            await privateRef.set({ bookmarks: mergedBM, customTeams: mergedCT }, { merge: true });
             window.currentProfileData.bookmarks = mergedBM;
             window.currentProfileData.customTeams = mergedCT;
-            // clear localStorage
             localStorage.removeItem(LS_BOOKMARKS_KEY);
             localStorage.removeItem(LS_CUSTOM_TEAMS_KEY);
         }

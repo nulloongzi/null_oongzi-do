@@ -45,15 +45,29 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // users: 공개 프로필 (닉네임 등)
+    // users: 공개 프로필 (닉네임/색상). email·bookmarks·customTeams는
+    // private 서브컬렉션으로 분리하여 PIPA 위험(이메일 공개 덤프) 차단.
     match /users/{userId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // 공개 필드만 허용. lazy migration 시 비공개 필드 삭제(FieldValue.delete())로
+      // 결과 키 집합이 화이트리스트에 맞춰지면 통과.
+      allow write: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.keys().hasOnly([
+                         'nickname', 'suffix', 'full_nickname', 'color', 'created_at'
+                       ]);
     }
 
-    // admins: 관리자 목록 (콘솔/admin SDK에서만 쓰기 가능)
+    // users 비공개 프로필: 본인만 읽기/쓰기
+    match /users/{userId}/private/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // admins: 관리자 목록. list 금지(관리자 UID 덤프 차단), 본인 uid get만 허용.
+    // 쓰기는 콘솔/admin SDK에서만.
     match /admins/{userId} {
-      allow read: if true; // 클라이언트가 자신이 관리자인지 확인 가능
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list: if false;
       allow write: if false;
     }
 

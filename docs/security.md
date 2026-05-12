@@ -52,13 +52,19 @@
 - [x] 기존 평면 경로 read는 공개 유지 (chatbot 캐러셀 thumbnail 호환). 신규 업로드만 uid 디렉터리로 들어감
 
 ### Phase 4 — `users` 공개/비공개 분리 + `admins` list 차단
-- [ ] `users/{uid}/private/profile` 서브문서로 `email`, `bookmarks`, `customTeams` 이전
-- [ ] `firestore.rules`: 서브컬렉션 본인만 read/write
-- [ ] `js/auth.js`의 `loadOrCreateUserProfile`에 lazy migration 로직 추가
-- [ ] `js/lunchbox.js`의 user doc update를 private path로 교체
-- [ ] admin owner 재할당을 `exports.adminReassignOwner = onCall(...)` Cloud Function으로 이관 (`auth.getUserByEmail` 사용)
-- [ ] `js/registration.js`의 admin 분기를 onCall 호출로 교체
-- [ ] `firestore.rules`: `admins/{uid}` `allow get: if request.auth.uid == userId;`로 list 차단
+- [x] `users/{uid}/private/profile` 서브문서로 `email`, `bookmarks`, `customTeams` 이전
+- [x] `firestore.rules`: 서브컬렉션 본인만 read/write, 공개 doc은 닉네임/색상 5개 필드만 화이트리스트
+- [x] `js/auth.js`의 `loadOrCreateUserProfile`에 신규 분리 저장 + 기존 사용자 lazy migration 로직 추가 (`window.userPrivateRef` 헬퍼)
+- [x] `js/lunchbox.js`의 user doc update 2건을 private path로 교체
+- [x] admin owner 재할당을 `exports.adminReassignOwner = onCall(...)` Cloud Function으로 이관 (`admin.auth().getUserByEmail` 사용)
+- [x] `js/registration.js`의 admin 분기를 onCall 호출로 교체. 편집 모달의 현재 소유자 힌트는 이메일 대신 닉네임으로
+- [x] `firestore.rules`: `admins/{uid}` `allow get: if request.auth.uid == userId; allow list: if false;`로 list 차단
+- [x] `index.html`에 `firebase-functions-compat` CDN 추가 + `firebase-init.js`에 `window.firebaseCallable` 래퍼
+
+**배포 주의:**
+- `firebase deploy --only firestore:rules,functions:adminReassignOwner`
+- 기존 사용자는 다음 로그인 시 자동으로 비공개 필드가 마이그레이션됨
+- 마이그레이션이 완료되기 전 사용자의 다른 기기 세션은 일시적으로 이메일이 양쪽에 있는 상태로 유지 (다음 로그인에서 정리)
 
 ## Phase 5+ 백로그
 이번 패치 범위 밖. 우선순위 순.
@@ -118,7 +124,8 @@
 | 2026-05-07 | 1-2 | 5689ef2 | 등록/수정 입력단에 길이·URL 스킴·인스타 핸들 형식 검증 추가 |
 | 2026-05-07 | 1-1 | 409f3e3 | PIN 1234 가짜 보안 제거. 급구 토글을 canModifyClub로 게이트. urgent_msg 200자 가드. 길찾기 링크 rel=noopener. 권한 확대 활성화 |
 | 2026-05-07 | 2 | f8c7858 | verificationNotify HTTP 엔드포인트 폐기 → Firestore onDocumentCreated 트리거로 교체. 클라이언트 webhook fetch 제거. approveUrl ReferenceError 버그 제거 |
-| 2026-05-07 | 3 | (이번 커밋) | Storage rules: uid 격리, SVG/HTML 차단(이미지 4종 화이트리스트), 5MB·파일명 100자 한도. 업로드 경로에 uid + sanitizeFilename 적용 |
+| 2026-05-07 | 3 | 9eb1a52 | Storage rules: uid 격리, SVG/HTML 차단(이미지 4종 화이트리스트), 5MB·파일명 100자 한도. 업로드 경로에 uid + sanitizeFilename 적용 |
+| 2026-05-07 | 4 | (이번 커밋) | users 공개/비공개 분리: email·bookmarks·customTeams를 users/{uid}/private/profile로 이관. 기존 사용자 lazy migration. admins list 차단(본인 uid get만 허용). admin 소유자 재할당을 adminReassignOwner onCall Cloud Function으로 이관 |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙
