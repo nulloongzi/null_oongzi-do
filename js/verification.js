@@ -75,25 +75,10 @@ window.submitVerificationRequest = async function (club) {
         };
 
         var collRef = window.firebaseCollection(window.firebaseDB, 'verification_requests');
-        var docRef = await window.firebaseAddDoc(collRef, requestData);
+        await window.firebaseAddDoc(collRef, requestData);
 
-        // 3. 카카오톡 웹훅 호출 (Cloud Function URL - Phase C에서 설정)
-        if (window.VERIFICATION_WEBHOOK_URL) {
-            try {
-                await fetch(window.VERIFICATION_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        request_id: docRef.id,
-                        club_id: club.id,
-                        club_name: club.name,
-                        photo_url: photo_url
-                    })
-                });
-            } catch (webhookErr) {
-                console.warn('웹훅 알림 실패 (인증 요청은 저장됨):', webhookErr.message);
-            }
-        }
+        // 카카오톡 알림은 Cloud Functions의 onVerificationCreated 트리거가 자동 발송한다.
+        // (기존 무인증 verificationNotify HTTP 엔드포인트는 폐기됨)
 
         alert('인증 신청이 완료되었습니다!\n관리자 확인 후 인증 배지가 부여됩니다.');
         window.closeVerificationModal();

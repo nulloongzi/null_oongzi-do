@@ -38,9 +38,11 @@
 - [x] 권한 확대 (owner 자율 수정 + 긴급구인) 활성화 — 1-1 완료. 기존 edit/delete 흐름은 이미 `canModifyClub`로 게이트되어 있고 Firestore rules가 owner/admin write를 허용 중이므로 추가 코드 변경 불필요. 1-3·1-2로 출력단/입력단이 막혀 있어 안전
 
 ### Phase 2 — `verificationNotify` 인증
-- [ ] HTTP 엔드포인트 폐기 → Firestore `onDocumentCreated("verification_requests/{id}")` trigger로 마이그레이션
-- [ ] `js/verification.js`의 `VERIFICATION_WEBHOOK_URL` 호출 블록 삭제
-- [ ] `functions/index.js:166-167` 미정의 `approveUrl` 참조 버그 제거
+- [x] HTTP 엔드포인트 폐기 → Firestore `onDocumentCreated("verification_requests/{requestId}")` 트리거(`onVerificationCreated`)로 마이그레이션
+- [x] `js/verification.js`의 `VERIFICATION_WEBHOOK_URL` 호출 블록 삭제 + `js/app.js`의 전역 선언 제거
+- [x] 미정의 `approveUrl` 참조 버그 — 기존 함수 본문과 함께 제거됨
+
+**배포 주의:** Firebase Console에서 기존 `verificationNotify` v2 HTTP 함수를 수동 삭제하거나 `firebase functions:delete verificationNotify` 실행. 신규 트리거는 `firebase deploy --only functions:onVerificationCreated`로 배포.
 
 ### Phase 3 — Storage 룰 강화
 - [ ] `storage.rules`: `verification_photos/{uid}/{file}`, `club_photos/{uid}/{file}`로 uid 격리
@@ -114,7 +116,8 @@
 | 2026-05-07 | 점검 | — | 보안 대장 신설, Phase 1-4 계획 수립 |
 | 2026-05-07 | 1-3 | 9d53927 | 저장형 XSS 차단: 모든 사용자입력 출력단을 textContent/escape로 교체, 카카오맵 오버레이 HTMLElement화 |
 | 2026-05-07 | 1-2 | 5689ef2 | 등록/수정 입력단에 길이·URL 스킴·인스타 핸들 형식 검증 추가 |
-| 2026-05-07 | 1-1 | (이번 커밋) | PIN 1234 가짜 보안 제거. 급구 토글을 canModifyClub로 게이트. urgent_msg 200자 가드. 길찾기 링크 rel=noopener. 권한 확대 활성화 |
+| 2026-05-07 | 1-1 | 409f3e3 | PIN 1234 가짜 보안 제거. 급구 토글을 canModifyClub로 게이트. urgent_msg 200자 가드. 길찾기 링크 rel=noopener. 권한 확대 활성화 |
+| 2026-05-07 | 2 | (이번 커밋) | verificationNotify HTTP 엔드포인트 폐기 → Firestore onDocumentCreated 트리거로 교체. 클라이언트 webhook fetch 제거. approveUrl ReferenceError 버그 제거 |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙

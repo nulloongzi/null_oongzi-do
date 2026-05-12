@@ -1,4 +1,5 @@
 var { onRequest } = require("firebase-functions/v2/https");
+var { onDocumentCreated } = require("firebase-functions/v2/firestore");
 var { defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin");
 var crypto = require("crypto");
@@ -113,27 +114,45 @@ async function getKakaoAccessToken() {
     return result.access_token;
 }
 
-// ── 엔드포인트 1: 인증 신청 알림 (클라이언트에서 호출) ──
-exports.verificationNotify = onRequest({ cors: true, invoker: "public", secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] }, async function (req, res) {
-    if (req.method !== "POST") {
-        res.status(405).send("Method Not Allowed");
-        return;
-    }
+// ── 트리거 1: 인증 신청 생성 시 카카오톡 알림 ──
+// 기존 verificationNotify(공개 HTTP POST)는 무인증 호출로 임의 알림
+// 스팸/Functions 비용 폭격이 가능했음. Firestore onDocumentCreated으로
+// 교체하여 인증·존재검증·중복방지를 rule + trigger로 자동 보장.
+// Firestore rule에서 verification_requests create는 status='pending'이고
+// requested_by==auth.uid인 경우만 허용되므로 신뢰 가능한 입력만 도착.
+exports.onVerificationCreated = onDocumentCreated(
+    {
+        document: "verification_requests/{requestId}",
+        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
+    },
+    async function (event) {
+        var snap = event.data;
+        if (!snap) {
+            console.warn("onVerificationCreated: snapshot 없음");
+            return;
+        }
+        var data = snap.data() || {};
+        if (data.status !== "pending") {
+            console.log("onVerificationCreated: status가 pending이 아님 - 알림 생략", data.status);
+            return;
+        }
+        if (!data.club_name) {
+            console.warn("onVerificationCreated: club_name 누락 - 알림 생략");
+            return;
+        }
 
-    var data = req.body;
-    if (!data.request_id || !data.club_name) {
-        res.status(400).json({ error: "request_id and club_name are required" });
-        return;
-    }
+        var kakaoToken = null;
+        try {
+            kakaoToken = await getKakaoAccessToken();
+        } catch (tokenErr) {
+            console.error("카카오 토큰 획득 실패:", tokenErr);
+            return;
+        }
+        if (!kakaoToken) {
+            console.warn("KAKAO_ACCESS_TOKEN 미설정 - 카카오톡 알림 생략");
+            return;
+        }
 
-    // 카카오톡 "나에게 보내기" API로 알림 전송
-    var kakaoToken = null;
-    try {
-        kakaoToken = await getKakaoAccessToken();
-    } catch (tokenErr) {
-        console.error("카카오 토큰 획득 실패:", tokenErr);
-    }
-    if (kakaoToken) {
         try {
             var templateObject = {
                 object_type: "text",
@@ -143,10 +162,7 @@ exports.verificationNotify = onRequest({ cors: true, invoker: "public", secrets:
                     mobile_web_url: "https://nulloongzido.com"
                 }
             };
-
-            var jsonStr = JSON.stringify(templateObject);
-            var body = "template_object=" + encodeURIComponent(jsonStr);
-
+            var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
             var kakaoRes = await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
                 method: "POST",
                 headers: {
@@ -155,20 +171,13 @@ exports.verificationNotify = onRequest({ cors: true, invoker: "public", secrets:
                 },
                 body: body
             });
-
             var kakaoResult = await kakaoRes.json();
             console.log("카카오톡 메시지 전송 결과:", kakaoResult);
         } catch (kakaoErr) {
             console.error("카카오톡 메시지 전송 실패:", kakaoErr);
         }
-    } else {
-        console.warn("KAKAO_ACCESS_TOKEN이 설정되지 않았습니다.");
-        console.log("승인 URL:", approveUrl);
-        console.log("거절 URL:", rejectUrl);
     }
-
-    res.json({ success: true });
-});
+);
 
 // ── 엔드포인트 2: 승인/거절 처리 (관리자가 링크 클릭) ──
 exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET] }, async function (req, res) {
