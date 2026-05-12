@@ -125,7 +125,8 @@
 | 2026-05-07 | 1-1 | 409f3e3 | PIN 1234 가짜 보안 제거. 급구 토글을 canModifyClub로 게이트. urgent_msg 200자 가드. 길찾기 링크 rel=noopener. 권한 확대 활성화 |
 | 2026-05-07 | 2 | f8c7858 | verificationNotify HTTP 엔드포인트 폐기 → Firestore onDocumentCreated 트리거로 교체. 클라이언트 webhook fetch 제거. approveUrl ReferenceError 버그 제거 |
 | 2026-05-07 | 3 | 9eb1a52 | Storage rules: uid 격리, SVG/HTML 차단(이미지 4종 화이트리스트), 5MB·파일명 100자 한도. 업로드 경로에 uid + sanitizeFilename 적용 |
-| 2026-05-07 | 4 | (이번 커밋) | users 공개/비공개 분리: email·bookmarks·customTeams를 users/{uid}/private/profile로 이관. 기존 사용자 lazy migration. admins list 차단(본인 uid get만 허용). admin 소유자 재할당을 adminReassignOwner onCall Cloud Function으로 이관 |
+| 2026-05-07 | 4 | 3261c8f | users 공개/비공개 분리: email·bookmarks·customTeams를 users/{uid}/private/profile로 이관. 기존 사용자 lazy migration. admins list 차단(본인 uid get만 허용). admin 소유자 재할당을 adminReassignOwner onCall Cloud Function으로 이관 |
+| 2026-05-07 | 검증 | (이번 커밋) | `docs/security-review-log.md` 신설. Phase 1-4 검증 시나리오 23건(Claude Chrome Extension용 한국어 프롬프트 포함) + 실측 결과 칸 + 종합 표 |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙
@@ -133,3 +134,4 @@
 - `functions/index.js` - Cloud Functions
 - `js/auth.js` - 인증/관리자 판별 (`canModifyClub`, `isAdmin`)
 - `js/dom-utils.js` (신규) - 출력 escape 헬퍼
+- [`docs/security-review-log.md`](./security-review-log.md) - Phase 1-4 검증 시나리오 + 실측 결과 기록 (Chrome Extension용)
