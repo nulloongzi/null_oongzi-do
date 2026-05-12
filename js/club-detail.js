@@ -308,7 +308,8 @@ window.openClubDetail = function (id) {
     var existingManageBtn = document.getElementById('btnManageUrgent');
     if (existingManageBtn) existingManageBtn.remove();
 
-    if (club.is_verified) {
+    // 인증된 팀의 owner/admin만 급구 토글 노출 (Firestore rule이 동일 조건으로 write 차단)
+    if (club.is_verified && window.canModifyClub && window.canModifyClub(club)) {
         var manageBtn = document.createElement('button');
         manageBtn.id = 'btnManageUrgent';
         manageBtn.className = 'btn';
@@ -541,9 +542,9 @@ window.deleteClub = async function (club) {
 };
 
 window.toggleClubUrgentState = function (club) {
-    var pin = prompt("팀 관리자 PIN 번호 4자리를 입력해주세요.\n(기본 핀번호: 1234)");
-    if (pin !== "1234") {
-        alert("PIN 번호가 일치하지 않습니다.");
+    // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
+    if (!window.canModifyClub || !window.canModifyClub(club)) {
+        alert("급구 토글 권한이 없습니다.\n팀 등록자(소유자) 또는 관리자만 변경할 수 있습니다.");
         return;
     }
 
@@ -552,6 +553,11 @@ window.toggleClubUrgentState = function (club) {
     if (newStatus) {
         newMsg = prompt("급구 메시지를 입력해주세요! (예: 라이트 1명 급구)", "센터 1명 급구합니다!");
         if (!newMsg) return;
+        newMsg = newMsg.trim();
+        if (newMsg.length > 200) {
+            alert("급구 메시지는 200자 이하로 입력해주세요.");
+            return;
+        }
     }
 
     var clubRef = window.firebaseDoc(window.firebaseDB, 'clubs', club.id);

@@ -34,8 +34,8 @@
   - 신규 `js/dom-utils.js`에 `escapeHtml`, `sanitizeUrl`, `sanitizeInstaHandle` 추가 (`sanitizeFilename`은 Phase 3에서)
   - 적용 파일: `js/club-detail.js`(타이틀/태그/급구배너/티커/거절사유), `js/map-core.js`(CustomOverlay→HTMLElement), `js/lunchbox.js`(슬롯·주간뷰), `js/profile.js`(메인팀), `js/share.js`(세로쓰기 escape)
 - [x] **1-2 (URL/insta 검증 + 등록폼 길이 가드)** — `js/registration.js`의 `submitRegistration` 진입 시 길이(name/target/address/price)·스킴(link http(s) 한정)·인스타 핸들 형식 검증
-- [ ] **1-1 (PIN 제거 + canModifyClub 게이트 + rel=noopener)** — `js/club-detail.js`의 `toggleClubUrgentState` 게이트 교체, 모든 `target="_blank"`에 `rel="noopener noreferrer"` 추가
-- [ ] 권한 확대 (owner 자율 수정 + 긴급구인) 활성화 — 1-1 완료 직후
+- [x] **1-1 (PIN 제거 + canModifyClub 게이트 + rel=noopener)** — `js/club-detail.js`의 `toggleClubUrgentState` PIN 1234 분기 제거 후 `canModifyClub` 게이트, 인증된 팀 owner/admin만 급구 버튼 노출, `urgent_msg` 200자 가드, `index.html`의 길찾기 링크 등 모든 `target="_blank"`에 `rel="noopener noreferrer"`
+- [x] 권한 확대 (owner 자율 수정 + 긴급구인) 활성화 — 1-1 완료. 기존 edit/delete 흐름은 이미 `canModifyClub`로 게이트되어 있고 Firestore rules가 owner/admin write를 허용 중이므로 추가 코드 변경 불필요. 1-3·1-2로 출력단/입력단이 막혀 있어 안전
 
 ### Phase 2 — `verificationNotify` 인증
 - [ ] HTTP 엔드포인트 폐기 → Firestore `onDocumentCreated("verification_requests/{id}")` trigger로 마이그레이션
@@ -113,7 +113,8 @@
 |------|-------|------|------|
 | 2026-05-07 | 점검 | — | 보안 대장 신설, Phase 1-4 계획 수립 |
 | 2026-05-07 | 1-3 | 9d53927 | 저장형 XSS 차단: 모든 사용자입력 출력단을 textContent/escape로 교체, 카카오맵 오버레이 HTMLElement화 |
-| 2026-05-07 | 1-2 | (이번 커밋) | 등록/수정 입력단에 길이·URL 스킴·인스타 핸들 형식 검증 추가 |
+| 2026-05-07 | 1-2 | 5689ef2 | 등록/수정 입력단에 길이·URL 스킴·인스타 핸들 형식 검증 추가 |
+| 2026-05-07 | 1-1 | (이번 커밋) | PIN 1234 가짜 보안 제거. 급구 토글을 canModifyClub로 게이트. urgent_msg 200자 가드. 길찾기 링크 rel=noopener. 권한 확대 활성화 |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙
