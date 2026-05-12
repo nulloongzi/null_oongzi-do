@@ -33,7 +33,7 @@
 - [x] **1-3 (XSS 출력단 escape)** — 모든 `innerHTML` 사용처를 `textContent` 또는 escape 헬퍼로 통일
   - 신규 `js/dom-utils.js`에 `escapeHtml`, `sanitizeUrl`, `sanitizeInstaHandle` 추가 (`sanitizeFilename`은 Phase 3에서)
   - 적용 파일: `js/club-detail.js`(타이틀/태그/급구배너/티커/거절사유), `js/map-core.js`(CustomOverlay→HTMLElement), `js/lunchbox.js`(슬롯·주간뷰), `js/profile.js`(메인팀), `js/share.js`(세로쓰기 escape)
-- [ ] **1-2 (URL/insta 검증 + 등록폼 길이 가드)** — `js/registration.js`의 `submitRegistration` 진입 시 길이/스킴 검증
+- [x] **1-2 (URL/insta 검증 + 등록폼 길이 가드)** — `js/registration.js`의 `submitRegistration` 진입 시 길이(name/target/address/price)·스킴(link http(s) 한정)·인스타 핸들 형식 검증
 - [ ] **1-1 (PIN 제거 + canModifyClub 게이트 + rel=noopener)** — `js/club-detail.js`의 `toggleClubUrgentState` 게이트 교체, 모든 `target="_blank"`에 `rel="noopener noreferrer"` 추가
 - [ ] 권한 확대 (owner 자율 수정 + 긴급구인) 활성화 — 1-1 완료 직후
 
@@ -112,7 +112,8 @@
 | 날짜 | Phase | 커밋 | 메모 |
 |------|-------|------|------|
 | 2026-05-07 | 점검 | — | 보안 대장 신설, Phase 1-4 계획 수립 |
-| 2026-05-07 | 1-3 | (이번 커밋) | 저장형 XSS 차단: 모든 사용자입력 출력단을 textContent/escape로 교체, 카카오맵 오버레이 HTMLElement화 |
+| 2026-05-07 | 1-3 | 9d53927 | 저장형 XSS 차단: 모든 사용자입력 출력단을 textContent/escape로 교체, 카카오맵 오버레이 HTMLElement화 |
+| 2026-05-07 | 1-2 | (이번 커밋) | 등록/수정 입력단에 길이·URL 스킴·인스타 핸들 형식 검증 추가 |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙
