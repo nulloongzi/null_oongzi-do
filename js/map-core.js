@@ -42,9 +42,30 @@ window.myMarker = myMarker;
 
 window.instaCssIcon = '<div class="instagram" title="인스타그램 보러가기"></div>';
 
+// XSS 방지: 카카오맵 CustomOverlay에 사용자 입력(club.id/name)이 박힌 문자열을
+// 넘기는 대신 HTMLElement를 직접 생성하고 이벤트 리스너를 부착한다.
+var VERIFIED_BADGE_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:3px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
+
+function buildClubLabelEl(club, includeVerifiedBadge) {
+    var el = document.createElement('div');
+    el.className = club.is_urgent ? 'label urgent' : 'label';
+    if (includeVerifiedBadge && club.is_verified) {
+        var badgeSpan = document.createElement('span');
+        badgeSpan.innerHTML = VERIFIED_BADGE_SVG; // 정적 SVG, 사용자 입력 없음
+        el.appendChild(badgeSpan);
+    }
+    if (club.is_urgent) {
+        el.appendChild(document.createTextNode('🔥 '));
+    }
+    el.appendChild(document.createTextNode(club.name || ''));
+    el.addEventListener('click', function () {
+        window.openClubDetail(club.id);
+    });
+    return el;
+}
+
 window.initMarkers = function () {
     window.markers = [];
-    var verifiedBadge = '<svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:3px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
 
     window.allClubs.forEach(function (club) {
         if (!club.lat || !club.lng) return;
@@ -57,10 +78,7 @@ window.initMarkers = function () {
             marker = new kakao.maps.Marker({ position: latlng, image: defaultMarkerImage });
         }
 
-        var labelClass = club.is_urgent ? 'label urgent' : 'label';
-        var iconHtml = club.is_urgent ? '🔥 ' : '';
-        if (club.is_verified) iconHtml = verifiedBadge + iconHtml;
-        var content = '<div class="' + labelClass + '" onclick="triggerMarkerClick(\'' + club.id + '\')">' + iconHtml + club.name + '</div>';
+        var content = buildClubLabelEl(club, true);
         var xAnc = 0.5, yAnc = 1;
         if (club.angle !== undefined) xAnc = 0.5 - (Math.cos(club.angle) * 0.5);
         var overlay = new kakao.maps.CustomOverlay({ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 });
@@ -120,9 +138,7 @@ window.refreshMarkers = function () {
             newClusterMarkers.push(marker);
         }
 
-        var labelClass = club.is_urgent ? 'label urgent' : 'label';
-        var iconHtml = club.is_urgent ? '🔥 ' : '';
-        var content = '<div class="' + labelClass + '" onclick="triggerMarkerClick(\'' + club.id + '\')">' + iconHtml + club.name + '</div>';
+        var content = buildClubLabelEl(club, false);
         var xAnc = 0.5, yAnc = 1;
         if (club.angle !== undefined) xAnc = 0.5 - (Math.cos(club.angle) * 0.5);
         var overlay = new kakao.maps.CustomOverlay({ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 });

@@ -102,7 +102,8 @@ window.renderProfileCard = function () {
         var mainTeam = window.findClub(mainId);
         if (mainTeam) {
             var icon = mainTeam.isCustom ? "🍙 " : "🏆 ";
-            mainTeamEl.innerHTML = icon + mainTeam.name;
+            // XSS 방지: mainTeam.name을 textContent로
+            mainTeamEl.textContent = icon + (mainTeam.name || '');
         } else {
             mainTeamEl.innerText = "데이터 없음";
         }

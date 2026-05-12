@@ -302,7 +302,10 @@ function renderLunchboxGrid() {
             var team = window.findClub(teamId);
             if (team) {
                 var displayName = team.isCustom ? "🍙 " + team.name : team.name;
-                div.innerHTML = '<span>' + displayName + '</span>';
+                // XSS 방지: team.name을 textContent로
+                var nameSpan = document.createElement('span');
+                nameSpan.textContent = displayName;
+                div.appendChild(nameSpan);
                 div.classList.add('filled');
 
                 if (isEditMode) {
@@ -466,7 +469,11 @@ function renderCombinedSchedule() {
             eventDiv.style.borderLeft = '4px solid ' + borderColors[evt.slotIdx];
 
             var nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
-            eventDiv.innerHTML = '<span class="evt-title">' + nameDisplay + '</span>';
+            // XSS 방지: teamName을 textContent로
+            var titleSpan = document.createElement('span');
+            titleSpan.className = 'evt-title';
+            titleSpan.textContent = nameDisplay;
+            eventDiv.appendChild(titleSpan);
 
             dayCol.appendChild(eventDiv);
         });

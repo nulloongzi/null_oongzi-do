@@ -114,11 +114,12 @@ window.generateShareImage = async function (mode) {
             });
 
             // (2) 이모지 깨짐 방지 세로쓰기 (Array.from 사용)
+            // XSS 방지: 각 문자를 escape 후 <br>로 join (사용자 입력 가능성)
             var titles = dietBody.querySelectorAll('.evt-title');
             titles.forEach(function (span) {
                 var text = span.innerText.trim();
                 var charArray = Array.from(text);
-                var verticalText = charArray.join('<br>');
+                var verticalText = charArray.map(window.escapeHtml).join('<br>');
                 span.innerHTML = verticalText;
             });
 
