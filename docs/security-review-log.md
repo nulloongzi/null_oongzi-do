@@ -366,3 +366,87 @@ firebase.functions().httpsCallable('adminReassignOwner')({clubId: 'any', email: 
 2. `docs/security.md` 변경 이력 마지막 줄에 "검토 완료" + 본 로그 파일 링크 + 모든 PASS 시 머지 가능 표시
 3. main 머지 (PR), 운영 배포
 4. 운영 배포 후 핵심 시나리오 3개(XSS-1, PIN-2, PR-1) 운영 환경에서 스팟체크 — 결과 본 로그 하단에 추가 기록
+
+---
+
+## 운영 배포 + 스팟체크 (자동 검증 91/91 통과 후 채택한 경로)
+
+자동 검증으로 룰·로직 차원 검증 완료(`/security-review` + 91 unit/rules tests). Staging 별도 구성 없이 운영에 직접 deploy 후 핵심 4건만 스팟체크.
+
+### 배포 절차 (운영자 수동 실행)
+
+순서대로 실행. **각 단계마다 결과 확인 후 다음**:
+
+```bash
+# 1. 보안 브랜치를 main에 머지 (PR 또는 로컬 머지)
+git checkout main
+git pull origin main
+git merge --no-ff claude/review-security-permissions-Si0dH
+git push origin main
+
+# 2. Cloud Functions 배포 (새 onVerificationCreated 트리거 + adminReassignOwner)
+firebase deploy --only functions
+
+# 3. 기존 무인증 verificationNotify HTTP 함수 삭제 (필수)
+firebase functions:delete verificationNotify
+# 프롬프트 확인 → "y"
+
+# 4. Firestore 룰 + Storage 룰 동시 배포
+firebase deploy --only firestore:rules,storage:rules
+
+# 5. GitHub Pages는 main push 시 자동 재빌드 (~1-2분)
+```
+
+### 배포 후 스팟체크 4건 (운영 환경에서 직접 수행)
+
+**S-1. 본인 로그인 + 마이그레이션 정상 동작**
+- 운영 페이지에서 본인 계정 로그인
+- devtools 콘솔 입력:
+  ```js
+  firebase.firestore().doc('users/' + firebase.auth().currentUser.uid).get().then(d => Object.keys(d.data()))
+  ```
+- 기대: `['nickname', 'suffix', 'full_nickname', 'color', 'created_at']` 5개 키만 (email/bookmarks/customTeams 없음)
+- 추가:
+  ```js
+  firebase.firestore().doc('users/' + firebase.auth().currentUser.uid + '/private/profile').get().then(d => Object.keys(d.data()))
+  ```
+  기대: `['email', 'bookmarks', 'customTeams']` 포함
+- **결과**: [ ] PASS / [ ] FAIL
+- **관찰**: _____
+
+**S-2. 본인 verified 팀의 급구 토글 (PIN 없음)**
+- 본인이 owner인 verified 팀 상세 시트 진입
+- ⚙ 급구 버튼 클릭. **PIN 프롬프트가 떠선 안 됨**, 메시지 입력 모달만 떠야 함
+- "테스트 급구"라고 입력 → 확인 → 상세 시트 배너 + 상단 티커에 표시
+- 다시 클릭 → "급구 내리기" → 정상 해제
+- **결과**: [ ] PASS / [ ] FAIL
+- **관찰**: _____
+
+**S-3. 옛 verificationNotify URL 404**
+- 새 탭에서 devtools 콘솔:
+  ```js
+  fetch('https://verificationnotify-s6piatsfbq-uc.a.run.app', {method:'POST', body:'{}'}).then(r => r.status)
+  ```
+- 기대: 404 (함수 삭제됨). 200이면 `firebase functions:delete` 누락 → 즉시 삭제 필요
+- **결과**: [ ] PASS / [ ] FAIL
+- **관찰**: _____
+
+**S-4. 인증 신청 정상 동작 (onCreate 트리거)**
+- unverified 팀의 owner 계정으로 인증 신청. 사진 정상 JPEG 첨부 후 제출
+- 관리자 카카오톡 "나에게 보내기"로 알림 도착하는지 확인 (관리자 분께 확인 부탁)
+- Firebase Console > Functions > onVerificationCreated 로그에 정상 실행 로그 확인
+- **결과**: [ ] PASS / [ ] FAIL
+- **관찰**: _____
+
+### 4건 모두 PASS 시
+- `docs/security.md` 변경 이력에 "운영 배포 완료 + 스팟체크 PASS" 한 줄 추가 (날짜·main 머지 커밋 SHA 포함)
+- Phase 5 백로그 진행 가능 (App Check 우선 권장)
+
+### 1건이라도 FAIL 시
+- 즉시 보고. 원인 분석 후 보안 브랜치에 hotfix 커밋
+- 영향이 크면 main에 revert 커밋 (`git revert -m 1 <머지 커밋>`)로 롤백
+
+### 모니터링 권장 (1주일)
+- Firebase Console > Authentication > 신규 가입 시 사용자가 nickname 편집 못 하는 에러 보고는 없는지
+- Firebase Console > Functions > logs > 에러 발생률 변화 없는지
+- 카카오톡 알림 양 변화 없는지 (스팸 또는 누락)
