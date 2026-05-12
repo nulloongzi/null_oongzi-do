@@ -194,13 +194,12 @@ function saveLunchboxToDB() {
         if (typeof window.renderProfileCard === 'function') window.renderProfileCard();
         if (isDietPlanOpen) renderCombinedSchedule();
 
-        // Firestore 비동기 저장
-        if (window.currentUser && window.firebaseDB) {
-            var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
-            window.firebaseUpdateDoc(userRef, {
+        // Firestore 비동기 저장 (private 서브컬렉션)
+        if (window.currentUser && window.firebaseDB && window.userPrivateRef) {
+            window.userPrivateRef(window.currentUser.uid).set({
                 bookmarks: slots,
                 customTeams: window.currentProfileData.customTeams || {}
-            }).catch(function (e) { console.error("Firebase save failed, but UI applied:", e); });
+            }, { merge: true }).catch(function (e) { console.error("Firebase save failed, but UI applied:", e); });
         }
     } else {
         // localStorage fallback
@@ -231,13 +230,12 @@ window.bookmarkTeam = async function (teamId) {
 
             if (typeof window.renderProfileCard === 'function') window.renderProfileCard();
 
-            // Firestore 비동기 저장
-            if (window.currentUser && window.firebaseDB) {
-                var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
-                window.firebaseUpdateDoc(userRef, {
+            // Firestore 비동기 저장 (private 서브컬렉션)
+            if (window.currentUser && window.firebaseDB && window.userPrivateRef) {
+                window.userPrivateRef(window.currentUser.uid).set({
                     bookmarks: slots,
                     customTeams: window.currentProfileData.customTeams || {}
-                }).catch(function (e) { console.error("Firebase update failed, but optimistic UI applied:", e); });
+                }, { merge: true }).catch(function (e) { console.error("Firebase update failed, but optimistic UI applied:", e); });
             }
         } else {
             // localStorage fallback
@@ -302,7 +300,10 @@ function renderLunchboxGrid() {
             var team = window.findClub(teamId);
             if (team) {
                 var displayName = team.isCustom ? "🍙 " + team.name : team.name;
-                div.innerHTML = '<span>' + displayName + '</span>';
+                // XSS 방지: team.name을 textContent로
+                var nameSpan = document.createElement('span');
+                nameSpan.textContent = displayName;
+                div.appendChild(nameSpan);
                 div.classList.add('filled');
 
                 if (isEditMode) {
@@ -466,7 +467,11 @@ function renderCombinedSchedule() {
             eventDiv.style.borderLeft = '4px solid ' + borderColors[evt.slotIdx];
 
             var nameDisplay = evt.isCustom ? "🍙" + evt.teamName : evt.teamName;
-            eventDiv.innerHTML = '<span class="evt-title">' + nameDisplay + '</span>';
+            // XSS 방지: teamName을 textContent로
+            var titleSpan = document.createElement('span');
+            titleSpan.className = 'evt-title';
+            titleSpan.textContent = nameDisplay;
+            eventDiv.appendChild(titleSpan);
 
             dayCol.appendChild(eventDiv);
         });

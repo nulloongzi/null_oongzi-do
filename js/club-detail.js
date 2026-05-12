@@ -246,22 +246,58 @@ window.openClubDetail = function (id) {
     if (!club) return;
 
     var verifiedBadge = '<svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:2px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
-    var titleHtml = club.is_verified ? verifiedBadge + club.name : club.name;
-    if (club.insta) titleHtml += ' <a href="https://instagram.com/' + club.insta + '" target="_blank" class="insta-link">' + window.instaCssIcon + '</a>';
-    document.getElementById('sheetTitle').innerHTML = titleHtml;
+    // XSS 방지: 사용자 입력(club.name, club.insta)을 직접 innerHTML에 박지 않고 DOM 노드로 조립
+    var sheetTitleEl = document.getElementById('sheetTitle');
+    sheetTitleEl.innerHTML = club.is_verified ? verifiedBadge : '';
+    var nameNode = document.createTextNode(club.name || '');
+    sheetTitleEl.appendChild(nameNode);
+    var safeInsta = window.sanitizeInstaHandle(club.insta);
+    if (safeInsta) {
+        var instaLink = document.createElement('a');
+        instaLink.href = 'https://instagram.com/' + safeInsta;
+        instaLink.target = '_blank';
+        instaLink.rel = 'noopener noreferrer';
+        instaLink.className = 'insta-link';
+        instaLink.innerHTML = window.instaCssIcon; // 정적 마크업, 사용자 입력 없음
+        sheetTitleEl.appendChild(document.createTextNode(' '));
+        sheetTitleEl.appendChild(instaLink);
+    }
     document.getElementById('sheetPrice').innerText = club.price || "회비 정보 없음";
     document.getElementById('sheetAddressVal').value = club.address;
 
     window.renderTimetables(club.schedule);
 
-    var tagHtml = '<span class="tag target">' + club.target + '</span>';
-    if (club.link) tagHtml += '<a href="' + club.link + '" target="_blank" style="text-decoration:none"><span class="tag" style="background:#eee">🏠 홈페이지</span></a>';
-    document.getElementById('sheetTags').innerHTML = tagHtml;
+    // XSS 방지: target/link를 escape/sanitize 후 DOM 조립
+    var sheetTagsEl = document.getElementById('sheetTags');
+    sheetTagsEl.innerHTML = '';
+    var targetSpan = document.createElement('span');
+    targetSpan.className = 'tag target';
+    targetSpan.textContent = club.target || '';
+    sheetTagsEl.appendChild(targetSpan);
+    var safeLink = window.sanitizeUrl(club.link);
+    if (safeLink && safeLink !== '#') {
+        var linkA = document.createElement('a');
+        linkA.href = safeLink;
+        linkA.target = '_blank';
+        linkA.rel = 'noopener noreferrer';
+        linkA.style.textDecoration = 'none';
+        var linkSpan = document.createElement('span');
+        linkSpan.className = 'tag';
+        linkSpan.style.background = '#eee';
+        linkSpan.textContent = '🏠 홈페이지';
+        linkA.appendChild(linkSpan);
+        sheetTagsEl.appendChild(linkA);
+    }
     document.getElementById('btnWay').href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
 
     var urgentArea = document.getElementById('urgentArea');
     if (club.is_urgent && club.urgent_msg) {
-        urgentArea.innerHTML = '<div class="urgent-banner">🔥 ' + club.urgent_msg + '</div>';
+        // XSS 방지: urgent_msg는 textContent로 삽입
+        urgentArea.innerHTML = '';
+        var urgentBanner = document.createElement('div');
+        urgentBanner.className = 'urgent-banner';
+        urgentBanner.textContent = '🔥 ' + club.urgent_msg;
+        urgentArea.appendChild(urgentBanner);
         urgentArea.style.display = 'block';
     } else {
         urgentArea.style.display = 'none';
@@ -272,7 +308,8 @@ window.openClubDetail = function (id) {
     var existingManageBtn = document.getElementById('btnManageUrgent');
     if (existingManageBtn) existingManageBtn.remove();
 
-    if (club.is_verified) {
+    // 인증된 팀의 owner/admin만 급구 토글 노출 (Firestore rule이 동일 조건으로 write 차단)
+    if (club.is_verified && window.canModifyClub && window.canModifyClub(club)) {
         var manageBtn = document.createElement('button');
         manageBtn.id = 'btnManageUrgent';
         manageBtn.className = 'btn';
@@ -314,14 +351,15 @@ window.openClubDetail = function (id) {
                         '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:12px 15px;border-radius:4px;font-size:13px;color:#1565c0;line-height:1.5;">' +
                         '⏳ 인증 심사 중입니다.<br><span style="font-size:12px;color:#666;">관리자 확인 후 인증 배지가 부여됩니다.</span></div>';
                 } else if (reqData.status === 'rejected') {
-                    // 거절됨 → 사유 표시 + 재신청 버튼
+                    // 거절됨 → 사유 표시 + 재신청 버튼. XSS 방지: reason은 textContent로
                     var reasonText = reqData.reject_reason || '사유가 기재되지 않았습니다.';
                     verifyArea.innerHTML =
                         '<div style="background:rgba(244,67,54,0.08);border-left:3px solid #f44336;padding:12px 15px;border-radius:4px;margin-bottom:8px;font-size:13px;line-height:1.5;">' +
                         '<div style="color:#d32f2f;font-weight:600;margin-bottom:4px;">❌ 인증이 거절되었습니다</div>' +
-                        '<div style="color:#555;">사유: ' + reasonText + '</div></div>' +
+                        '<div style="color:#555;">사유: <span id="rejectReasonText"></span></div></div>' +
                         '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
                         '🔄 인증 재신청</button>';
+                    document.getElementById('rejectReasonText').textContent = reasonText;
                     document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
                 }
             }
@@ -425,7 +463,11 @@ window.initUrgentTicker = function () {
         uniqueTickerList.forEach(function (c) {
             var li = document.createElement('li');
             li.className = 'ticker-item';
-            li.innerHTML = '<b>[' + c.name + ']</b> ' + c.urgent_msg;
+            // XSS 방지: c.name / c.urgent_msg를 textContent로
+            var nameB = document.createElement('b');
+            nameB.textContent = '[' + (c.name || '') + ']';
+            li.appendChild(nameB);
+            li.appendChild(document.createTextNode(' ' + (c.urgent_msg || '')));
             li.onclick = function () { window.openClubDetail(c.id); };
             tickerList.appendChild(li);
         });
@@ -500,9 +542,9 @@ window.deleteClub = async function (club) {
 };
 
 window.toggleClubUrgentState = function (club) {
-    var pin = prompt("팀 관리자 PIN 번호 4자리를 입력해주세요.\n(기본 핀번호: 1234)");
-    if (pin !== "1234") {
-        alert("PIN 번호가 일치하지 않습니다.");
+    // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
+    if (!window.canModifyClub || !window.canModifyClub(club)) {
+        alert("급구 토글 권한이 없습니다.\n팀 등록자(소유자) 또는 관리자만 변경할 수 있습니다.");
         return;
     }
 
@@ -511,6 +553,11 @@ window.toggleClubUrgentState = function (club) {
     if (newStatus) {
         newMsg = prompt("급구 메시지를 입력해주세요! (예: 라이트 1명 급구)", "센터 1명 급구합니다!");
         if (!newMsg) return;
+        newMsg = newMsg.trim();
+        if (newMsg.length > 200) {
+            alert("급구 메시지는 200자 이하로 입력해주세요.");
+            return;
+        }
     }
 
     var clubRef = window.firebaseDoc(window.firebaseDB, 'clubs', club.id);

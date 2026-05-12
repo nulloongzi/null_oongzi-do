@@ -133,12 +133,13 @@ window.openEditModal = function (club) {
             if (window.isAdmin) {
                 ownerGroup.style.display = 'block';
                 ownerInput.value = ''; // 기본 비움 (미변경)
-                // 현재 소유자 이메일 조회해서 힌트로 표시
+                // 현재 소유자의 닉네임으로 힌트 표시 (이메일은 비공개 서브컬렉션으로 이동됨)
                 if (club.registered_by) {
                     window.firebaseDB.collection('users').doc(club.registered_by).get()
                         .then(function (d) {
-                            if (d.exists && d.data().email) {
-                                ownerInput.placeholder = '현재 소유자: ' + d.data().email + ' (비우면 변경 안 됨)';
+                            if (d.exists) {
+                                var nick = d.data().full_nickname || d.data().nickname || club.registered_by;
+                                ownerInput.placeholder = '현재 소유자: ' + nick + ' (비우면 변경 안 됨)';
                             }
                         }).catch(function () { /* ignore */ });
                 } else {
@@ -238,6 +239,32 @@ window.submitRegistration = async function () {
     var is_urgent = false;
     var urgent_msg = "";
 
+    // 길이 가드 (DoS · 도큐먼트 비대화 방지)
+    if (name.length > 60) { alert("팀 이름은 60자 이하로 입력해주세요."); return; }
+    if (target.length > 30) { alert("대상은 30자 이하로 입력해주세요."); return; }
+    if (address.length > 200) { alert("주소는 200자 이하로 입력해주세요."); return; }
+    if (price.length > 100) { alert("회비 설명은 100자 이하로 입력해주세요."); return; }
+
+    // insta 핸들 검증: 빈 값은 허용, 입력했으면 형식 통과해야 함
+    if (insta) {
+        var safeInsta = window.sanitizeInstaHandle(insta);
+        if (!safeInsta) {
+            alert("인스타그램 핸들은 영문/숫자/언더스코어/점 1~30자만 가능합니다. (@ 제외)");
+            return;
+        }
+        insta = safeInsta;
+    }
+
+    // link 검증: 빈 값은 허용, 입력했으면 http(s) 스킴이어야 함
+    if (link) {
+        var safeLink = window.sanitizeUrl(link);
+        if (safeLink === '#' || !safeLink) {
+            alert("홈페이지 링크는 http:// 또는 https://로 시작해야 합니다.");
+            return;
+        }
+        link = safeLink;
+    }
+
     var btn = document.getElementById('regSubmitBtn');
     btn.innerText = '처리중...';
     btn.disabled = true;
@@ -277,23 +304,29 @@ window.submitRegistration = async function () {
                 "metadata.updated_at": window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date()
             };
 
-            // 관리자 전용: 소유자 지정 처리 (이메일로 users 조회 → uid)
+            // 관리자 전용: 소유자 지정. users.email이 비공개 서브컬렉션으로
+            // 옮겨졌으므로 Cloud Function adminReassignOwner(onCall)를 호출하여
+            // Admin SDK로 email→uid 조회 + clubs.registered_by 업데이트한다.
             var newOwnerUid = null;
             if (window.isAdmin) {
                 var ownerEmailEl = document.getElementById('regOwnerEmail');
                 var ownerEmail = ownerEmailEl ? ownerEmailEl.value.trim().toLowerCase() : '';
                 if (ownerEmail) {
-                    var usersSnap = await window.firebaseDB.collection('users')
-                        .where('email', '==', ownerEmail)
-                        .limit(1).get();
-                    if (usersSnap.empty) {
-                        throw new Error("해당 이메일 사용자를 찾을 수 없습니다: " + ownerEmail + "\n(사용자가 먼저 로그인해야 합니다)");
+                    var reassign = window.firebaseCallable && window.firebaseCallable('adminReassignOwner');
+                    if (!reassign) {
+                        throw new Error("Cloud Functions가 초기화되지 않아 소유자 재할당을 진행할 수 없습니다.");
                     }
-                    newOwnerUid = usersSnap.docs[0].id;
-                    updatePayload.registered_by = newOwnerUid;
+                    try {
+                        var result = await reassign({ clubId: clubId, email: ownerEmail });
+                        newOwnerUid = result && result.data && result.data.uid;
+                    } catch (e) {
+                        var msg = (e && e.message) ? e.message : "소유자 재할당 실패";
+                        throw new Error(msg);
+                    }
                 }
             }
 
+            // adminReassignOwner이 이미 registered_by를 갱신했으므로 update payload에서는 제외.
             await window.firebaseDB.collection("clubs").doc(clubId).update(updatePayload);
 
             alert("팀 정보가 수정되었습니다!");

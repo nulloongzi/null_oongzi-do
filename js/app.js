@@ -1,7 +1,8 @@
 // app.js - 초기화 오케스트레이션
 // Depends on: firebase-init.js, auth.js, data.js, map-core.js, club-detail.js, filters.js, registration.js, verification.js, profile.js
 
-window.VERIFICATION_WEBHOOK_URL = "https://verificationnotify-s6piatsfbq-uc.a.run.app";
+// 인증 신청 알림: Cloud Functions onVerificationCreated 트리거가 자동 발송하므로
+// 클라이언트는 더 이상 webhook URL을 호출하지 않는다.
 
 (function () {
     // 1. Firebase 인증 리스너 설정

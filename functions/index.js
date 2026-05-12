@@ -1,4 +1,5 @@
-var { onRequest } = require("firebase-functions/v2/https");
+var { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+var { onDocumentCreated } = require("firebase-functions/v2/firestore");
 var { defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin");
 var crypto = require("crypto");
@@ -113,27 +114,45 @@ async function getKakaoAccessToken() {
     return result.access_token;
 }
 
-// ── 엔드포인트 1: 인증 신청 알림 (클라이언트에서 호출) ──
-exports.verificationNotify = onRequest({ cors: true, invoker: "public", secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] }, async function (req, res) {
-    if (req.method !== "POST") {
-        res.status(405).send("Method Not Allowed");
-        return;
-    }
+// ── 트리거 1: 인증 신청 생성 시 카카오톡 알림 ──
+// 기존 verificationNotify(공개 HTTP POST)는 무인증 호출로 임의 알림
+// 스팸/Functions 비용 폭격이 가능했음. Firestore onDocumentCreated으로
+// 교체하여 인증·존재검증·중복방지를 rule + trigger로 자동 보장.
+// Firestore rule에서 verification_requests create는 status='pending'이고
+// requested_by==auth.uid인 경우만 허용되므로 신뢰 가능한 입력만 도착.
+exports.onVerificationCreated = onDocumentCreated(
+    {
+        document: "verification_requests/{requestId}",
+        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
+    },
+    async function (event) {
+        var snap = event.data;
+        if (!snap) {
+            console.warn("onVerificationCreated: snapshot 없음");
+            return;
+        }
+        var data = snap.data() || {};
+        if (data.status !== "pending") {
+            console.log("onVerificationCreated: status가 pending이 아님 - 알림 생략", data.status);
+            return;
+        }
+        if (!data.club_name) {
+            console.warn("onVerificationCreated: club_name 누락 - 알림 생략");
+            return;
+        }
 
-    var data = req.body;
-    if (!data.request_id || !data.club_name) {
-        res.status(400).json({ error: "request_id and club_name are required" });
-        return;
-    }
+        var kakaoToken = null;
+        try {
+            kakaoToken = await getKakaoAccessToken();
+        } catch (tokenErr) {
+            console.error("카카오 토큰 획득 실패:", tokenErr);
+            return;
+        }
+        if (!kakaoToken) {
+            console.warn("KAKAO_ACCESS_TOKEN 미설정 - 카카오톡 알림 생략");
+            return;
+        }
 
-    // 카카오톡 "나에게 보내기" API로 알림 전송
-    var kakaoToken = null;
-    try {
-        kakaoToken = await getKakaoAccessToken();
-    } catch (tokenErr) {
-        console.error("카카오 토큰 획득 실패:", tokenErr);
-    }
-    if (kakaoToken) {
         try {
             var templateObject = {
                 object_type: "text",
@@ -143,10 +162,7 @@ exports.verificationNotify = onRequest({ cors: true, invoker: "public", secrets:
                     mobile_web_url: "https://nulloongzido.com"
                 }
             };
-
-            var jsonStr = JSON.stringify(templateObject);
-            var body = "template_object=" + encodeURIComponent(jsonStr);
-
+            var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
             var kakaoRes = await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
                 method: "POST",
                 headers: {
@@ -155,20 +171,13 @@ exports.verificationNotify = onRequest({ cors: true, invoker: "public", secrets:
                 },
                 body: body
             });
-
             var kakaoResult = await kakaoRes.json();
             console.log("카카오톡 메시지 전송 결과:", kakaoResult);
         } catch (kakaoErr) {
             console.error("카카오톡 메시지 전송 실패:", kakaoErr);
         }
-    } else {
-        console.warn("KAKAO_ACCESS_TOKEN이 설정되지 않았습니다.");
-        console.log("승인 URL:", approveUrl);
-        console.log("거절 URL:", rejectUrl);
     }
-
-    res.json({ success: true });
-});
+);
 
 // ── 엔드포인트 2: 승인/거절 처리 (관리자가 링크 클릭) ──
 exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET] }, async function (req, res) {
@@ -722,4 +731,144 @@ exports.chatbotTeamDelete = onRequest({ cors: true, invoker: "public" }, async f
         });
     }
 });
+
+// ══════════════════════════════════════════════════════════
+// 관리자 전용: 팀 소유자 재할당 (이메일 → uid)
+// users.email이 비공개 서브컬렉션으로 옮겨져 클라이언트에서 직접
+// 이메일로 uid를 조회할 수 없으므로 Admin SDK를 통한 onCall로 제공.
+// ══════════════════════════════════════════════════════════
+exports.adminReassignOwner = onCall(async function (request) {
+    var auth = request.auth;
+    if (!auth) {
+        throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    var adminSnap = await db.collection("admins").doc(auth.uid).get();
+    if (!adminSnap.exists) {
+        throw new HttpsError("permission-denied", "관리자만 사용할 수 있습니다.");
+    }
+    var data = request.data || {};
+    var clubId = data.clubId;
+    var email = data.email;
+    if (!clubId || !email) {
+        throw new HttpsError("invalid-argument", "clubId와 email이 필요합니다.");
+    }
+    var emailNorm = String(email).trim().toLowerCase();
+    var userRecord;
+    try {
+        userRecord = await admin.auth().getUserByEmail(emailNorm);
+    } catch (e) {
+        if (e && e.code === "auth/user-not-found") {
+            throw new HttpsError(
+                "not-found",
+                "해당 이메일의 사용자를 찾을 수 없습니다. (사용자가 먼저 한 번 로그인해야 합니다)"
+            );
+        }
+        console.error("adminReassignOwner getUserByEmail 오류:", e);
+        throw new HttpsError("internal", "사용자 조회 중 오류가 발생했습니다.");
+    }
+    try {
+        await db.collection("clubs").doc(clubId).update({
+            registered_by: userRecord.uid
+        });
+    } catch (e) {
+        console.error("adminReassignOwner clubs.update 오류:", e);
+        throw new HttpsError("internal", "팀 소유자 업데이트 중 오류가 발생했습니다.");
+    }
+    return { ok: true, uid: userRecord.uid };
+});
+
+// ══════════════════════════════════════════════════════════
+// 관리자 전용: users 공개/비공개 분리 일괄 마이그레이션
+// 클라이언트 lazy migration이 실행되지 않은 사용자(휴면/장기 미접속)를
+// 강제로 정리. idempotent — 이미 분리된 사용자는 무시. dry-run 모드 지원.
+//
+// 호출:
+//   const fn = firebase.functions().httpsCallable('migrateUsersPrivate');
+//   await fn({ dryRun: true });          // 영향만 분석
+//   await fn({ dryRun: false });         // 실제 이관
+//   await fn({ dryRun: false, limit: 100 }); // 일부만
+// ══════════════════════════════════════════════════════════
+exports.migrateUsersPrivate = onCall({ timeoutSeconds: 540 }, async function (request) {
+    var auth = request.auth;
+    if (!auth) {
+        throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    var adminSnap = await db.collection("admins").doc(auth.uid).get();
+    if (!adminSnap.exists) {
+        throw new HttpsError("permission-denied", "관리자만 사용할 수 있습니다.");
+    }
+
+    var data = request.data || {};
+    var dryRun = data.dryRun !== false; // 기본 true (안전)
+    var limit = typeof data.limit === "number" ? data.limit : 0; // 0 = 전체
+
+    var PRIVATE_KEYS = ["email", "bookmarks", "customTeams"];
+    var stats = {
+        scanned: 0,
+        alreadyMigrated: 0,
+        needMigration: 0,
+        migrated: 0,
+        failed: 0,
+        errors: []
+    };
+
+    var query = db.collection("users");
+    if (limit > 0) query = query.limit(limit);
+    var snap = await query.get();
+
+    for (var i = 0; i < snap.docs.length; i++) {
+        var userDoc = snap.docs[i];
+        var uid = userDoc.id;
+        var publicData = userDoc.data() || {};
+        stats.scanned += 1;
+
+        var hasPrivateField = PRIVATE_KEYS.some(function (k) {
+            return publicData[k] !== undefined;
+        });
+        if (!hasPrivateField) {
+            stats.alreadyMigrated += 1;
+            continue;
+        }
+        stats.needMigration += 1;
+
+        if (dryRun) continue;
+
+        try {
+            // 1. private/profile 의 현재 상태 조회
+            var privateRef = userDoc.ref.collection("private").doc("profile");
+            var privateSnap = await privateRef.get();
+            var privateData = privateSnap.exists ? (privateSnap.data() || {}) : {};
+
+            // 2. 비공개 필드를 private/profile로 복사 (private에 이미 값이 있으면 보존)
+            var migrated = {};
+            PRIVATE_KEYS.forEach(function (k) {
+                if (publicData[k] !== undefined && privateData[k] === undefined) {
+                    migrated[k] = publicData[k];
+                }
+            });
+            if (Object.keys(migrated).length > 0) {
+                await privateRef.set(migrated, { merge: true });
+            }
+
+            // 3. public doc에서 해당 필드 제거 (Admin SDK는 rules 우회)
+            var cleanup = {};
+            PRIVATE_KEYS.forEach(function (k) {
+                if (publicData[k] !== undefined) {
+                    cleanup[k] = admin.firestore.FieldValue.delete();
+                }
+            });
+            await userDoc.ref.update(cleanup);
+
+            stats.migrated += 1;
+        } catch (e) {
+            stats.failed += 1;
+            stats.errors.push({ uid: uid, message: e && e.message });
+            console.error("migrateUsersPrivate 실패 uid=" + uid + ":", e);
+        }
+    }
+
+    console.log("migrateUsersPrivate 결과:", stats, "dryRun:", dryRun);
+    return { ok: true, dryRun: dryRun, stats: stats };
+});
+
 
