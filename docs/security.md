@@ -45,11 +45,11 @@
 **배포 주의:** Firebase Console에서 기존 `verificationNotify` v2 HTTP 함수를 수동 삭제하거나 `firebase functions:delete verificationNotify` 실행. 신규 트리거는 `firebase deploy --only functions:onVerificationCreated`로 배포.
 
 ### Phase 3 — Storage 룰 강화
-- [ ] `storage.rules`: `verification_photos/{uid}/{file}`, `club_photos/{uid}/{file}`로 uid 격리
-- [ ] contentType 화이트리스트 `image/(jpeg|png|webp|gif)` — SVG 차단
-- [ ] 사이즈 한도 5MB로 하향
-- [ ] `js/verification.js`의 업로드 경로에 `currentUser.uid` 포함 + `sanitizeFilename` 적용
-- [ ] read는 공개 유지 (chatbot 캐러셀 thumbnail 호환)
+- [x] `storage.rules`: `verification_photos/{userId}/{fileName}`, `club_photos/{userId}/{fileName}`로 uid 격리 (write rule)
+- [x] contentType 화이트리스트 `image/(jpeg|png|webp|gif)` — SVG 등 차단
+- [x] 사이즈 한도 5MB로 하향, fileName 100자 한도
+- [x] `js/dom-utils.js`에 `sanitizeFilename` 헬퍼 추가, `js/verification.js` 업로드 경로에 `currentUser.uid` + `sanitizeFilename` 적용
+- [x] 기존 평면 경로 read는 공개 유지 (chatbot 캐러셀 thumbnail 호환). 신규 업로드만 uid 디렉터리로 들어감
 
 ### Phase 4 — `users` 공개/비공개 분리 + `admins` list 차단
 - [ ] `users/{uid}/private/profile` 서브문서로 `email`, `bookmarks`, `customTeams` 이전
@@ -117,7 +117,8 @@
 | 2026-05-07 | 1-3 | 9d53927 | 저장형 XSS 차단: 모든 사용자입력 출력단을 textContent/escape로 교체, 카카오맵 오버레이 HTMLElement화 |
 | 2026-05-07 | 1-2 | 5689ef2 | 등록/수정 입력단에 길이·URL 스킴·인스타 핸들 형식 검증 추가 |
 | 2026-05-07 | 1-1 | 409f3e3 | PIN 1234 가짜 보안 제거. 급구 토글을 canModifyClub로 게이트. urgent_msg 200자 가드. 길찾기 링크 rel=noopener. 권한 확대 활성화 |
-| 2026-05-07 | 2 | (이번 커밋) | verificationNotify HTTP 엔드포인트 폐기 → Firestore onDocumentCreated 트리거로 교체. 클라이언트 webhook fetch 제거. approveUrl ReferenceError 버그 제거 |
+| 2026-05-07 | 2 | f8c7858 | verificationNotify HTTP 엔드포인트 폐기 → Firestore onDocumentCreated 트리거로 교체. 클라이언트 webhook fetch 제거. approveUrl ReferenceError 버그 제거 |
+| 2026-05-07 | 3 | (이번 커밋) | Storage rules: uid 격리, SVG/HTML 차단(이미지 4종 화이트리스트), 5MB·파일명 100자 한도. 업로드 경로에 uid + sanitizeFilename 적용 |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙

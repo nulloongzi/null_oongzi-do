@@ -40,4 +40,28 @@
         if (/^[A-Za-z0-9._]{1,30}$/.test(s)) return s;
         return '';
     };
+
+    // 업로드 파일명을 안전한 형식으로 변환. 디렉터리 구분자/공백/특수문자 차단.
+    // 결과 길이는 80자 이하로 제한 (Storage rules의 fileName 100자 한도 여유).
+    window.sanitizeFilename = function (value) {
+        if (!value) return 'photo';
+        var s = String(value).trim();
+        // 경로 구분자/제어문자 제거
+        s = s.replace(/[\/\\:\x00-\x1f]/g, '_');
+        // 영문/숫자/.-_ 외 문자는 _로 치환
+        s = s.replace(/[^A-Za-z0-9._-]/g, '_');
+        // 연속된 _ 압축
+        s = s.replace(/_+/g, '_');
+        if (s.length > 80) {
+            // 확장자 보존하며 자르기
+            var dot = s.lastIndexOf('.');
+            if (dot > 0 && dot > s.length - 12) {
+                var ext = s.substring(dot);
+                s = s.substring(0, 80 - ext.length) + ext;
+            } else {
+                s = s.substring(0, 80);
+            }
+        }
+        return s || 'photo';
+    };
 })();

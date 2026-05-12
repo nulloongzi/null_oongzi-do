@@ -43,6 +43,10 @@ window.closeVerificationModal = function () {
 };
 
 window.submitVerificationRequest = async function (club) {
+    if (!window.currentUser) {
+        alert('인증 신청은 로그인 후 가능합니다.');
+        return;
+    }
     var photoInput = document.getElementById('verifyPhoto');
     var photoFile = photoInput.files[0];
     if (!photoFile) {
@@ -56,9 +60,13 @@ window.submitVerificationRequest = async function (club) {
 
     try {
         // 1. Firebase Storage에 사진 업로드
+        // 경로: verification_photos/{uid}/{club_id}_{ts}_{safeName}
+        // Storage rules가 uid 격리·확장자·사이즈를 검증한다.
+        var safeName = window.sanitizeFilename(photoFile.name || 'photo');
+        var fileName = club.id + '_' + Date.now() + '_' + safeName;
         var photoRef = window.firebaseRef(
             window.firebaseStorage,
-            'verification_photos/' + club.id + '_' + Date.now() + '_' + photoFile.name
+            'verification_photos/' + window.currentUser.uid + '/' + fileName
         );
         var snapshot = await window.firebaseUploadBytes(photoRef, photoFile);
         var photo_url = await snapshot.ref.getDownloadURL();
