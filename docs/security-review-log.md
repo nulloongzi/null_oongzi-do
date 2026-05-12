@@ -450,3 +450,53 @@ firebase deploy --only firestore:rules,storage:rules
 - Firebase Console > Authentication > 신규 가입 시 사용자가 nickname 편집 못 하는 에러 보고는 없는지
 - Firebase Console > Functions > logs > 에러 발생률 변화 없는지
 - 카카오톡 알림 양 변화 없는지 (스팸 또는 누락)
+
+---
+
+## Hotfix: S-1 FAIL 대응 — `migrateUsersPrivate` Cloud Function
+
+운영 스팟체크 결과 S-1에서 `users/{uid}` public doc에 `email`/`bookmarks`/`customTeams`가 잔존 확인됨. 클라이언트 lazy migration이 휴면 사용자에게 닿지 않는 한계가 노출됨. Admin SDK 기반 일괄 마이그레이션 함수를 추가하여 보완.
+
+### 함수 사양
+- 이름: `exports.migrateUsersPrivate`
+- 위치: `functions/index.js`
+- 인증: `admin.auth().uid`가 `admins/{uid}` 문서에 있어야 함
+- 기본 `dryRun: true` (안전). 실제 이관은 `dryRun: false` 명시
+- idempotent — 이미 정리된 사용자는 무시
+- 결과: `{ ok, dryRun, stats: { scanned, alreadyMigrated, needMigration, migrated, failed, errors[] } }`
+
+### 배포 + 실행 절차
+
+```bash
+# 1. 보안 브랜치를 main에 반영 (이미 머지했다면 fetch만)
+git checkout main
+git pull origin main
+firebase deploy --only functions:migrateUsersPrivate
+```
+
+```js
+// 2. 관리자 계정으로 로그인 후 devtools 콘솔에서:
+const fn = firebase.functions().httpsCallable('migrateUsersPrivate');
+
+// dry-run으로 영향 분석
+const dry = await fn({ dryRun: true });
+console.log(dry.data);
+// 기대: { ok: true, dryRun: true, stats: { scanned: N, needMigration: M, ... } }
+
+// 결과 확인 후 실제 이관
+const real = await fn({ dryRun: false });
+console.log(real.data);
+// 기대: stats.migrated == 직전 dry-run의 needMigration, failed == 0
+```
+
+### 검증
+실행 후 시크릿 창에서 비로그인 상태로 devtools 콘솔:
+```js
+firebase.firestore().collection('users').limit(20).get()
+  .then(s => s.docs.filter(d => 'email' in d.data()).length)
+```
+- 기대: `0` (어떤 public doc에도 email 없음)
+
+### 후속
+- 위 검증 PASS 시 S-1 PASS로 재판정 → `docs/security.md` 변경 이력에 hotfix SHA 기록
+- FAIL이면 `stats.errors`의 uid + 메시지 확인하여 추가 진단

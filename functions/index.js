@@ -777,3 +777,98 @@ exports.adminReassignOwner = onCall(async function (request) {
     return { ok: true, uid: userRecord.uid };
 });
 
+// ══════════════════════════════════════════════════════════
+// 관리자 전용: users 공개/비공개 분리 일괄 마이그레이션
+// 클라이언트 lazy migration이 실행되지 않은 사용자(휴면/장기 미접속)를
+// 강제로 정리. idempotent — 이미 분리된 사용자는 무시. dry-run 모드 지원.
+//
+// 호출:
+//   const fn = firebase.functions().httpsCallable('migrateUsersPrivate');
+//   await fn({ dryRun: true });          // 영향만 분석
+//   await fn({ dryRun: false });         // 실제 이관
+//   await fn({ dryRun: false, limit: 100 }); // 일부만
+// ══════════════════════════════════════════════════════════
+exports.migrateUsersPrivate = onCall({ timeoutSeconds: 540 }, async function (request) {
+    var auth = request.auth;
+    if (!auth) {
+        throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    var adminSnap = await db.collection("admins").doc(auth.uid).get();
+    if (!adminSnap.exists) {
+        throw new HttpsError("permission-denied", "관리자만 사용할 수 있습니다.");
+    }
+
+    var data = request.data || {};
+    var dryRun = data.dryRun !== false; // 기본 true (안전)
+    var limit = typeof data.limit === "number" ? data.limit : 0; // 0 = 전체
+
+    var PRIVATE_KEYS = ["email", "bookmarks", "customTeams"];
+    var stats = {
+        scanned: 0,
+        alreadyMigrated: 0,
+        needMigration: 0,
+        migrated: 0,
+        failed: 0,
+        errors: []
+    };
+
+    var query = db.collection("users");
+    if (limit > 0) query = query.limit(limit);
+    var snap = await query.get();
+
+    for (var i = 0; i < snap.docs.length; i++) {
+        var userDoc = snap.docs[i];
+        var uid = userDoc.id;
+        var publicData = userDoc.data() || {};
+        stats.scanned += 1;
+
+        var hasPrivateField = PRIVATE_KEYS.some(function (k) {
+            return publicData[k] !== undefined;
+        });
+        if (!hasPrivateField) {
+            stats.alreadyMigrated += 1;
+            continue;
+        }
+        stats.needMigration += 1;
+
+        if (dryRun) continue;
+
+        try {
+            // 1. private/profile 의 현재 상태 조회
+            var privateRef = userDoc.ref.collection("private").doc("profile");
+            var privateSnap = await privateRef.get();
+            var privateData = privateSnap.exists ? (privateSnap.data() || {}) : {};
+
+            // 2. 비공개 필드를 private/profile로 복사 (private에 이미 값이 있으면 보존)
+            var migrated = {};
+            PRIVATE_KEYS.forEach(function (k) {
+                if (publicData[k] !== undefined && privateData[k] === undefined) {
+                    migrated[k] = publicData[k];
+                }
+            });
+            if (Object.keys(migrated).length > 0) {
+                await privateRef.set(migrated, { merge: true });
+            }
+
+            // 3. public doc에서 해당 필드 제거 (Admin SDK는 rules 우회)
+            var cleanup = {};
+            PRIVATE_KEYS.forEach(function (k) {
+                if (publicData[k] !== undefined) {
+                    cleanup[k] = admin.firestore.FieldValue.delete();
+                }
+            });
+            await userDoc.ref.update(cleanup);
+
+            stats.migrated += 1;
+        } catch (e) {
+            stats.failed += 1;
+            stats.errors.push({ uid: uid, message: e && e.message });
+            console.error("migrateUsersPrivate 실패 uid=" + uid + ":", e);
+        }
+    }
+
+    console.log("migrateUsersPrivate 결과:", stats, "dryRun:", dryRun);
+    return { ok: true, dryRun: dryRun, stats: stats };
+});
+
+
