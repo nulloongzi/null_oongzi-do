@@ -38,6 +38,7 @@ window.loginWithGoogle = async function () {
     var provider = new firebase.auth.GoogleAuthProvider();
     try {
         await firebase.auth().signInWithPopup(provider);
+        if (window.track) window.track('login', { method: 'google' });
     } catch (error) {
         alert("로그인 실패: " + error.message);
     }
@@ -49,6 +50,7 @@ window.registerWithEmail = async function () {
     if (!email || !pw) { alert('정보를 입력해주세요.'); return; }
     try {
         await firebase.auth().createUserWithEmailAndPassword(email, pw);
+        if (window.track) window.track('sign_up', { method: 'email' });
     } catch (e) {
         alert(e.message);
     }
@@ -60,6 +62,7 @@ window.loginWithEmail = async function () {
     if (!email || !pw) { alert('정보를 입력해주세요.'); return; }
     try {
         await firebase.auth().signInWithEmailAndPassword(email, pw);
+        if (window.track) window.track('login', { method: 'email' });
     } catch (e) {
         alert(e.message);
     }

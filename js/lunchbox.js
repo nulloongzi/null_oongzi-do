@@ -220,6 +220,8 @@ window.bookmarkTeam = async function (teamId) {
 
         slots[emptyIndex] = teamId;
 
+        if (window.track) window.track('add_bookmark', { club_id: teamId });
+
         if (window.currentProfileData) {
             // [Optimistic UI] 즉시 로컬 메모리에 반영
             window.currentProfileData.bookmarks = slots;
