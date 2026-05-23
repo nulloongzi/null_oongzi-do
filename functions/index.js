@@ -236,7 +236,7 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
         }
     } catch (error) {
         console.error("인증 처리 오류:", error);
-        res.status(500).send(renderResultPage("오류", "처리 중 오류가 발생했습니다: " + error.message));
+        res.status(500).send(renderResultPage("오류", "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
     }
 });
 
@@ -306,7 +306,7 @@ exports.chatbotPending = onRequest({ cors: true, invoker: "public" }, async func
         res.json({
             version: "2.0",
             template: {
-                outputs: [{ simpleText: { text: "오류가 발생했습니다: " + error.message } }]
+                outputs: [{ simpleText: { text: "오류가 발생했습니다. 잠시 후 다시 시도해주세요." } }]
             }
         });
     }
@@ -378,7 +378,7 @@ exports.chatbotApprove = onRequest({ cors: true, invoker: "public" }, async func
         console.error("chatbotApprove 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "승인 처리 중 오류: " + error.message } }] }
+            template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] }
         });
     }
 });
@@ -445,7 +445,7 @@ exports.chatbotRejectAsk = onRequest({ cors: true, invoker: "public" }, async fu
         console.error("chatbotRejectAsk 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "오류: " + error.message } }] }
+            template: { outputs: [{ simpleText: { text: "오류가 발생했습니다." } }] }
         });
     }
 });
@@ -550,7 +550,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
         console.error("chatbotRejectConfirm 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "거절 처리 중 오류: " + error.message } }] }
+            template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] }
         });
     }
 });
@@ -622,7 +622,7 @@ exports.chatbotTeamList = onRequest({ cors: true, invoker: "public" }, async fun
         console.error("chatbotTeamList 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "팀 목록 조회 중 오류: " + error.message } }] }
+            template: { outputs: [{ simpleText: { text: "팀 목록 조회 중 오류가 발생했습니다." } }] }
         });
     }
 });
@@ -676,7 +676,7 @@ exports.chatbotTeamDeleteAsk = onRequest({ cors: true, invoker: "public" }, asyn
         console.error("chatbotTeamDeleteAsk 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "삭제 확인 중 오류: " + error.message } }] }
+            template: { outputs: [{ simpleText: { text: "삭제 확인 중 오류가 발생했습니다." } }] }
         });
     }
 });
@@ -727,7 +727,7 @@ exports.chatbotTeamDelete = onRequest({ cors: true, invoker: "public" }, async f
         console.error("chatbotTeamDelete 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "삭제 처리 중 오류: " + error.message } }] }
+            template: { outputs: [{ simpleText: { text: "삭제 처리 중 오류가 발생했습니다." } }] }
         });
     }
 });

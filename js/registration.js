@@ -173,6 +173,17 @@ window.openEditModal = function (club) {
 };
 
 function generateId() {
+    // 암호학적 난수 기반 12자 id (Math.random 충돌·추측 위험 제거)
+    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var crypto = window.crypto || window.msCrypto;
+    if (crypto && crypto.getRandomValues) {
+        var arr = new Uint8Array(12);
+        crypto.getRandomValues(arr);
+        var s = '';
+        for (var i = 0; i < arr.length; i++) s += chars.charAt(arr[i] % 36);
+        return s;
+    }
+    // 폴백 (구형 브라우저)
     return Math.random().toString(36).substring(2, 14);
 }
 
