@@ -25,6 +25,8 @@
 
 ## Phase 진행 상황
 
+> ✅ **Phase 1-4 전부 구현·머지·운영 배포·검증 완료 (2026-05-12).** 자동 91/91 + 운영 스팟체크 4/4 PASS. 상세는 [`security-review-log.md`](./security-review-log.md). 이후 작업은 Phase 5+ 백로그.
+
 ### Phase 1 — 권한 확대 가드 (XSS + URL + PIN)
 권한 확대의 전제 조건. 출력단을 막아 owner가 임의 입력을 써도 다른 사용자가 공격당하지 않도록 함.
 
@@ -126,7 +128,10 @@
 | 2026-05-07 | 2 | f8c7858 | verificationNotify HTTP 엔드포인트 폐기 → Firestore onDocumentCreated 트리거로 교체. 클라이언트 webhook fetch 제거. approveUrl ReferenceError 버그 제거 |
 | 2026-05-07 | 3 | 9eb1a52 | Storage rules: uid 격리, SVG/HTML 차단(이미지 4종 화이트리스트), 5MB·파일명 100자 한도. 업로드 경로에 uid + sanitizeFilename 적용 |
 | 2026-05-07 | 4 | 3261c8f | users 공개/비공개 분리: email·bookmarks·customTeams를 users/{uid}/private/profile로 이관. 기존 사용자 lazy migration. admins list 차단(본인 uid get만 허용). admin 소유자 재할당을 adminReassignOwner onCall Cloud Function으로 이관 |
-| 2026-05-07 | 검증 | (이번 커밋) | `docs/security-review-log.md` 신설. Phase 1-4 검증 시나리오 23건(Claude Chrome Extension용 한국어 프롬프트 포함) + 실측 결과 칸 + 종합 표 |
+| 2026-05-07 | 검증 | ed4e134 | `docs/security-review-log.md` 신설. Phase 1-4 검증 시나리오 23건(Claude Chrome Extension용 한국어 프롬프트 포함) + 실측 결과 칸 + 종합 표 |
+| 2026-05-12 | 자동검증 | 535715f | 자동 테스트 추가: dom-utils 50 + Firestore rules 21 + Storage rules 20 = 91/91 PASS |
+| 2026-05-12 | 머지·배포 | 287d5ae | PR #1 main 머지. 운영 배포: functions 11개(verificationNotify 삭제, onVerificationCreated/adminReassignOwner/migrateUsersPrivate 신규) + firestore.rules + storage.rules |
+| 2026-05-12 | **검토 완료** | (이번 커밋) | **운영 스팟체크 S-1~S-4 전부 PASS** (마이그레이션 migrated 21/21·email 분리, PIN 제거·권한, 옛 URL 폐기, onCreate 트리거 동작). 자동 91 + 운영 4 = FAIL 0건. **Phase 1-4 공식 종료.** 상세: [`security-review-log.md`](./security-review-log.md). 다음: Phase 5 백로그(App Check 우선) |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙
