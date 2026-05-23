@@ -13,7 +13,7 @@
         measurementId: "G-L1KWREQEMW"
     };
 
-    var app, auth, db, storage, functions;
+    var app, auth, db, storage, functions, analytics;
     try {
         app = firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
@@ -22,10 +22,25 @@
         if (typeof firebase.functions === "function") {
             functions = firebase.functions();
         }
+        if (typeof firebase.analytics === "function") {
+            analytics = firebase.analytics();
+        }
         console.log("Firebase compat SDK 연결 성공!");
     } catch (e) {
         console.error("Firebase 초기화 실패:", e);
     }
+
+    // ── Analytics ──
+    window.firebaseAnalytics = analytics;
+
+    // 안전한 이벤트 트래커: analytics 미초기화/광고차단 시 조용히 no-op
+    window.track = function (eventName, params) {
+        try {
+            if (window.firebaseAnalytics) {
+                window.firebaseAnalytics.logEvent(eventName, params || {});
+            }
+        } catch (e) { /* 차단 환경 무시 */ }
+    };
 
     // ── Auth ──
     window.firebaseAuth = auth;

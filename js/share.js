@@ -249,6 +249,7 @@ window.shareClub = function (club) {
                     { title: '동호회 보기', link: { mobileWebUrl: url, webUrl: url } }
                 ]
             });
+            if (window.track) window.track('share', { method: 'kakao', club_id: club.id });
             return;
         } catch (e) {
             console.warn('카카오 공유 실패, 폴백 진행:', e);
@@ -259,9 +260,11 @@ window.shareClub = function (club) {
     if (navigator.share) {
         navigator.share({ title: club.name || '누룽지도', text: '누룽지도에서 보기', url: url })
             .catch(function () { /* 사용자 취소 등은 무시 */ });
+        if (window.track) window.track('share', { method: 'web', club_id: club.id });
         return;
     }
 
     // 3) 링크 복사 폴백
     copyShareLink(url);
+    if (window.track) window.track('share', { method: 'copy', club_id: club.id });
 };

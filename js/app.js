@@ -24,7 +24,10 @@
             var clubId = new URLSearchParams(location.search).get('club');
             if (clubId) {
                 var c = window.findClub(clubId);
-                if (c && window.openClubDetail) window.openClubDetail(c.id);
+                if (c && window.openClubDetail) {
+                    if (window.track) window.track('deep_link_open', { club_id: c.id });
+                    window.openClubDetail(c.id);
+                }
             }
         });
     }
