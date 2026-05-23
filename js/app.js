@@ -10,12 +10,22 @@
         window.setupAuthListener();
     }
 
-    // 2. 데이터 로드 후 지도 초기화
+    // 2. 카카오 공유 SDK 초기화
+    if (window.initKakaoShare) window.initKakaoShare();
+
+    // 3. 데이터 로드 후 지도 초기화 + 딥링크 처리
     if (window.loadAllClubs) {
         window.loadAllClubs().then(function () {
             if (window.initMarkers) window.initMarkers();
             if (window.initUrgentTicker) window.initUrgentTicker();
             if (window.applyFilters) window.applyFilters();
+
+            // ?club=<id> 딥링크: 해당 클럽 상세 자동 오픈
+            var clubId = new URLSearchParams(location.search).get('club');
+            if (clubId) {
+                var c = window.findClub(clubId);
+                if (c && window.openClubDetail) window.openClubDetail(c.id);
+            }
         });
     }
 

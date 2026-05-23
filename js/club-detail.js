@@ -407,6 +407,17 @@ window.openClubDetail = function (id) {
         btnBookmark.onclick = function () { if (window.bookmarkTeam) window.bookmarkTeam(club.id); };
     }
 
+    // Share button
+    var btnShareClub = document.getElementById('btnShareClub');
+    if (btnShareClub) {
+        btnShareClub.onclick = function () { if (window.shareClub) window.shareClub(club); };
+    }
+
+    // 주소창을 공유 가능한 딥링크로 동기화
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', '?club=' + encodeURIComponent(club.id));
+    }
+
     updateSheetState('PEEK');
 
     var targetLevel = 4;
@@ -420,7 +431,13 @@ window.openClubDetail = function (id) {
     window.map.panTo(newCenterLatLon);
 };
 
-window.closeBottomSheet = function () { updateSheetState('CLOSED'); };
+window.closeBottomSheet = function () {
+    updateSheetState('CLOSED');
+    // 딥링크 파라미터 제거
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', location.pathname);
+    }
+};
 
 // Copy address
 document.getElementById('btnCopy').onclick = function () {

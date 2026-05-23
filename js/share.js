@@ -189,3 +189,79 @@ window.downloadImage = function () {
         alert("저장할 이미지가 없습니다.");
     }
 };
+
+// ── 클럽 딥링크 공유 (카카오 / 웹공유 / 링크복사 폴백) ──
+
+window.SITE_BASE_URL = 'https://nulloongzi.github.io/null_oongzi-do/';
+
+window.buildClubShareUrl = function (id) {
+    return window.SITE_BASE_URL + '?club=' + encodeURIComponent(id);
+};
+
+window.initKakaoShare = function () {
+    try {
+        if (window.Kakao && !window.Kakao.isInitialized()) {
+            // Maps appkey와 동일한 JavaScript 키 재사용
+            window.Kakao.init('69f821ba943db5e3532ac90ea5ca1080');
+        }
+    } catch (e) {
+        console.warn('Kakao SDK 초기화 실패:', e);
+    }
+};
+
+function copyShareLink(url) {
+    function done() { alert('링크가 복사되었습니다! 📋'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(function () { fallbackCopy(url); done(); });
+    } else {
+        fallbackCopy(url);
+        done();
+    }
+}
+
+function fallbackCopy(url) {
+    var t = document.createElement('input');
+    t.value = url;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    document.body.removeChild(t);
+}
+
+window.shareClub = function (club) {
+    if (!club || !club.id) return;
+    var url = window.buildClubShareUrl(club.id);
+
+    // 1) 카카오 공유 카드 (도메인 등록 시 카톡 리치 미리보기)
+    if (window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
+        try {
+            var desc = (club.target || '');
+            if (club.schedule) desc += (desc ? ' · ' : '') + club.schedule;
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: club.name || '배구 동호회',
+                    description: desc || '누룽지도에서 보기',
+                    imageUrl: window.SITE_BASE_URL + 'app_ui/nulloongzido%20logo_512px.png',
+                    link: { mobileWebUrl: url, webUrl: url }
+                },
+                buttons: [
+                    { title: '동호회 보기', link: { mobileWebUrl: url, webUrl: url } }
+                ]
+            });
+            return;
+        } catch (e) {
+            console.warn('카카오 공유 실패, 폴백 진행:', e);
+        }
+    }
+
+    // 2) OS 네이티브 공유 시트
+    if (navigator.share) {
+        navigator.share({ title: club.name || '누룽지도', text: '누룽지도에서 보기', url: url })
+            .catch(function () { /* 사용자 취소 등은 무시 */ });
+        return;
+    }
+
+    // 3) 링크 복사 폴백
+    copyShareLink(url);
+};
