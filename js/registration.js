@@ -415,6 +415,8 @@ window.submitRegistration = async function () {
             window.initUrgentTicker();
         }
 
+        if (window.track) window.track('club_register', { mode: isEditing ? 'edit' : 'create' });
+
         window.closeRegistrationModal();
 
         // Clear form fields

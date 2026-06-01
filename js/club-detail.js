@@ -245,6 +245,8 @@ window.openClubDetail = function (id) {
     var club = window.clubs.find(function (c) { return c.id === id; });
     if (!club) return;
 
+    if (window.track) window.track('view_club', { club_id: club.id, club_name: club.name });
+
     var verifiedBadge = '<svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:2px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
     // XSS 방지: 사용자 입력(club.name, club.insta)을 직접 innerHTML에 박지 않고 DOM 노드로 조립
     var sheetTitleEl = document.getElementById('sheetTitle');
@@ -407,6 +409,17 @@ window.openClubDetail = function (id) {
         btnBookmark.onclick = function () { if (window.bookmarkTeam) window.bookmarkTeam(club.id); };
     }
 
+    // Share button
+    var btnShareClub = document.getElementById('btnShareClub');
+    if (btnShareClub) {
+        btnShareClub.onclick = function () { if (window.shareClub) window.shareClub(club); };
+    }
+
+    // 주소창을 공유 가능한 딥링크로 동기화
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', '?club=' + encodeURIComponent(club.id));
+    }
+
     updateSheetState('PEEK');
 
     var targetLevel = 4;
@@ -420,7 +433,13 @@ window.openClubDetail = function (id) {
     window.map.panTo(newCenterLatLon);
 };
 
-window.closeBottomSheet = function () { updateSheetState('CLOSED'); };
+window.closeBottomSheet = function () {
+    updateSheetState('CLOSED');
+    // 딥링크 파라미터 제거
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', location.pathname);
+    }
+};
 
 // Copy address
 document.getElementById('btnCopy').onclick = function () {

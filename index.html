@@ -4,6 +4,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>누룽지도</title>
+
+    <!-- SEO / 링크 미리보기 (OG / Twitter) -->
+    <meta name="description" content="우리 동네 배구 동호회를 지도에서 찾아보세요 - 누룽지도">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="누룽지도">
+    <meta property="og:title" content="누룽지도 - 배구 동호회 찾기 지도">
+    <meta property="og:description" content="우리 동네 배구 동호회를 지도에서 한눈에. 일정·회비·위치까지.">
+    <meta property="og:image" content="https://nulloongzi.github.io/null_oongzi-do/app_ui/nulloongzido%20logo_512px.png">
+    <meta property="og:url" content="https://nulloongzi.github.io/null_oongzi-do/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="누룽지도 - 배구 동호회 찾기 지도">
+    <meta name="twitter:description" content="우리 동네 배구 동호회를 지도에서 한눈에.">
+    <meta name="twitter:image" content="https://nulloongzi.github.io/null_oongzi-do/app_ui/nulloongzido%20logo_512px.png">
+
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#fff8e1">
     <meta name="mobile-web-app-capable" content="yes">
@@ -20,6 +34,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <script src="js/firebase-init.js"></script>
     <script src="js/dom-utils.js"></script>
 
@@ -169,6 +184,7 @@
             <div class="action-buttons">
                 <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
                 <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-way" id="btnWay">🚀 길찾기</a>
+                <button class="btn" id="btnShareClub">🔗 공유</button>
             </div>
             <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
@@ -251,6 +267,9 @@
 
     <!-- Kakao Maps SDK -->
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=69f821ba943db5e3532ac90ea5ca1080&libraries=clusterer,services"></script>
+
+    <!-- Kakao JS SDK (공유 카드) -->
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
     <script src="js/data.js"></script>
