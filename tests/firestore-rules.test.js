@@ -121,6 +121,75 @@ describe('Phase 1-1: clubs update (PIN 제거 → canModifyClub) 룰 강제', ()
     });
 });
 
+describe('Phase 5 (#8): clubs 필드 타입·길이 검증', () => {
+    function validClub(uid) {
+        return {
+            name: 'New Club',
+            target: '성인',
+            address: '서울특별시 강남구',
+            registered_by: uid,
+            is_verified: false,
+            coordinates: { lat: 37.5, lng: 127.0 },
+            contact: { insta: 'club_insta', link: 'https://example.com' }
+        };
+    }
+
+    test('정상 필드 create 통과', async () => {
+        const db = testEnv.authenticatedContext('owner-uid').firestore();
+        await assertSucceeds(db.collection('clubs').doc('new-ok').set(validClub('owner-uid')));
+    });
+
+    test('name 80자 초과 create 거부', async () => {
+        const db = testEnv.authenticatedContext('owner-uid').firestore();
+        const c = validClub('owner-uid');
+        c.name = 'x'.repeat(81);
+        await assertFails(db.collection('clubs').doc('new-longname').set(c));
+    });
+
+    test('name이 문자열이 아니면 create 거부', async () => {
+        const db = testEnv.authenticatedContext('owner-uid').firestore();
+        const c = validClub('owner-uid');
+        c.name = 12345;
+        await assertFails(db.collection('clubs').doc('new-numname').set(c));
+    });
+
+    test('address 250자 초과 create 거부', async () => {
+        const db = testEnv.authenticatedContext('owner-uid').firestore();
+        const c = validClub('owner-uid');
+        c.address = 'a'.repeat(251);
+        await assertFails(db.collection('clubs').doc('new-longaddr').set(c));
+    });
+
+    test('coordinates.lat가 숫자가 아니면 create 거부', async () => {
+        const db = testEnv.authenticatedContext('owner-uid').firestore();
+        const c = validClub('owner-uid');
+        c.coordinates = { lat: 'abc', lng: 127.0 };
+        await assertFails(db.collection('clubs').doc('new-badcoord').set(c));
+    });
+
+    test('contact.link 500자 초과 create 거부', async () => {
+        const db = testEnv.authenticatedContext('owner-uid').firestore();
+        const c = validClub('owner-uid');
+        c.contact = { insta: 'x', link: 'https://e.com/' + 'a'.repeat(500) };
+        await assertFails(db.collection('clubs').doc('new-longlink').set(c));
+    });
+
+    test('owner update에 urgent_msg 250자 초과 거부', async () => {
+        const db = testEnv.authenticatedContext('owner-uid').firestore();
+        await assertFails(db.collection('clubs').doc('club-1').update({
+            is_urgent: true,
+            urgent_msg: 'x'.repeat(251)
+        }));
+    });
+
+    test('admin은 필드 검증 우회 (신뢰) — 긴 name도 통과', async () => {
+        const db = testEnv.authenticatedContext('admin-uid').firestore();
+        await assertSucceeds(db.collection('clubs').doc('club-1').update({
+            name: 'z'.repeat(200)
+        }));
+    });
+});
+
 describe('Phase 4: users 공개/비공개 분리 룰', () => {
     test('PR-1: 비로그인도 users 공개 doc read 통과', async () => {
         const ctx = testEnv.unauthenticatedContext();

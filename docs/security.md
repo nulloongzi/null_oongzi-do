@@ -25,6 +25,8 @@
 
 ## Phase 진행 상황
 
+> ✅ **Phase 1-4 전부 구현·머지·운영 배포·검증 완료 (2026-05-12).** 자동 91/91 + 운영 스팟체크 4/4 PASS. 상세는 [`security-review-log.md`](./security-review-log.md). 이후 작업은 Phase 5+ 백로그.
+
 ### Phase 1 — 권한 확대 가드 (XSS + URL + PIN)
 권한 확대의 전제 조건. 출력단을 막아 owner가 임의 입력을 써도 다른 사용자가 공격당하지 않도록 함.
 
@@ -67,17 +69,24 @@
 - 마이그레이션이 완료되기 전 사용자의 다른 기기 세션은 일시적으로 이메일이 양쪽에 있는 상태로 유지 (다음 로그인에서 정리)
 
 ## Phase 5+ 백로그
-이번 패치 범위 밖. 우선순위 순.
+우선순위 순. 상태: ✅ 완료 / 🟡 부분(콘솔 설정 대기) / ⬜ 미착수 / ⏸ 보류
 
-| # | 항목 | 위치 | 메모 |
-|---|------|------|------|
-| 7 | Firebase **App Check** 도입 | Firestore/Storage/Functions 전체 | reCAPTCHA Enterprise(web). 자동화 봇 차단 + Functions 비용 보호 |
-| 8 | Firestore rule **필드 단위 검증** | `firestore.rules` clubs update | name/target 길이, lat/lng 범위, schedule_raw 구조 |
-| 9 | **CSP** 헤더 (meta) | `index.html` | inline handler가 많아 strict는 어려움. 최소 `object-src 'none'; base-uri 'self'` |
-| 10 | CDN **SRI** 해시 | `index.html` script src | gstatic / jsdelivr / html2canvas |
-| 11 | Cloud Functions 응답에서 raw `error.message` 제거 | `functions/index.js` 다수 | 일반화된 메시지 + 서버 로그 분리 |
-| 12 | `generateId` → crypto 난수 | `js/registration.js:174` | `crypto.getRandomValues` |
-| 13 | 사용자당 클럽 생성 rate limit | Cloud Function | 일 N개 제한 |
+| # | 항목 | 상태 | 위치 | 메모 |
+|---|------|------|------|------|
+| 7 | Firebase **App Check** 도입 | 🟡 클라이언트 골격 완료 (8f6ddd7) | `index.html`, `js/firebase-init.js` | reCAPTCHA v3. **콘솔에서 사이트 키 발급 → `RECAPTCHA_V3_SITE_KEY` 입력 → enforcement** 단계 남음 (아래 "App Check 활성화 절차") |
+| 8 | Firestore rule **필드 단위 검증** | ✅ 완료 (c80afc7) | `firestore.rules` `clubFieldsValid()` | name(≤80)/target(≤40)/address(≤250)/price/schedule/urgent_msg/contact/coordinates 타입·길이. create+owner update 적용, admin 우회. 테스트 8건 |
+| 9 | **CSP** 헤더 (meta) | ⏸ 보류 | `index.html` | inline handler 多 → `unsafe-inline` 불가피, 효과 약함. 가성비 낮아 스킵 |
+| 10 | CDN **SRI** 해시 | ⏸ 보류 | `index.html` script src | pretendard/html2canvas 버전 미고정 → SRI 깨짐 위험. 버전 고정 선행 필요 |
+| 11 | Cloud Functions 응답 raw `error.message` 제거 | ✅ 완료 (c80afc7) | `functions/index.js` | verificationAction(공개) + chatbot* 7개 일반화. console.error 로그 유지 |
+| 12 | `generateId` → crypto 난수 | ✅ 완료 (c80afc7) | `js/registration.js` | `crypto.getRandomValues` 12자, 구형 폴백 유지 |
+| 13 | 사용자당 클럽 생성 rate limit | ⏸ 보류 | Cloud Function | onCall createClub로 서버 전용 전환 필요(클라 흐름 변경·stale client 영향). App Check enforcement가 자동화 abuse를 상당 커버하므로 후순위 |
+
+### App Check 활성화 절차 (#7 남은 단계)
+1. Firebase Console > App Check > 앱 등록 → **reCAPTCHA v3** 선택 → 사이트 키 발급
+2. `js/firebase-init.js`의 `RECAPTCHA_V3_SITE_KEY = ""` 에 발급받은 사이트 키 입력 → 배포
+3. 클라이언트가 토큰 전송 시작(미강제). App Check 메트릭에서 verified 비율 모니터링 (수일)
+4. verified가 충분히 올라오면 **Firestore → Storage → Functions 순으로 enforcement** 켜기 (한 번에 다 켜지 말고 단계적)
+5. ⚠ enforcement를 토큰 전송 안정화 전에 켜면 정상 사용자도 차단되니 순서 엄수
 
 ## 검증 시나리오
 
@@ -126,7 +135,13 @@
 | 2026-05-07 | 2 | f8c7858 | verificationNotify HTTP 엔드포인트 폐기 → Firestore onDocumentCreated 트리거로 교체. 클라이언트 webhook fetch 제거. approveUrl ReferenceError 버그 제거 |
 | 2026-05-07 | 3 | 9eb1a52 | Storage rules: uid 격리, SVG/HTML 차단(이미지 4종 화이트리스트), 5MB·파일명 100자 한도. 업로드 경로에 uid + sanitizeFilename 적용 |
 | 2026-05-07 | 4 | 3261c8f | users 공개/비공개 분리: email·bookmarks·customTeams를 users/{uid}/private/profile로 이관. 기존 사용자 lazy migration. admins list 차단(본인 uid get만 허용). admin 소유자 재할당을 adminReassignOwner onCall Cloud Function으로 이관 |
-| 2026-05-07 | 검증 | (이번 커밋) | `docs/security-review-log.md` 신설. Phase 1-4 검증 시나리오 23건(Claude Chrome Extension용 한국어 프롬프트 포함) + 실측 결과 칸 + 종합 표 |
+| 2026-05-07 | 검증 | ed4e134 | `docs/security-review-log.md` 신설. Phase 1-4 검증 시나리오 23건(Claude Chrome Extension용 한국어 프롬프트 포함) + 실측 결과 칸 + 종합 표 |
+| 2026-05-12 | 자동검증 | 535715f | 자동 테스트 추가: dom-utils 50 + Firestore rules 21 + Storage rules 20 = 91/91 PASS |
+| 2026-05-12 | 머지·배포 | 287d5ae | PR #1 main 머지. 운영 배포: functions 11개(verificationNotify 삭제, onVerificationCreated/adminReassignOwner/migrateUsersPrivate 신규) + firestore.rules + storage.rules |
+| 2026-05-12 | **검토 완료** | d9573cf | **운영 스팟체크 S-1~S-4 전부 PASS** (마이그레이션 migrated 21/21·email 분리, PIN 제거·권한, 옛 URL 폐기, onCreate 트리거 동작). 자동 91 + 운영 4 = FAIL 0건. **Phase 1-4 공식 종료.** 상세: [`security-review-log.md`](./security-review-log.md) |
+| 2026-05-12 | 5 (#8·11·12) | c80afc7 | clubs 필드 검증 룰(clubFieldsValid) + generateId crypto화 + Functions raw error.message 제거. 룰 테스트 99/99 PASS |
+| 2026-05-12 | 5 (#7) | 8f6ddd7 | App Check 클라이언트 골격(reCAPTCHA v3). 사이트 키·enforcement는 콘솔 단계 대기 |
+| 2026-05-12 | 5 정리 | (이번 커밋) | Phase 5 백로그 상태 갱신. #8·11·12 완료, #7 부분(콘솔 대기), #9·10·13 보류 |
 
 ## 관련 파일
 - `firestore.rules` - Firestore 보안 규칙

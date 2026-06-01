@@ -8,22 +8,43 @@ service cloud.firestore {
              && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // 팀 문서 필드 타입·길이 검증 (doc 비대화·잘못된 타입 주입 방지).
+    // 존재하는 필드에 대해서만 검사 — 부분 update(merge)도 통과.
+    function clubFieldsValid() {
+      let d = request.resource.data;
+      return (!('name' in d) || (d.name is string && d.name.size() > 0 && d.name.size() <= 80))
+          && (!('target' in d) || (d.target is string && d.target.size() <= 40))
+          && (!('address' in d) || (d.address is string && d.address.size() <= 250))
+          && (!('price' in d) || (d.price is string && d.price.size() <= 120))
+          && (!('schedule' in d) || (d.schedule is string && d.schedule.size() <= 600))
+          && (!('urgent_msg' in d) || (d.urgent_msg is string && d.urgent_msg.size() <= 250))
+          && (!('contact' in d) || (d.contact is map
+                && (!('insta' in d.contact) || (d.contact.insta is string && d.contact.insta.size() <= 60))
+                && (!('link' in d.contact) || (d.contact.link is string && d.contact.link.size() <= 500))))
+          && (!('coordinates' in d) || (d.coordinates is map
+                && d.coordinates.lat is number && d.coordinates.lng is number));
+    }
+
     // clubs: 모두 읽기, 소유자/관리자만 수정
     match /clubs/{clubId} {
       allow read: if true;
 
-      // 새 팀 등록: 인증된 사용자가 자신을 registered_by로 기록, is_verified=false 강제
+      // 새 팀 등록: 인증된 사용자가 자신을 registered_by로 기록, is_verified=false 강제, 필드 검증
       allow create: if request.auth != null
                     && request.resource.data.registered_by == request.auth.uid
-                    && request.resource.data.is_verified == false;
+                    && request.resource.data.is_verified == false
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && clubFieldsValid();
 
-      // 업데이트: 관리자는 모든 필드, 소유자는 is_verified/registered_by 제외 수정 가능
+      // 업데이트: 관리자는 모든 필드(신뢰), 소유자는 is_verified/registered_by 보존 + 필드 검증
       allow update: if isAdmin()
                     || (request.auth != null
                         && resource.data.registered_by != null
                         && resource.data.registered_by == request.auth.uid
                         && request.resource.data.is_verified == resource.data.is_verified
-                        && request.resource.data.registered_by == resource.data.registered_by);
+                        && request.resource.data.registered_by == resource.data.registered_by
+                        && clubFieldsValid());
 
       // 삭제: 관리자 또는 소유자
       allow delete: if isAdmin()
