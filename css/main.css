@@ -1224,6 +1224,7 @@
 
         .action-buttons {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
             margin-top: 12px;
         }
@@ -1235,6 +1236,7 @@
             border: none;
             font-size: 14px;
             font-weight: 700;
+            white-space: nowrap;
             cursor: pointer;
             display: flex;
             justify-content: center;

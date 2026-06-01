@@ -315,7 +315,7 @@ window.openClubDetail = function (id) {
         var manageBtn = document.createElement('button');
         manageBtn.id = 'btnManageUrgent';
         manageBtn.className = 'btn';
-        manageBtn.style = 'background: #ff5252; color: #fff; margin-left: 10px;';
+        manageBtn.style = 'background: #ff5252; color: #fff;';
         manageBtn.innerText = club.is_urgent ? '🔥 급구 내리기' : '🔥 급구 올리기';
         manageBtn.onclick = function () { window.toggleClubUrgentState(club); };
         actionBtns.appendChild(manageBtn);
