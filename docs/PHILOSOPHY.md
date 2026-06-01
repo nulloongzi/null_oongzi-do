@@ -99,7 +99,7 @@
 ## 현재 상태 메모 (2026-05 기준)
 
 - **공급**: 클럽 51개, 서울·경기 편중. 전부 자발적 등록(과거엔 구글시트로 접수). 인앱 등록폼으로 전환했으나 실제 인앱 등록은 사실상 0 — **로그인 벽이 신규 공급을 누르는 것으로 추정.** → 신규 등록은 *무로그인* 방향으로 가기로 합의(관리/인증은 로그인 유지하는 "문 두 개" 구조).
-- **측정**: Firebase Analytics 연동 + 핵심 퍼널 이벤트 계측 완료 (view_club, share, deep_link_open, add_bookmark, club_register, login, sign_up).
+- **측정**: Firebase Analytics 연동 + 핵심 퍼널 이벤트 계측 완료 (view_club, share, deep_link_open, add_bookmark, club_register, login, sign_up). → **North Star Metric = 주당 길찾기 클릭 수**(의도 대리, "실제로 갔다"의 그림자; 실제 방문은 주기 인터뷰로 검증). 단 **길찾기·연락(인스타) 클릭은 아직 미계측** → 물꼬가 안 세짐(최우선 보완).
 - **공유/유입**: 클럽 딥링크(`?club=<id>`) + 카카오 공유 카드 + OG 메타태그 추가.
 
 ---
