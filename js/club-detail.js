@@ -315,7 +315,7 @@ window.openClubDetail = function (id) {
         var manageBtn = document.createElement('button');
         manageBtn.id = 'btnManageUrgent';
         manageBtn.className = 'btn';
-        manageBtn.style = 'background: #ff5252; color: #fff; margin-left: 10px;';
+        manageBtn.style = 'background: #ff5252; color: #fff;';
         manageBtn.innerText = club.is_urgent ? '🔥 급구 내리기' : '🔥 급구 올리기';
         manageBtn.onclick = function () { window.toggleClubUrgentState(club); };
         actionBtns.appendChild(manageBtn);
@@ -422,15 +422,20 @@ window.openClubDetail = function (id) {
 
     updateSheetState('PEEK');
 
-    var targetLevel = 4;
-    window.map.setLevel(targetLevel, { animate: true });
-    var moveLatLon = new kakao.maps.LatLng(club.lat, club.lng);
-    var projection = window.map.getProjection();
-    var centerPoint = projection.pointFromCoords(moveLatLon);
-    var offsetY = Math.min(window.innerHeight * 0.13, 150);
-    var newCenterPoint = new kakao.maps.Point(centerPoint.x, centerPoint.y + offsetY);
-    var newCenterLatLon = projection.coordsFromPoint(newCenterPoint);
-    window.map.panTo(newCenterLatLon);
+    // 지도 이동은 상세 표시(이미 완료)와 분리: 맵 미준비/일시 오류 시에도 상세는 정상 노출
+    try {
+        var targetLevel = 4;
+        window.map.setLevel(targetLevel, { animate: true });
+        var moveLatLon = new kakao.maps.LatLng(club.lat, club.lng);
+        var projection = window.map.getProjection();
+        var centerPoint = projection.pointFromCoords(moveLatLon);
+        var offsetY = Math.min(window.innerHeight * 0.13, 150);
+        var newCenterPoint = new kakao.maps.Point(centerPoint.x, centerPoint.y + offsetY);
+        var newCenterLatLon = projection.coordsFromPoint(newCenterPoint);
+        window.map.panTo(newCenterLatLon);
+    } catch (e) {
+        console.warn('지도 이동 실패(상세는 정상 표시):', e);
+    }
 };
 
 window.closeBottomSheet = function () {

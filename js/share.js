@@ -231,8 +231,21 @@ function fallbackCopy(url) {
 window.shareClub = function (club) {
     if (!club || !club.id) return;
     var url = window.buildClubShareUrl(club.id);
+    var shareText = (club.name ? club.name + ' · ' : '') + '누룽지도에서 동호회 보기';
 
-    // 1) 카카오 공유 카드 (도메인 등록 시 카톡 리치 미리보기)
+    // 1) OS 네이티브 공유 시트 (모바일 우선)
+    //    카톡으로 보내면 '일반 링크'라 도메인 등록과 무관하게 탭하면 바로 열린다.
+    //    (Kakao.Share 카드는 링크 도메인이 [앱 설정]>[플랫폼]>[Web] 사이트 도메인에
+    //     등록돼야만 탭이 동작 — 미등록이면 카드는 떠도 탭 시 아무 일도 안 일어남)
+    if (navigator.share) {
+        navigator.share({ title: club.name || '누룽지도', text: shareText, url: url })
+            .catch(function () { /* 사용자 취소 등은 무시 */ });
+        if (window.track) window.track('share', { method: 'web', club_id: club.id });
+        return;
+    }
+
+    // 2) 카카오 공유 카드 (주로 navigator.share 없는 데스크톱)
+    //    사이트 도메인 등록 시 리치 미리보기 + 링크 탭 동작
     if (window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
         try {
             var desc = (club.target || '');
@@ -254,14 +267,6 @@ window.shareClub = function (club) {
         } catch (e) {
             console.warn('카카오 공유 실패, 폴백 진행:', e);
         }
-    }
-
-    // 2) OS 네이티브 공유 시트
-    if (navigator.share) {
-        navigator.share({ title: club.name || '누룽지도', text: '누룽지도에서 보기', url: url })
-            .catch(function () { /* 사용자 취소 등은 무시 */ });
-        if (window.track) window.track('share', { method: 'web', club_id: club.id });
-        return;
     }
 
     // 3) 링크 복사 폴백
