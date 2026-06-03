@@ -4,7 +4,7 @@
 //             window.currentProfileData
 
 window.showShareOptions = function () {
-    if (confirm("📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)")) {
+    if (confirm(window.t('sh_pick_shape'))) {
         window.generateShareImage('feed');
     } else {
         window.generateShareImage('story');
@@ -14,7 +14,7 @@ window.showShareOptions = function () {
 window.generateShareImage = async function (mode) {
     try {
         // 1. 데이터 준비
-        if (!window.currentProfileData) { alert("로그인이 필요합니다."); return; }
+        if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
 
         if (!window.currentProfileData.tempSlots && window.currentProfileData.bookmarks) {
             window.currentProfileData.tempSlots = window.currentProfileData.bookmarks.slice();
@@ -80,7 +80,7 @@ window.generateShareImage = async function (mode) {
 
             var dietHeader = document.createElement('div');
             dietHeader.className = 'feed-diet-header';
-            dietHeader.innerText = "📅 주간 식단표";
+            dietHeader.innerText = window.t('sh_weekly_plan');
 
             var dietBody = document.createElement('div');
             dietBody.className = 'feed-diet-body';
@@ -152,12 +152,12 @@ window.generateShareImage = async function (mode) {
                 stage.innerHTML = "";
             }).catch(function (err) {
                 console.error(err);
-                alert("오류 발생: " + err);
+                alert(window.t('sh_error') + err);
             });
         }, 500);
 
     } catch (e) {
-        alert("기능 실행 실패: " + e.message);
+        alert(window.t('sh_run_fail') + e.message);
     }
 };
 
@@ -186,7 +186,7 @@ window.downloadImage = function () {
         link.click();
         document.body.removeChild(link);
     } else {
-        alert("저장할 이미지가 없습니다.");
+        alert(window.t('no_image'));
     }
 };
 
@@ -210,7 +210,7 @@ window.initKakaoShare = function () {
 };
 
 function copyShareLink(url) {
-    function done() { alert('링크가 복사되었습니다! 📋'); }
+    function done() { alert(window.t('link_copied')); }
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done).catch(function () { fallbackCopy(url); done(); });
     } else {
@@ -231,7 +231,7 @@ function fallbackCopy(url) {
 window.shareClub = function (club) {
     if (!club || !club.id) return;
     var url = window.buildClubShareUrl(club.id);
-    var shareText = (club.name ? club.name + ' · ' : '') + '누룽지도에서 동호회 보기';
+    var shareText = (club.name ? club.name + ' · ' : '') + window.t('sh_view_club_text');
 
     // 1) 카카오 공유 카드 (리치 미리보기) — 모바일 우선
     //    링크 탭이 동작하려면 [제품 링크 관리]>웹 도메인(대표 도메인)에 도메인 등록 필요.
@@ -243,13 +243,13 @@ window.shareClub = function (club) {
             window.Kakao.Share.sendDefault({
                 objectType: 'feed',
                 content: {
-                    title: club.name || '배구 동호회',
-                    description: desc || '누룽지도에서 보기',
+                    title: club.name || window.t('sh_club_fallback'),
+                    description: desc || window.t('sh_view_on'),
                     imageUrl: window.SITE_BASE_URL + 'app_ui/nulloongzido%20logo_512px.png',
                     link: { mobileWebUrl: url, webUrl: url }
                 },
                 buttons: [
-                    { title: '동호회 보기', link: { mobileWebUrl: url, webUrl: url } }
+                    { title: window.t('sh_view_club_btn'), link: { mobileWebUrl: url, webUrl: url } }
                 ]
             });
             if (window.track) window.track('share', { method: 'kakao', club_id: club.id });

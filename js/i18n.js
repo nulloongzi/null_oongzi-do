@@ -106,7 +106,122 @@
 
         // 지도 위치 선택
         mp_confirm: { ko: '이 위치로 주소 설정', en: 'Set address to this spot' },
-        mp_cancel: { ko: '취소', en: 'Cancel' }
+        mp_cancel: { ko: '취소', en: 'Cancel' },
+
+        // ── 동적(JS) 문자열 ──
+        // 도시락 식단표 슬롯 / 동작
+        lb_slot_rice: { ko: '밥을<br>담아주세요🍚', en: 'Add rice<br>(a team)🍚' },
+        lb_slot_soup: { ko: '국을<br>담아주세요🥘', en: 'Add soup<br>(a team)🥘' },
+        lb_slot_side1: { ko: '반찬1🍳', en: 'Side 1🍳' },
+        lb_slot_side2: { ko: '반찬2🥗', en: 'Side 2🥗' },
+        lb_slot_side3: { ko: '반찬3🥢', en: 'Side 3🥢' },
+        lb_done: { ko: '✅ 완료', en: '✅ Done' },
+        lb_diet_collapse: { ko: '📅 식단표 접기', en: '📅 Collapse meal plan' },
+        lb_add_prompt: { ko: '🍙 추가할 팀/일정 이름을 입력하세요', en: '🍙 Enter a team/schedule name to add' },
+        lb_add_default: { ko: '개인운동', en: 'Personal practice' },
+        lb_time_prompt: { ko: '시간을 입력하세요 (예: 월 19:00~21:00)', en: 'Enter the time (e.g. 월 19:00~21:00)' },
+        lb_time_default: { ko: '월 19:00~21:00', en: '월 19:00~21:00' },
+        lb_custom_target: { ko: '나만의 메뉴', en: 'My own menu' },
+        lb_custom_addr: { ko: '사용자 추가', en: 'User-added' },
+        lb_already: { ko: '이미 도시락에 담긴 팀입니다! 🍱', en: 'This team is already in your lunchbox! 🍱' },
+        lb_full: { ko: '도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요.', en: 'Your lunchbox is full! (max 5) 🍱\nRemove a team to add a new one.' },
+        lb_added_custom: { ko: '나만의 메뉴가 추가되었습니다! 🍙', en: 'Added to your menu! 🍙' },
+        lb_added_team: { ko: '도시락에 팀을 담았습니다! 🍱', en: 'Added to your lunchbox! 🍱' },
+        lb_bookmark_fail: { ko: '찜하기 실패: ', en: 'Failed to save: ' },
+        lb_deleted_team: { ko: '삭제된 팀', en: 'Deleted team' },
+        lb_remove_confirm: { ko: '이 반찬을 도시락에서 뺄까요?', en: 'Remove this item from your lunchbox?' },
+
+        // 공유
+        sh_pick_shape: { ko: '📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)', en: '📸 Choose a layout to save!\n\n[OK] = 🍱 Feed (name card + lunchbox + meal plan)\n[Cancel] = 📱 Story (name card + lunchbox)' },
+        sh_login_required: { ko: '로그인이 필요합니다.', en: 'Please log in first.' },
+        sh_weekly_plan: { ko: '📅 주간 식단표', en: '📅 Weekly meal plan' },
+        sh_error: { ko: '오류 발생: ', en: 'Error: ' },
+        sh_run_fail: { ko: '기능 실행 실패: ', en: 'Failed to run: ' },
+        no_image: { ko: '저장할 이미지가 없습니다.', en: 'No image to save.' },
+        link_copied: { ko: '링크가 복사되었습니다! 📋', en: 'Link copied! 📋' },
+        sh_view_club_text: { ko: '누룽지도에서 동호회 보기', en: 'View this club on Nurungjido' },
+        sh_club_fallback: { ko: '배구 동호회', en: 'Volleyball club' },
+        sh_view_on: { ko: '누룽지도에서 보기', en: 'View on Nurungjido' },
+        sh_view_club_btn: { ko: '동호회 보기', en: 'View club' },
+
+        // 주소 복사
+        addr_copied: { ko: '주소가 복사되었습니다! 📋', en: 'Address copied! 📋' },
+
+        // 팀 등록
+        reg_title_urgent: { ko: '급구/제보하기', en: 'Post an urgent call' },
+        reg_edit_title: { ko: '팀 정보 수정', en: 'Edit team info' },
+        reg_edit_submit: { ko: '수정하기', en: 'Save changes' },
+        reg_no_edit_perm: { ko: '수정 권한이 없습니다.', en: 'You don\'t have permission to edit.' },
+        reg_owner_hint: { ko: '현재 소유자: {nick} (비우면 변경 안 됨)', en: 'Current owner: {nick} (leave blank to keep)' },
+        reg_owner_none: { ko: '소유자 없음 (레거시) · 이메일 입력하여 지정', en: 'No owner (legacy) · enter an email to assign' },
+        reg_map_loc: { ko: '지도에서 선택된 위치', en: 'Location picked on map' },
+        reg_login_required: { ko: '팀을 등록하려면 먼저 로그인해주세요.', en: 'Please log in to register a team.' },
+        reg_required: { ko: '팀 이름, 대상, 주소는 필수 입력값입니다.', en: 'Team name, who it\'s for, and address are required.' },
+        reg_name_max: { ko: '팀 이름은 60자 이하로 입력해주세요.', en: 'Team name must be 60 characters or fewer.' },
+        reg_target_max: { ko: '대상은 30자 이하로 입력해주세요.', en: 'Target must be 30 characters or fewer.' },
+        reg_addr_max: { ko: '주소는 200자 이하로 입력해주세요.', en: 'Address must be 200 characters or fewer.' },
+        reg_price_max: { ko: '회비 설명은 100자 이하로 입력해주세요.', en: 'Fee description must be 100 characters or fewer.' },
+        reg_insta_invalid: { ko: '인스타그램 핸들은 영문/숫자/언더스코어/점 1~30자만 가능합니다. (@ 제외)', en: 'Instagram handle allows only letters/numbers/underscore/dot, 1–30 chars. (no @)' },
+        reg_link_invalid: { ko: '홈페이지 링크는 http:// 또는 https://로 시작해야 합니다.', en: 'Website link must start with http:// or https://.' },
+        processing: { ko: '처리중...', en: 'Processing...' },
+        reg_addr_notfound: { ko: '주소를 찾을 수 없거나 올바르지 않습니다. 정확히 입력해주세요.', en: 'Address not found or invalid. Please enter it accurately.' },
+        reg_cf_uninit: { ko: 'Cloud Functions가 초기화되지 않아 소유자 재할당을 진행할 수 없습니다.', en: 'Cloud Functions is not initialized, so owner reassignment cannot proceed.' },
+        reg_owner_fail: { ko: '소유자 재할당 실패', en: 'Owner reassignment failed' },
+        reg_updated: { ko: '팀 정보가 수정되었습니다!', en: 'Team info updated!' },
+        reg_registered: { ko: '팀 정보가 성공적으로 등록되었습니다!', en: 'Team registered successfully!' },
+        reg_error: { ko: '등록 중 오류가 발생했습니다: ', en: 'An error occurred during registration: ' },
+
+        // 로그인/인증(auth)
+        au_login_fail: { ko: '로그인 실패: ', en: 'Login failed: ' },
+        au_enter_info: { ko: '정보를 입력해주세요.', en: 'Please enter your information.' },
+        au_logout_confirm: { ko: '로그아웃 하시겠습니까?', en: 'Log out?' },
+        au_welcome: { ko: '환영합니다! [{name}]님이 되셨습니다!', en: 'Welcome! You are now [{name}]!' },
+
+        // 인증 신청(verification)
+        vf_title: { ko: '인증 신청', en: 'Request verification' },
+        vf_desc: { ko: '팀 단체사진 또는 대회 참가 사진을 첨부해주세요.<br>관리자 확인 후 인증 배지가 부여됩니다.', en: 'Attach a team group photo or a tournament photo.<br>A badge is granted after admin review.' },
+        vf_photo_label: { ko: '인증 사진 (필수)', en: 'Verification photo (required)' },
+        vf_submit: { ko: '인증 신청하기', en: 'Submit request' },
+        vf_login_required: { ko: '인증 신청은 로그인 후 가능합니다.', en: 'Please log in to request verification.' },
+        vf_photo_required: { ko: '인증 사진을 첨부해주세요.', en: 'Please attach a verification photo.' },
+        vf_done: { ko: '인증 신청이 완료되었습니다!\n관리자 확인 후 인증 배지가 부여됩니다.', en: 'Verification request submitted!\nA badge is granted after admin review.' },
+        vf_error: { ko: '인증 신청 중 오류가 발생했습니다: ', en: 'An error occurred during the request: ' },
+        vf_apply_btn: { ko: '✅ 인증 신청', en: '✅ Get verified' },
+        vf_pending: { ko: '⏳ 인증 심사 중입니다.<br><span style="font-size:12px;color:#666;">관리자 확인 후 인증 배지가 부여됩니다.</span>', en: '⏳ Verification under review.<br><span style="font-size:12px;color:#666;">A badge is granted after admin review.</span>' },
+        vf_no_reason: { ko: '사유가 기재되지 않았습니다.', en: 'No reason was provided.' },
+        vf_rejected: { ko: '❌ 인증이 거절되었습니다', en: '❌ Verification rejected' },
+        vf_reason: { ko: '사유: ', en: 'Reason: ' },
+        vf_reapply: { ko: '🔄 인증 재신청', en: '🔄 Re-apply' },
+
+        // 클럽 상세 - 관리/급구/삭제
+        cd_edit: { ko: '✏ 팀 정보 수정', en: '✏ Edit team' },
+        cd_delete: { ko: '🗑 팀 삭제', en: '🗑 Delete team' },
+        cd_urgent_off: { ko: '🔥 급구 내리기', en: '🔥 End urgent call' },
+        cd_urgent_on: { ko: '🔥 급구 올리기', en: '🔥 Post urgent call' },
+        cd_no_delete_perm: { ko: '삭제 권한이 없습니다.', en: 'You don\'t have permission to delete.' },
+        role_admin: { ko: '관리자', en: 'admin' },
+        role_owner: { ko: '소유자', en: 'owner' },
+        cd_delete_confirm: { ko: '[{name}]\n정말 이 팀을 삭제하시겠습니까?\n\n(삭제 후 복구 불가 · {role} 권한)', en: '[{name}]\nReally delete this team?\n\n(Cannot be undone · {role} privilege)' },
+        cd_deleted: { ko: '팀이 삭제되었습니다.', en: 'Team deleted.' },
+        cd_delete_error: { ko: '삭제 중 오류가 발생했습니다: ', en: 'An error occurred while deleting: ' },
+        cd_no_urgent_perm: { ko: '급구 토글 권한이 없습니다.\n팀 등록자(소유자) 또는 관리자만 변경할 수 있습니다.', en: 'No permission to toggle urgent.\nOnly the owner or an admin can change this.' },
+        cd_urgent_prompt: { ko: '급구 메시지를 입력해주세요! (예: 라이트 1명 급구)', en: 'Enter an urgent message! (e.g. Need 1 right-side hitter)' },
+        cd_urgent_default: { ko: '센터 1명 급구합니다!', en: 'Urgently looking for 1 center!' },
+        cd_urgent_max: { ko: '급구 메시지는 200자 이하로 입력해주세요.', en: 'Urgent message must be 200 characters or fewer.' },
+        cd_urgent_posted: { ko: '🔥 급구가 등록되었습니다!', en: '🔥 Urgent call posted!' },
+        cd_urgent_closed: { ko: '급구가 마감되었습니다.', en: 'Urgent call closed.' },
+        cd_update_error: { ko: '업데이트 중 오류가 발생했습니다.', en: 'An error occurred during the update.' }
+    };
+
+    // "{name}" 같은 토큰을 치환하는 헬퍼. window.t(key)와 함께 사용.
+    window.tf = function (key, params) {
+        var s = window.t(key);
+        if (params) {
+            Object.keys(params).forEach(function (p) {
+                s = s.split('{' + p + '}').join(params[p]);
+            });
+        }
+        return s;
     };
 
     function readLang() {

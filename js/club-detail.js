@@ -240,7 +240,9 @@ window.toggleTimeExpand = function () {
 
 // ── Open club detail ──
 
-window.openClubDetail = function (id) {
+window.openClubDetail = function (id, opts) {
+    // silent: 언어 전환 시 재렌더링용 (analytics/지도이동/주소갱신 등 부작용 생략)
+    var silent = !!(opts && opts.silent);
     document.getElementById('topSearchInput').blur();
     var club = window.clubs.find(function (c) { return c.id === id; });
     if (!club) return;
@@ -248,7 +250,7 @@ window.openClubDetail = function (id) {
     // 현재 열린 클럽 추적 (언어 전환 시 바텀시트 재렌더링용)
     window.currentClubId = id;
 
-    if (window.track) window.track('view_club', { club_id: club.id, club_name: club.name });
+    if (!silent && window.track) window.track('view_club', { club_id: club.id, club_name: club.name });
 
     var verifiedBadge = '<svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:2px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
     // XSS 방지: 사용자 입력(club.name, club.insta)을 직접 innerHTML에 박지 않고 DOM 노드로 조립
@@ -319,7 +321,7 @@ window.openClubDetail = function (id) {
         manageBtn.id = 'btnManageUrgent';
         manageBtn.className = 'btn';
         manageBtn.style = 'background: #ff5252; color: #fff;';
-        manageBtn.innerText = club.is_urgent ? '🔥 급구 내리기' : '🔥 급구 올리기';
+        manageBtn.innerText = club.is_urgent ? window.t('cd_urgent_off') : window.t('cd_urgent_on');
         manageBtn.onclick = function () { window.toggleClubUrgentState(club); };
         actionBtns.appendChild(manageBtn);
     }
@@ -346,7 +348,7 @@ window.openClubDetail = function (id) {
                 // 신청 이력 없음 → 인증 신청 버튼
                 verifyArea.innerHTML =
                     '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
-                    '✅ 인증 신청</button>';
+                    window.t('vf_apply_btn') + '</button>';
                 document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
             } else {
                 var reqData = snap.docs[0].data();
@@ -354,16 +356,16 @@ window.openClubDetail = function (id) {
                     // 심사 중
                     verifyArea.innerHTML =
                         '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:12px 15px;border-radius:4px;font-size:13px;color:#1565c0;line-height:1.5;">' +
-                        '⏳ 인증 심사 중입니다.<br><span style="font-size:12px;color:#666;">관리자 확인 후 인증 배지가 부여됩니다.</span></div>';
+                        window.t('vf_pending') + '</div>';
                 } else if (reqData.status === 'rejected') {
                     // 거절됨 → 사유 표시 + 재신청 버튼. XSS 방지: reason은 textContent로
-                    var reasonText = reqData.reject_reason || '사유가 기재되지 않았습니다.';
+                    var reasonText = reqData.reject_reason || window.t('vf_no_reason');
                     verifyArea.innerHTML =
                         '<div style="background:rgba(244,67,54,0.08);border-left:3px solid #f44336;padding:12px 15px;border-radius:4px;margin-bottom:8px;font-size:13px;line-height:1.5;">' +
-                        '<div style="color:#d32f2f;font-weight:600;margin-bottom:4px;">❌ 인증이 거절되었습니다</div>' +
-                        '<div style="color:#555;">사유: <span id="rejectReasonText"></span></div></div>' +
+                        '<div style="color:#d32f2f;font-weight:600;margin-bottom:4px;">' + window.t('vf_rejected') + '</div>' +
+                        '<div style="color:#555;">' + window.t('vf_reason') + '<span id="rejectReasonText"></span></div></div>' +
                         '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
-                        '🔄 인증 재신청</button>';
+                        window.t('vf_reapply') + '</button>';
                     document.getElementById('rejectReasonText').textContent = reasonText;
                     document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
                 }
@@ -373,7 +375,7 @@ window.openClubDetail = function (id) {
             // 조회 실패 시 기본 인증 신청 버튼 표시
             verifyArea.innerHTML =
                 '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
-                '✅ 인증 신청</button>';
+                window.t('vf_apply_btn') + '</button>';
             document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
         });
     }
@@ -392,7 +394,7 @@ window.openClubDetail = function (id) {
         editBtn.id = 'btnEditClub';
         editBtn.className = 'btn';
         editBtn.style = 'background:var(--nurungji-yellow); color:var(--nurungji-dark); margin-top:8px; width:100%; font-weight:600;';
-        editBtn.innerText = '✏ 팀 정보 수정';
+        editBtn.innerText = window.t('cd_edit');
         editBtn.onclick = function () { window.openEditModal(club); };
         anchor.parentElement.insertBefore(editBtn, anchor.nextSibling);
 
@@ -401,7 +403,7 @@ window.openClubDetail = function (id) {
         deleteBtn.id = 'btnDeleteClub';
         deleteBtn.className = 'btn';
         deleteBtn.style = 'background:#fff; color:#d32f2f; border:1px solid #d32f2f; margin-top:8px; width:100%; font-weight:600;';
-        deleteBtn.innerText = '🗑 팀 삭제';
+        deleteBtn.innerText = window.t('cd_delete');
         deleteBtn.onclick = function () { window.deleteClub(club); };
         editBtn.parentElement.insertBefore(deleteBtn, editBtn.nextSibling);
     }
@@ -419,13 +421,15 @@ window.openClubDetail = function (id) {
     }
 
     // 주소창을 공유 가능한 딥링크로 동기화
-    if (window.history && window.history.replaceState) {
+    if (!silent && window.history && window.history.replaceState) {
         window.history.replaceState(null, '', '?club=' + encodeURIComponent(club.id));
     }
 
-    updateSheetState('PEEK');
+    if (!silent) updateSheetState('PEEK');
+    else updateSheetState(sheetState, false); // 현재 펼침 상태 유지 + 힌트 텍스트 갱신
 
     // 지도 이동은 상세 표시(이미 완료)와 분리: 맵 미준비/일시 오류 시에도 상세는 정상 노출
+    if (silent) return;
     try {
         var targetLevel = 4;
         window.map.setLevel(targetLevel, { animate: true });
@@ -456,7 +460,7 @@ document.getElementById('btnCopy').onclick = function () {
 
 window.copyAddress = function (addr) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(addr).then(function () { alert('주소가 복사되었습니다! 📋'); });
+        navigator.clipboard.writeText(addr).then(function () { alert(window.t('addr_copied')); });
     } else {
         var t = document.createElement("input");
         t.value = addr;
@@ -464,7 +468,7 @@ window.copyAddress = function (addr) {
         t.select();
         document.execCommand("copy");
         document.body.removeChild(t);
-        alert('주소가 복사되었습니다! 📋');
+        alert(window.t('addr_copied'));
     }
 };
 
@@ -529,12 +533,12 @@ window.initUrgentTicker = function () {
 window.deleteClub = async function (club) {
     if (!club || !club.id) return;
     if (!window.canModifyClub(club)) {
-        alert('삭제 권한이 없습니다.');
+        alert(window.t('cd_no_delete_perm'));
         return;
     }
 
-    var roleLabel = window.isAdmin ? '관리자' : '소유자';
-    var msg = '[' + club.name + ']\n정말 이 팀을 삭제하시겠습니까?\n\n(삭제 후 복구 불가 · ' + roleLabel + ' 권한)';
+    var roleLabel = window.isAdmin ? window.t('role_admin') : window.t('role_owner');
+    var msg = window.tf('cd_delete_confirm', { name: club.name, role: roleLabel });
     if (!confirm(msg)) return;
 
     try {
@@ -561,28 +565,28 @@ window.deleteClub = async function (club) {
         if (window.initMarkers) window.initMarkers();
         if (window.initUrgentTicker) window.initUrgentTicker();
 
-        alert('팀이 삭제되었습니다.');
+        alert(window.t('cd_deleted'));
     } catch (e) {
         console.error('팀 삭제 오류:', e);
-        alert('삭제 중 오류가 발생했습니다: ' + (e.message || e.code || '알 수 없음'));
+        alert(window.t('cd_delete_error') + (e.message || e.code || '?'));
     }
 };
 
 window.toggleClubUrgentState = function (club) {
     // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
     if (!window.canModifyClub || !window.canModifyClub(club)) {
-        alert("급구 토글 권한이 없습니다.\n팀 등록자(소유자) 또는 관리자만 변경할 수 있습니다.");
+        alert(window.t('cd_no_urgent_perm'));
         return;
     }
 
     var newStatus = !club.is_urgent;
     var newMsg = "";
     if (newStatus) {
-        newMsg = prompt("급구 메시지를 입력해주세요! (예: 라이트 1명 급구)", "센터 1명 급구합니다!");
+        newMsg = prompt(window.t('cd_urgent_prompt'), window.t('cd_urgent_default'));
         if (!newMsg) return;
         newMsg = newMsg.trim();
         if (newMsg.length > 200) {
-            alert("급구 메시지는 200자 이하로 입력해주세요.");
+            alert(window.t('cd_urgent_max'));
             return;
         }
     }
@@ -592,7 +596,7 @@ window.toggleClubUrgentState = function (club) {
         is_urgent: newStatus,
         urgent_msg: newMsg
     }, { merge: true }).then(function () {
-        alert(newStatus ? "🔥 급구가 등록되었습니다!" : "급구가 마감되었습니다.");
+        alert(newStatus ? window.t('cd_urgent_posted') : window.t('cd_urgent_closed'));
         club.is_urgent = newStatus;
         club.urgent_msg = newMsg;
 
@@ -605,7 +609,7 @@ window.toggleClubUrgentState = function (club) {
         window.openClubDetail(club.id);
     }).catch(function (e) {
         console.error(e);
-        alert("업데이트 중 오류가 발생했습니다.");
+        alert(window.t('cd_update_error'));
     });
 };
 
@@ -682,19 +686,14 @@ window.downloadImage = function () {
         link.click();
         document.body.removeChild(link);
     } else {
-        alert("저장할 이미지가 없습니다.");
+        alert(window.t('no_image'));
     }
 };
 
-// 언어 전환 시 열려있는 바텀시트의 동적 콘텐츠(요일/일정/가격/힌트) 재렌더링.
+// 언어 전환 시 열려있는 바텀시트 전체를 부작용 없이(silent) 재렌더링.
+// 요일/일정/가격/힌트뿐 아니라 인증/관리 버튼 등 동적 콘텐츠까지 갱신된다.
 // 정적 [data-i18n] 요소는 i18n.js의 applyI18n()이 이미 갱신한다.
 document.addEventListener('nurungji:langchange', function () {
     if (sheetState === 'CLOSED' || !window.currentClubId) return;
-    var club = window.clubs.find(function (c) { return c.id === window.currentClubId; });
-    if (!club) return;
-    window.renderTimetables(club.schedule);
-    document.getElementById('sheetPrice').innerText = club.price || window.t('no_fee');
-    var homeTag = document.querySelector('#sheetTags a .tag');
-    if (homeTag) homeTag.textContent = window.t('home_tag');
-    updateSheetState(sheetState, false);
+    window.openClubDetail(window.currentClubId, { silent: true });
 });

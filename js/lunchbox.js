@@ -102,13 +102,8 @@ var isDietPlanOpen = false;
 //  Slot placeholders & colors
 // ═══════════════════════════════════════════
 
-var slotPlaceholders = [
-    "밥을<br>담아주세요🍚",
-    "국을<br>담아주세요🥘",
-    "반찬1🍳",
-    "반찬2🥗",
-    "반찬3🥢"
-];
+// 렌더 시점에 window.t로 현재 언어 적용 (모듈 로드 시점 고정 방지)
+var slotPlaceholderKeys = ["lb_slot_rice", "lb_slot_soup", "lb_slot_side1", "lb_slot_side2", "lb_slot_side3"];
 
 var slotColors = ["#fffde7", "#fff3e0", "#f1f8e9", "#fbe9e7", "#f3e5f5"];
 var borderColors = ["#fbc02d", "#f57c00", "#689f38", "#d84315", "#8e24aa"];
@@ -124,10 +119,10 @@ window.toggleEditMode = function () {
     var btn = document.getElementById('lbEditBtn');
     if (isEditMode) {
         btn.classList.add('editing');
-        btn.innerHTML = '✅ 완료';
+        btn.innerHTML = window.t('lb_done');
     } else {
         btn.classList.remove('editing');
-        btn.innerHTML = '🍽 편집';
+        btn.innerHTML = window.t('lb_edit');
         saveLunchboxToDB();
     }
 };
@@ -140,19 +135,19 @@ window.toggleDietPlan = function () {
         renderCombinedSchedule();
         container.style.height = '420px';
         container.classList.add('open');
-        btn.innerText = '📅 식단표 접기';
+        btn.innerText = window.t('lb_diet_collapse');
     } else {
         container.style.height = '0';
         container.classList.remove('open');
-        btn.innerText = '📅 식단표 (스케줄 확인)';
+        btn.innerText = window.t('lb_diet');
     }
 };
 
 window.addCustomTeam = async function () {
-    var name = prompt("🍙 추가할 팀/일정 이름을 입력하세요", "개인운동");
+    var name = prompt(window.t('lb_add_prompt'), window.t('lb_add_default'));
     if (!name || name.trim() === "") return;
 
-    var schedule = prompt("시간을 입력하세요 (예: 월 19:00~21:00)", "월 19:00~21:00");
+    var schedule = prompt(window.t('lb_time_prompt'), window.t('lb_time_default'));
     if (!schedule || schedule.trim() === "") return;
 
     var newId = "custom_" + Date.now();
@@ -162,8 +157,8 @@ window.addCustomTeam = async function () {
         schedule: schedule,
         schedule_raw: schedule,
         isCustom: true,
-        target: "나만의 메뉴",
-        address: "사용자 추가",
+        target: window.t('lb_custom_target'),
+        address: window.t('lb_custom_addr'),
         lat: null,
         lng: null
     };
@@ -213,10 +208,10 @@ window.bookmarkTeam = async function (teamId) {
         var slots = getEffectiveBookmarks();
         while (slots.length < 5) slots.push(null);
 
-        if (slots.includes(teamId)) { alert("이미 도시락에 담긴 팀입니다! 🍱"); return; }
+        if (slots.includes(teamId)) { alert(window.t('lb_already')); return; }
 
         var emptyIndex = slots.findIndex(function (item) { return item === null; });
-        if (emptyIndex === -1) { alert("도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요."); return; }
+        if (emptyIndex === -1) { alert(window.t('lb_full')); return; }
 
         slots[emptyIndex] = teamId;
 
@@ -227,7 +222,7 @@ window.bookmarkTeam = async function (teamId) {
             window.currentProfileData.bookmarks = slots;
 
             var team = window.findClub(teamId);
-            var msg = team && team.isCustom ? "나만의 메뉴가 추가되었습니다! 🍙" : "도시락에 팀을 담았습니다! 🍱";
+            var msg = team && team.isCustom ? window.t('lb_added_custom') : window.t('lb_added_team');
             alert(msg);
 
             if (typeof window.renderProfileCard === 'function') window.renderProfileCard();
@@ -243,7 +238,7 @@ window.bookmarkTeam = async function (teamId) {
             // localStorage fallback
             setLocalBookmarks(slots);
             var team2 = window.findClub(teamId);
-            var msg2 = team2 && team2.isCustom ? "나만의 메뉴가 추가되었습니다! 🍙" : "도시락에 팀을 담았습니다! 🍱";
+            var msg2 = team2 && team2.isCustom ? window.t('lb_added_custom') : window.t('lb_added_team');
             alert(msg2);
         }
 
@@ -260,20 +255,20 @@ window.bookmarkTeam = async function (teamId) {
             if (isDietPlanOpen) renderCombinedSchedule();
         }
 
-    } catch (e) { alert("찜하기 실패: " + e.message); }
+    } catch (e) { alert(window.t('lb_bookmark_fail') + e.message); }
 };
 
 window.openLunchbox = function () {
     var overlay = document.getElementById('lunchboxOverlay');
     isEditMode = false;
-    document.getElementById('lbEditBtn').innerHTML = '🍽 편집';
+    document.getElementById('lbEditBtn').innerHTML = window.t('lb_edit');
     document.getElementById('lbEditBtn').classList.remove('editing');
 
     isDietPlanOpen = false;
     var dietContainer = document.getElementById('dietPlanContainer');
     dietContainer.style.height = '0';
     dietContainer.classList.remove('open');
-    document.getElementById('dietToggleBtn').innerText = '📅 식단표 (스케줄 확인)';
+    document.getElementById('dietToggleBtn').innerText = window.t('lb_diet');
 
     var saved = getEffectiveBookmarks();
     var normalized = [null, null, null, null, null];
@@ -330,7 +325,8 @@ function renderLunchboxGrid() {
                 }
             } else {
                 // 삭제된 팀 처리
-                div.innerHTML = '<span>삭제된 팀</span>';
+                div.innerHTML = '<span></span>';
+                div.firstChild.textContent = window.t('lb_deleted_team');
                 div.classList.add('filled');
                 if (isEditMode) {
                     var delBtn2 = document.createElement('div');
@@ -346,7 +342,7 @@ function renderLunchboxGrid() {
                 }
             }
         } else {
-            div.innerHTML = '<span class="lb-placeholder">' + slotPlaceholders[i] + '</span>';
+            div.innerHTML = '<span class="lb-placeholder">' + window.t(slotPlaceholderKeys[i]) + '</span>';
             div.classList.add('empty');
             if (isEditMode) {
                 (function (idx) {
@@ -408,7 +404,7 @@ function renderCombinedSchedule() {
     headerRow.className = 'diet-header-row';
     headerRow.innerHTML = '<div class="diet-time-col header-corner"></div>';
     days.forEach(function (d) {
-        headerRow.innerHTML += '<div class="diet-day-col header">' + d + '</div>';
+        headerRow.innerHTML += '<div class="diet-day-col header">' + window.i18nDay(d) + '</div>';
     });
     container.appendChild(headerRow);
 
@@ -503,7 +499,7 @@ function handleSlotClick(index) {
 }
 
 function deleteSlot(index) {
-    if (confirm("이 반찬을 도시락에서 뺄까요?")) {
+    if (confirm(window.t('lb_remove_confirm'))) {
         var tempSlots = getTempSlots();
         tempSlots[index] = null;
         setTempSlots(tempSlots);
@@ -516,3 +512,15 @@ window.closeLunchbox = function () {
     if (isEditMode) saveLunchboxToDB();
     document.getElementById('lunchboxOverlay').style.display = 'none';
 };
+
+// 언어 전환 시 도시락 오버레이가 열려 있으면 슬롯/식단표 재렌더링
+document.addEventListener('nurungji:langchange', function () {
+    var overlay = document.getElementById('lunchboxOverlay');
+    if (!overlay || overlay.style.display !== 'flex') return;
+    var editBtn = document.getElementById('lbEditBtn');
+    if (editBtn) editBtn.innerHTML = isEditMode ? window.t('lb_done') : window.t('lb_edit');
+    var dietBtn = document.getElementById('dietToggleBtn');
+    if (dietBtn) dietBtn.innerText = isDietPlanOpen ? window.t('lb_diet_collapse') : window.t('lb_diet');
+    renderLunchboxGrid();
+    if (isDietPlanOpen) renderCombinedSchedule();
+});

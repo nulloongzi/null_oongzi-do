@@ -36,8 +36,9 @@ window.addScheduleRow = function () {
 
     row.innerHTML =
         '<select class="sched-day">' +
-            '<option value="월">월</option><option value="화">화</option><option value="수">수</option>' +
-            '<option value="목">목</option><option value="금">금</option><option value="토">토</option><option value="일">일</option>' +
+            ['월', '화', '수', '목', '금', '토', '일'].map(function (d) {
+                return '<option value="' + d + '">' + window.i18nDay(d) + '</option>';
+            }).join('') +
         '</select>' +
         '<select class="sched-start">' + startOpts + '</select>' +
         '<span>~</span>' +
@@ -73,8 +74,8 @@ window.openRegistrationModal = function (isUrgent) {
         // 편집 모드 초기화 (이전 openEditModal 흔적 제거)
         window.editingClubId = null;
         var submitBtn = document.getElementById('regSubmitBtn');
-        if (submitBtn) submitBtn.innerText = '등록하기';
-        document.getElementById('regModalTitle').innerText = isUrgent ? '급구/제보하기' : '팀 등록하기';
+        if (submitBtn) submitBtn.innerText = window.t('reg_submit');
+        document.getElementById('regModalTitle').innerText = isUrgent ? window.t('reg_title_urgent') : window.t('reg_title');
         // 관리자 전용 필드는 신규 등록 시에는 숨김
         var ownerGroup = document.getElementById('adminOwnerGroup');
         if (ownerGroup) ownerGroup.style.display = 'none';
@@ -101,15 +102,15 @@ window.closeRegistrationModal = function () {
 window.openEditModal = function (club) {
     if (!club) return;
     if (!window.canModifyClub || !window.canModifyClub(club)) {
-        alert('수정 권한이 없습니다.');
+        alert(window.t('reg_no_edit_perm'));
         return;
     }
     try {
         // 제목과 버튼 라벨 변경
         var titleEl = document.getElementById('regModalTitle');
-        if (titleEl) titleEl.innerText = '팀 정보 수정';
+        if (titleEl) titleEl.innerText = window.t('reg_edit_title');
         var submitBtn = document.getElementById('regSubmitBtn');
-        if (submitBtn) submitBtn.innerText = '수정하기';
+        if (submitBtn) submitBtn.innerText = window.t('reg_edit_submit');
 
         // 편집 대상 id 설정
         window.editingClubId = club.id;
@@ -139,11 +140,11 @@ window.openEditModal = function (club) {
                         .then(function (d) {
                             if (d.exists) {
                                 var nick = d.data().full_nickname || d.data().nickname || club.registered_by;
-                                ownerInput.placeholder = '현재 소유자: ' + nick + ' (비우면 변경 안 됨)';
+                                ownerInput.placeholder = window.tf('reg_owner_hint', { nick: nick });
                             }
                         }).catch(function () { /* ignore */ });
                 } else {
-                    ownerInput.placeholder = '소유자 없음 (레거시) · 이메일 입력하여 지정';
+                    ownerInput.placeholder = window.t('reg_owner_none');
                 }
             } else {
                 ownerGroup.style.display = 'none';
@@ -210,7 +211,7 @@ window.confirmMapPicker = function () {
 
     var geocoder = new kakao.maps.services.Geocoder();
     geocoder.coord2Address(lng, lat, function (result, status) {
-        var detailAddr = "지도에서 선택된 위치";
+        var detailAddr = window.t('reg_map_loc');
         if (status === kakao.maps.services.Status.OK && result[0]) {
             detailAddr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
         }
@@ -225,7 +226,7 @@ window.confirmMapPicker = function () {
 
 window.submitRegistration = async function () {
     if (!window.currentUser) {
-        alert("팀을 등록하려면 먼저 로그인해주세요.");
+        alert(window.t('reg_login_required'));
         return;
     }
 
@@ -237,7 +238,7 @@ window.submitRegistration = async function () {
     var address = document.getElementById('regAddress').value.trim();
 
     if (!name || !target || !address) {
-        alert("팀 이름, 대상, 주소는 필수 입력값입니다.");
+        alert(window.t('reg_required'));
         return;
     }
 
@@ -251,16 +252,16 @@ window.submitRegistration = async function () {
     var urgent_msg = "";
 
     // 길이 가드 (DoS · 도큐먼트 비대화 방지)
-    if (name.length > 60) { alert("팀 이름은 60자 이하로 입력해주세요."); return; }
-    if (target.length > 30) { alert("대상은 30자 이하로 입력해주세요."); return; }
-    if (address.length > 200) { alert("주소는 200자 이하로 입력해주세요."); return; }
-    if (price.length > 100) { alert("회비 설명은 100자 이하로 입력해주세요."); return; }
+    if (name.length > 60) { alert(window.t('reg_name_max')); return; }
+    if (target.length > 30) { alert(window.t('reg_target_max')); return; }
+    if (address.length > 200) { alert(window.t('reg_addr_max')); return; }
+    if (price.length > 100) { alert(window.t('reg_price_max')); return; }
 
     // insta 핸들 검증: 빈 값은 허용, 입력했으면 형식 통과해야 함
     if (insta) {
         var safeInsta = window.sanitizeInstaHandle(insta);
         if (!safeInsta) {
-            alert("인스타그램 핸들은 영문/숫자/언더스코어/점 1~30자만 가능합니다. (@ 제외)");
+            alert(window.t('reg_insta_invalid'));
             return;
         }
         insta = safeInsta;
@@ -270,14 +271,14 @@ window.submitRegistration = async function () {
     if (link) {
         var safeLink = window.sanitizeUrl(link);
         if (safeLink === '#' || !safeLink) {
-            alert("홈페이지 링크는 http:// 또는 https://로 시작해야 합니다.");
+            alert(window.t('reg_link_invalid'));
             return;
         }
         link = safeLink;
     }
 
     var btn = document.getElementById('regSubmitBtn');
-    btn.innerText = '처리중...';
+    btn.innerText = window.t('processing');
     btn.disabled = true;
 
     try {
@@ -292,7 +293,7 @@ window.submitRegistration = async function () {
                     if (status === kakao.maps.services.Status.OK) {
                         resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
                     } else {
-                        reject(new Error("주소를 찾을 수 없거나 올바르지 않습니다. 정확히 입력해주세요."));
+                        reject(new Error(window.t('reg_addr_notfound')));
                     }
                 });
             });
@@ -325,13 +326,13 @@ window.submitRegistration = async function () {
                 if (ownerEmail) {
                     var reassign = window.firebaseCallable && window.firebaseCallable('adminReassignOwner');
                     if (!reassign) {
-                        throw new Error("Cloud Functions가 초기화되지 않아 소유자 재할당을 진행할 수 없습니다.");
+                        throw new Error(window.t('reg_cf_uninit'));
                     }
                     try {
                         var result = await reassign({ clubId: clubId, email: ownerEmail });
                         newOwnerUid = result && result.data && result.data.uid;
                     } catch (e) {
-                        var msg = (e && e.message) ? e.message : "소유자 재할당 실패";
+                        var msg = (e && e.message) ? e.message : window.t('reg_owner_fail');
                         throw new Error(msg);
                     }
                 }
@@ -340,7 +341,7 @@ window.submitRegistration = async function () {
             // adminReassignOwner이 이미 registered_by를 갱신했으므로 update payload에서는 제외.
             await window.firebaseDB.collection("clubs").doc(clubId).update(updatePayload);
 
-            alert("팀 정보가 수정되었습니다!");
+            alert(window.t('reg_updated'));
 
             // 메모리 내 객체 업데이트 (lat/lng 평탄화 포함)
             var existing = window.allClubs.find(function (c) { return String(c.id) === String(clubId); });
@@ -391,7 +392,7 @@ window.submitRegistration = async function () {
                 console.error("Firebase DB is not initialized properly");
             }
 
-            alert("팀 정보가 성공적으로 등록되었습니다!");
+            alert(window.t('reg_registered'));
 
             // Update frontend: add to map
             newClub.lat = coords.lat;
@@ -431,9 +432,9 @@ window.submitRegistration = async function () {
 
     } catch (error) {
         console.error(error);
-        alert("등록 중 오류가 발생했습니다: " + error.message);
+        alert(window.t('reg_error') + error.message);
     } finally {
-        btn.innerText = '등록하기';
+        btn.innerText = window.t('reg_submit');
         btn.disabled = false;
     }
 };
