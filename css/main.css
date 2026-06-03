@@ -1915,3 +1915,55 @@
             cursor: pointer;
             margin-left: auto;
         }
+
+        /* ── i18n (외국인 타겟): 언어 토글 + 6인제 강조 ── */
+        .lang-toggle {
+            min-width: 34px;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            color: var(--nurungji-brown);
+            transition: opacity 0.2s;
+            user-select: none;
+        }
+
+        .lang-toggle:active {
+            opacity: 0.5;
+        }
+
+        /* 영어 모드 전용 안내 (한국어 모드에선 숨김) */
+        .fs-en-hint {
+            display: none;
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #6d4c41;
+            background: rgba(250, 199, 16, 0.12);
+            border-left: 3px solid var(--nurungji-yellow);
+            border-radius: 4px;
+            padding: 8px 12px;
+        }
+
+        body.lang-en .fs-en-hint {
+            display: block;
+        }
+
+        /* 영어 모드에서 6인제(6s) 칩을 맨 앞으로 + 강조 */
+        body.lang-en #targetChips .chip-6s {
+            order: -1;
+            border-color: var(--nurungji-brown);
+            font-weight: 800;
+        }
+
+        body.lang-en #targetChips .chip-6s::before {
+            content: "🏐 ";
+        }
+
+        body.lang-en #targetChips .chip-6s.selected {
+            border-color: var(--nurungji-yellow);
+        }

@@ -9,6 +9,7 @@
 index.html          ← 메인 엔트리 (HTML 셸 + script 태그)
 css/main.css        ← 전체 CSS
 js/                 ← 기능별 JS 모듈
+  i18n.js           ← 다국어 (KO/EN 수동 토글, data-i18n 속성 + window.t)
   firebase-init.js  ← Firebase compat SDK 초기화
   data.js           ← 데이터 로딩 (JSON fetch + Firestore 병합)
   auth.js           ← 인증 (Google/Email)

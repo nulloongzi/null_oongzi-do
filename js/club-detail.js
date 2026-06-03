@@ -91,12 +91,12 @@ window.renderTimetables = function (scheduleText) {
             hasActive = true;
             var item = document.createElement('div');
             item.className = 'st-bubble active';
-            item.innerHTML = '<div class="st-day-text">' + day + '요일</div><div class="st-time-text">' + d.text + '</div>';
+            item.innerHTML = '<div class="st-day-text">' + window.i18nDay(day) + window.t('day_suffix') + '</div><div class="st-time-text">' + d.text + '</div>';
             summaryContainer.appendChild(item);
         }
     });
     if (!hasActive) {
-        summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">일정</div><div class="st-time-text">정보없음</div></div>';
+        summaryContainer.innerHTML = '<div class="st-bubble"><div class="st-day-text">' + window.t('schedule') + '</div><div class="st-time-text">' + window.t('no_info') + '</div></div>';
     }
 
     // Full timetable
@@ -116,7 +116,7 @@ window.renderTimetables = function (scheduleText) {
         var cell = document.createElement('div');
         cell.className = 'ft-header-cell';
         if (d === todayChar) cell.className += ' today';
-        cell.innerText = d;
+        cell.innerText = window.i18nDay(d);
         headerRow.appendChild(cell);
     });
     ftContainer.appendChild(headerRow);
@@ -197,11 +197,11 @@ function updateSheetState(newState, animation) {
         sheet.style.height = '0';
     } else if (newState === 'PEEK') {
         sheet.style.height = PEEK_HEIGHT + 'px';
-        hint.innerText = '▴ 위로 올려서 상세 정보 보기';
+        hint.innerText = window.t('expand_hint');
         interpolateMorph(0);
     } else if (newState === 'EXPANDED') {
         sheet.style.height = EXPANDED_HEIGHT + 'px';
-        hint.innerText = '▾ 아래로 내려서 요약 보기';
+        hint.innerText = window.t('collapse_hint');
         interpolateMorph(1);
     }
 }
@@ -245,6 +245,9 @@ window.openClubDetail = function (id) {
     var club = window.clubs.find(function (c) { return c.id === id; });
     if (!club) return;
 
+    // 현재 열린 클럽 추적 (언어 전환 시 바텀시트 재렌더링용)
+    window.currentClubId = id;
+
     if (window.track) window.track('view_club', { club_id: club.id, club_name: club.name });
 
     var verifiedBadge = '<svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:2px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
@@ -264,7 +267,7 @@ window.openClubDetail = function (id) {
         sheetTitleEl.appendChild(document.createTextNode(' '));
         sheetTitleEl.appendChild(instaLink);
     }
-    document.getElementById('sheetPrice').innerText = club.price || "회비 정보 없음";
+    document.getElementById('sheetPrice').innerText = club.price || window.t('no_fee');
     document.getElementById('sheetAddressVal').value = club.address;
 
     window.renderTimetables(club.schedule);
@@ -286,7 +289,7 @@ window.openClubDetail = function (id) {
         var linkSpan = document.createElement('span');
         linkSpan.className = 'tag';
         linkSpan.style.background = '#eee';
-        linkSpan.textContent = '🏠 홈페이지';
+        linkSpan.textContent = window.t('home_tag');
         linkA.appendChild(linkSpan);
         sheetTagsEl.appendChild(linkA);
     }
@@ -682,3 +685,16 @@ window.downloadImage = function () {
         alert("저장할 이미지가 없습니다.");
     }
 };
+
+// 언어 전환 시 열려있는 바텀시트의 동적 콘텐츠(요일/일정/가격/힌트) 재렌더링.
+// 정적 [data-i18n] 요소는 i18n.js의 applyI18n()이 이미 갱신한다.
+document.addEventListener('nurungji:langchange', function () {
+    if (sheetState === 'CLOSED' || !window.currentClubId) return;
+    var club = window.clubs.find(function (c) { return c.id === window.currentClubId; });
+    if (!club) return;
+    window.renderTimetables(club.schedule);
+    document.getElementById('sheetPrice').innerText = club.price || window.t('no_fee');
+    var homeTag = document.querySelector('#sheetTags a .tag');
+    if (homeTag) homeTag.textContent = window.t('home_tag');
+    updateSheetState(sheetState, false);
+});
