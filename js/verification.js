@@ -11,18 +11,18 @@ window.openVerificationModal = function (club) {
         overlay.innerHTML =
             '<div class="reg-modal-content">' +
                 '<div class="reg-modal-header">' +
-                    '<h3>인증 신청</h3>' +
+                    '<h3>' + window.t('vf_title') + '</h3>' +
                     '<span class="reg-modal-close" onclick="window.closeVerificationModal()">&times;</span>' +
                 '</div>' +
                 '<div class="reg-modal-body">' +
                     '<div style="background:rgba(255,193,7,0.1);border-left:3px solid #ffc107;padding:10px 15px;margin-bottom:20px;font-size:13px;color:#555;line-height:1.4;border-radius:4px;">' +
-                        '팀 단체사진 또는 대회 참가 사진을 첨부해주세요.<br>관리자 확인 후 인증 배지가 부여됩니다.' +
+                        window.t('vf_desc') +
                     '</div>' +
                     '<div class="reg-form-group">' +
-                        '<label>인증 사진 (필수)</label>' +
+                        '<label>' + window.t('vf_photo_label') + '</label>' +
                         '<input type="file" id="verifyPhoto" accept="image/*" style="width:100%;padding:10px;background:rgba(255,255,255,0.7);border-radius:10px;border:1px solid #e0e0e0;font-size:14px;">' +
                     '</div>' +
-                    '<button id="verifySubmitBtn" class="reg-submit-btn">인증 신청하기</button>' +
+                    '<button id="verifySubmitBtn" class="reg-submit-btn">' + window.t('vf_submit') + '</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(overlay);
@@ -44,18 +44,18 @@ window.closeVerificationModal = function () {
 
 window.submitVerificationRequest = async function (club) {
     if (!window.currentUser) {
-        alert('인증 신청은 로그인 후 가능합니다.');
+        alert(window.t('vf_login_required'));
         return;
     }
     var photoInput = document.getElementById('verifyPhoto');
     var photoFile = photoInput.files[0];
     if (!photoFile) {
-        alert('인증 사진을 첨부해주세요.');
+        alert(window.t('vf_photo_required'));
         return;
     }
 
     var btn = document.getElementById('verifySubmitBtn');
-    btn.innerText = '처리중...';
+    btn.innerText = window.t('processing');
     btn.disabled = true;
 
     try {
@@ -88,14 +88,14 @@ window.submitVerificationRequest = async function (club) {
         // 카카오톡 알림은 Cloud Functions의 onVerificationCreated 트리거가 자동 발송한다.
         // (기존 무인증 verificationNotify HTTP 엔드포인트는 폐기됨)
 
-        alert('인증 신청이 완료되었습니다!\n관리자 확인 후 인증 배지가 부여됩니다.');
+        alert(window.t('vf_done'));
         window.closeVerificationModal();
 
     } catch (error) {
         console.error('인증 신청 오류:', error);
-        alert('인증 신청 중 오류가 발생했습니다: ' + error.message);
+        alert(window.t('vf_error') + error.message);
     } finally {
-        btn.innerText = '인증 신청하기';
+        btn.innerText = window.t('vf_submit');
         btn.disabled = false;
     }
 };

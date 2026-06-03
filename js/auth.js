@@ -40,14 +40,14 @@ window.loginWithGoogle = async function () {
         await firebase.auth().signInWithPopup(provider);
         if (window.track) window.track('login', { method: 'google' });
     } catch (error) {
-        alert("로그인 실패: " + error.message);
+        alert(window.t('au_login_fail') + error.message);
     }
 };
 
 window.registerWithEmail = async function () {
     var email = document.getElementById('emailInput').value;
     var pw = document.getElementById('pwInput').value;
-    if (!email || !pw) { alert('정보를 입력해주세요.'); return; }
+    if (!email || !pw) { alert(window.t('au_enter_info')); return; }
     try {
         await firebase.auth().createUserWithEmailAndPassword(email, pw);
         if (window.track) window.track('sign_up', { method: 'email' });
@@ -59,7 +59,7 @@ window.registerWithEmail = async function () {
 window.loginWithEmail = async function () {
     var email = document.getElementById('emailInput').value;
     var pw = document.getElementById('pwInput').value;
-    if (!email || !pw) { alert('정보를 입력해주세요.'); return; }
+    if (!email || !pw) { alert(window.t('au_enter_info')); return; }
     try {
         await firebase.auth().signInWithEmailAndPassword(email, pw);
         if (window.track) window.track('login', { method: 'email' });
@@ -69,7 +69,7 @@ window.loginWithEmail = async function () {
 };
 
 window.logout = function () {
-    if (confirm("로그아웃 하시겠습니까?")) {
+    if (confirm(window.t('au_logout_confirm'))) {
         firebase.auth().signOut().then(function () {
             document.getElementById('profileOverlay').style.display = 'none';
             document.getElementById('lunchboxOverlay').style.display = 'none';
@@ -129,7 +129,7 @@ window.loadOrCreateUserProfile = async function (user) {
             await window.firebaseSetDoc(userRef, publicData);
             await window.firebaseSetDoc(privateRef, privateData);
             window.currentProfileData = Object.assign({}, publicData, privateData);
-            alert("환영합니다! [" + newNameObj.full + "]님이 되셨습니다!");
+            alert(window.tf('au_welcome', { name: newNameObj.full }));
         } else {
             // 기존 가입자: 공개 + 비공개 머지, 필요 시 lazy migration
             var publicData2 = userSnap.data();

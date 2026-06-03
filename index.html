@@ -3,19 +3,21 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>누룽지도</title>
+    <title>누룽지도 Nulloongzi-do</title>
 
-    <!-- SEO / 링크 미리보기 (OG / Twitter) -->
-    <meta name="description" content="우리 동네 배구 동호회를 지도에서 찾아보세요 - 누룽지도">
+    <!-- SEO / 링크 미리보기 (OG / Twitter) — 한·영 병기 (외국인 타겟) -->
+    <meta name="description" content="우리 동네 배구 동호회를 지도에서 찾아보세요. · Find a local volleyball club in Korea on the map — schedule, fees, and location. (6s/English-OK clubs)">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="누룽지도">
-    <meta property="og:title" content="누룽지도 - 배구 동호회 찾기 지도">
-    <meta property="og:description" content="우리 동네 배구 동호회를 지도에서 한눈에. 일정·회비·위치까지.">
+    <meta property="og:site_name" content="누룽지도 Nulloongzi-do">
+    <meta property="og:title" content="누룽지도 Nulloongzi-do — 배구 동호회 찾기 지도 / Find volleyball clubs in Korea">
+    <meta property="og:description" content="우리 동네 배구 동호회를 지도에서 한눈에. 일정·회비·위치까지. · A warm on-ramp to volleyball in Korea — find clubs near you, see times & fees, and reach out.">
     <meta property="og:image" content="https://nulloongzi.github.io/null_oongzi-do/app_ui/nulloongzido%20logo_512px.png">
     <meta property="og:url" content="https://nulloongzi.github.io/null_oongzi-do/">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:locale:alternate" content="en_US">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="누룽지도 - 배구 동호회 찾기 지도">
-    <meta name="twitter:description" content="우리 동네 배구 동호회를 지도에서 한눈에.">
+    <meta name="twitter:title" content="누룽지도 Nulloongzi-do — 배구 동호회 찾기 / Find volleyball in Korea">
+    <meta name="twitter:description" content="우리 동네 배구 동호회를 지도에서 한눈에. · Find a local volleyball club in Korea on the map.">
     <meta name="twitter:image" content="https://nulloongzi.github.io/null_oongzi-do/app_ui/nulloongzido%20logo_512px.png">
 
     <link rel="manifest" href="manifest.json">
@@ -47,7 +49,9 @@
 
     <div class="search-container">
         <div class="search-icon-box">🔎</div>
-        <input type="text" id="topSearchInput" class="main-search-input" placeholder="팀명, 지역으로 검색..." onkeyup="applyFilters()">
+        <input type="text" id="topSearchInput" class="main-search-input" placeholder="팀명, 지역으로 검색..." data-i18n-placeholder="search_ph" onkeyup="applyFilters()">
+        <div class="separator"></div>
+        <div class="lang-toggle" id="langToggle" onclick="toggleLang()" title="한국어 / English"><span id="langToggleLabel">EN</span></div>
         <div class="separator"></div>
         <div class="filter-btn-icon" onclick="openFilterSheet()">⚙️<div id="filterBadge" class="filter-badge"></div></div>
     </div>
@@ -71,14 +75,14 @@
     <div id="lunchboxOverlay" class="lunchbox-overlay">
         <div class="lunchbox-wrapper">
             <div class="lb-header">
-                <span>도시락 🍱</span>
+                <span data-i18n="lb_title">도시락 🍱</span>
                 <div class="lb-btn-group">
-                    <button class="lb-add-btn" onclick="addCustomTeam()">🍙 직접추가</button>
-                    <button id="lbEditBtn" class="lb-edit-btn" onclick="toggleEditMode()">🍽 편집</button>
+                    <button class="lb-add-btn" onclick="addCustomTeam()" data-i18n="lb_add">🍙 직접추가</button>
+                    <button id="lbEditBtn" class="lb-edit-btn" onclick="toggleEditMode()" data-i18n="lb_edit">🍽 편집</button>
                 </div>
             </div>
             <div class="lunchbox-grid" id="lunchboxGrid"></div>
-            <div id="dietToggleBtn" class="diet-toggle-btn" onclick="toggleDietPlan()">📅 식단표 (스케줄 확인)</div>
+            <div id="dietToggleBtn" class="diet-toggle-btn" onclick="toggleDietPlan()" data-i18n="lb_diet">📅 식단표 (스케줄 확인)</div>
             <div id="dietPlanContainer" class="diet-plan-container">
                 <div id="dietPlanBody" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
             </div>
@@ -92,16 +96,16 @@
             <div id="loginSection" class="login-section">
                 <button class="btn-google-login" onclick="loginWithGoogle()">
                     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="G">
-                    구글로 간편 로그인
+                    <span data-i18n="login_google">구글로 간편 로그인</span>
                 </button>
-                <div class="divider">또는</div>
+                <div class="divider" data-i18n="or">또는</div>
                 <div class="input-group">
-                    <input type="email" id="emailInput" class="auth-input" placeholder="이메일 입력">
-                    <input type="password" id="pwInput" class="auth-input" placeholder="비밀번호 (6자리 이상)">
+                    <input type="email" id="emailInput" class="auth-input" placeholder="이메일 입력" data-i18n-placeholder="email_ph">
+                    <input type="password" id="pwInput" class="auth-input" placeholder="비밀번호 (6자리 이상)" data-i18n-placeholder="pw_ph">
                 </div>
                 <div class="btn-row">
-                    <button class="btn-auth primary" onclick="loginWithEmail()">로그인</button>
-                    <button class="btn-auth secondary" onclick="registerWithEmail()">회원가입</button>
+                    <button class="btn-auth primary" onclick="loginWithEmail()" data-i18n="login">로그인</button>
+                    <button class="btn-auth secondary" onclick="registerWithEmail()" data-i18n="signup">회원가입</button>
                 </div>
             </div>
             <div id="profileContent" style="display:none;">
@@ -113,8 +117,8 @@
                 <div class="pc-divider"></div>
                 <div id="pcMainTeam" class="pc-main-team">찜한 팀이 없어요</div>
                 <div class="pc-footer">
-                    <button class="btn-logout" onclick="logout()">로그아웃</button>
-                    <div class="pc-share-btn" onclick="showShareOptions()">🎁 포장하기</div>
+                    <button class="btn-logout" onclick="logout()" data-i18n="logout">로그아웃</button>
+                    <div class="pc-share-btn" onclick="showShareOptions()" data-i18n="share_wrap">🎁 포장하기</div>
                 </div>
             </div>
         </div>
@@ -122,46 +126,47 @@
 
     <!-- 필터 시트 -->
     <div id="filterSheet" class="filter-sheet">
-        <div class="fs-header"><div class="fs-title">검색 조건 설정</div></div>
+        <div class="fs-header"><div class="fs-title" data-i18n="filter_title">검색 조건 설정</div></div>
         <div class="fs-body">
-            <div class="fs-section"><span class="fs-label">📍 지역 (중복 선택 가능)</span>
+            <div class="fs-section"><span class="fs-label" data-i18n="region_label">📍 지역 (중복 선택 가능)</span>
                 <div class="chip-group" id="regionChips">
-                    <div class="chip" onclick="toggleFilter('region', '서울', this)">서울</div>
-                    <div class="chip" onclick="toggleFilter('region', '경기', this)">경기</div>
-                    <div class="chip" onclick="toggleFilter('region', '인천', this)">인천</div>
-                    <div class="chip" onclick="toggleFilter('region', '강원', this)">강원</div>
-                    <div class="chip" onclick="toggleFilter('region', '충청', this)">충청</div>
-                    <div class="chip" onclick="toggleFilter('region', '전라', this)">전라</div>
-                    <div class="chip" onclick="toggleFilter('region', '경상', this)">경상</div>
-                    <div class="chip" onclick="toggleFilter('region', '제주', this)">제주</div>
+                    <div class="chip" onclick="toggleFilter('region', '서울', this)" data-i18n="r_seoul">서울</div>
+                    <div class="chip" onclick="toggleFilter('region', '경기', this)" data-i18n="r_gyeonggi">경기</div>
+                    <div class="chip" onclick="toggleFilter('region', '인천', this)" data-i18n="r_incheon">인천</div>
+                    <div class="chip" onclick="toggleFilter('region', '강원', this)" data-i18n="r_gangwon">강원</div>
+                    <div class="chip" onclick="toggleFilter('region', '충청', this)" data-i18n="r_chungcheong">충청</div>
+                    <div class="chip" onclick="toggleFilter('region', '전라', this)" data-i18n="r_jeolla">전라</div>
+                    <div class="chip" onclick="toggleFilter('region', '경상', this)" data-i18n="r_gyeongsang">경상</div>
+                    <div class="chip" onclick="toggleFilter('region', '제주', this)" data-i18n="r_jeju">제주</div>
                 </div>
             </div>
-            <div class="fs-section"><span class="fs-label">📅 요일</span>
+            <div class="fs-section"><span class="fs-label" data-i18n="day_label">📅 요일</span>
                 <div class="chip-group" id="dayChips">
-                    <div class="chip" onclick="toggleFilter('day', '월', this)">월</div>
-                    <div class="chip" onclick="toggleFilter('day', '화', this)">화</div>
-                    <div class="chip" onclick="toggleFilter('day', '수', this)">수</div>
-                    <div class="chip" onclick="toggleFilter('day', '목', this)">목</div>
-                    <div class="chip" onclick="toggleFilter('day', '금', this)">금</div>
-                    <div class="chip" onclick="toggleFilter('day', '토', this)">토</div>
-                    <div class="chip" onclick="toggleFilter('day', '일', this)">일</div>
+                    <div class="chip" onclick="toggleFilter('day', '월', this)" data-i18n="d_mon">월</div>
+                    <div class="chip" onclick="toggleFilter('day', '화', this)" data-i18n="d_tue">화</div>
+                    <div class="chip" onclick="toggleFilter('day', '수', this)" data-i18n="d_wed">수</div>
+                    <div class="chip" onclick="toggleFilter('day', '목', this)" data-i18n="d_thu">목</div>
+                    <div class="chip" onclick="toggleFilter('day', '금', this)" data-i18n="d_fri">금</div>
+                    <div class="chip" onclick="toggleFilter('day', '토', this)" data-i18n="d_sat">토</div>
+                    <div class="chip" onclick="toggleFilter('day', '일', this)" data-i18n="d_sun">일</div>
                 </div>
             </div>
-            <div class="fs-section"><span class="fs-label">🏐 대상 및 특징</span>
+            <div class="fs-section"><span class="fs-label" data-i18n="target_label">🏐 대상 및 특징</span>
                 <div class="chip-group" id="targetChips">
-                    <div class="chip" onclick="toggleFilter('target', '성인', this)">성인</div>
-                    <div class="chip" onclick="toggleFilter('target', '대학생', this)">대학생</div>
-                    <div class="chip" onclick="toggleFilter('target', '청소년', this)">청소년</div>
-                    <div class="chip" onclick="toggleFilter('target', '여성전용', this)">여성전용</div>
-                    <div class="chip" onclick="toggleFilter('target', '남성전용', this)">남성전용</div>
-                    <div class="chip" onclick="toggleFilter('target', '선출가능', this)">선출가능</div>
-                    <div class="chip" onclick="toggleFilter('target', '6인제', this)">6인제</div>
+                    <div class="chip" onclick="toggleFilter('target', '성인', this)" data-i18n="t_adult">성인</div>
+                    <div class="chip" onclick="toggleFilter('target', '대학생', this)" data-i18n="t_college">대학생</div>
+                    <div class="chip" onclick="toggleFilter('target', '청소년', this)" data-i18n="t_youth">청소년</div>
+                    <div class="chip" onclick="toggleFilter('target', '여성전용', this)" data-i18n="t_women">여성전용</div>
+                    <div class="chip" onclick="toggleFilter('target', '남성전용', this)" data-i18n="t_men">남성전용</div>
+                    <div class="chip" onclick="toggleFilter('target', '선출가능', this)" data-i18n="t_expro">선출가능</div>
+                    <div class="chip chip-6s" onclick="toggleFilter('target', '6인제', this)" data-i18n="t_6s">6인제</div>
                 </div>
+                <div class="fs-en-hint">🏐 New to Korea? Most international players look for <strong>6s (6-a-side)</strong> — tap it above.</div>
             </div>
         </div>
         <div class="fs-footer">
-            <div class="btn btn-reset" onclick="resetFilters()">초기화</div>
-            <div class="btn btn-apply" onclick="applyFilters()">적용하기</div>
+            <div class="btn btn-reset" onclick="resetFilters()" data-i18n="reset">초기화</div>
+            <div class="btn btn-apply" onclick="applyFilters()" data-i18n="apply">적용하기</div>
         </div>
         <div class="fs-handle-area" id="filterHandle"><div class="fs-handle"></div></div>
     </div>
@@ -172,7 +177,7 @@
         <div class="sheet-content-wrapper">
             <div id="urgentArea"></div>
             <div class="sheet-header">
-                <div class="sheet-title" id="sheetTitle">팀 이름</div>
+                <div class="sheet-title" id="sheetTitle" data-i18n="sheet_title_ph">팀 이름</div>
                 <div id="btnBookmark" style="font-size:24px; cursor:pointer;">🍱</div>
             </div>
             <div class="time-morph-container" id="timeMorphContainer" onclick="toggleTimeExpand()">
@@ -182,11 +187,11 @@
             <div class="tag-box" id="sheetTags"></div>
             <div class="info-row"><span class="info-icon">💰</span> <span id="sheetPrice">-</span></div>
             <div class="action-buttons">
-                <button class="btn btn-copy" id="btnCopy">📍 주소 복사</button>
-                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-way" id="btnWay">🚀 길찾기</a>
-                <button class="btn" id="btnShareClub">🔗 공유</button>
+                <button class="btn btn-copy" id="btnCopy" data-i18n="btn_copy">📍 주소 복사</button>
+                <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-way" id="btnWay" data-i18n="btn_way">🚀 길찾기</a>
+                <button class="btn" id="btnShareClub" data-i18n="btn_share">🔗 공유</button>
             </div>
-            <div class="expand-hint" id="expandHint">▴ 위로 올려서 상세 정보 보기</div>
+            <div class="expand-hint" id="expandHint" data-i18n="expand_hint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
         </div>
     </div>
@@ -196,8 +201,8 @@
     <div id="previewOverlay" class="preview-overlay">
         <div class="preview-img-box" id="previewImgBox"></div>
         <div class="preview-btns">
-            <button class="btn-close" onclick="closePreview()">닫기</button>
-            <button class="btn-down" onclick="downloadImage()">💾 저장하기</button>
+            <button class="btn-close" onclick="closePreview()" data-i18n="preview_close">닫기</button>
+            <button class="btn-down" onclick="downloadImage()" data-i18n="preview_save">💾 저장하기</button>
         </div>
     </div>
 
@@ -205,53 +210,53 @@
     <div id="regModalOverlay" class="reg-modal-overlay">
         <div class="reg-modal-content">
             <div class="reg-modal-header">
-                <h3 id="regModalTitle">팀 등록하기</h3>
+                <h3 id="regModalTitle" data-i18n="reg_title">팀 등록하기</h3>
                 <span class="reg-modal-close" onclick="closeRegistrationModal()">x</span>
             </div>
             <div class="reg-modal-body">
-                <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px 15px; margin-bottom: 20px; font-size: 13px; color: #555; line-height: 1.4; border-radius: 4px;">
+                <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px 15px; margin-bottom: 20px; font-size: 13px; color: #555; line-height: 1.4; border-radius: 4px;" data-i18n-html="reg_tip">
                     <strong>tip:</strong> 요일별로 체육관 위치가 다른 경우, 정확한 핀 표시를 위해 <strong>장소별로 각각 등록</strong> 부탁드립니다!
                 </div>
                 <div class="reg-form-group">
-                    <label>팀 이름 (필수)</label>
-                    <input type="text" id="regName" placeholder="예: GVT 배구클럽">
+                    <label data-i18n="reg_name_label">팀 이름 (필수)</label>
+                    <input type="text" id="regName" placeholder="예: GVT 배구클럽" data-i18n-placeholder="reg_name_ph">
                 </div>
                 <div class="reg-form-group">
-                    <label>대상 (필수)</label>
-                    <input type="text" id="regTarget" placeholder="예: 성인, 대학생, 청소년">
+                    <label data-i18n="reg_target_label">대상 (필수)</label>
+                    <input type="text" id="regTarget" placeholder="예: 성인, 대학생, 청소년" data-i18n-placeholder="reg_target_ph">
                 </div>
                 <div class="reg-form-group">
-                    <label>주소 (필수) - 실제 체육관 주소</label>
+                    <label data-i18n="reg_addr_label">주소 (필수) - 실제 체육관 주소</label>
                     <div style="display: flex; gap: 10px; align-items: stretch;">
-                        <input type="text" id="regAddress" placeholder="예: 서울 송파구 올림픽로 424" style="flex:1;" oninput="window.selectedCoords=null;">
-                        <button type="button" onclick="startMapPicker()" style="padding: 0 15px; background: #fff; border: 1px solid var(--nurungji-brown); color: var(--nurungji-brown); border-radius: 10px; font-weight: bold; cursor: pointer; white-space: nowrap;">지도에서 찾기</button>
+                        <input type="text" id="regAddress" placeholder="예: 서울 송파구 올림픽로 424" data-i18n-placeholder="reg_addr_ph" style="flex:1;" oninput="window.selectedCoords=null;">
+                        <button type="button" onclick="startMapPicker()" style="padding: 0 15px; background: #fff; border: 1px solid var(--nurungji-brown); color: var(--nurungji-brown); border-radius: 10px; font-weight: bold; cursor: pointer; white-space: nowrap;" data-i18n="reg_addr_find">지도에서 찾기</button>
                     </div>
                 </div>
                 <div class="reg-form-group">
                     <label style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>운동 시간 (스케줄)</span>
-                        <button type="button" onclick="addScheduleRow()" style="background: var(--nurungji-brown); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">+ 추가</button>
+                        <span data-i18n="reg_sched_label">운동 시간 (스케줄)</span>
+                        <button type="button" onclick="addScheduleRow()" style="background: var(--nurungji-brown); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" data-i18n="reg_add">+ 추가</button>
                     </label>
                     <div id="scheduleContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;"></div>
                 </div>
                 <div class="reg-form-group">
-                    <label>회비 및 게스트비</label>
-                    <input type="text" id="regPrice" placeholder="예: 월 3만원 / 게스트 1만원">
+                    <label data-i18n="reg_price_label">회비 및 게스트비</label>
+                    <input type="text" id="regPrice" placeholder="예: 월 3만원 / 게스트 1만원" data-i18n-placeholder="reg_price_ph">
                 </div>
                 <div class="reg-form-group">
-                    <label>인스타그램 핸들 (선택)</label>
-                    <input type="text" id="regInsta" placeholder="예: gvt__official">
+                    <label data-i18n="reg_insta_label">인스타그램 핸들 (선택)</label>
+                    <input type="text" id="regInsta" placeholder="예: gvt__official" data-i18n-placeholder="reg_insta_ph">
                 </div>
                 <div class="reg-form-group">
-                    <label>가입/문의 링크 (선택)</label>
-                    <input type="text" id="regLink" placeholder="예: https://open.kakao.com/o/...">
+                    <label data-i18n="reg_link_label">가입/문의 링크 (선택)</label>
+                    <input type="text" id="regLink" placeholder="예: https://open.kakao.com/o/..." data-i18n-placeholder="reg_link_ph">
                 </div>
                 <div id="adminOwnerGroup" class="reg-form-group" style="display:none; background:rgba(244,67,54,0.05); border-left:3px solid #d32f2f; padding:10px 12px; border-radius:4px;">
                     <label style="color:#d32f2f; font-weight:600;">⚠️ 관리자 전용: 소유자 지정</label>
                     <input type="text" id="regOwnerEmail" placeholder="예: paul@example.com (비우면 변경 안 됨)">
                     <div style="font-size:12px; color:#666; margin-top:4px;">이메일로 사용자를 찾아 팀 소유자로 지정합니다. 사용자는 먼저 로그인해야 합니다.</div>
                 </div>
-                <button id="regSubmitBtn" class="reg-submit-btn" onclick="submitRegistration()">등록하기</button>
+                <button id="regSubmitBtn" class="reg-submit-btn" onclick="submitRegistration()" data-i18n="reg_submit">등록하기</button>
             </div>
         </div>
     </div>
@@ -260,8 +265,8 @@
     <div id="mapPickerOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; pointer-events: none;">
         <img src="./assets/marker_yellow.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); width: 40px; opacity: 0.6; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));">
         <div style="position: absolute; bottom: 40px; left: 0; right: 0; display: flex; justify-content: center; gap: 15px; pointer-events: auto;">
-            <button onclick="confirmMapPicker()" style="padding: 15px 30px; background: var(--nurungji-brown); color: white; border: none; border-radius: 30px; font-weight: 800; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 16px; cursor: pointer;">이 위치로 주소 설정</button>
-            <button onclick="cancelMapPicker()" style="padding: 15px 25px; background: #fff; color: #555; border: none; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 15px; cursor: pointer;">취소</button>
+            <button onclick="confirmMapPicker()" style="padding: 15px 30px; background: var(--nurungji-brown); color: white; border: none; border-radius: 30px; font-weight: 800; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 16px; cursor: pointer;" data-i18n="mp_confirm">이 위치로 주소 설정</button>
+            <button onclick="cancelMapPicker()" style="padding: 15px 25px; background: #fff; color: #555; border: none; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 15px; cursor: pointer;" data-i18n="mp_cancel">취소</button>
         </div>
     </div>
 
@@ -272,6 +277,7 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
+    <script src="js/i18n.js"></script>
     <script src="js/data.js"></script>
     <script src="js/profile.js"></script>
     <script src="js/auth.js"></script>

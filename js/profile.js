@@ -66,7 +66,7 @@ window.renderProfileCard = function () {
     var riceWatermark = document.getElementById('pcRiceWatermark');
 
     // 닉네임 표시
-    var displayName = window.currentProfileData.full_nickname || window.currentProfileData.nickname || "손님";
+    var displayName = window.currentProfileData.full_nickname || window.currentProfileData.nickname || window.t('guest');
     nicknameEl.innerText = displayName;
 
     // 밥 종류(배경색) 결정
@@ -90,7 +90,7 @@ window.renderProfileCard = function () {
         } else {
             d = new Date(window.currentProfileData.created_at);
         }
-        dateEl.innerText = "가입일: " + d.getFullYear() + "." + (d.getMonth() + 1) + "." + d.getDate();
+        dateEl.innerText = window.t('joined') + d.getFullYear() + "." + (d.getMonth() + 1) + "." + d.getDate();
     }
 
     // 찜한 팀 표시
@@ -105,12 +105,17 @@ window.renderProfileCard = function () {
             // XSS 방지: mainTeam.name을 textContent로
             mainTeamEl.textContent = icon + (mainTeam.name || '');
         } else {
-            mainTeamEl.innerText = "데이터 없음";
+            mainTeamEl.innerText = window.t('no_data');
         }
     } else {
-        mainTeamEl.innerText = "찜한 팀이 없어요";
+        mainTeamEl.innerText = window.t('no_saved_team');
     }
 };
+
+// 언어 전환 시 로그인된 프로필 카드 재렌더링
+document.addEventListener('nurungji:langchange', function () {
+    if (window.currentProfileData && window.renderProfileCard) window.renderProfileCard();
+});
 
 window.editNickname = async function () {
     if (!window.currentUser || !window.firebaseDB) return;
