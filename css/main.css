@@ -1967,3 +1967,43 @@
         body.lang-en #targetChips .chip-6s.selected {
             border-color: var(--nurungji-yellow);
         }
+
+        /* 영어 라벨이 중간에서 줄바꿈되지 않도록 (칩/버튼은 한 줄 유지) */
+        .chip {
+            white-space: nowrap;
+        }
+
+        /* 도시락 제목(브랜드)은 항상 한 줄 유지 */
+        .lb-header > span {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* 영어는 라벨이 길어 헤더가 넘치므로 EN에서만 제목/버튼을 살짝 축소 */
+        body.lang-en .lb-header {
+            font-size: 17px;
+        }
+
+        body.lang-en .lb-add-btn,
+        body.lang-en .lb-edit-btn {
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+
+        body.lang-en .lb-btn-group {
+            gap: 6px;
+        }
+
+        body.lang-en .action-buttons .btn,
+        body.lang-en .btn-auth,
+        body.lang-en .btn-google-login,
+        body.lang-en .lb-add-btn,
+        body.lang-en .lb-edit-btn,
+        body.lang-en .btn-reset,
+        body.lang-en .btn-apply,
+        body.lang-en .reg-submit-btn,
+        body.lang-en .pc-share-btn,
+        body.lang-en .btn-logout,
+        body.lang-en .diet-toggle-btn {
+            white-space: nowrap;
+        }

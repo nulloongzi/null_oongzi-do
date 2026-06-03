@@ -16,11 +16,11 @@
         // 검색
         search_ph: { ko: '팀명, 지역으로 검색...', en: 'Search by team or area...' },
 
-        // 도시락(북마크)
+        // 도시락(북마크) — 밥/도시락/식단 메타포 유지
         lb_title: { ko: '도시락 🍱', en: 'Lunchbox 🍱' },
         lb_add: { ko: '🍙 직접추가', en: '🍙 Add team' },
         lb_edit: { ko: '🍽 편집', en: '🍽 Edit' },
-        lb_diet: { ko: '📅 식단표 (스케줄 확인)', en: '📅 Meal plan (schedule)' },
+        lb_diet: { ko: '📅 식단표 (스케줄 확인)', en: '📅 Weekly menu' },
 
         // 로그인 / 프로필
         login_google: { ko: '구글로 간편 로그인', en: 'Sign in with Google' },
@@ -29,12 +29,12 @@
         pw_ph: { ko: '비밀번호 (6자리 이상)', en: 'Password (6+ characters)' },
         login: { ko: '로그인', en: 'Log in' },
         signup: { ko: '회원가입', en: 'Sign up' },
-        no_saved_team: { ko: '찜한 팀이 없어요', en: 'No saved teams yet' },
+        no_saved_team: { ko: '찜한 팀이 없어요', en: 'Your lunchbox is empty 🍱' },
         joined: { ko: '가입일: ', en: 'Joined: ' },
         no_data: { ko: '데이터 없음', en: 'No data' },
         guest: { ko: '손님', en: 'Guest' },
         logout: { ko: '로그아웃', en: 'Log out' },
-        share_wrap: { ko: '🎁 포장하기', en: '🎁 Share my card' },
+        share_wrap: { ko: '🎁 포장하기', en: '🎁 Wrap it up' },
 
         // 필터 시트
         filter_title: { ko: '검색 조건 설정', en: 'Filters' },
@@ -101,7 +101,9 @@
         reg_price_label: { ko: '회비 및 게스트비', en: 'Fees & guest fee' },
         reg_price_ph: { ko: '예: 월 3만원 / 게스트 1만원', en: 'e.g. ₩30,000/mo / Guest ₩10,000' },
         reg_insta_label: { ko: '인스타그램 핸들 (선택)', en: 'Instagram handle (optional)' },
+        reg_insta_ph: { ko: '예: gvt__official', en: 'e.g. gvt__official' },
         reg_link_label: { ko: '가입/문의 링크 (선택)', en: 'Join/contact link (optional)' },
+        reg_link_ph: { ko: '예: https://open.kakao.com/o/...', en: 'e.g. https://open.kakao.com/o/...' },
         reg_submit: { ko: '등록하기', en: 'Register' },
 
         // 지도 위치 선택
@@ -109,32 +111,32 @@
         mp_cancel: { ko: '취소', en: 'Cancel' },
 
         // ── 동적(JS) 문자열 ──
-        // 도시락 식단표 슬롯 / 동작
-        lb_slot_rice: { ko: '밥을<br>담아주세요🍚', en: 'Add rice<br>(a team)🍚' },
-        lb_slot_soup: { ko: '국을<br>담아주세요🥘', en: 'Add soup<br>(a team)🥘' },
-        lb_slot_side1: { ko: '반찬1🍳', en: 'Side 1🍳' },
-        lb_slot_side2: { ko: '반찬2🥗', en: 'Side 2🥗' },
-        lb_slot_side3: { ko: '반찬3🥢', en: 'Side 3🥢' },
+        // 도시락 식단표 슬롯 / 동작 — 밥·국·반찬 메타포 유지
+        lb_slot_rice: { ko: '밥을<br>담아주세요🍚', en: 'Add rice 🍚' },
+        lb_slot_soup: { ko: '국을<br>담아주세요🥘', en: 'Add soup 🥘' },
+        lb_slot_side1: { ko: '반찬1🍳', en: 'Side 1 🍳' },
+        lb_slot_side2: { ko: '반찬2🥗', en: 'Side 2 🥗' },
+        lb_slot_side3: { ko: '반찬3🥢', en: 'Side 3 🥢' },
         lb_done: { ko: '✅ 완료', en: '✅ Done' },
-        lb_diet_collapse: { ko: '📅 식단표 접기', en: '📅 Collapse meal plan' },
-        lb_add_prompt: { ko: '🍙 추가할 팀/일정 이름을 입력하세요', en: '🍙 Enter a team/schedule name to add' },
-        lb_add_default: { ko: '개인운동', en: 'Personal practice' },
+        lb_diet_collapse: { ko: '📅 식단표 접기', en: '📅 Hide weekly menu' },
+        lb_add_prompt: { ko: '🍙 추가할 팀/일정 이름을 입력하세요', en: '🍙 Name the team or session to pack' },
+        lb_add_default: { ko: '개인운동', en: 'Solo practice' },
         lb_time_prompt: { ko: '시간을 입력하세요 (예: 월 19:00~21:00)', en: 'Enter the time (e.g. 월 19:00~21:00)' },
         lb_time_default: { ko: '월 19:00~21:00', en: '월 19:00~21:00' },
         lb_custom_target: { ko: '나만의 메뉴', en: 'My own menu' },
-        lb_custom_addr: { ko: '사용자 추가', en: 'User-added' },
+        lb_custom_addr: { ko: '사용자 추가', en: 'Added by you' },
         lb_already: { ko: '이미 도시락에 담긴 팀입니다! 🍱', en: 'This team is already in your lunchbox! 🍱' },
-        lb_full: { ko: '도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요.', en: 'Your lunchbox is full! (max 5) 🍱\nRemove a team to add a new one.' },
-        lb_added_custom: { ko: '나만의 메뉴가 추가되었습니다! 🍙', en: 'Added to your menu! 🍙' },
-        lb_added_team: { ko: '도시락에 팀을 담았습니다! 🍱', en: 'Added to your lunchbox! 🍱' },
-        lb_bookmark_fail: { ko: '찜하기 실패: ', en: 'Failed to save: ' },
+        lb_full: { ko: '도시락이 꽉 찼습니다! (최대 5개) 🍱\n기존 팀을 빼고 담아주세요.', en: 'Your lunchbox is full! (5 max) 🍱\nTake one out to pack a new team.' },
+        lb_added_custom: { ko: '나만의 메뉴가 추가되었습니다! 🍙', en: 'Packed into your menu! 🍙' },
+        lb_added_team: { ko: '도시락에 팀을 담았습니다! 🍱', en: 'Packed into your lunchbox! 🍱' },
+        lb_bookmark_fail: { ko: '찜하기 실패: ', en: 'Couldn\'t pack it: ' },
         lb_deleted_team: { ko: '삭제된 팀', en: 'Deleted team' },
-        lb_remove_confirm: { ko: '이 반찬을 도시락에서 뺄까요?', en: 'Remove this item from your lunchbox?' },
+        lb_remove_confirm: { ko: '이 반찬을 도시락에서 뺄까요?', en: 'Take this dish out of your lunchbox?' },
 
         // 공유
         sh_pick_shape: { ko: '📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)', en: '📸 Choose a layout to save!\n\n[OK] = 🍱 Feed (name card + lunchbox + meal plan)\n[Cancel] = 📱 Story (name card + lunchbox)' },
         sh_login_required: { ko: '로그인이 필요합니다.', en: 'Please log in first.' },
-        sh_weekly_plan: { ko: '📅 주간 식단표', en: '📅 Weekly meal plan' },
+        sh_weekly_plan: { ko: '📅 주간 식단표', en: '📅 Weekly menu' },
         sh_error: { ko: '오류 발생: ', en: 'Error: ' },
         sh_run_fail: { ko: '기능 실행 실패: ', en: 'Failed to run: ' },
         no_image: { ko: '저장할 이미지가 없습니다.', en: 'No image to save.' },
@@ -175,7 +177,7 @@
         au_login_fail: { ko: '로그인 실패: ', en: 'Login failed: ' },
         au_enter_info: { ko: '정보를 입력해주세요.', en: 'Please enter your information.' },
         au_logout_confirm: { ko: '로그아웃 하시겠습니까?', en: 'Log out?' },
-        au_welcome: { ko: '환영합니다! [{name}]님이 되셨습니다!', en: 'Welcome! You are now [{name}]!' },
+        au_welcome: { ko: '환영합니다! [{name}]님이 되셨습니다!', en: 'Welcome! Your rice name is [{name}] 🍚' },
 
         // 인증 신청(verification)
         vf_title: { ko: '인증 신청', en: 'Request verification' },
