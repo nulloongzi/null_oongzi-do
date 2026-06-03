@@ -13,6 +13,9 @@
     // 외국인 타겟: 정적 UI 크롬(chrome) + 핵심 발견 흐름 문자열.
     // 클럽 데이터(이름/주소/일정 텍스트 등)는 한국어 원본이라 번역 대상이 아니다.
     var DICT = {
+        // 브랜드명 (영어는 로마자 표기)
+        brand: { ko: '누룽지도', en: 'Nulloongzi-do' },
+
         // 검색
         search_ph: { ko: '팀명, 지역으로 검색...', en: 'Search by team or area...' },
 
@@ -141,9 +144,9 @@
         sh_run_fail: { ko: '기능 실행 실패: ', en: 'Failed to run: ' },
         no_image: { ko: '저장할 이미지가 없습니다.', en: 'No image to save.' },
         link_copied: { ko: '링크가 복사되었습니다! 📋', en: 'Link copied! 📋' },
-        sh_view_club_text: { ko: '누룽지도에서 동호회 보기', en: 'View this club on Nurungjido' },
+        sh_view_club_text: { ko: '누룽지도에서 동호회 보기', en: 'View this club on Nulloongzi-do' },
         sh_club_fallback: { ko: '배구 동호회', en: 'Volleyball club' },
-        sh_view_on: { ko: '누룽지도에서 보기', en: 'View on Nurungjido' },
+        sh_view_on: { ko: '누룽지도에서 보기', en: 'View on Nulloongzi-do' },
         sh_view_club_btn: { ko: '동호회 보기', en: 'View club' },
 
         // 주소 복사
@@ -281,6 +284,7 @@
 
         document.documentElement.setAttribute('lang', lang);
         document.body.classList.toggle('lang-en', lang === 'en');
+        document.title = window.t('brand');
 
         window.applyI18n();
 
@@ -295,5 +299,6 @@
     // 초기 적용 (이 스크립트는 body 하단에서 로드되므로 UI DOM은 이미 존재)
     document.documentElement.setAttribute('lang', window.currentLang);
     if (document.body) document.body.classList.toggle('lang-en', window.currentLang === 'en');
+    document.title = window.t('brand');
     window.applyI18n();
 })();

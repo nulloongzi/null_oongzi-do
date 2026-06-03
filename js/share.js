@@ -61,7 +61,7 @@ window.generateShareImage = async function (mode) {
         logoBox.className = 'capture-watermark';
         logoBox.innerHTML =
             '<img src="./nulloongzido logo_512px.png" onerror="this.style.display=\'none\'">' +
-            '<span>누룽지도</span>';
+            '<span>' + window.t('brand') + '</span>';
 
         // 4. 레이아웃 조립
         if (mode === 'story') {
@@ -261,7 +261,7 @@ window.shareClub = function (club) {
 
     // 2) OS 네이티브 공유 시트 (카카오 SDK 미초기화/미지원 시 폴백 — 일반 링크라 도메인 등록 불필요)
     if (navigator.share) {
-        navigator.share({ title: club.name || '누룽지도', text: shareText, url: url })
+        navigator.share({ title: club.name || window.t('brand'), text: shareText, url: url })
             .catch(function () { /* 사용자 취소 등은 무시 */ });
         if (window.track) window.track('share', { method: 'web', club_id: club.id });
         return;
