@@ -15,52 +15,63 @@ window.generateTimeOptions = function () {
     return options;
 };
 
-window.addScheduleRow = function () {
+// 운동시간 "블록": 한 시간대(시작~종료)에 여러 요일을 칩으로 선택.
+// 저장 시 선택 요일마다 schedule_raw 엔트리로 전개됨(getScheduleData 참고).
+// prefill = { days:['월','수'], start:'19:00', end:'22:00' }
+window.addScheduleBlock = function (prefill) {
+    prefill = prefill || {};
     var container = document.getElementById('scheduleContainer');
-    var rowCount = container.children.length;
-    var row = document.createElement('div');
-    row.className = 'sched-row';
-    row.id = 'schedRow_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    var block = document.createElement('div');
+    block.className = 'sched-block';
+
+    var days = ['월', '화', '수', '목', '금', '토', '일'];
+    var dayKey = { '월': 'd_mon', '화': 'd_tue', '수': 'd_wed', '목': 'd_thu', '금': 'd_fri', '토': 'd_sat', '일': 'd_sun' };
+    var selectedDays = prefill.days || [];
+    var chipsHtml = days.map(function (d) {
+        var sel = selectedDays.indexOf(d) !== -1 ? ' selected' : '';
+        return '<div class="chip sched-day-chip' + sel + '" data-day="' + d + '" data-i18n="' + dayKey[d] + '" onclick="toggleRegChip(this)">' + window.i18nDay(d) + '</div>';
+    }).join('');
 
     var timeOpts = window.generateTimeOptions();
+    var startVal = prefill.start || '19:00';
+    var endVal = prefill.end || '22:00';
+    var startOpts = timeOpts.replace('"' + startVal + '"', '"' + startVal + '" selected');
+    var endOpts = timeOpts.replace('"' + endVal + '"', '"' + endVal + '" selected');
 
-    var startOpts = timeOpts.replace('"19:00"', '"19:00" selected');
-    var endOpts = timeOpts.replace('"22:00"', '"22:00" selected');
+    block.innerHTML =
+        '<div class="sched-day-chips">' + chipsHtml + '</div>' +
+        '<div class="sched-time-row">' +
+            '<select class="sched-start">' + startOpts + '</select>' +
+            '<span class="sched-tilde">~</span>' +
+            '<select class="sched-end">' + endOpts + '</select>' +
+            '<button type="button" class="sched-block-del" onclick="this.closest(\'.sched-block\').remove()" title="삭제">🗑</button>' +
+        '</div>';
 
-    var deleteBtn = '';
-    if (rowCount > 0) {
-        deleteBtn = '<button type="button" class="del-btn" onclick="this.parentElement.remove()">🗑</button>';
-    } else {
-        deleteBtn = '<div style="width:33px; margin-left:auto;"></div>';
-    }
-
-    row.innerHTML =
-        '<select class="sched-day">' +
-            ['월', '화', '수', '목', '금', '토', '일'].map(function (d) {
-                return '<option value="' + d + '">' + window.i18nDay(d) + '</option>';
-            }).join('') +
-        '</select>' +
-        '<select class="sched-start">' + startOpts + '</select>' +
-        '<span>~</span>' +
-        '<select class="sched-end">' + endOpts + '</select>' +
-        deleteBtn;
-
-    container.appendChild(row);
+    container.appendChild(block);
 };
+// 하위호환 별칭 (기존 호출부 대비)
+window.addScheduleRow = window.addScheduleBlock;
 
 window.getScheduleData = function () {
     var container = document.getElementById('scheduleContainer');
     var rawList = [];
     var textParts = [];
 
-    var rows = container.children;
-    for (var r = 0; r < rows.length; r++) {
-        var row = rows[r];
-        var day = row.querySelector('.sched-day').value;
-        var start = row.querySelector('.sched-start').value;
-        var end = row.querySelector('.sched-end').value;
-        rawList.push({ day: day, start: start, end: end });
-        textParts.push(day + ' ' + start + '~' + end);
+    var blocks = container.children;
+    for (var b = 0; b < blocks.length; b++) {
+        var block = blocks[b];
+        var startEl = block.querySelector('.sched-start');
+        var endEl = block.querySelector('.sched-end');
+        if (!startEl || !endEl) continue;
+        var start = startEl.value;
+        var end = endEl.value;
+        // 선택된 요일 칩마다 한 엔트리로 전개 (요일 0개 블록은 무시)
+        var chips = block.querySelectorAll('.sched-day-chip.selected');
+        for (var c = 0; c < chips.length; c++) {
+            var day = chips[c].getAttribute('data-day');
+            rawList.push({ day: day, start: start, end: end });
+            textParts.push(day + ' ' + start + '~' + end);
+        }
     }
 
     return {
@@ -109,7 +120,7 @@ window.openRegistrationModal = function (isUrgent) {
 
         var schedContainer = document.getElementById('scheduleContainer');
         if (schedContainer && schedContainer.children.length === 0) {
-            window.addScheduleRow();
+            window.addScheduleBlock();
         }
 
         document.getElementById('regModalOverlay').style.display = 'flex';
@@ -178,20 +189,31 @@ window.openEditModal = function (club) {
             }
         }
 
-        // 스케줄 행 재구성
+        // 스케줄 블록 재구성: 같은 (시작~종료) 시간대끼리 묶어 한 블록에 여러 요일 칩으로 복원
         var sc = document.getElementById('scheduleContainer');
         if (sc) sc.innerHTML = '';
         if (Array.isArray(club.schedule_raw) && club.schedule_raw.length > 0) {
+            var groups = []; // [{start, end, days:[]}], 출현순 유지
+            var groupIndex = {};
             club.schedule_raw.forEach(function (row) {
-                window.addScheduleRow();
-                var rows = sc.children;
-                var last = rows[rows.length - 1];
-                if (row.day) last.querySelector('.sched-day').value = row.day;
-                if (row.start) last.querySelector('.sched-start').value = row.start;
-                if (row.end) last.querySelector('.sched-end').value = row.end;
+                if (!row || !row.start || !row.end || !row.day) return;
+                var key = row.start + '|' + row.end;
+                if (!groupIndex.hasOwnProperty(key)) {
+                    groupIndex[key] = groups.length;
+                    groups.push({ start: row.start, end: row.end, days: [] });
+                }
+                var g = groups[groupIndex[key]];
+                if (g.days.indexOf(row.day) === -1) g.days.push(row.day);
             });
+            if (groups.length === 0) {
+                window.addScheduleBlock();
+            } else {
+                groups.forEach(function (g) {
+                    window.addScheduleBlock({ days: g.days, start: g.start, end: g.end });
+                });
+            }
         } else {
-            window.addScheduleRow();
+            window.addScheduleBlock();
         }
 
         document.getElementById('regModalOverlay').style.display = 'flex';
@@ -456,7 +478,7 @@ window.submitRegistration = async function () {
         window.setRegTargetValue(''); // 대상 칩/메모 초기화
         window.selectedCoords = null;
         document.getElementById('scheduleContainer').innerHTML = '';
-        window.addScheduleRow();
+        window.addScheduleBlock();
 
     } catch (error) {
         console.error(error);
