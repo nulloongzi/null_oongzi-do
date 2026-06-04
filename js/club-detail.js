@@ -269,7 +269,7 @@ window.openClubDetail = function (id, opts) {
         sheetTitleEl.appendChild(document.createTextNode(' '));
         sheetTitleEl.appendChild(instaLink);
     }
-    document.getElementById('sheetPrice').innerText = club.price || window.t('no_fee');
+    document.getElementById('sheetPrice').innerText = club.price ? window.i18nPrice(club.price) : window.t('no_fee');
     document.getElementById('sheetAddressVal').value = club.address;
 
     window.renderTimetables(club.schedule);
@@ -279,7 +279,7 @@ window.openClubDetail = function (id, opts) {
     sheetTagsEl.innerHTML = '';
     var targetSpan = document.createElement('span');
     targetSpan.className = 'tag target';
-    targetSpan.textContent = club.target || '';
+    targetSpan.textContent = window.i18nTarget(club.target);
     sheetTagsEl.appendChild(targetSpan);
     var safeLink = window.sanitizeUrl(club.link);
     if (safeLink && safeLink !== '#') {
