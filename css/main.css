@@ -1859,6 +1859,20 @@
             box-shadow: 0 0 5px rgba(220, 180, 120, 0.3);
         }
 
+        /* 등록폼 대상 칩 (필터 칩 재사용, 모달용으로 약간 축소) */
+        .reg-target-chips {
+            margin-bottom: 8px;
+        }
+
+        .reg-target-chips .chip {
+            padding: 7px 13px;
+            font-size: 13px;
+        }
+
+        .reg-target-note {
+            margin-top: 2px;
+        }
+
         .reg-submit-btn {
             width: 100%;
             padding: 15px;

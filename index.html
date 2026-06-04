@@ -223,7 +223,17 @@
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="reg_target_label">대상 (필수)</label>
-                    <input type="text" id="regTarget" placeholder="예: 성인, 대학생, 청소년" data-i18n-placeholder="reg_target_ph">
+                    <div class="chip-group reg-target-chips" id="regTargetChips">
+                        <div class="chip reg-target-chip" data-val="성인" onclick="toggleRegChip(this)" data-i18n="t_adult">성인</div>
+                        <div class="chip reg-target-chip" data-val="대학생" onclick="toggleRegChip(this)" data-i18n="t_college">대학생</div>
+                        <div class="chip reg-target-chip" data-val="청소년" onclick="toggleRegChip(this)" data-i18n="t_youth">청소년</div>
+                        <div class="chip reg-target-chip" data-val="무관" onclick="toggleRegChip(this)" data-i18n="t_any">무관</div>
+                        <div class="chip reg-target-chip" data-val="여성전용" onclick="toggleRegChip(this)" data-i18n="t_women">여성전용</div>
+                        <div class="chip reg-target-chip" data-val="남성전용" onclick="toggleRegChip(this)" data-i18n="t_men">남성전용</div>
+                        <div class="chip reg-target-chip" data-val="선출가능" onclick="toggleRegChip(this)" data-i18n="t_expro">선출가능</div>
+                        <div class="chip reg-target-chip chip-6s" data-val="6인제" onclick="toggleRegChip(this)" data-i18n="t_6s">6인제</div>
+                    </div>
+                    <input type="text" id="regTargetNote" class="reg-target-note" placeholder="기타 조건 (예: 구력 1년 이상) — 선택" data-i18n-placeholder="reg_target_note_ph">
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="reg_addr_label">주소 (필수) - 실제 체육관 주소</label>

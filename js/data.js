@@ -36,69 +36,48 @@
         return null;
     };
 
+    // Firestore가 단일 소스 (정적 JSON·파이프라인 폐기). 모든 클럽은 clubs 컬렉션에서 로드.
     window.loadAllClubs = function () {
-        var staticPromise = fetch('data/volleyball_clubs_kakao.json')
-            .then(function (res) { return res.json(); })
+        if (!window.firebaseDB) {
+            console.error("Firestore 미초기화 - 클럽 데이터를 불러올 수 없습니다.");
+            window.allClubs = [];
+            window.clubs = [];
+            return Promise.resolve([]);
+        }
+
+        return window.firebaseDB.collection('clubs').get()
+            .then(function (snapshot) {
+                var clubs = snapshot.docs.map(function (doc) {
+                    var d = doc.data();
+                    d.id = doc.id; // Firebase 문서 ID를 객체에 주입
+                    // coordinates 필드 → lat/lng 평탄화
+                    if (d.coordinates) {
+                        d.lat = d.coordinates.lat;
+                        d.lng = d.coordinates.lng;
+                    }
+                    // contact 필드 → insta/link 평탄화
+                    if (d.contact) {
+                        if (d.contact.insta) d.insta = d.contact.insta;
+                        if (d.contact.link) d.link = d.contact.link;
+                    }
+                    return d;
+                });
+
+                window.allClubs = clubs;
+                window.clubs = clubs;
+
+                // Notify map if ready
+                if (typeof window.refreshMarkers === 'function') {
+                    window.refreshMarkers();
+                }
+
+                return clubs;
+            })
             .catch(function (e) {
-                console.error("Static clubs JSON fetch error:", e);
+                console.error("Firestore clubs fetch error:", e);
+                window.allClubs = [];
+                window.clubs = [];
                 return [];
             });
-
-        var firestorePromise = window.firebaseDB
-            ? window.firebaseDB.collection('clubs').get()
-                .then(function (snapshot) {
-                    return snapshot.docs.map(function (doc) {
-                        var d = doc.data();
-                        d.id = doc.id; // Firebase 문서 ID를 객체에 주입
-                        // coordinates 필드 → lat/lng 평탄화
-                        if (d.coordinates) {
-                            d.lat = d.coordinates.lat;
-                            d.lng = d.coordinates.lng;
-                        }
-                        // contact 필드 → insta/link 평탄화
-                        if (d.contact) {
-                            if (d.contact.insta) d.insta = d.contact.insta;
-                            if (d.contact.link) d.link = d.contact.link;
-                        }
-                        return d;
-                    });
-                })
-                .catch(function (e) {
-                    console.error("Firestore clubs fetch error:", e);
-                    return [];
-                })
-            : Promise.resolve([]);
-
-        return Promise.all([staticPromise, firestorePromise]).then(function (results) {
-            var staticClubs = results[0];
-            var firestoreClubs = results[1];
-
-            // Merge: start with static JSON, then overlay/append Firestore clubs
-            var merged = staticClubs.slice(); // shallow copy
-            var idMap = {};
-            merged.forEach(function (c, idx) {
-                if (c.id) idMap[String(c.id).trim()] = idx;
-            });
-
-            firestoreClubs.forEach(function (fc) {
-                var key = String(fc.id).trim();
-                if (idMap.hasOwnProperty(key)) {
-                    // Override: Firestore data takes precedence
-                    merged[idMap[key]] = fc;
-                } else {
-                    merged.push(fc);
-                }
-            });
-
-            window.allClubs = merged;
-            window.clubs = merged;
-
-            // Notify map if ready
-            if (typeof window.refreshMarkers === 'function') {
-                window.refreshMarkers();
-            }
-
-            return merged;
-        });
     };
 })();

@@ -69,12 +69,39 @@ window.getScheduleData = function () {
     };
 };
 
+// ── 대상(target) 칩 입력 ──
+// 저장 포맷은 기존과 동일한 쉼표결합 한글 문자열 → 필터·기존 데이터와 하위호환.
+window.toggleRegChip = function (el) {
+    el.classList.toggle('selected');
+};
+
+window.getRegTargetValue = function () {
+    var chips = document.querySelectorAll('#regTargetChips .reg-target-chip.selected');
+    var vals = Array.prototype.map.call(chips, function (c) { return c.getAttribute('data-val'); });
+    var base = vals.join(', ');
+    var noteEl = document.getElementById('regTargetNote');
+    var note = noteEl ? noteEl.value.trim() : '';
+    if (note) base += (base ? ' (' + note + ')' : note);
+    return base;
+};
+
+// 기존 target 문자열 → 칩 프리셀렉트 (부분일치). 잔여 표현은 메모로 복원 못 하므로 비움.
+window.setRegTargetValue = function (targetStr) {
+    targetStr = targetStr || '';
+    document.querySelectorAll('#regTargetChips .reg-target-chip').forEach(function (c) {
+        c.classList.toggle('selected', targetStr.indexOf(c.getAttribute('data-val')) !== -1);
+    });
+    var noteEl = document.getElementById('regTargetNote');
+    if (noteEl) noteEl.value = '';
+};
+
 window.openRegistrationModal = function (isUrgent) {
     try {
         // 편집 모드 초기화 (이전 openEditModal 흔적 제거)
         window.editingClubId = null;
         var submitBtn = document.getElementById('regSubmitBtn');
         if (submitBtn) submitBtn.innerText = window.t('reg_submit');
+        window.setRegTargetValue(''); // 칩/메모 초기화
         document.getElementById('regModalTitle').innerText = isUrgent ? window.t('reg_title_urgent') : window.t('reg_title');
         // 관리자 전용 필드는 신규 등록 시에는 숨김
         var ownerGroup = document.getElementById('adminOwnerGroup');
@@ -118,7 +145,7 @@ window.openEditModal = function (club) {
 
         // 기본 필드 채우기
         document.getElementById('regName').value = club.name || '';
-        document.getElementById('regTarget').value = club.target || '';
+        window.setRegTargetValue(club.target || '');
         document.getElementById('regAddress').value = club.address || '';
         document.getElementById('regPrice').value = club.price || '';
         // insta/link는 평탄화된 값이 있을 수 있고, contact 중첩 객체에 있을 수도 있음
@@ -234,7 +261,7 @@ window.submitRegistration = async function () {
     var __capturedEditingClubId = window.editingClubId;
 
     var name = document.getElementById('regName').value.trim();
-    var target = document.getElementById('regTarget').value.trim();
+    var target = window.getRegTargetValue();
     var address = document.getElementById('regAddress').value.trim();
 
     if (!name || !target || !address) {
@@ -253,7 +280,7 @@ window.submitRegistration = async function () {
 
     // 길이 가드 (DoS · 도큐먼트 비대화 방지)
     if (name.length > 60) { alert(window.t('reg_name_max')); return; }
-    if (target.length > 30) { alert(window.t('reg_target_max')); return; }
+    if (target.length > 80) { alert(window.t('reg_target_max')); return; }
     if (address.length > 200) { alert(window.t('reg_addr_max')); return; }
     if (price.length > 100) { alert(window.t('reg_price_max')); return; }
 
@@ -421,11 +448,12 @@ window.submitRegistration = async function () {
         window.closeRegistrationModal();
 
         // Clear form fields
-        var fieldIds = ['regName', 'regTarget', 'regAddress', 'regPrice', 'regInsta', 'regLink'];
+        var fieldIds = ['regName', 'regAddress', 'regPrice', 'regInsta', 'regLink'];
         for (var f = 0; f < fieldIds.length; f++) {
             var el = document.getElementById(fieldIds[f]);
             if (el) el.value = '';
         }
+        window.setRegTargetValue(''); // 대상 칩/메모 초기화
         window.selectedCoords = null;
         document.getElementById('scheduleContainer').innerHTML = '';
         window.addScheduleRow();

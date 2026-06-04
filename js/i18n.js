@@ -66,6 +66,7 @@
         t_men: { ko: '남성전용', en: 'Men only' },
         t_expro: { ko: '선출가능', en: 'Ex-players OK' },
         t_6s: { ko: '6인제', en: '6s (6-a-side)' },
+        t_any: { ko: '무관', en: 'Anyone' },
         reset: { ko: '초기화', en: 'Reset' },
         apply: { ko: '적용하기', en: 'Apply' },
 
@@ -96,6 +97,7 @@
         reg_name_ph: { ko: '예: GVT 배구클럽', en: 'e.g. GVT Volleyball Club' },
         reg_target_label: { ko: '대상 (필수)', en: 'Who it\'s for (required)' },
         reg_target_ph: { ko: '예: 성인, 대학생, 청소년', en: 'e.g. Adults, College, Youth' },
+        reg_target_note_ph: { ko: '기타 조건 (예: 구력 1년 이상) — 선택', en: 'Other notes (e.g. 1+ yr experience) — optional' },
         reg_addr_label: { ko: '주소 (필수) - 실제 체육관 주소', en: 'Address (required) — actual gym address' },
         reg_addr_ph: { ko: '예: 서울 송파구 올림픽로 424', en: 'e.g. 424 Olympic-ro, Songpa-gu, Seoul' },
         reg_addr_find: { ko: '지도에서 찾기', en: 'Find on map' },
@@ -163,7 +165,7 @@
         reg_login_required: { ko: '팀을 등록하려면 먼저 로그인해주세요.', en: 'Please log in to register a team.' },
         reg_required: { ko: '팀 이름, 대상, 주소는 필수 입력값입니다.', en: 'Team name, who it\'s for, and address are required.' },
         reg_name_max: { ko: '팀 이름은 60자 이하로 입력해주세요.', en: 'Team name must be 60 characters or fewer.' },
-        reg_target_max: { ko: '대상은 30자 이하로 입력해주세요.', en: 'Target must be 30 characters or fewer.' },
+        reg_target_max: { ko: '대상 정보는 80자 이하로 입력해주세요.', en: 'Target must be 80 characters or fewer.' },
         reg_addr_max: { ko: '주소는 200자 이하로 입력해주세요.', en: 'Address must be 200 characters or fewer.' },
         reg_price_max: { ko: '회비 설명은 100자 이하로 입력해주세요.', en: 'Fee description must be 100 characters or fewer.' },
         reg_insta_invalid: { ko: '인스타그램 핸들은 영문/숫자/언더스코어/점 1~30자만 가능합니다. (@ 제외)', en: 'Instagram handle allows only letters/numbers/underscore/dot, 1–30 chars. (no @)' },
@@ -225,6 +227,52 @@
             Object.keys(params).forEach(function (p) {
                 s = s.split('{' + p + '}').join(params[p]);
             });
+        }
+        return s;
+    };
+
+    // ── 데이터 표시 변환 (한글 원본 → 영어 표시) ──
+    // 클럽 데이터는 한글로 저장된다. EN 모드에서 "표시"만 영어로 바꾼다.
+    // 결정적 어휘/패턴만 변환하고, 모르는 토큰은 원문 유지(best-effort).
+
+    // 대상/특징 어휘 매핑. 긴 토큰부터(부분 겹침 방지: 선출가능 > 선출).
+    var TARGET_MAP = [
+        ['여성전용', 'Women only'], ['남성전용', 'Men only'],
+        ['선출가능', 'Ex-players OK'], ['군미필 상관x', 'pre-service OK'], ['군미필', 'pre-service OK'],
+        ['대학생', 'College'], ['청소년', 'Youth'], ['성인', 'Adults'],
+        ['6인제', '6s'], ['9인제', '9s'], ['무관', 'Anyone'],
+        ['선출', 'Ex-player'], ['구력', 'exp.'], ['이상', '+'],
+        ['남', 'M'], ['여', 'W']
+    ];
+    window.i18nTarget = function (str) {
+        if (window.currentLang !== 'en' || !str) return str || '';
+        var s = str;
+        for (var i = 0; i < TARGET_MAP.length; i++) {
+            s = s.split(TARGET_MAP[i][0]).join(TARGET_MAP[i][1]);
+        }
+        return s;
+    };
+
+    // 회비 패턴 파서. 금액(만원/천원)은 결정적, 어휘는 글로사리.
+    var PRICE_MAP = [
+        ['게스트비', 'Guest fee'], ['게스트', 'Guest'], ['학생', 'Student'],
+        ['회비', 'Fee'], ['분기', 'Quarterly'], ['무료', 'Free'],
+        ['주1회', '1×/wk'], ['주2회', '2×/wk'], ['주3회', '3×/wk'],
+        ['주 1회', '1×/wk'], ['주 2회', '2×/wk'], ['주 3회', '3×/wk'],
+        ['월 기준', '/mo'], ['월', 'Monthly'], ['없음', 'none']
+    ];
+    window.i18nPrice = function (str) {
+        if (window.currentLang !== 'en' || !str) return str || '';
+        var s = str;
+        // 금액: 6.5만원 → ₩65,000 / 8천원 → ₩8,000
+        s = s.replace(/(\d+(?:\.\d+)?)\s*만\s*원?/g, function (_m, n) {
+            return '₩' + Math.round(parseFloat(n) * 10000).toLocaleString('en-US');
+        });
+        s = s.replace(/(\d+(?:\.\d+)?)\s*천\s*원?/g, function (_m, n) {
+            return '₩' + Math.round(parseFloat(n) * 1000).toLocaleString('en-US');
+        });
+        for (var i = 0; i < PRICE_MAP.length; i++) {
+            s = s.split(PRICE_MAP[i][0]).join(PRICE_MAP[i][1]);
         }
         return s;
     };
