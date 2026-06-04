@@ -14,11 +14,13 @@
 // ── 사용법 ──
 //   npm i firebase-admin            # 최초 1회
 //   # 서비스 계정 키는 Firebase 콘솔 > 프로젝트 설정 > 서비스 계정 > 새 비공개 키 생성
-//   OWNER_UID=<누룽지_uid> \
-//   GOOGLE_APPLICATION_CREDENTIALS=./serviceAccount.json \
-//   node scripts/migrate_clubs_to_firestore.mjs
+//   # 키 JSON 전체를 환경변수 FIREBASE_SA_JSON 에 넣거나(시크릿 권장),
+//   # 또는 GOOGLE_APPLICATION_CREDENTIALS 로 키 파일 경로 지정.
+//   OWNER_UID=<누룽지_uid> node scripts/migrate_clubs_to_firestore.mjs
 //
 // ── 옵션(환경변수) ──
+//   FIREBASE_SA_JSON  서비스 계정 키 JSON 문자열(시크릿). 우선 사용.
+//   GOOGLE_APPLICATION_CREDENTIALS  키 파일 경로(폴백).
 //   OWNER_UID      (필수) 이관된 클럽의 소유자 uid. canModifyClub/급구 토글 권한 부여.
 //   IS_VERIFIED    (기본 true)  큐레이션된 시드라 인증배지 부여. '0'/'false'면 미인증.
 //   DRY_RUN        ('1'이면 쓰지 않고 미리보기만)
@@ -92,8 +94,16 @@ async function main() {
   let admin = null, db = null, ts = 'SERVER_TIMESTAMP(미리보기)';
   if (!DRY_RUN) {
     admin = (await import('firebase-admin')).default;
+    // 자격증명: 환경 시크릿 FIREBASE_SA_JSON(키 JSON 문자열) 우선,
+    // 없으면 GOOGLE_APPLICATION_CREDENTIALS(파일 경로) 폴백.
+    var credential;
+    if (process.env.FIREBASE_SA_JSON) {
+      credential = admin.credential.cert(JSON.parse(process.env.FIREBASE_SA_JSON));
+    } else {
+      credential = admin.credential.applicationDefault();
+    }
     admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
+      credential: credential,
       projectId: process.env.GCLOUD_PROJECT || 'nulloongzi-do'
     });
     db = admin.firestore();
