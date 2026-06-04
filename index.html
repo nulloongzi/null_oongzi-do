@@ -243,11 +243,9 @@
                     </div>
                 </div>
                 <div class="reg-form-group">
-                    <label style="display: flex; justify-content: space-between; align-items: center;">
-                        <span data-i18n="reg_sched_label">운동 시간 (스케줄)</span>
-                        <button type="button" onclick="addScheduleRow()" style="background: var(--nurungji-brown); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" data-i18n="reg_add">+ 추가</button>
-                    </label>
-                    <div id="scheduleContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;"></div>
+                    <label data-i18n="reg_sched_label">운동 시간 (스케줄)</label>
+                    <div id="scheduleContainer" class="sched-blocks"></div>
+                    <button type="button" class="sched-add-btn" onclick="addScheduleBlock()" data-i18n="reg_sched_add">＋ 시간대 추가</button>
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="reg_price_label">회비 및 게스트비</label>

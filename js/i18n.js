@@ -102,7 +102,7 @@
         reg_addr_ph: { ko: '예: 서울 송파구 올림픽로 424', en: 'e.g. 424 Olympic-ro, Songpa-gu, Seoul' },
         reg_addr_find: { ko: '지도에서 찾기', en: 'Find on map' },
         reg_sched_label: { ko: '운동 시간 (스케줄)', en: 'Practice times (schedule)' },
-        reg_add: { ko: '+ 추가', en: '+ Add' },
+        reg_sched_add: { ko: '＋ 시간대 추가', en: '＋ Add time slot' },
         reg_price_label: { ko: '회비 및 게스트비', en: 'Fees & guest fee' },
         reg_price_ph: { ko: '예: 월 3만원 / 게스트 1만원', en: 'e.g. ₩30,000/mo / Guest ₩10,000' },
         reg_insta_label: { ko: '인스타그램 핸들 (선택)', en: 'Instagram handle (optional)' },
