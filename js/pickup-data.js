@@ -62,6 +62,7 @@
             sport: data.sport || '6s',
             level: data.level || 'any',
             beginner_friendly: !!data.beginner_friendly,
+            english_ok: !!data.english_ok,
             venue_name: data.venue_name || '',
             address: data.address || '',
             coordinates: data.coordinates,

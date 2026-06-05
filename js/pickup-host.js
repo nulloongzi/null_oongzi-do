@@ -26,6 +26,7 @@
         selectChipByVal('pkSportChips', '6s');
         selectChipByVal('pkLevelChips', 'any');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.remove('selected');
+        var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.remove('selected');
         window.selectedCoords = null;
         var sc = document.getElementById('pkScheduleContainer');
         if (sc) { sc.innerHTML = ''; window.addScheduleBlock(null, 'pkScheduleContainer'); }
@@ -48,6 +49,7 @@
         selectChipByVal('pkSportChips', spot.sport || '6s');
         selectChipByVal('pkLevelChips', spot.level || 'any');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
+        var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.toggle('selected', !!spot.english_ok);
         window.selectedCoords = null;
 
         // 구조화 일정 복원: 같은 (시작~종료) 시간대끼리 묶어 한 블록에 여러 요일 칩으로 (동호회 편집과 동일)
@@ -103,12 +105,14 @@
         }
 
         var beginnerChip = document.getElementById('pkBeginnerChip');
+        var englishChip = document.getElementById('pkEnglishChip');
         var sd = window.getScheduleData('pkScheduleContainer'); // 구조화 일정 → {raw, text}
         var fields = {
             title: title,
             sport: selectedVal('pkSportChips', '6s'),
             level: selectedVal('pkLevelChips', 'any'),
             beginner_friendly: !!(beginnerChip && beginnerChip.classList.contains('selected')),
+            english_ok: !!(englishChip && englishChip.classList.contains('selected')),
             venue_name: getVal('pkVenue'),
             address: address,
             schedule: sd.text,

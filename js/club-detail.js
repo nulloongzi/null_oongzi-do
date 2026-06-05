@@ -266,6 +266,7 @@ window.openClubDetail = function (id, opts) {
         instaLink.rel = 'noopener noreferrer';
         instaLink.className = 'insta-link';
         instaLink.innerHTML = window.instaCssIcon; // 정적 마크업, 사용자 입력 없음
+        instaLink.onclick = function () { if (window.track) window.track('club_contact', { type: 'insta', club_id: club.id }); };
         sheetTitleEl.appendChild(document.createTextNode(' '));
         sheetTitleEl.appendChild(instaLink);
     }
@@ -292,10 +293,13 @@ window.openClubDetail = function (id, opts) {
         linkSpan.className = 'tag';
         linkSpan.style.background = '#eee';
         linkSpan.textContent = window.t('home_tag');
+        linkA.onclick = function () { if (window.track) window.track('club_contact', { type: 'link', club_id: club.id }); };
         linkA.appendChild(linkSpan);
         sheetTagsEl.appendChild(linkA);
     }
-    document.getElementById('btnWay').href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
+    var btnWayEl = document.getElementById('btnWay');
+    btnWayEl.href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
+    btnWayEl.onclick = function () { if (window.track) window.track('club_contact', { type: 'directions', club_id: club.id }); };
 
     var urgentArea = document.getElementById('urgentArea');
     if (club.is_urgent && club.urgent_msg) {

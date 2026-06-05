@@ -27,6 +27,7 @@
 
             // ?club=<id> 딥링크: 해당 클럽 상세 자동 오픈
             openDeepLinkClub();
+            openDeepLinkSpot();
         });
     }
 
@@ -41,6 +42,23 @@
         } else if (!attempt) {
             setTimeout(function () { openDeepLinkClub(1); }, 1500);
         }
+    }
+
+    // ?spot=<id> 픽업 딥링크: 픽업 탭으로 전환(데이터 로드+렌더) 후 상세 자동 오픈
+    function openDeepLinkSpot() {
+        var spotId = new URLSearchParams(location.search).get('spot');
+        if (!spotId) return;
+        if (window.switchTab) window.switchTab('pickup');
+        var tries = 0;
+        (function tryOpen() {
+            var s = window.findPickupGame ? window.findPickupGame(spotId) : null;
+            if (s && window.openPickupDetail) {
+                if (window.track) window.track('deep_link_open', { spot_id: s.id });
+                window.openPickupDetail(s.id);
+            } else if (tries++ < 12) {
+                setTimeout(tryOpen, 400);
+            }
+        })();
     }
 
     // 3. 도시락 오버레이 배경 클릭 시 닫기

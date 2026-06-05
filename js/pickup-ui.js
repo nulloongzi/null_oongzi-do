@@ -6,6 +6,14 @@
 (function () {
     window.pickupMarkers = [];
 
+    // English-OK 전용 필터 (리스트 헤더 토글)
+    window.pkEnglishOnly = false;
+    window.togglePkEnglishOnly = function (el) {
+        window.pkEnglishOnly = !window.pkEnglishOnly;
+        if (el) el.classList.toggle('on', window.pkEnglishOnly);
+        window.renderPickupList();
+    };
+
     // 동호회(노랑)와 구분되는 티얼 핀 (전용 에셋 없이 SVG data URI)
     var PIN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="53" viewBox="0 0 40 53">' +
         '<path d="M20 0C9 0 0 9 0 20c0 14 20 33 20 33s20-19 20-33C40 9 31 0 20 0z" fill="#13a89e"/>' +
@@ -117,6 +125,7 @@
         meta.appendChild(chip(window.pkSportLabel(g.sport), 'sport'));
         meta.appendChild(chip(window.pkLevelLabel(g.level)));
         if (g.beginner_friendly) meta.appendChild(chip(window.t('pk_beginner_ok'), 'beginner'));
+        if (g.english_ok) meta.appendChild(chip(window.t('pk_english_ok'), 'english'));
         if (g.venue_name) {
             var v = document.createElement('span');
             v.className = 'pl-venue';
@@ -152,6 +161,7 @@
         if (si && window.currentTab === 'pickup') kw = (si.value || '').trim().toLowerCase();
 
         var spots = window.pickupGames.filter(function (g) {
+            if (window.pkEnglishOnly && !g.english_ok) return false;
             if (!kw) return true;
             return (g.title || '').toLowerCase().indexOf(kw) !== -1
                 || (g.venue_name || '').toLowerCase().indexOf(kw) !== -1

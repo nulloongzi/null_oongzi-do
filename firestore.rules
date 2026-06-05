@@ -32,6 +32,7 @@ service cloud.firestore {
           && (!('sport' in d) || (d.sport is string && d.sport.size() <= 20))
           && (!('level' in d) || (d.level is string && d.level.size() <= 20))
           && (!('beginner_friendly' in d) || d.beginner_friendly is bool)
+          && (!('english_ok' in d) || d.english_ok is bool)
           && (!('venue_name' in d) || (d.venue_name is string && d.venue_name.size() <= 120))
           && (!('address' in d) || (d.address is string && d.address.size() <= 250))
           && (!('schedule' in d) || (d.schedule is string && d.schedule.size() <= 600))
