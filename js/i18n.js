@@ -224,10 +224,18 @@
         tab_pickup: { ko: '픽업', en: 'Pickup' },
 
         // 픽업 리스트 / FAB / 검색
-        pk_list_title: { ko: '다가오는 픽업 게임', en: 'Upcoming pickup games' },
-        pk_empty: { ko: '예정된 픽업 게임이 없어요.\n첫 게임을 열어보세요! 🏐', en: 'No upcoming games yet.\nBe the first to host one! 🏐' },
-        pk_host_title: { ko: '게임 열기', en: 'Host a game' },
-        pk_search_ph: { ko: '게임, 장소로 검색...', en: 'Search games or venues...' },
+        pk_list_title: { ko: '여기서 픽업이 열려요', en: 'Where pickup happens' },
+        pk_empty: { ko: '아직 등록된 픽업이 없어요.\n첫 픽업을 올려보세요! 🏐', en: 'No pickup spots yet.\nBe the first to add one! 🏐' },
+        pk_host_title: { ko: '픽업 등록', en: 'Add a pickup' },
+        pk_search_ph: { ko: '픽업, 장소로 검색...', en: 'Search pickups or venues...' },
+
+        // 픽업 발견형 신규 키 (보통일정 / 이번주 / 들어가는 문)
+        pk_f_schedule: { ko: '보통 일정 (선택)', en: 'Usual schedule (optional)' },
+        pk_f_schedule_ph: { ko: '예: 매주 토 19:00~22:00', en: 'e.g. Every Sat 19:00–22:00' },
+        pk_f_thisweek: { ko: '이번주 공지 (선택)', en: 'This week (optional)' },
+        pk_f_thisweek_ph: { ko: '예: 이번주 토 7시 잠실', en: 'e.g. This Sat 7pm, Jamsil' },
+        pk_thisweek_badge: { ko: '이번주', en: 'This week' },
+        pk_contact_cta: { ko: '💬 단톡 들어가기', en: '💬 Join the group chat' },
 
         // 종목 / 레벨 태그
         pk_sport_6s: { ko: '6인제', en: '6s' },
@@ -279,7 +287,7 @@
         pk_paid_count: { ko: '입금 {p}/{t}명', en: 'Paid {p}/{t}' },
 
         // 호스트 - 게임 개설/수정 모달
-        pk_create_title: { ko: '픽업 게임 열기', en: 'Host a pickup game' },
+        pk_create_title: { ko: '픽업 등록하기', en: 'Add a pickup spot' },
         pk_edit_title: { ko: '게임 정보 수정', en: 'Edit game' },
         pk_f_title: { ko: '게임 이름 (필수)', en: 'Game name (required)' },
         pk_f_title_ph: { ko: '예: 토요일 저녁 6인제 픽업', en: 'e.g. Saturday evening 6s pickup' },
@@ -295,8 +303,8 @@
         pk_f_addr_ph: { ko: '예: 서울 송파구 올림픽로 25', en: 'e.g. 25 Olympic-ro, Songpa-gu, Seoul' },
         pk_f_capacity: { ko: '정원 (필수)', en: 'Capacity (required)' },
         pk_f_capacity_ph: { ko: '예: 12', en: 'e.g. 12' },
-        pk_f_fee: { ko: '게임비 (1회)', en: 'Game fee (per session)' },
-        pk_f_fee_ph: { ko: '예: 1만원', en: 'e.g. ₩10,000' },
+        pk_f_fee: { ko: '게임비 정보 (선택)', en: 'Game fee info (optional)' },
+        pk_f_fee_ph: { ko: '예: 보통 1만원 · 현장', en: 'e.g. ~₩10,000, on-site' },
         pk_f_paylink: { ko: '송금 링크 (토스/카카오페이) — 선택', en: 'Payment link (Toss/KakaoPay) — optional' },
         pk_f_paylink_ph: { ko: '예: https://toss.me/...', en: 'e.g. https://toss.me/...' },
         pk_f_account: { ko: '입금 계좌 (선택)', en: 'Bank account (optional)' },
@@ -305,12 +313,12 @@
         pk_f_contact_ph: { ko: '예: https://open.kakao.com/o/...', en: 'e.g. https://open.kakao.com/o/...' },
         pk_f_notes: { ko: '추가 안내 (선택)', en: 'Notes (optional)' },
         pk_f_notes_ph: { ko: '예: 실내화 필수 · 네트 6인제 높이', en: 'e.g. Indoor shoes required' },
-        pk_create_submit: { ko: '게임 열기', en: 'Open the game' },
+        pk_create_submit: { ko: '픽업 등록', en: 'Add pickup' },
         pk_save_submit: { ko: '수정하기', en: 'Save changes' },
 
         // 호스트 - 검증/메시지
         pk_login_required: { ko: '게임을 열려면 먼저 로그인해주세요.', en: 'Please log in to host a game.' },
-        pk_req_fields: { ko: '게임 이름, 날짜·시간, 주소, 정원은 필수예요.', en: 'Name, date/time, address, and capacity are required.' },
+        pk_req_fields: { ko: '픽업 이름과 주소는 필수예요.', en: 'Name and address are required.' },
         pk_bad_capacity: { ko: '정원은 1~200 사이 숫자로 입력해주세요.', en: 'Capacity must be a number between 1 and 200.' },
         pk_bad_time: { ko: '종료 시간이 시작보다 빨라요.', en: 'End time is before the start time.' },
         pk_past_time: { ko: '지난 시간은 선택할 수 없어요.', en: "You can't pick a time in the past." },
