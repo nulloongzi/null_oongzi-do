@@ -170,3 +170,41 @@
 6. 브라우저(셸 아님): 같은 버튼이 **QR 카드 폴백**으로 동작하는지.
 
 > 막히면: FB App ID 없으면 탭링크 안 켜짐(2번까진 됨). 앱 레포 접근 안 되면 §1.1 GitHub App access부터.
+
+---
+
+## 10. 구현 완료 상태 (이번 세션)
+
+두 레포 모두 feature 브랜치(`claude/gifted-hamilton-UaSAK`)에 구현 완료.
+
+### 웹 (`null_oongzi-do`) — ✅ 코드 완료 + jsdom 검증 통과
+- `js/share.js`: `generateSpotStoryCard(spot)`(canvas 2D로 9:16 PNG 직접 렌더) +
+  `shareSpotToStory(spot)`(셸=네이티브 브리지 / 브라우저=카드 미리보기·저장 폴백).
+  html2canvas 대신 canvas 직접 렌더로 결정적·QR 픽셀 제어. 캔버스 텍스트라 XSS 무관.
+- `js/pickup-detail.js`: 상세 시트에 "📸 스토리 카드" 버튼(기존 🔗 공유와 한 줄).
+- `js/i18n.js`: `pk_share_story`, `sh_card_cta` (KO/EN).
+- `css/main.css`: `.ps-share-row` / `.ps-share-story-btn`.
+- `index.html`: QR 라이브러리(`qrcode-generator@1.4.4`)를 **폰트와 동일 CDN(jsDelivr)** 에서 로드.
+  → **handoff 권장(vendor)과 다름**: 샌드박스 네트워크 차단으로 파일 vendoring 불가했고,
+  앱이 어차피 온라인 전용(Firebase/Kakao)이라 CDN 채택. `window.qrcode` 부재 시 QR 없이 폴백.
+  오프라인까지 필요해지면 그때 `js/vendor/`로 내려받아 교체. 캐시버스팅 `?v=3 → ?v=4`.
+- `tests/spot-story-card.test.js`: 카드 생성·브리지 계약 JSON·폴백 분기 검증 (`node --test`, 8 케이스 통과).
+
+### Flutter (`null_oongzi-do-app`) — ✅ 코드 완료, ⏳ 실기기/`pub get` 검증 필요
+- `pubspec.yaml`: `appinio_social_share: ^0.3.2`(최신), `path_provider: ^2.1.4`.
+- `lib/main.dart`: `NativeShare` JS 채널 → base64→임시 PNG →
+  `socialShare.android/iOS.shareToInstagramStory(appId, stickerImage:…, attributionURL:…, …)`.
+  (0.3.2는 `.android`/`.iOS` 플랫폼 객체로 호출, `appId`만 positional·나머지 named.)
+- Android: `AndroidManifest.xml`에 FileProvider(`${applicationId}.provider` + `res/xml/file_paths.xml`),
+  FB App ID/ClientToken 메타(번들 FB SDK 17 요구), FB 이벤트/광고ID 수집 off(프라이버시).
+  `res/values/strings.xml` 신규(placeholder).
+- iOS: `Info.plist`에 `LSApplicationQueriesSchemes`(instagram/instagram-stories/fb…),
+  `FacebookAppID`, `CFBundleURLTypes`(fb<APPID>), `NSPhotoLibraryUsageDescription`.
+
+### ⚠️ 남은 사람 작업 (코드로 못 함)
+1. **Facebook App ID 발급**(§1.2) 후 **세 곳을 같은 값으로 교체**:
+   `lib/main.dart`의 `kFacebookAppId`, `android/.../strings.xml`의 `facebook_app_id`(+`facebook_client_token`),
+   `ios/Runner/Info.plist`의 `FacebookAppID`/`CFBundleURLSchemes(fb…)`. → 안 하면 탭=링크만 비활성.
+2. **`flutter pub get`** 후 실기기 빌드. (`appinio_social_share 0.3.2`는 FB SDK 17 번들 — Gradle/의존성 충돌 시 조정.)
+3. **실기기 검증**(§9.5–9.6): 픽업 상세 → 📸 스토리 카드 → IG 스토리에 카드+스티커 탭→`?spot=` 딥링크 /
+   일반 브라우저는 QR 카드 폴백. (헤드리스 브라우저는 샌드박스 불가 → 실기기 수동.)
