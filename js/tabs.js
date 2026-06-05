@@ -30,6 +30,8 @@
         var isPickup = tab === 'pickup';
         // 동호회 팀등록 FAB은 픽업 모드에서 숨김 (픽업 개설은 리스트 헤더 버튼으로)
         show($('fabClubRegister'), !isPickup);
+        // 필터(⚙️)는 동호회 전용 → 픽업 모드에서 숨김
+        show($('filterBtnIcon'), !isPickup);
         // 픽업 리스트 패널
         show($('pickupListPanel'), isPickup);
         // 급구 티커: 픽업에선 숨김, 동호회에선 내용 있을 때만 표시
