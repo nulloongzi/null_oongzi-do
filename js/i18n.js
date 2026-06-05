@@ -217,7 +217,110 @@
         cd_urgent_max: { ko: '급구 메시지는 200자 이하로 입력해주세요.', en: 'Urgent message must be 200 characters or fewer.' },
         cd_urgent_posted: { ko: '🔥 급구가 등록되었습니다!', en: '🔥 Urgent call posted!' },
         cd_urgent_closed: { ko: '급구가 마감되었습니다.', en: 'Urgent call closed.' },
-        cd_update_error: { ko: '업데이트 중 오류가 발생했습니다.', en: 'An error occurred during the update.' }
+        cd_update_error: { ko: '업데이트 중 오류가 발생했습니다.', en: 'An error occurred during the update.' },
+
+        // ── 픽업 게임: 탭 ──
+        tab_clubs: { ko: '동호회', en: 'Clubs' },
+        tab_pickup: { ko: '픽업', en: 'Pickup' },
+
+        // 픽업 리스트 / FAB / 검색
+        pk_list_title: { ko: '다가오는 픽업 게임', en: 'Upcoming pickup games' },
+        pk_empty: { ko: '예정된 픽업 게임이 없어요.\n첫 게임을 열어보세요! 🏐', en: 'No upcoming games yet.\nBe the first to host one! 🏐' },
+        pk_host_title: { ko: '게임 열기', en: 'Host a game' },
+        pk_search_ph: { ko: '게임, 장소로 검색...', en: 'Search games or venues...' },
+
+        // 종목 / 레벨 태그
+        pk_sport_6s: { ko: '6인제', en: '6s' },
+        pk_sport_9s: { ko: '9인제', en: '9s' },
+        pk_sport_mixed: { ko: '혼성·자유', en: 'Mixed' },
+        pk_lv_beginner: { ko: '입문', en: 'Beginner' },
+        pk_lv_intermediate: { ko: '중급', en: 'Intermediate' },
+        pk_lv_advanced: { ko: '고급', en: 'Advanced' },
+        pk_lv_any: { ko: '레벨무관', en: 'All levels' },
+        pk_beginner_ok: { ko: '🌱 초보환영', en: '🌱 Beginners welcome' },
+
+        // 정원 / 상태
+        pk_spots_left: { ko: '{n}자리 남음', en: '{n} spots left' },
+        pk_full: { ko: '마감', en: 'Full' },
+        pk_waitlist_open: { ko: '대기 가능', en: 'Waitlist open' },
+        pk_count: { ko: '{c}/{cap}명', en: '{c}/{cap}' },
+
+        // 상세 - 참가(RSVP)
+        pk_join: { ko: '참가 신청', en: 'Join this game' },
+        pk_join_waitlist: { ko: '대기열 신청', en: 'Join the waitlist' },
+        pk_joined: { ko: '참가 확정 ✓', en: "You're in ✓" },
+        pk_waitlisted: { ko: '대기열 등록됨', en: 'On the waitlist' },
+        pk_cancel_spot: { ko: '신청 취소', en: 'Cancel my spot' },
+        pk_login_to_join: { ko: '참가하려면 로그인해주세요.', en: 'Please log in to join.' },
+        pk_joined_in: { ko: "참가가 확정됐어요! 게임비를 송금해주세요. 💸", en: "You're in! Please send the game fee. 💸" },
+        pk_joined_wait: { ko: '정원이 차서 대기열에 등록됐어요.', en: "The game is full — you're on the waitlist." },
+        pk_cancel_confirm: { ko: '참가를 취소할까요?', en: 'Cancel your spot?' },
+        pk_canceled: { ko: '참가가 취소됐어요.', en: 'Your spot was canceled.' },
+        pk_join_err: { ko: '신청 중 오류: ', en: 'Error joining: ' },
+
+        // 결제(송금 링크아웃)
+        pk_fee_label: { ko: '게임비', en: 'Game fee' },
+        pk_pay_send: { ko: '💸 송금하기', en: '💸 Send fee' },
+        pk_pay_account: { ko: '📋 계좌 복사', en: '📋 Copy account' },
+        pk_acct_copied: { ko: '계좌번호가 복사됐어요! 📋', en: 'Account number copied! 📋' },
+        pk_fee_onsite: { ko: '현장 결제', en: 'Pay on-site' },
+
+        // 상세 - 정보 라벨
+        pk_when: { ko: '일시', en: 'When' },
+        pk_where: { ko: '장소', en: 'Where' },
+        pk_host: { ko: '호스트', en: 'Host' },
+        pk_roster: { ko: '참가자', en: 'Players' },
+        pk_contact: { ko: '문의·단톡', en: 'Group chat' },
+
+        // 호스트 - 정산
+        pk_settle_title: { ko: '참가자 정산', en: 'Player settlement' },
+        pk_paid: { ko: '입금완료', en: 'Paid' },
+        pk_unpaid: { ko: '미입금', en: 'Unpaid' },
+        pk_paid_count: { ko: '입금 {p}/{t}명', en: 'Paid {p}/{t}' },
+
+        // 호스트 - 게임 개설/수정 모달
+        pk_create_title: { ko: '픽업 게임 열기', en: 'Host a pickup game' },
+        pk_edit_title: { ko: '게임 정보 수정', en: 'Edit game' },
+        pk_f_title: { ko: '게임 이름 (필수)', en: 'Game name (required)' },
+        pk_f_title_ph: { ko: '예: 토요일 저녁 6인제 픽업', en: 'e.g. Saturday evening 6s pickup' },
+        pk_f_sport: { ko: '종목', en: 'Format' },
+        pk_f_level: { ko: '레벨', en: 'Level' },
+        pk_f_beginner: { ko: '초보 환영', en: 'Beginners welcome' },
+        pk_f_date: { ko: '날짜 (필수)', en: 'Date (required)' },
+        pk_f_start: { ko: '시작', en: 'Start' },
+        pk_f_end: { ko: '종료', en: 'End' },
+        pk_f_venue: { ko: '체육관 이름', en: 'Venue name' },
+        pk_f_venue_ph: { ko: '예: 잠실학생체육관', en: 'e.g. Jamsil Gym' },
+        pk_f_addr: { ko: '주소 (필수)', en: 'Address (required)' },
+        pk_f_addr_ph: { ko: '예: 서울 송파구 올림픽로 25', en: 'e.g. 25 Olympic-ro, Songpa-gu, Seoul' },
+        pk_f_capacity: { ko: '정원 (필수)', en: 'Capacity (required)' },
+        pk_f_capacity_ph: { ko: '예: 12', en: 'e.g. 12' },
+        pk_f_fee: { ko: '게임비 (1회)', en: 'Game fee (per session)' },
+        pk_f_fee_ph: { ko: '예: 1만원', en: 'e.g. ₩10,000' },
+        pk_f_paylink: { ko: '송금 링크 (토스/카카오페이) — 선택', en: 'Payment link (Toss/KakaoPay) — optional' },
+        pk_f_paylink_ph: { ko: '예: https://toss.me/...', en: 'e.g. https://toss.me/...' },
+        pk_f_account: { ko: '입금 계좌 (선택)', en: 'Bank account (optional)' },
+        pk_f_account_ph: { ko: '예: 카카오뱅크 3333-00-0000000', en: 'e.g. Kakao Bank 3333-00-0000000' },
+        pk_f_contact: { ko: '단톡/문의 링크 (선택)', en: 'Group chat link (optional)' },
+        pk_f_contact_ph: { ko: '예: https://open.kakao.com/o/...', en: 'e.g. https://open.kakao.com/o/...' },
+        pk_f_notes: { ko: '추가 안내 (선택)', en: 'Notes (optional)' },
+        pk_f_notes_ph: { ko: '예: 실내화 필수 · 네트 6인제 높이', en: 'e.g. Indoor shoes required' },
+        pk_create_submit: { ko: '게임 열기', en: 'Open the game' },
+        pk_save_submit: { ko: '수정하기', en: 'Save changes' },
+
+        // 호스트 - 검증/메시지
+        pk_login_required: { ko: '게임을 열려면 먼저 로그인해주세요.', en: 'Please log in to host a game.' },
+        pk_req_fields: { ko: '게임 이름, 날짜·시간, 주소, 정원은 필수예요.', en: 'Name, date/time, address, and capacity are required.' },
+        pk_bad_capacity: { ko: '정원은 1~200 사이 숫자로 입력해주세요.', en: 'Capacity must be a number between 1 and 200.' },
+        pk_bad_time: { ko: '종료 시간이 시작보다 빨라요.', en: 'End time is before the start time.' },
+        pk_past_time: { ko: '지난 시간은 선택할 수 없어요.', en: "You can't pick a time in the past." },
+        pk_created: { ko: '픽업 게임이 열렸어요! 🏐', en: 'Your pickup game is live! 🏐' },
+        pk_updated: { ko: '게임 정보가 수정됐어요.', en: 'Game updated.' },
+        pk_create_err: { ko: '게임 처리 중 오류: ', en: 'Something went wrong: ' },
+        pk_edit: { ko: '✏ 게임 수정', en: '✏ Edit game' },
+        pk_delete: { ko: '🗑 게임 삭제', en: '🗑 Delete game' },
+        pk_delete_confirm: { ko: '이 게임을 삭제할까요? 참가자 정보도 함께 사라져요.', en: 'Delete this game? Player data will be removed too.' },
+        pk_deleted: { ko: '게임이 삭제됐어요.', en: 'Game deleted.' }
     };
 
     // "{name}" 같은 토큰을 치환하는 헬퍼. window.t(key)와 함께 사용.

@@ -25,6 +25,32 @@ service cloud.firestore {
                 && d.coordinates.lat is number && d.coordinates.lng is number));
     }
 
+    // 픽업 게임 필드 타입·길이 검증 (존재 필드만 검사 → 부분 update도 통과)
+    function pickupFieldsValid() {
+      let d = request.resource.data;
+      return (!('title' in d) || (d.title is string && d.title.size() > 0 && d.title.size() <= 80))
+          && (!('sport' in d) || (d.sport is string && d.sport.size() <= 20))
+          && (!('level' in d) || (d.level is string && d.level.size() <= 20))
+          && (!('beginner_friendly' in d) || d.beginner_friendly is bool)
+          && (!('venue_name' in d) || (d.venue_name is string && d.venue_name.size() <= 120))
+          && (!('address' in d) || (d.address is string && d.address.size() <= 250))
+          && (!('fee' in d) || (d.fee is string && d.fee.size() <= 120))
+          && (!('pay_link' in d) || (d.pay_link is string && d.pay_link.size() <= 500))
+          && (!('pay_account' in d) || (d.pay_account is string && d.pay_account.size() <= 120))
+          && (!('contact_link' in d) || (d.contact_link is string && d.contact_link.size() <= 500))
+          && (!('notes' in d) || (d.notes is string && d.notes.size() <= 600))
+          && (!('host_nickname' in d) || (d.host_nickname is string && d.host_nickname.size() <= 60))
+          && (!('capacity' in d) || (d.capacity is int && d.capacity > 0 && d.capacity <= 200))
+          && (!('attending_count' in d) || (d.attending_count is int && d.attending_count >= 0))
+          && (!('coordinates' in d) || (d.coordinates is map
+                && d.coordinates.lat is number && d.coordinates.lng is number));
+    }
+
+    // RSVP(비호스트) 시 건드릴 수 있는 필드는 attending_count 하나뿐임을 강제
+    function onlyAttendingCountChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attending_count']);
+    }
+
     // clubs: 모두 읽기, 소유자/관리자만 수정
     match /clubs/{clubId} {
       allow read: if true;
@@ -50,6 +76,61 @@ service cloud.firestore {
       allow delete: if isAdmin()
                     || (request.auth != null
                         && resource.data.registered_by == request.auth.uid);
+    }
+
+    // pickup_games: 픽업 게임. 모두 읽기, 누구나(로그인) 호스트로 개설.
+    match /pickup_games/{gameId} {
+      allow read: if true;
+
+      // 개설: 로그인 사용자가 host_uid=본인, status='open', attending_count=0, capacity 지정
+      allow create: if request.auth != null
+                    && request.resource.data.host_uid == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.attending_count == 0
+                    && request.resource.data.capacity is int
+                    && request.resource.data.capacity > 0
+                    && pickupFieldsValid();
+
+      // 수정: 호스트는 전체(host_uid 보존), 그 외엔 RSVP용 attending_count ±1(정원 이내)만
+      allow update: if (request.auth != null
+                        && resource.data.host_uid == request.auth.uid
+                        && request.resource.data.host_uid == resource.data.host_uid
+                        && pickupFieldsValid())
+                    || (request.auth != null
+                        && onlyAttendingCountChanged()
+                        && request.resource.data.attending_count >= 0
+                        && request.resource.data.attending_count <= resource.data.capacity
+                        && request.resource.data.attending_count >= resource.data.attending_count - 1
+                        && request.resource.data.attending_count <= resource.data.attending_count + 1);
+
+      // 삭제: 호스트만
+      allow delete: if request.auth != null && resource.data.host_uid == request.auth.uid;
+
+      // 참가자: 로스터 공개(닉네임만, PII 없음). 본인 신청/취소, 호스트는 입금(paid) 토글.
+      match /participants/{participantUid} {
+        allow read: if true;
+
+        allow create: if request.auth != null
+                      && participantUid == request.auth.uid
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.paid == false
+                      && (request.resource.data.status == 'in'
+                          || request.resource.data.status == 'waitlist');
+
+        // 호스트는 모든 참가자 doc 수정(입금 토글). 본인은 paid 불변 조건에서만 수정.
+        allow update: if (request.auth != null
+                          && get(/databases/$(database)/documents/pickup_games/$(gameId)).data.host_uid == request.auth.uid)
+                      || (request.auth != null
+                          && participantUid == request.auth.uid
+                          && request.resource.data.paid == resource.data.paid);
+
+        // 취소: 본인 또는 호스트
+        allow delete: if request.auth != null
+                      && (participantUid == request.auth.uid
+                          || get(/databases/$(database)/documents/pickup_games/$(gameId)).data.host_uid == request.auth.uid);
+      }
     }
 
     // verification_requests: 신청자 본인/관리자만 읽기, Cloud Functions만 update
