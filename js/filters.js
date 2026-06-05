@@ -23,6 +23,8 @@ window.resetFilters = function () {
 };
 
 window.applyFilters = function () {
+    // 픽업 탭에서는 동호회 필터/마커 로직을 건너뜀 (픽업 마커가 지워지는 것 방지)
+    if (window.currentTab === 'pickup') return;
     if (window.event && window.event.type === 'click') window.closeFilterSheet();
 
     var keyword = document.getElementById('topSearchInput').value.trim();

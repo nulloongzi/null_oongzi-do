@@ -212,7 +212,14 @@ window.loadOrCreateUserProfile = async function (user) {
 
 window.setupAuthListener = function () {
     firebase.auth().onAuthStateChanged(async function (user) {
-        if (user) {
+        if (user && user.isAnonymous) {
+            // 익명(무로그인 픽업 등록용): 공개 프로필/관리자 생성 안 함.
+            // UI는 로그아웃 상태로 유지 → 진짜 로그인/claim을 계속 유도.
+            window.currentUser = user;
+            window.currentProfileData = null;
+            window.isAdmin = false;
+            window.updateProfileUI(false);
+        } else if (user) {
             window.currentUser = user;
             await window.loadOrCreateUserProfile(user);
             await window.checkIsAdmin(user);

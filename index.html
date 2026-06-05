@@ -49,11 +49,16 @@
 
     <div class="search-container">
         <div class="search-icon-box">🔎</div>
-        <input type="text" id="topSearchInput" class="main-search-input" placeholder="팀명, 지역으로 검색..." data-i18n-placeholder="search_ph" onkeyup="applyFilters()">
+        <input type="text" id="topSearchInput" class="main-search-input" placeholder="팀명, 지역으로 검색..." data-i18n-placeholder="search_ph" onkeyup="onSearchInput()">
         <div class="separator"></div>
         <div class="lang-toggle" id="langToggle" onclick="toggleLang()" title="한국어 / English"><span id="langToggleLabel">EN</span></div>
         <div class="separator"></div>
-        <div class="filter-btn-icon" onclick="openFilterSheet()">⚙️<div id="filterBadge" class="filter-badge"></div></div>
+        <div id="filterBtnIcon" class="filter-btn-icon" onclick="openFilterSheet()">⚙️<div id="filterBadge" class="filter-badge"></div></div>
+    </div>
+
+    <div class="tab-bar">
+        <div id="tabClubs" class="tab-btn active" onclick="switchTab('clubs')" data-i18n="tab_clubs">동호회</div>
+        <div id="tabPickup" class="tab-btn" onclick="switchTab('pickup')" data-i18n="tab_pickup">픽업</div>
     </div>
 
     <div id="urgentTicker" class="urgent-ticker-bar">
@@ -67,8 +72,17 @@
     <div class="fab-profile" onclick="toggleProfileCard()">🍚</div>
 
     <div class="fab-group">
-        <div class="fab-btn fab-urgent" title="팀 등록하기" onclick="openRegistrationModal(false)">📝</div>
+        <div id="fabClubRegister" class="fab-btn fab-urgent" title="팀 등록하기" onclick="openRegistrationModal(false)">📝</div>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
+    </div>
+
+    <!-- 픽업 게임 리스트 패널 (픽업 탭에서만 표시) -->
+    <div id="pickupListPanel" class="pickup-list-panel" style="display:none;">
+        <div class="pl-header">
+            <div class="pl-title" data-i18n="pk_list_title">다가오는 픽업 게임</div>
+            <button class="pl-host-btn" onclick="window.openPickupCreateModal && window.openPickupCreateModal()" data-i18n="pk_host_title">게임 열기</button>
+        </div>
+        <div id="pickupListBody" class="pl-body"></div>
     </div>
 
     <!-- 도시락 오버레이 -->
@@ -196,6 +210,12 @@
         </div>
     </div>
 
+    <!-- 픽업 게임 상세 바텀시트 -->
+    <div id="pickupSheet" class="pickup-sheet">
+        <div class="ps-handle-area" onclick="closePickupSheet()"><div class="ps-handle"></div></div>
+        <div class="ps-content" id="pickupSheetContent"></div>
+    </div>
+
     <!-- 캡처/프리뷰 -->
     <div id="captureStage"></div>
     <div id="previewOverlay" class="preview-overlay">
@@ -269,6 +289,71 @@
         </div>
     </div>
 
+    <!-- 픽업 게임 개설/수정 모달 -->
+    <div id="pkModalOverlay" class="reg-modal-overlay">
+        <div class="reg-modal-content">
+            <div class="reg-modal-header">
+                <h3 id="pkModalTitle" data-i18n="pk_create_title">픽업 게임 열기</h3>
+                <span class="reg-modal-close" onclick="closePickupModal()">x</span>
+            </div>
+            <div class="reg-modal-body">
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_title">게임 이름 (필수)</label>
+                    <input type="text" id="pkTitle" placeholder="예: 토요일 저녁 6인제 픽업" data-i18n-placeholder="pk_f_title_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_sport">종목</label>
+                    <div class="chip-group reg-target-chips" id="pkSportChips">
+                        <div class="chip pk-chip selected" data-val="6s" onclick="pkSelectChip(this)" data-i18n="pk_sport_6s">6인제</div>
+                        <div class="chip pk-chip" data-val="9s" onclick="pkSelectChip(this)" data-i18n="pk_sport_9s">9인제</div>
+                        <div class="chip pk-chip" data-val="mixed" onclick="pkSelectChip(this)" data-i18n="pk_sport_mixed">혼성·자유</div>
+                    </div>
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_level">레벨</label>
+                    <div class="chip-group reg-target-chips" id="pkLevelChips">
+                        <div class="chip pk-chip" data-val="beginner" onclick="pkSelectChip(this)" data-i18n="pk_lv_beginner">입문</div>
+                        <div class="chip pk-chip" data-val="intermediate" onclick="pkSelectChip(this)" data-i18n="pk_lv_intermediate">중급</div>
+                        <div class="chip pk-chip" data-val="advanced" onclick="pkSelectChip(this)" data-i18n="pk_lv_advanced">고급</div>
+                        <div class="chip pk-chip selected" data-val="any" onclick="pkSelectChip(this)" data-i18n="pk_lv_any">레벨무관</div>
+                    </div>
+                    <div class="chip-group reg-target-chips" style="margin-top:8px;">
+                        <div class="chip pk-chip" id="pkBeginnerChip" onclick="toggleRegChip(this)" data-i18n="pk_f_beginner">초보 환영</div>
+                    </div>
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_venue">체육관/장소 이름</label>
+                    <input type="text" id="pkVenue" placeholder="예: 잠실학생체육관" data-i18n-placeholder="pk_f_venue_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_addr">주소 (필수)</label>
+                    <input type="text" id="pkAddress" placeholder="예: 서울 송파구 올림픽로 25" data-i18n-placeholder="pk_f_addr_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_schedule">보통 일정 (선택)</label>
+                    <input type="text" id="pkSchedule" placeholder="예: 매주 토 19:00~22:00" data-i18n-placeholder="pk_f_schedule_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_thisweek">이번주 공지 (선택)</label>
+                    <input type="text" id="pkThisWeek" placeholder="예: 이번주 토 7시 잠실" data-i18n-placeholder="pk_f_thisweek_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_fee">게임비 정보 (선택)</label>
+                    <input type="text" id="pkFee" placeholder="예: 보통 1만원 · 현장" data-i18n-placeholder="pk_f_fee_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_contact">단톡/Meetup 링크 (들어가는 문)</label>
+                    <input type="text" id="pkContact" placeholder="예: https://open.kakao.com/o/..." data-i18n-placeholder="pk_f_contact_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_notes">추가 안내 (선택)</label>
+                    <input type="text" id="pkNotes" placeholder="예: 실내화 필수 · 네트 6인제 높이" data-i18n-placeholder="pk_f_notes_ph">
+                </div>
+                <button id="pkSubmitBtn" class="reg-submit-btn" onclick="submitPickupGame()" data-i18n="pk_create_submit">픽업 등록</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Map Picker -->
     <div id="mapPickerOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; pointer-events: none;">
         <img src="./assets/marker_yellow.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); width: 40px; opacity: 0.6; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));">
@@ -287,6 +372,7 @@
     <!-- App modules (순서 중요) -->
     <script src="js/i18n.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/pickup-data.js"></script>
     <script src="js/profile.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/lunchbox.js"></script>
@@ -296,6 +382,10 @@
     <script src="js/filters.js"></script>
     <script src="js/registration.js"></script>
     <script src="js/verification.js"></script>
+    <script src="js/pickup-ui.js"></script>
+    <script src="js/tabs.js"></script>
+    <script src="js/pickup-host.js"></script>
+    <script src="js/pickup-detail.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
