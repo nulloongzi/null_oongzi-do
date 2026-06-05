@@ -16,7 +16,7 @@
     function setVal(id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); }
     function getVal(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
-    var TEXT_FIELDS = ['pkTitle', 'pkVenue', 'pkAddress', 'pkSchedule', 'pkThisWeek', 'pkFee', 'pkContact', 'pkNotes'];
+    var TEXT_FIELDS = ['pkTitle', 'pkVenue', 'pkAddress', 'pkSchedule', 'pkThisWeek', 'pkFee', 'pkContact', 'pkNotes', 'pkReel'];
 
     window.openPickupCreateModal = function () {
         window.editingPickupId = null;
@@ -46,6 +46,7 @@
         setVal('pkFee', spot.fee_info);
         setVal('pkContact', spot.contact_link);
         setVal('pkNotes', spot.notes);
+        setVal('pkReel', spot.insta_reel);
         selectChipByVal('pkSportChips', spot.sport || '6s');
         selectChipByVal('pkLevelChips', spot.level || 'any');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
@@ -104,6 +105,14 @@
             contact = sc;
         }
 
+        // 릴스/게시물 링크 (선택): 공개 인스타 permalink만
+        var reel = getVal('pkReel');
+        if (reel) {
+            var sr = window.sanitizeInstaPostUrl(reel);
+            if (!sr) { alert(window.t('insta_reel_invalid')); return; }
+            reel = sr;
+        }
+
         var beginnerChip = document.getElementById('pkBeginnerChip');
         var englishChip = document.getElementById('pkEnglishChip');
         var sd = window.getScheduleData('pkScheduleContainer'); // 구조화 일정 → {raw, text}
@@ -121,6 +130,7 @@
             fee_info: getVal('pkFee'),
             contact_link: contact,
             this_week: getVal('pkThisWeek'),
+            insta_reel: reel,
             notes: getVal('pkNotes')
         };
 

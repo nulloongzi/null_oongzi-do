@@ -17,7 +17,7 @@ const scriptSource = fs.readFileSync(scriptPath, 'utf-8');
 const sandbox = { window: {} };
 vm.createContext(sandbox);
 vm.runInContext(scriptSource, sandbox);
-const { escapeHtml, sanitizeUrl, sanitizeInstaHandle, sanitizeFilename } = sandbox.window;
+const { escapeHtml, sanitizeUrl, sanitizeInstaHandle, sanitizeFilename, sanitizeInstaPostUrl } = sandbox.window;
 
 describe('escapeHtml', () => {
     test('escapes 5 HTML special chars', () => {
@@ -164,6 +164,53 @@ describe('sanitizeInstaHandle', () => {
         assert.strictEqual(sanitizeInstaHandle(''), '');
         assert.strictEqual(sanitizeInstaHandle(null), '');
         assert.strictEqual(sanitizeInstaHandle(undefined), '');
+    });
+});
+
+describe('sanitizeInstaPostUrl', () => {
+    test('normalizes a reel URL (strips query, forces www/https)', () => {
+        assert.strictEqual(
+            sanitizeInstaPostUrl('https://www.instagram.com/reel/ABC-123_x/?utm_source=ig_web_copy_link'),
+            'https://www.instagram.com/reel/ABC-123_x/'
+        );
+    });
+
+    test('accepts /p/ post URLs', () => {
+        assert.strictEqual(sanitizeInstaPostUrl('https://instagram.com/p/Xyz9/'), 'https://www.instagram.com/p/Xyz9/');
+    });
+
+    test('normalizes /reels/ → /reel/', () => {
+        assert.strictEqual(sanitizeInstaPostUrl('https://www.instagram.com/reels/AbC/'), 'https://www.instagram.com/reel/AbC/');
+    });
+
+    test('accepts /tv/ (IGTV)', () => {
+        assert.strictEqual(sanitizeInstaPostUrl('https://www.instagram.com/tv/AbC/'), 'https://www.instagram.com/tv/AbC/');
+    });
+
+    test('accepts username-prefixed permalink', () => {
+        assert.strictEqual(sanitizeInstaPostUrl('https://www.instagram.com/gvt_official/reel/AbC/'), 'https://www.instagram.com/reel/AbC/');
+    });
+
+    test('rejects non-instagram hosts (incl. lookalikes)', () => {
+        assert.strictEqual(sanitizeInstaPostUrl('https://instagram.com.evil.com/reel/x/'), '');
+        assert.strictEqual(sanitizeInstaPostUrl('https://evil.com/reel/x/'), '');
+        assert.strictEqual(sanitizeInstaPostUrl('https://notinstagram.com/p/x/'), '');
+    });
+
+    test('rejects javascript: and data: schemes', () => {
+        assert.strictEqual(sanitizeInstaPostUrl('javascript:alert(1)//instagram.com/reel/x/'), '');
+        assert.strictEqual(sanitizeInstaPostUrl('data:text/html,instagram.com/reel/x'), '');
+    });
+
+    test('rejects instagram profile/other paths (no embeddable media)', () => {
+        assert.strictEqual(sanitizeInstaPostUrl('https://www.instagram.com/someuser/'), '');
+        assert.strictEqual(sanitizeInstaPostUrl('https://www.instagram.com/'), '');
+    });
+
+    test('returns empty for empty/null input', () => {
+        assert.strictEqual(sanitizeInstaPostUrl(''), '');
+        assert.strictEqual(sanitizeInstaPostUrl(null), '');
+        assert.strictEqual(sanitizeInstaPostUrl(undefined), '');
     });
 });
 

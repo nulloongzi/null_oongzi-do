@@ -301,6 +301,9 @@ window.openClubDetail = function (id, opts) {
     btnWayEl.href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
     btnWayEl.onclick = function () { if (window.track) window.track('club_contact', { type: 'directions', club_id: club.id }); };
 
+    // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
+    if (window.renderInstaEmbed) window.renderInstaEmbed(document.getElementById('clubReelEmbed'), club.insta_reel);
+
     var urgentArea = document.getElementById('urgentArea');
     if (club.is_urgent && club.urgent_msg) {
         // XSS 방지: urgent_msg는 textContent로 삽입

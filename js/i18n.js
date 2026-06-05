@@ -107,6 +107,8 @@
         reg_price_ph: { ko: '예: 월 3만원 / 게스트 1만원', en: 'e.g. ₩30,000/mo / Guest ₩10,000' },
         reg_insta_label: { ko: '인스타그램 핸들 (선택)', en: 'Instagram handle (optional)' },
         reg_insta_ph: { ko: '예: gvt__official', en: 'e.g. gvt__official' },
+        reg_reel_label: { ko: '인스타 릴스/게시물 링크 (선택)', en: 'Instagram reel/post link (optional)' },
+        reg_reel_ph: { ko: '예: https://www.instagram.com/reel/...', en: 'e.g. https://www.instagram.com/reel/...' },
         reg_link_label: { ko: '가입/문의 링크 (선택)', en: 'Join/contact link (optional)' },
         reg_link_ph: { ko: '예: https://open.kakao.com/o/...', en: 'e.g. https://open.kakao.com/o/...' },
         reg_submit: { ko: '등록하기', en: 'Register' },
@@ -150,6 +152,7 @@
         sh_club_fallback: { ko: '배구 동호회', en: 'Volleyball club' },
         sh_view_on: { ko: '누룽지도에서 보기', en: 'View on Nulloongzi-do' },
         sh_view_club_btn: { ko: '동호회 보기', en: 'View club' },
+        sh_card_cta: { ko: 'QR 찍으면 누룽지도에서 열려요', en: 'Scan to open in Nulloongzi-do' },
 
         // 주소 복사
         addr_copied: { ko: '주소가 복사되었습니다! 📋', en: 'Address copied! 📋' },
@@ -170,6 +173,8 @@
         reg_price_max: { ko: '회비 설명은 100자 이하로 입력해주세요.', en: 'Fee description must be 100 characters or fewer.' },
         reg_insta_invalid: { ko: '인스타그램 핸들은 영문/숫자/언더스코어/점 1~30자만 가능합니다. (@ 제외)', en: 'Instagram handle allows only letters/numbers/underscore/dot, 1–30 chars. (no @)' },
         reg_link_invalid: { ko: '홈페이지 링크는 http:// 또는 https://로 시작해야 합니다.', en: 'Website link must start with http:// or https://.' },
+        insta_reel_invalid: { ko: '인스타 공개 게시물/릴스 링크 형식이 아니에요. (예: https://www.instagram.com/reel/...)', en: 'That doesn’t look like a public Instagram post/reel link (e.g. https://www.instagram.com/reel/...).' },
+        insta_view: { ko: 'Instagram에서 보기', en: 'View on Instagram' },
         processing: { ko: '처리중...', en: 'Processing...' },
         reg_addr_notfound: { ko: '주소를 찾을 수 없거나 올바르지 않습니다. 정확히 입력해주세요.', en: 'Address not found or invalid. Please enter it accurately.' },
         reg_cf_uninit: { ko: 'Cloud Functions가 초기화되지 않아 소유자 재할당을 진행할 수 없습니다.', en: 'Cloud Functions is not initialized, so owner reassignment cannot proceed.' },
@@ -237,6 +242,7 @@
         pk_f_thisweek_ph: { ko: '예: 이번주 토 7시 잠실', en: 'e.g. This Sat 7pm, Jamsil' },
         pk_thisweek_badge: { ko: '이번주', en: 'This week' },
         pk_contact_cta: { ko: '💬 단톡 들어가기', en: '💬 Join the group chat' },
+        pk_share_story: { ko: '📸 스토리 카드', en: '📸 Story card' },
 
         // 종목 / 레벨 태그
         pk_sport_6s: { ko: '6인제', en: '6s' },
@@ -316,6 +322,8 @@
         pk_f_contact_ph: { ko: '예: https://open.kakao.com/o/...', en: 'e.g. https://open.kakao.com/o/...' },
         pk_f_notes: { ko: '추가 안내 (선택)', en: 'Notes (optional)' },
         pk_f_notes_ph: { ko: '예: 실내화 필수 · 네트 6인제 높이', en: 'e.g. Indoor shoes required' },
+        pk_f_reel: { ko: '릴스/게시물 링크 (선택)', en: 'Reel/post link (optional)' },
+        pk_f_reel_ph: { ko: '예: https://www.instagram.com/reel/...', en: 'e.g. https://www.instagram.com/reel/...' },
         pk_create_submit: { ko: '픽업 등록', en: 'Add pickup' },
         pk_save_submit: { ko: '수정하기', en: 'Save changes' },
 

@@ -110,13 +110,25 @@
             c.appendChild(wrap);
         }
 
-        // 공유 (?spot= 딥링크)
+        // 공유 (?spot= 딥링크): 📸 스토리 카드(셸이면 네이티브 IG) + 🔗 링크 공유
+        var shareRow = el('div', 'ps-share-row');
+        var storyBtn = el('button', 'ps-share-story-btn', t('pk_share_story'));
+        storyBtn.onclick = function () { if (window.shareSpotToStory) window.shareSpotToStory(spot); };
+        shareRow.appendChild(storyBtn);
         var shareBtn = el('button', 'ps-share-btn', t('btn_share'));
         shareBtn.onclick = function () { if (window.sharePickup) window.sharePickup(spot); };
-        c.appendChild(shareBtn);
+        shareRow.appendChild(shareBtn);
+        c.appendChild(shareRow);
 
         // 메모
         if (spot.notes) c.appendChild(el('div', 'ps-notes', spot.notes));
+
+        // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
+        if (spot.insta_reel && window.renderInstaEmbed) {
+            var reelBox = el('div', 'insta-embed-box');
+            c.appendChild(reelBox);
+            window.renderInstaEmbed(reelBox, spot.insta_reel);
+        }
 
         // 소유자: 수정/삭제
         if (host) {

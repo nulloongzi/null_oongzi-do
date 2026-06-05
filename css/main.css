@@ -2620,6 +2620,47 @@
             margin-bottom: 12px;
         }
 
+        /* 인스타 릴스/게시물 임베드 (A: 공개 콘텐츠 큐레이션) — 클럽/픽업 상세 공용 */
+        .insta-embed-box {
+            margin: 4px 0 14px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .insta-embed-box .instagram-media {
+            margin: 0 auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+        }
+
+        /* 📸 스토리 카드 + 🔗 링크 공유를 한 줄에 (스토리 = 누룽지 옐로 강조) */
+        .ps-share-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .ps-share-row>button {
+            flex: 1;
+            width: auto;
+            margin: 0;
+        }
+
+        .ps-share-story-btn {
+            background: var(--nurungji-yellow);
+            color: var(--nurungji-dark);
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .ps-share-story-btn:active {
+            transform: scale(0.98);
+        }
+
         .ps-notes {
             background: #f7f5ef;
             border-radius: 12px;
