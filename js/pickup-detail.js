@@ -76,8 +76,11 @@
             c.appendChild(tw);
         }
 
-        // 보통 일정
-        if (spot.schedule_text) c.appendChild(infoRow('🗓', spot.schedule_text));
+        // 보통 일정(구조화) + 메모(비정기)
+        if (spot.schedule || spot.schedule_text) {
+            c.appendChild(infoRow('🗓', spot.schedule || spot.schedule_text));
+            if (spot.schedule && spot.schedule_text) c.appendChild(infoRow('📝', spot.schedule_text));
+        }
 
         // 장소 + 주소 복사
         var where = el('span', 'ps-where-text');

@@ -327,11 +327,19 @@
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_addr">주소 (필수)</label>
-                    <input type="text" id="pkAddress" placeholder="예: 서울 송파구 올림픽로 25" data-i18n-placeholder="pk_f_addr_ph">
+                    <div style="display: flex; gap: 10px; align-items: stretch;">
+                        <input type="text" id="pkAddress" placeholder="예: 서울 송파구 올림픽로 25" data-i18n-placeholder="pk_f_addr_ph" style="flex:1;" oninput="window.selectedCoords=null;">
+                        <button type="button" onclick="startMapPicker({overlay:'pkModalOverlay', input:'pkAddress'})" style="padding: 0 15px; background: #fff; border: 1px solid var(--nurungji-brown); color: var(--nurungji-brown); border-radius: 10px; font-weight: bold; cursor: pointer; white-space: nowrap;" data-i18n="reg_addr_find">지도에서 찾기</button>
+                    </div>
                 </div>
                 <div class="reg-form-group">
-                    <label data-i18n="pk_f_schedule">보통 일정 (선택)</label>
-                    <input type="text" id="pkSchedule" placeholder="예: 매주 토 19:00~22:00" data-i18n-placeholder="pk_f_schedule_ph">
+                    <label data-i18n="pk_f_sched_struct">보통 일정 (요일·시간)</label>
+                    <div id="pkScheduleContainer" class="sched-blocks"></div>
+                    <button type="button" class="sched-add-btn" onclick="addScheduleBlock(null,'pkScheduleContainer')" data-i18n="reg_sched_add">＋ 시간대 추가</button>
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_schedule">일정 메모 (비정기·기타, 선택)</label>
+                    <input type="text" id="pkSchedule" placeholder="예: 셋째주 휴무 · 우천시 취소" data-i18n-placeholder="pk_f_schedule_ph">
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_thisweek">이번주 공지 (선택)</label>

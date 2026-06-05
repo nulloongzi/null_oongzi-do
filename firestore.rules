@@ -34,6 +34,8 @@ service cloud.firestore {
           && (!('beginner_friendly' in d) || d.beginner_friendly is bool)
           && (!('venue_name' in d) || (d.venue_name is string && d.venue_name.size() <= 120))
           && (!('address' in d) || (d.address is string && d.address.size() <= 250))
+          && (!('schedule' in d) || (d.schedule is string && d.schedule.size() <= 600))
+          && (!('schedule_raw' in d) || (d.schedule_raw is list && d.schedule_raw.size() <= 50))
           && (!('schedule_text' in d) || (d.schedule_text is string && d.schedule_text.size() <= 200))
           && (!('fee_info' in d) || (d.fee_info is string && d.fee_info.size() <= 120))
           && (!('contact_link' in d) || (d.contact_link is string && d.contact_link.size() <= 500))

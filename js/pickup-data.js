@@ -65,7 +65,9 @@
             venue_name: data.venue_name || '',
             address: data.address || '',
             coordinates: data.coordinates,
-            schedule_text: data.schedule_text || '',  // 보통 일정 "매주 토 19:00~22:00"
+            schedule: data.schedule || '',             // 구조화 일정 텍스트 "토 19:00~22:00, 일 ..."
+            schedule_raw: data.schedule_raw || [],     // [{day,start,end}] (동호회와 동일 포맷)
+            schedule_text: data.schedule_text || '',   // 일정 메모(비정기·기타)
             fee_info: data.fee_info || '',             // 정보용 텍스트 "보통 1만·현장" (거래 X)
             contact_link: data.contact_link || '',     // 들어가는 문: 단톡/Meetup/IG
             this_week: data.this_week || '',           // 이번주 메모 (가벼운 시한 공지)

@@ -90,12 +90,20 @@
             item.appendChild(twRow);
         }
 
-        // 보통 일정
-        if (g.schedule_text) {
+        // 보통 일정(구조화) + 메모(비정기)
+        if (g.schedule || g.schedule_text) {
             var when = document.createElement('div');
             when.className = 'pl-when';
-            when.textContent = '🗓 ' + g.schedule_text;
+            when.textContent = '🗓 ' + (g.schedule || g.schedule_text);
             item.appendChild(when);
+            if (g.schedule && g.schedule_text) {
+                var memo = document.createElement('div');
+                memo.className = 'pl-when';
+                memo.style.color = '#8a8079';
+                memo.style.fontWeight = '600';
+                memo.textContent = '· ' + g.schedule_text;
+                item.appendChild(memo);
+            }
         }
 
         // XSS: 제목/장소는 textContent
