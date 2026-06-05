@@ -26,6 +26,9 @@
         selectChipByVal('pkSportChips', '6s');
         selectChipByVal('pkLevelChips', 'any');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.remove('selected');
+        window.selectedCoords = null;
+        var sc = document.getElementById('pkScheduleContainer');
+        if (sc) { sc.innerHTML = ''; window.addScheduleBlock(null, 'pkScheduleContainer'); }
         document.getElementById('pkModalOverlay').style.display = 'flex';
     };
 
@@ -45,12 +48,31 @@
         selectChipByVal('pkSportChips', spot.sport || '6s');
         selectChipByVal('pkLevelChips', spot.level || 'any');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
+        window.selectedCoords = null;
+
+        // 구조화 일정 복원: 같은 (시작~종료) 시간대끼리 묶어 한 블록에 여러 요일 칩으로 (동호회 편집과 동일)
+        var sc = document.getElementById('pkScheduleContainer');
+        if (sc) sc.innerHTML = '';
+        if (Array.isArray(spot.schedule_raw) && spot.schedule_raw.length > 0) {
+            var groups = [], gi = {};
+            spot.schedule_raw.forEach(function (row) {
+                if (!row || !row.start || !row.end || !row.day) return;
+                var key = row.start + '|' + row.end;
+                if (!gi.hasOwnProperty(key)) { gi[key] = groups.length; groups.push({ start: row.start, end: row.end, days: [] }); }
+                if (groups[gi[key]].days.indexOf(row.day) === -1) groups[gi[key]].days.push(row.day);
+            });
+            if (groups.length === 0) window.addScheduleBlock(null, 'pkScheduleContainer');
+            else groups.forEach(function (g) { window.addScheduleBlock({ days: g.days, start: g.start, end: g.end }, 'pkScheduleContainer'); });
+        } else {
+            window.addScheduleBlock(null, 'pkScheduleContainer');
+        }
         document.getElementById('pkModalOverlay').style.display = 'flex';
     };
 
     window.closePickupModal = function () {
         document.getElementById('pkModalOverlay').style.display = 'none';
         window.editingPickupId = null;
+        window.selectedCoords = null;
     };
 
     function geocode(address) {
@@ -81,6 +103,7 @@
         }
 
         var beginnerChip = document.getElementById('pkBeginnerChip');
+        var sd = window.getScheduleData('pkScheduleContainer'); // 구조화 일정 → {raw, text}
         var fields = {
             title: title,
             sport: selectedVal('pkSportChips', '6s'),
@@ -88,6 +111,8 @@
             beginner_friendly: !!(beginnerChip && beginnerChip.classList.contains('selected')),
             venue_name: getVal('pkVenue'),
             address: address,
+            schedule: sd.text,
+            schedule_raw: sd.raw,
             schedule_text: getVal('pkSchedule'),
             fee_info: getVal('pkFee'),
             contact_link: contact,
@@ -100,7 +125,8 @@
         btn.disabled = true;
         btn.innerText = window.t('processing');
         try {
-            fields.coordinates = await geocode(address);
+            // 지도에서 찍었으면 그 좌표, 아니면 주소 지오코딩
+            fields.coordinates = window.selectedCoords ? window.selectedCoords : await geocode(address);
             if (capturedEditId) {
                 await window.updatePickupGame(capturedEditId, fields);
                 alert(window.t('pk_updated'));

@@ -230,8 +230,9 @@
         pk_search_ph: { ko: '픽업, 장소로 검색...', en: 'Search pickups or venues...' },
 
         // 픽업 발견형 신규 키 (보통일정 / 이번주 / 들어가는 문)
-        pk_f_schedule: { ko: '보통 일정 (선택)', en: 'Usual schedule (optional)' },
-        pk_f_schedule_ph: { ko: '예: 매주 토 19:00~22:00', en: 'e.g. Every Sat 19:00–22:00' },
+        pk_f_sched_struct: { ko: '보통 일정 (요일·시간)', en: 'Usual schedule (days · times)' },
+        pk_f_schedule: { ko: '일정 메모 (비정기·기타, 선택)', en: 'Schedule note (irregular/other, optional)' },
+        pk_f_schedule_ph: { ko: '예: 셋째주 휴무 · 우천시 취소', en: 'e.g. No game 3rd week · cancelled if rain' },
         pk_f_thisweek: { ko: '이번주 공지 (선택)', en: 'This week (optional)' },
         pk_f_thisweek_ph: { ko: '예: 이번주 토 7시 잠실', en: 'e.g. This Sat 7pm, Jamsil' },
         pk_thisweek_badge: { ko: '이번주', en: 'This week' },

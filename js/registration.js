@@ -18,9 +18,9 @@ window.generateTimeOptions = function () {
 // 운동시간 "블록": 한 시간대(시작~종료)에 여러 요일을 칩으로 선택.
 // 저장 시 선택 요일마다 schedule_raw 엔트리로 전개됨(getScheduleData 참고).
 // prefill = { days:['월','수'], start:'19:00', end:'22:00' }
-window.addScheduleBlock = function (prefill) {
+window.addScheduleBlock = function (prefill, containerId) {
     prefill = prefill || {};
-    var container = document.getElementById('scheduleContainer');
+    var container = document.getElementById(containerId || 'scheduleContainer');
     var block = document.createElement('div');
     block.className = 'sched-block';
 
@@ -52,8 +52,9 @@ window.addScheduleBlock = function (prefill) {
 // 하위호환 별칭 (기존 호출부 대비)
 window.addScheduleRow = window.addScheduleBlock;
 
-window.getScheduleData = function () {
-    var container = document.getElementById('scheduleContainer');
+window.getScheduleData = function (containerId) {
+    var container = document.getElementById(containerId || 'scheduleContainer');
+    if (!container) return { raw: [], text: '' };
     var rawList = [];
     var textParts = [];
 
@@ -240,15 +241,17 @@ function generateId() {
 // ── Map picker ──
 
 // 지도 picker 사용 중에도 편집 모드 상태를 보존하기 위해, 모달 닫기/재열기 대신
-// overlay visibility만 토글 (editingClubId 유지)
-window.startMapPicker = function () {
-    document.getElementById('regModalOverlay').style.display = 'none';
+// overlay visibility만 토글. opts로 복귀 오버레이/주소 입력칸을 받아 동호회·픽업 공용.
+window.startMapPicker = function (opts) {
+    window._mpReturn = (opts && opts.overlay) || 'regModalOverlay';
+    window._mpInput = (opts && opts.input) || 'regAddress';
+    document.getElementById(window._mpReturn).style.display = 'none';
     document.getElementById('mapPickerOverlay').style.display = 'block';
 };
 
 window.cancelMapPicker = function () {
     document.getElementById('mapPickerOverlay').style.display = 'none';
-    document.getElementById('regModalOverlay').style.display = 'flex';
+    document.getElementById(window._mpReturn || 'regModalOverlay').style.display = 'flex';
 };
 
 window.confirmMapPicker = function () {
@@ -264,10 +267,10 @@ window.confirmMapPicker = function () {
         if (status === kakao.maps.services.Status.OK && result[0]) {
             detailAddr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
         }
-        document.getElementById('regAddress').value = detailAddr;
+        document.getElementById(window._mpInput || 'regAddress').value = detailAddr;
 
         document.getElementById('mapPickerOverlay').style.display = 'none';
-        document.getElementById('regModalOverlay').style.display = 'flex';
+        document.getElementById(window._mpReturn || 'regModalOverlay').style.display = 'flex';
     });
 };
 
