@@ -49,6 +49,7 @@
         window.currentTab = tab;
         setTabButtons(tab);
         if (window.closeBottomSheet) window.closeBottomSheet();
+        if (window.closePickupSheet) window.closePickupSheet();
         teardownMarkers();
         applyChrome(tab);
 
