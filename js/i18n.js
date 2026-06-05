@@ -150,6 +150,7 @@
         sh_club_fallback: { ko: '배구 동호회', en: 'Volleyball club' },
         sh_view_on: { ko: '누룽지도에서 보기', en: 'View on Nulloongzi-do' },
         sh_view_club_btn: { ko: '동호회 보기', en: 'View club' },
+        sh_card_cta: { ko: 'QR 찍으면 누룽지도에서 열려요', en: 'Scan to open in Nulloongzi-do' },
 
         // 주소 복사
         addr_copied: { ko: '주소가 복사되었습니다! 📋', en: 'Address copied! 📋' },
@@ -237,6 +238,7 @@
         pk_f_thisweek_ph: { ko: '예: 이번주 토 7시 잠실', en: 'e.g. This Sat 7pm, Jamsil' },
         pk_thisweek_badge: { ko: '이번주', en: 'This week' },
         pk_contact_cta: { ko: '💬 단톡 들어가기', en: '💬 Join the group chat' },
+        pk_share_story: { ko: '📸 스토리 카드', en: '📸 Story card' },
 
         // 종목 / 레벨 태그
         pk_sport_6s: { ko: '6인제', en: '6s' },

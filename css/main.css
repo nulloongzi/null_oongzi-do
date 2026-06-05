@@ -2620,6 +2620,34 @@
             margin-bottom: 12px;
         }
 
+        /* 📸 스토리 카드 + 🔗 링크 공유를 한 줄에 (스토리 = 누룽지 옐로 강조) */
+        .ps-share-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .ps-share-row>button {
+            flex: 1;
+            width: auto;
+            margin: 0;
+        }
+
+        .ps-share-story-btn {
+            background: var(--nurungji-yellow);
+            color: var(--nurungji-dark);
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .ps-share-story-btn:active {
+            transform: scale(0.98);
+        }
+
         .ps-notes {
             background: #f7f5ef;
             border-radius: 12px;
