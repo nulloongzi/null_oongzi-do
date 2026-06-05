@@ -198,6 +198,10 @@ window.buildClubShareUrl = function (id) {
     return window.SITE_BASE_URL + '?club=' + encodeURIComponent(id);
 };
 
+window.buildSpotShareUrl = function (id) {
+    return window.SITE_BASE_URL + '?spot=' + encodeURIComponent(id);
+};
+
 window.initKakaoShare = function () {
     try {
         if (window.Kakao && !window.Kakao.isInitialized()) {
@@ -270,4 +274,39 @@ window.shareClub = function (club) {
     // 3) 링크 복사 폴백
     copyShareLink(url);
     if (window.track) window.track('share', { method: 'copy', club_id: club.id });
+};
+
+// ── 픽업 스팟 공유 (?spot= 딥링크) — shareClub과 동일 폴백 체인 ──
+window.sharePickup = function (spot) {
+    if (!spot || !spot.id) return;
+    var url = window.buildSpotShareUrl(spot.id);
+    var name = spot.title || window.t('sh_club_fallback');
+    var shareText = name + ' · ' + window.t('sh_view_on');
+
+    if (window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
+        try {
+            var desc = window.pkSportLabel ? window.pkSportLabel(spot.sport) : (spot.sport || '');
+            if (spot.schedule || spot.schedule_text) desc += ' · ' + (spot.schedule || spot.schedule_text);
+            if (spot.this_week) desc += ' · ' + spot.this_week;
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: name,
+                    description: desc || window.t('sh_view_on'),
+                    imageUrl: window.SITE_BASE_URL + 'app_ui/nulloongzido%20logo_512px.png',
+                    link: { mobileWebUrl: url, webUrl: url }
+                },
+                buttons: [{ title: window.t('sh_view_on'), link: { mobileWebUrl: url, webUrl: url } }]
+            });
+            if (window.track) window.track('share', { method: 'kakao', spot_id: spot.id });
+            return;
+        } catch (e) { console.warn('카카오 공유 실패, 폴백:', e); }
+    }
+    if (navigator.share) {
+        navigator.share({ title: name, text: shareText, url: url }).catch(function () { });
+        if (window.track) window.track('share', { method: 'web', spot_id: spot.id });
+        return;
+    }
+    copyShareLink(url);
+    if (window.track) window.track('share', { method: 'copy', spot_id: spot.id });
 };

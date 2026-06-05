@@ -66,6 +66,7 @@
         tags.appendChild(chip(window.pkSportLabel(spot.sport), 'sport'));
         tags.appendChild(chip(window.pkLevelLabel(spot.level)));
         if (spot.beginner_friendly) tags.appendChild(chip(t('pk_beginner_ok'), 'beginner'));
+        if (spot.english_ok) tags.appendChild(chip(t('pk_english_ok'), 'english'));
         c.appendChild(tags);
 
         // "이번주" 배너 (가벼운 시한 공지)
@@ -102,10 +103,17 @@
         if (safeContact && safeContact !== '#') {
             var cta = el('a', 'ps-join-btn', t('pk_contact_cta'));
             cta.href = safeContact; cta.target = '_blank'; cta.rel = 'noopener noreferrer';
+            // 물꼬 계측: 단톡 들어가기 = 픽업의 first-contact 순간 (Q2 지표)
+            cta.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, sport: spot.sport }); };
             var wrap = el('div', 'ps-rsvp');
             wrap.appendChild(cta);
             c.appendChild(wrap);
         }
+
+        // 공유 (?spot= 딥링크)
+        var shareBtn = el('button', 'ps-share-btn', t('btn_share'));
+        shareBtn.onclick = function () { if (window.sharePickup) window.sharePickup(spot); };
+        c.appendChild(shareBtn);
 
         // 메모
         if (spot.notes) c.appendChild(el('div', 'ps-notes', spot.notes));

@@ -247,6 +247,8 @@
         pk_lv_advanced: { ko: '고급', en: 'Advanced' },
         pk_lv_any: { ko: '레벨무관', en: 'All levels' },
         pk_beginner_ok: { ko: '🌱 초보환영', en: '🌱 Beginners welcome' },
+        pk_english_ok: { ko: '🌐 English OK', en: '🌐 English OK' },
+        pk_f_english: { ko: '🌐 외국인 환영 (English OK)', en: '🌐 English OK / foreigners welcome' },
 
         // 정원 / 상태
         pk_spots_left: { ko: '{n}자리 남음', en: '{n} spots left' },
@@ -393,6 +395,11 @@
         var saved = null;
         try { saved = localStorage.getItem(LS_LANG_KEY); } catch (e) { saved = null; }
         if (SUPPORTED.indexOf(saved) !== -1) return saved;
+        // 저장된 선호가 없으면 브라우저 언어로 추정: 한국어가 아니면 영어 우선 (외국인 beachhead)
+        try {
+            var nav = ((navigator.language || navigator.userLanguage) || '').toLowerCase();
+            if (nav && nav.indexOf('ko') !== 0) return 'en';
+        } catch (e) { /* ignore */ }
         return 'ko';
     }
 
