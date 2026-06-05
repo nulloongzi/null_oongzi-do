@@ -2620,6 +2620,19 @@
             margin-bottom: 12px;
         }
 
+        /* 인스타 릴스/게시물 임베드 (A: 공개 콘텐츠 큐레이션) — 클럽/픽업 상세 공용 */
+        .insta-embed-box {
+            margin: 4px 0 14px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .insta-embed-box .instagram-media {
+            margin: 0 auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+        }
+
         /* 📸 스토리 카드 + 🔗 링크 공유를 한 줄에 (스토리 = 누룽지 옐로 강조) */
         .ps-share-row {
             display: flex;

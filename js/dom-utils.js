@@ -41,6 +41,20 @@
         return '';
     };
 
+    // 인스타 공개 게시물/릴스 permalink만 통과(임베드용). 정규 permalink로 정규화해 반환,
+    // 무효/그 외 URL은 '' 반환. 쿼리·해시·유저네임 프리픽스는 버리고 {p|reel|tv}/{shortcode}만 사용.
+    // (data-instgrm-permalink 속성에 박히므로 화이트리스트로 강하게 제한 — XSS/오용 방지)
+    window.sanitizeInstaPostUrl = function (value) {
+        if (!value) return '';
+        var s = String(value).trim();
+        // 허용: https://(www.)instagram.com[/<user>]/{p|reel|reels|tv}/<shortcode>
+        var m = s.match(/^https?:\/\/(?:www\.)?instagram\.com\/(?:[A-Za-z0-9._]+\/)?(p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+        if (!m) return '';
+        var type = m[1].toLowerCase();
+        if (type === 'reels') type = 'reel';     // 정규화
+        return 'https://www.instagram.com/' + type + '/' + m[2] + '/';
+    };
+
     // 업로드 파일명을 안전한 형식으로 변환. 디렉터리 구분자/공백/특수문자 차단.
     // 결과 길이는 80자 이하로 제한 (Storage rules의 fileName 100자 한도 여유).
     window.sanitizeFilename = function (value) {

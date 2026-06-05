@@ -72,6 +72,7 @@
             fee_info: data.fee_info || '',             // 정보용 텍스트 "보통 1만·현장" (거래 X)
             contact_link: data.contact_link || '',     // 들어가는 문: 단톡/Meetup/IG
             this_week: data.this_week || '',           // 이번주 메모 (가벼운 시한 공지)
+            insta_reel: data.insta_reel || '',         // 공개 릴스/게시물 임베드(A) — permalink
             notes: data.notes || ''
         };
     }

@@ -208,3 +208,29 @@
 2. **`flutter pub get`** 후 실기기 빌드. (`appinio_social_share 0.3.2`는 FB SDK 17 번들 — Gradle/의존성 충돌 시 조정.)
 3. **실기기 검증**(§9.5–9.6): 픽업 상세 → 📸 스토리 카드 → IG 스토리에 카드+스티커 탭→`?spot=` 딥링크 /
    일반 브라우저는 QR 카드 폴백. (헤드리스 브라우저는 샌드박스 불가 → 실기기 수동.)
+
+---
+
+## 11. 인스타 콘텐츠 불러오기 (릴스/게시물) — A 구현 / B 보류
+
+> 방향(2026-06-05 결정): **A(공개 콘텐츠 큐레이션 임베드)를 기본으로 구현, B(계정 연동 자동 피드)는 추후 과제.**
+> 근거: A는 Meta 앱·로그인·검수 불필요 + 개인계정 동호회도 커버(접근성↑) + 상시 운영비 없음(wedge 집중).
+> B는 프로페셔널 계정만 가능 + App Review·비즈니스 인증·토큰 60일 갱신 등 상시 비용.
+
+### ✅ A — 구현 완료 (클럽 + 픽업, jsdom 검증)
+호스트가 등록 시 **공개 인스타 릴스/게시물 링크**를 붙이면, 상세 화면에 공식 `embed.js`로 임베드.
+- `js/insta-embed.js`(신규): `window.renderInstaEmbed(container, url)` — blockquote + embed.js 지연로드 + `Embeds.process()`. 같은 URL 재처리 생략.
+- `js/dom-utils.js`: `sanitizeInstaPostUrl(url)` — `{p|reel|tv}/<shortcode>`만 통과시켜 정규 permalink로 정규화(화이트리스트, lookalike/`javascript:` 차단). `data-instgrm-permalink`에 박히므로 보안 핵심.
+- 클럽: `index.html` `regReel` 필드 → `registration.js`가 `insta_reel`로 저장 → `club-detail.js`가 `#clubReelEmbed`에 렌더.
+- 픽업: `index.html` `pkReel` 필드 → `pickup-host.js`/`pickup-data.js`(`spotPayload.insta_reel`) → `pickup-detail.js`가 임베드.
+- i18n: `reg_reel_label/ph`, `pk_f_reel/ph`, `insta_view`, `insta_reel_invalid`. CSS: `.insta-embed-box`. 캐시버스팅 `?v=4 → ?v=5`.
+- **앱 레포**: `main.dart` `onNavigationRequest`에 **`isMainFrame` 가드** 추가 — iframe(임베드) 로드를 외부앱으로 튕기지 않게(셸 안 렌더 필수). ⏳ 실기기 확인 필요.
+- 검증: `tests/insta-embed.test.js`(렌더/정규화/폴백) + `dom-utils.test.js`에 `sanitizeInstaPostUrl` 케이스. `node --test` 통과.
+- 한계: 공개 게시물만, 자동 갱신 없음(호스트가 붙인 URL만). `embed.js`는 비공식성 있어 Meta가 바꾸면 영향 가능(미로드 시 blockquote 안 링크로 폴백).
+
+### ⏳ B — 추후 과제 (계정 연동 자동 피드)
+"동호회가 자기 인스타를 연결하면 최신 릴스를 API로 끌어와 표시." 구현 시 필요:
+- **API**: Instagram API with Instagram Login, scope `instagram_business_basic` (연결계정은 **프로페셔널** 필수, 개인계정 불가). 미디어는 `graph.instagram.com/me/media` → `media_product_type=REELS` 필터.
+- **Meta 설정**: 지금 만든 **비즈니스 앱**에 Instagram 제품 추가 → Instagram App ID/Secret + Redirect/Deauthorize/Data-deletion URL. **App Review(Advanced Access) + Business Verification + Live** 필요.
+- **백엔드(우리 레포)**: Cloud Function 토큰 교환(Secret 서버 보관) + Firestore 토큰 저장 + 60일 만료 전 refresh(스케줄) + `/me/media` 캐시. WebView OAuth 리다이렉트 처리(`main.dart`). 개인정보처리방침/삭제 경로.
+- 권장: A를 기본으로 두고, 프로계정만 B로 심화하는 하이브리드.

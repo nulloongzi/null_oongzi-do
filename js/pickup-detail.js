@@ -123,6 +123,13 @@
         // 메모
         if (spot.notes) c.appendChild(el('div', 'ps-notes', spot.notes));
 
+        // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
+        if (spot.insta_reel && window.renderInstaEmbed) {
+            var reelBox = el('div', 'insta-embed-box');
+            c.appendChild(reelBox);
+            window.renderInstaEmbed(reelBox, spot.insta_reel);
+        }
+
         // 소유자: 수정/삭제
         if (host) {
             var hc = el('div', 'ps-host-controls');
