@@ -2621,8 +2621,10 @@
         }
 
         /* 인스타 릴스/게시물 임베드 (A: 공개 콘텐츠 큐레이션) — 클럽/픽업 상세 공용 */
+        /* ※ 임시 정리: 공개 임베드(cross-origin iframe)라 내부 chrome 제거/자동재생 불가.
+           폭 제한·가운데 정렬로 단정하게만. 진짜 릴스탭 몰입(세로·자동재생·스와이프)은 B(Graph API) 필요. */
         .insta-embed-box {
-            margin: 4px 0 14px;
+            margin: 8px 0 16px;
             display: flex;
             justify-content: center;
         }
@@ -2630,7 +2632,8 @@
         .insta-embed-box .instagram-media {
             margin: 0 auto !important;
             min-width: 0 !important;
-            max-width: 100% !important;
+            max-width: 360px !important;
+            width: 100% !important;
         }
 
         /* 📸 스토리 카드 + 🔗 링크 공유를 한 줄에 (스토리 = 누룽지 옐로 강조) */
