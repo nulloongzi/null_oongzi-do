@@ -283,6 +283,89 @@
         </div>
     </div>
 
+    <!-- 픽업 게임 개설/수정 모달 -->
+    <div id="pkModalOverlay" class="reg-modal-overlay">
+        <div class="reg-modal-content">
+            <div class="reg-modal-header">
+                <h3 id="pkModalTitle" data-i18n="pk_create_title">픽업 게임 열기</h3>
+                <span class="reg-modal-close" onclick="closePickupModal()">x</span>
+            </div>
+            <div class="reg-modal-body">
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_title">게임 이름 (필수)</label>
+                    <input type="text" id="pkTitle" placeholder="예: 토요일 저녁 6인제 픽업" data-i18n-placeholder="pk_f_title_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_sport">종목</label>
+                    <div class="chip-group reg-target-chips" id="pkSportChips">
+                        <div class="chip pk-chip selected" data-val="6s" onclick="pkSelectChip(this)" data-i18n="pk_sport_6s">6인제</div>
+                        <div class="chip pk-chip" data-val="9s" onclick="pkSelectChip(this)" data-i18n="pk_sport_9s">9인제</div>
+                        <div class="chip pk-chip" data-val="mixed" onclick="pkSelectChip(this)" data-i18n="pk_sport_mixed">혼성·자유</div>
+                    </div>
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_level">레벨</label>
+                    <div class="chip-group reg-target-chips" id="pkLevelChips">
+                        <div class="chip pk-chip" data-val="beginner" onclick="pkSelectChip(this)" data-i18n="pk_lv_beginner">입문</div>
+                        <div class="chip pk-chip" data-val="intermediate" onclick="pkSelectChip(this)" data-i18n="pk_lv_intermediate">중급</div>
+                        <div class="chip pk-chip" data-val="advanced" onclick="pkSelectChip(this)" data-i18n="pk_lv_advanced">고급</div>
+                        <div class="chip pk-chip selected" data-val="any" onclick="pkSelectChip(this)" data-i18n="pk_lv_any">레벨무관</div>
+                    </div>
+                    <div class="chip-group reg-target-chips" style="margin-top:8px;">
+                        <div class="chip pk-chip" id="pkBeginnerChip" onclick="toggleRegChip(this)" data-i18n="pk_f_beginner">초보 환영</div>
+                    </div>
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_date">날짜 (필수)</label>
+                    <input type="date" id="pkDate">
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <div style="flex:1;">
+                            <label style="font-size:12px;" data-i18n="pk_f_start">시작</label>
+                            <input type="time" id="pkStart" value="19:00">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:12px;" data-i18n="pk_f_end">종료</label>
+                            <input type="time" id="pkEnd" value="22:00">
+                        </div>
+                    </div>
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_venue">체육관 이름</label>
+                    <input type="text" id="pkVenue" placeholder="예: 잠실학생체육관" data-i18n-placeholder="pk_f_venue_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_addr">주소 (필수)</label>
+                    <input type="text" id="pkAddress" placeholder="예: 서울 송파구 올림픽로 25" data-i18n-placeholder="pk_f_addr_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_capacity">정원 (필수)</label>
+                    <input type="number" id="pkCapacity" min="1" max="200" placeholder="예: 12" data-i18n-placeholder="pk_f_capacity_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_fee">게임비 (1회)</label>
+                    <input type="text" id="pkFee" placeholder="예: 1만원" data-i18n-placeholder="pk_f_fee_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_paylink">송금 링크 (토스/카카오페이) — 선택</label>
+                    <input type="text" id="pkPayLink" placeholder="예: https://toss.me/..." data-i18n-placeholder="pk_f_paylink_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_account">입금 계좌 (선택)</label>
+                    <input type="text" id="pkPayAccount" placeholder="예: 카카오뱅크 3333-00-0000000" data-i18n-placeholder="pk_f_account_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_contact">단톡/문의 링크 (선택)</label>
+                    <input type="text" id="pkContact" placeholder="예: https://open.kakao.com/o/..." data-i18n-placeholder="pk_f_contact_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_notes">추가 안내 (선택)</label>
+                    <input type="text" id="pkNotes" placeholder="예: 실내화 필수 · 네트 6인제 높이" data-i18n-placeholder="pk_f_notes_ph">
+                </div>
+                <button id="pkSubmitBtn" class="reg-submit-btn" onclick="submitPickupGame()" data-i18n="pk_create_submit">게임 열기</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Map Picker -->
     <div id="mapPickerOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; pointer-events: none;">
         <img src="./assets/marker_yellow.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); width: 40px; opacity: 0.6; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));">
@@ -313,6 +396,7 @@
     <script src="js/verification.js"></script>
     <script src="js/pickup-ui.js"></script>
     <script src="js/tabs.js"></script>
+    <script src="js/pickup-host.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

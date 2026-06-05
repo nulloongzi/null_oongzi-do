@@ -2295,3 +2295,33 @@
         .pl-spots .full {
             color: var(--urgent-color);
         }
+
+        /* 픽업 모달: 숫자/날짜/시간 입력도 텍스트 입력과 동일 스타일 */
+        .reg-form-group input[type="number"],
+        .reg-form-group input[type="date"],
+        .reg-form-group input[type="time"] {
+            width: 100%;
+            border: 1px solid #e0e0e0;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 12px;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 14px;
+            color: var(--nurungji-dark);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .reg-form-group input[type="number"]:focus,
+        .reg-form-group input[type="date"]:focus,
+        .reg-form-group input[type="time"]:focus {
+            outline: none;
+            border-color: var(--nurungji-brown);
+            box-shadow: 0 0 5px rgba(220, 180, 120, 0.3);
+        }
+
+        /* 픽업 단일선택 칩(종목/레벨)은 등록폼 칩과 동일 크기 */
+        #pkSportChips .pk-chip,
+        #pkLevelChips .pk-chip {
+            padding: 7px 13px;
+            font-size: 13px;
+        }
