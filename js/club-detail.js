@@ -426,6 +426,11 @@ window.openClubDetail = function (id, opts) {
     if (btnShareClub) {
         btnShareClub.onclick = function () { if (window.shareClub) window.shareClub(club); };
     }
+    // 스토리 카드 (셸이면 네이티브 IG, 브라우저면 카드 미리보기)
+    var btnStoryClub = document.getElementById('btnStoryClub');
+    if (btnStoryClub) {
+        btnStoryClub.onclick = function () { if (window.shareClubToStory) window.shareClubToStory(club); };
+    }
 
     // 주소창을 공유 가능한 딥링크로 동기화
     if (!silent && window.history && window.history.replaceState) {
