@@ -403,35 +403,76 @@ function storyDrawQR(ctx, text, x, y, size) {
     } catch (e) { console.warn('QR 생성 실패:', e); return false; }
 }
 
-// 픽업 스팟 → 9:16 PNG dataURL (Promise). 로고/폰트 로드가 비동기라 Promise 반환.
-window.generateSpotStoryCard = function (spot) {
+// 주소 → 지역 라벨 ("서울 송파구 올림픽로 25" → "서울 송파구")
+function storyRegion(address) {
+    if (!address) return '';
+    var p = String(address).trim().split(/\s+/);
+    return p.slice(0, 2).join(' ');
+}
+
+// 가장 가까운 지하철역(카카오 SW8 카테고리) → Promise<{name,distance}|null>.
+// kakao services 미로드/실패/타임아웃이면 null → 카드는 지역 텍스트로 폴백.
+function storyFindNearestStation(lat, lng) {
+    return new Promise(function (resolve) {
+        try {
+            if (!lat || !lng || !window.kakao || !kakao.maps || !kakao.maps.services) { resolve(null); return; }
+            var done = false;
+            var timer = setTimeout(function () { if (!done) { done = true; resolve(null); } }, 2500);
+            var ps = new kakao.maps.services.Places();
+            ps.categorySearch('SW8', function (data, status) {
+                if (done) return;
+                done = true; clearTimeout(timer);
+                if (status === kakao.maps.services.Status.OK && data && data[0]) {
+                    var d = data[0];
+                    var nm = (d.place_name || '').replace(/\s*\d+호선.*$/, '').trim() || d.place_name || '';
+                    resolve({ name: nm, distance: parseInt(d.distance, 10) || 0 });
+                } else { resolve(null); }
+            }, { location: new kakao.maps.LatLng(lat, lng), radius: 2000, sort: kakao.maps.services.SortBy.DISTANCE });
+        } catch (e) { resolve(null); }
+    });
+}
+
+// 정규화된 data로 9:16 누룽지 스토리 카드 생성 (Promise<dataURL>).
+// C 미감: 따뜻한 누룽지 텍스처 배경 + 일러스트 지도 패널(핀 + 가까운 지하철역) + 정보 카드 + QR.
+// data: { title, url, lat, lng, verified, accent, icon, tags:[{t,bg,fg}],
+//         thisWeek, thisWeekBadge, schedule, fee, venue, address }
+window.generateStoryCard = function (data) {
     var W = window.STORY_CARD_W, H = window.STORY_CARD_H;
     var FONT = '"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif';
-    var DARK = '#4e342e', BROWN = '#8d6e63', YELLOW = '#fac710', BG = '#fff8e1';
+    var DARK = '#4e342e', BROWN = '#8d6e63', YELLOW = '#fac710';
+    var accent = data.accent || '#13a89e';
+    var pad = 80;
     var canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     var ctx = canvas.getContext('2d');
 
     var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     return fontsReady.catch(function () { }).then(function () {
-        return storyLoadImage('./nulloongzido logo_512px.png');
-    }).then(function (logo) {
-        // ── 배경(따뜻한 누룽지 그라데이션 + 은은한 점 패턴) ──
+        return Promise.all([
+            storyLoadImage('./nulloongzido logo_512px.png'),
+            storyFindNearestStation(data.lat, data.lng)
+        ]);
+    }).then(function (res) {
+        var logo = res[0], station = res[1];
+
+        // ── 배경: 따뜻한 누룽지 그라데이션 + 누룽지(밥알) 텍스처 ──
         var g = ctx.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, '#fffdf3'); g.addColorStop(0.55, BG); g.addColorStop(1, '#ffe9ad');
+        g.addColorStop(0, '#fff7e3'); g.addColorStop(0.5, '#ffe9b8'); g.addColorStop(1, '#f7d27e');
         ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = 'rgba(250,199,16,0.10)';
-        for (var py = 70; py < 250; py += 54) {
-            for (var px = 70; px < W; px += 54) { ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill(); }
+        var seed = 1234567;
+        function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+        var specks = ['rgba(216,164,65,0.20)', 'rgba(180,120,50,0.16)', 'rgba(255,255,255,0.22)'];
+        for (var sp = 0; sp < 520; sp++) {
+            ctx.fillStyle = specks[sp % specks.length];
+            ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, 1.5 + rnd() * 4, 0, Math.PI * 2); ctx.fill();
         }
 
-        var pad = 80;
-        // ── 상단 브랜드(로고 + 워드마크) ──
+        // ── 상단 브랜드 ──
         var brand = window.t ? window.t('brand') : '누룽지도';
-        ctx.font = '900 60px ' + FONT;
+        ctx.font = '900 58px ' + FONT;
         var brandW = ctx.measureText(brand).width;
-        var logoSize = 96, gap = 28;
-        var gx = (W - ((logo ? logoSize + gap : 0) + brandW)) / 2, gy = 116;
+        var logoSize = 92, gap = 26;
+        var gx = (W - ((logo ? logoSize + gap : 0) + brandW)) / 2, gy = 96;
         if (logo) {
             ctx.save();
             ctx.beginPath(); ctx.arc(gx + logoSize / 2, gy + logoSize / 2, logoSize / 2, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
@@ -443,100 +484,190 @@ window.generateSpotStoryCard = function (spot) {
         ctx.fillText(brand, gx, gy + logoSize / 2 + 2);
         ctx.textBaseline = 'top';
 
-        // ── 본문 카드(흰 패널) ──
-        var cardX = pad, cardY = 290, cardW = W - pad * 2, cardH = 1500 - cardY;
+        // ── 위치 패널: 일러스트 지도 + 핀 + 지하철역 ──
+        var mpX = pad, mpY = 250, mpW = W - pad * 2, mpH = 540;
+        ctx.save();
+        ctx.shadowColor = 'rgba(93,64,55,0.18)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 16;
+        ctx.fillStyle = '#fffaf0'; storyRoundRect(ctx, mpX, mpY, mpW, mpH, 44); ctx.fill();
+        ctx.restore();
+        ctx.save();
+        storyRoundRect(ctx, mpX, mpY, mpW, mpH, 44); ctx.clip();
+        // 추상 동네 블록(누룽지 톤)
+        var bseed = 99; function brnd() { bseed = (bseed * 1103515245 + 12345) & 0x7fffffff; return bseed / 0x7fffffff; }
+        for (var bx = mpX + 10; bx < mpX + mpW - 30; bx += 150) {
+            for (var by = mpY + 10; by < mpY + mpH - 70; by += 120) {
+                ctx.fillStyle = brnd() > 0.5 ? '#f1e3bf' : '#efe6cf';
+                storyRoundRect(ctx, bx + brnd() * 18, by + brnd() * 14, 84 + brnd() * 46, 60 + brnd() * 34, 12); ctx.fill();
+            }
+        }
+        // 하천 느낌
+        ctx.fillStyle = 'rgba(150,200,220,0.45)';
+        ctx.beginPath();
+        ctx.moveTo(mpX, mpY + mpH - 60);
+        ctx.bezierCurveTo(mpX + mpW * 0.3, mpY + mpH - 100, mpX + mpW * 0.6, mpY + mpH - 20, mpX + mpW, mpY + mpH - 70);
+        ctx.lineTo(mpX + mpW, mpY + mpH); ctx.lineTo(mpX, mpY + mpH); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        // 핀
+        var pinX = mpX + mpW / 2, headY = mpY + 178, R = 66;
+        ctx.fillStyle = 'rgba(0,0,0,0.10)';
+        ctx.beginPath(); ctx.ellipse(pinX, headY + 104, 46, 14, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.20)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.moveTo(pinX - 36, headY + 22); ctx.lineTo(pinX + 36, headY + 22); ctx.lineTo(pinX, headY + 100); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.arc(pinX, headY, R, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(pinX, headY, 42, 0, Math.PI * 2); ctx.fill();
+        ctx.font = '44px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(data.icon || '🏐', pinX, headY + 2);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        // 지역(상단 작게) + 지하철역/위치 칩(하단)
+        var region = storyRegion(data.address);
+        if (region) { ctx.font = '700 26px ' + FONT; ctx.fillStyle = BROWN; ctx.textAlign = 'center'; ctx.fillText('📍 ' + region, pinX, mpY + 34); ctx.textAlign = 'left'; }
+        var chipText;
+        if (station && station.name) {
+            var walk = station.distance ? Math.max(1, Math.round(station.distance / 67)) : 0;
+            chipText = '🚇 ' + station.name + (station.distance ? '  ' + station.distance + 'm · 도보 ' + walk + '분' : '');
+        } else { chipText = data.venue || region || ''; }
+        if (chipText) {
+            ctx.font = '800 34px ' + FONT;
+            var chW = Math.min(mpW - 60, ctx.measureText(chipText).width + 56), chX = mpX + (mpW - chW) / 2, chY = mpY + mpH - 94;
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.14)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+            ctx.fillStyle = '#ffffff'; storyRoundRect(ctx, chX, chY, chW, 64, 32); ctx.fill();
+            ctx.restore();
+            ctx.fillStyle = DARK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(chipText, mpX + mpW / 2, chY + 33);
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        }
+
+        // ── 정보 카드 ──
+        var cardX = pad, cardY = 830, cardW = W - pad * 2, cardH = 1500 - cardY;
         ctx.save();
         ctx.shadowColor = 'rgba(93,64,55,0.18)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 20;
-        ctx.fillStyle = '#ffffff'; storyRoundRect(ctx, cardX, cardY, cardW, cardH, 48); ctx.fill();
+        ctx.fillStyle = '#ffffff'; storyRoundRect(ctx, cardX, cardY, cardW, cardH, 44); ctx.fill();
         ctx.restore();
+        var ix = cardX + 60, iw = cardW - 120, y = cardY + 60;
 
-        var ix = cardX + 64, iw = cardW - 128, y = cardY + 76;
+        // 제목 (+ 인증 ✔)
+        ctx.fillStyle = DARK; ctx.font = '800 72px ' + FONT;
+        var titleLines = storyWrapLines(ctx, data.title || (window.t ? window.t('sh_club_fallback') : ''), iw - (data.verified ? 64 : 0), 2);
+        for (var ti = 0; ti < titleLines.length; ti++) {
+            ctx.fillText(titleLines[ti], ix, y);
+            if (ti === 0 && data.verified) {
+                var tw0 = ctx.measureText(titleLines[0]).width;
+                ctx.fillStyle = '#1DA1F2'; ctx.font = '700 46px ' + FONT; ctx.fillText('✔', ix + tw0 + 14, y + 10);
+                ctx.fillStyle = DARK; ctx.font = '800 72px ' + FONT;
+            }
+            y += 86;
+        }
+        y += 10;
 
-        // 제목
-        ctx.fillStyle = DARK; ctx.font = '800 78px ' + FONT;
-        var titleLines = storyWrapLines(ctx, spot.title || (window.t ? window.t('sh_club_fallback') : ''), iw, 3);
-        for (var ti = 0; ti < titleLines.length; ti++) { ctx.fillText(titleLines[ti], ix, y); y += 96; }
-        y += 16;
-
-        // 태그 칩(종목·레벨·초보환영·English OK)
-        var chips = [];
-        if (window.pkSportLabel) chips.push({ t: window.pkSportLabel(spot.sport), bg: YELLOW, fg: DARK });
-        if (window.pkLevelLabel) chips.push({ t: window.pkLevelLabel(spot.level), bg: '#f0ece2', fg: '#6d6258' });
-        if (spot.beginner_friendly && window.t) chips.push({ t: window.t('pk_beginner_ok'), bg: '#e7f6e7', fg: '#2e7d32' });
-        if (spot.english_ok && window.t) chips.push({ t: window.t('pk_english_ok'), bg: '#e6f0fb', fg: '#1565c0' });
-        ctx.font = '700 34px ' + FONT;
-        var chipH = 60, chipPad = 26, chipGap = 16, cx = ix, cy = y;
+        // 칩
+        var chips = data.tags || [];
+        ctx.font = '700 32px ' + FONT;
+        var chipH = 58, chipPad = 24, chipGap = 14, cx = ix, cl0 = y;
         ctx.textBaseline = 'middle';
         for (var k = 0; k < chips.length; k++) {
             var cw = ctx.measureText(chips[k].t).width + chipPad * 2;
-            if (cx + cw > ix + iw) { cx = ix; cy += chipH + chipGap; }
-            ctx.fillStyle = chips[k].bg; storyRoundRect(ctx, cx, cy, cw, chipH, chipH / 2); ctx.fill();
-            ctx.fillStyle = chips[k].fg; ctx.fillText(chips[k].t, cx + chipPad, cy + chipH / 2 + 1);
+            if (cx + cw > ix + iw) { cx = ix; cl0 += chipH + chipGap; }
+            ctx.fillStyle = chips[k].bg; storyRoundRect(ctx, cx, cl0, cw, chipH, chipH / 2); ctx.fill();
+            ctx.fillStyle = chips[k].fg; ctx.fillText(chips[k].t, cx + chipPad, cl0 + chipH / 2 + 1);
             cx += cw + chipGap;
         }
         ctx.textBaseline = 'top';
-        y = cy + chipH + 38;
+        y = cl0 + (chips.length ? chipH + 32 : 0);
 
-        // "이번주" 배너(있으면 강조)
-        if (spot.this_week && window.t) {
-            ctx.font = '700 36px ' + FONT;
-            var twLines = storyWrapLines(ctx, spot.this_week, iw - 48, 2);
-            var twBadge = window.t('pk_thisweek_badge');
-            var bannerH = 88 + twLines.length * 46 + 20;
-            ctx.fillStyle = 'rgba(250,199,16,0.22)'; storyRoundRect(ctx, ix, y, iw, bannerH, 22); ctx.fill();
-            ctx.font = '800 30px ' + FONT;
-            var badgeW = ctx.measureText(twBadge).width + 36;
-            ctx.fillStyle = YELLOW; storyRoundRect(ctx, ix + 24, y + 26, badgeW, 46, 23); ctx.fill();
-            ctx.fillStyle = DARK; ctx.textBaseline = 'middle'; ctx.fillText(twBadge, ix + 24 + 18, y + 26 + 24); ctx.textBaseline = 'top';
-            ctx.font = '700 36px ' + FONT; ctx.fillStyle = DARK;
-            var lineY = y + 88;
-            for (var bi = 0; bi < twLines.length; bi++) { ctx.fillText(twLines[bi], ix + 24, lineY); lineY += 46; }
-            y += bannerH + 34;
+        // 이번주 배너
+        if (data.thisWeek) {
+            ctx.font = '700 34px ' + FONT;
+            var twLines = storyWrapLines(ctx, data.thisWeek, iw - 48, 2);
+            var twBadge = data.thisWeekBadge || (window.t ? window.t('pk_thisweek_badge') : '이번주');
+            var bannerH = 84 + twLines.length * 44 + 18;
+            ctx.fillStyle = 'rgba(250,199,16,0.22)'; storyRoundRect(ctx, ix, y, iw, bannerH, 20); ctx.fill();
+            ctx.font = '800 28px ' + FONT;
+            var badgeW = ctx.measureText(twBadge).width + 32;
+            ctx.fillStyle = YELLOW; storyRoundRect(ctx, ix + 22, y + 22, badgeW, 44, 22); ctx.fill();
+            ctx.fillStyle = DARK; ctx.textBaseline = 'middle'; ctx.fillText(twBadge, ix + 22 + 16, y + 22 + 23); ctx.textBaseline = 'top';
+            ctx.font = '700 34px ' + FONT; ctx.fillStyle = DARK;
+            var ly = y + 84;
+            for (var bi = 0; bi < twLines.length; bi++) { ctx.fillText(twLines[bi], ix + 22, ly); ly += 44; }
+            y += bannerH + 30;
         }
 
-        // 정보 행: 일정 / 게임비 / 장소
-        ctx.font = '600 40px ' + FONT;
+        // 정보 행
+        ctx.font = '600 38px ' + FONT;
         function infoRow(icon, text, maxLines) {
             if (!text) return;
             ctx.fillStyle = DARK; ctx.fillText(icon, ix, y);
-            var lines = storyWrapLines(ctx, text, iw - 66, maxLines || 2);
-            for (var li = 0; li < lines.length; li++) { ctx.fillText(lines[li], ix + 66, y); y += 52; }
-            y += 14;
+            var lines = storyWrapLines(ctx, text, iw - 62, maxLines || 2);
+            for (var li = 0; li < lines.length; li++) { ctx.fillText(lines[li], ix + 62, y); y += 50; }
+            y += 12;
         }
-        infoRow('🗓', spot.schedule || spot.schedule_text, 2);
-        infoRow('💰', spot.fee_info, 1);
-        infoRow('📍', spot.venue_name || spot.address, 2);
+        infoRow('🗓', data.schedule, 2);
+        infoRow('💰', data.fee, 1);
+        infoRow('📍', data.venue ? (data.venue + (data.address ? ' · ' + data.address : '')) : data.address, 2);
 
-        // ── 하단: QR + CTA(탭/스캔하면 누룽지도에서 열림) ──
-        var url = window.buildSpotShareUrl(spot.id);
-        var footY = 1540, footH = 300, qrSize = 260;
+        // ── 푸터: QR + CTA ──
+        var url = data.url;
+        var footY = 1545, footH = 300, qrSize = 250;
         var qrX = pad, qrY = footY + (footH - qrSize) / 2;
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.12)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8;
         ctx.fillStyle = '#fff'; storyRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 24); ctx.fill();
         ctx.restore();
         var haveQR = storyDrawQR(ctx, url, qrX, qrY, qrSize);
-        if (!haveQR) {  // QR 라이브러리 미로드 시 자리표시
-            ctx.fillStyle = BROWN; ctx.font = '700 28px ' + FONT; ctx.textBaseline = 'middle';
-            ctx.fillText(brand, qrX + 8, qrY + qrSize / 2); ctx.textBaseline = 'top';
-        }
-        var tx = qrX + qrSize + 60, tw = W - pad - tx;
-        ctx.fillStyle = DARK; ctx.font = '800 50px ' + FONT;
-        var ctaLines = storyWrapLines(ctx, window.t ? window.t('sh_card_cta') : '', tw, 2);
-        var cyy = footY + 64;
-        for (var cl = 0; cl < ctaLines.length; cl++) { ctx.fillText(ctaLines[cl], tx, cyy); cyy += 58; }
-        ctx.fillStyle = BROWN; ctx.font = '600 30px ' + FONT;
-        var urlLines = storyWrapLines(ctx, url.replace(/^https?:\/\//, ''), tw, 2);
-        cyy += 10;
-        for (var ul = 0; ul < urlLines.length; ul++) { ctx.fillText(urlLines[ul], tx, cyy); cyy += 38; }
+        if (!haveQR) { ctx.fillStyle = BROWN; ctx.font = '700 26px ' + FONT; ctx.textBaseline = 'middle'; ctx.fillText(brand, qrX + 8, qrY + qrSize / 2); ctx.textBaseline = 'top'; }
+        var tx = qrX + qrSize + 56, twf = W - pad - tx;
+        ctx.fillStyle = DARK; ctx.font = '800 48px ' + FONT;
+        var ctaLines = storyWrapLines(ctx, window.t ? window.t('sh_card_cta') : '', twf, 2);
+        var fy = footY + 60;
+        for (var cl = 0; cl < ctaLines.length; cl++) { ctx.fillText(ctaLines[cl], tx, fy); fy += 56; }
+        ctx.fillStyle = BROWN; ctx.font = '600 28px ' + FONT;
+        var urlLines = storyWrapLines(ctx, String(url).replace(/^https?:\/\//, ''), twf, 2);
+        fy += 8;
+        for (var ul = 0; ul < urlLines.length; ul++) { ctx.fillText(urlLines[ul], tx, fy); fy += 36; }
 
         ctx.textBaseline = 'alphabetic';
         return canvas.toDataURL('image/png');
     });
 };
 
+// 픽업 스팟 → 카드 data 정규화
+function storySpotData(spot) {
+    var tags = [];
+    if (window.pkSportLabel) tags.push({ t: window.pkSportLabel(spot.sport), bg: '#fac710', fg: '#4e342e' });
+    if (window.pkLevelLabel) tags.push({ t: window.pkLevelLabel(spot.level), bg: '#f0ece2', fg: '#6d6258' });
+    if (spot.beginner_friendly && window.t) tags.push({ t: window.t('pk_beginner_ok'), bg: '#e7f6e7', fg: '#2e7d32' });
+    if (spot.english_ok && window.t) tags.push({ t: window.t('pk_english_ok'), bg: '#e6f0fb', fg: '#1565c0' });
+    return {
+        title: spot.title, url: window.buildSpotShareUrl(spot.id),
+        lat: spot.lat, lng: spot.lng, accent: '#13a89e', icon: '🏐',
+        tags: tags, thisWeek: spot.this_week,
+        schedule: spot.schedule || spot.schedule_text, fee: spot.fee_info,
+        venue: spot.venue_name, address: spot.address
+    };
+}
+
+// 동호회 → 카드 data 정규화
+function storyClubData(club) {
+    var tags = [];
+    var tgt = (club.target || '').split(/[,\s]+/).filter(function (x) { return x; });
+    for (var i = 0; i < tgt.length && i < 4; i++) tags.push({ t: tgt[i], bg: '#f0ece2', fg: '#6d6258' });
+    return {
+        title: club.name, url: window.buildClubShareUrl(club.id),
+        lat: club.lat, lng: club.lng, accent: '#fac710', icon: '🏐',
+        verified: !!club.is_verified, tags: tags,
+        schedule: club.schedule, fee: club.price,
+        venue: '', address: club.address
+    };
+}
+
+window.generateSpotStoryCard = function (spot) { return window.generateStoryCard(storySpotData(spot)); };
+window.generateClubStoryCard = function (club) { return window.generateStoryCard(storyClubData(club)); };
+
 // 카드 미리보기 오버레이(브라우저 폴백) — 기존 previewOverlay/저장 버튼 재사용.
-function showSpotCardPreview(dataUrl) {
+function showStoryCardPreview(dataUrl) {
     var previewBox = document.getElementById('previewImgBox');
     var overlay = document.getElementById('previewOverlay');
     if (!previewBox || !overlay) {  // 오버레이가 없으면 바로 다운로드
@@ -554,30 +685,48 @@ function showSpotCardPreview(dataUrl) {
     overlay.style.display = 'flex';
 }
 
+// 공통: 카드 PNG를 셸이면 네이티브 IG 스토리로, 아니면 미리보기로. method 문자열 반환.
+// 웹↔Flutter 계약 JSON: { type:'ig_story', stickerImage:'data:image/png;base64,…',
+//   contentUrl:'…?spot=ID 또는 ?club=ID', topColor:'#fff8e1', bottomColor:'#fac710' }
+function shareStory(dataUrl, contentUrl, idObj) {
+    var bridge = window.NativeShare && typeof window.NativeShare.postMessage === 'function';
+    var method = bridge ? 'ig_story' : 'story_card';
+    if (bridge) {
+        window.NativeShare.postMessage(JSON.stringify({
+            type: 'ig_story', stickerImage: dataUrl, contentUrl: contentUrl,
+            topColor: '#fff8e1', bottomColor: '#fac710'
+        }));
+    } else {
+        showStoryCardPreview(dataUrl);
+    }
+    if (window.track) {
+        var p = { method: method };
+        for (var kk in idObj) { if (Object.prototype.hasOwnProperty.call(idObj, kk)) p[kk] = idObj[kk]; }
+        window.track('share', p);
+    }
+    return method;
+}
+
 // 픽업 스팟을 인스타 스토리로 공유. 셸이면 네이티브 IG, 아니면 카드 미리보기 폴백.
-// 웹↔Flutter 계약 JSON(양쪽이 맞춰야 함):
-//   { type:'ig_story', stickerImage:'data:image/png;base64,…', contentUrl:'…?spot=ID',
-//     topColor:'#fff8e1', bottomColor:'#fac710' }
 window.shareSpotToStory = function (spot) {
     if (!spot || !spot.id) return Promise.resolve();
     return window.generateSpotStoryCard(spot).then(function (dataUrl) {
-        if (window.NativeShare && typeof window.NativeShare.postMessage === 'function') {
-            window.NativeShare.postMessage(JSON.stringify({
-                type: 'ig_story',
-                stickerImage: dataUrl,
-                contentUrl: window.buildSpotShareUrl(spot.id),
-                topColor: '#fff8e1',
-                bottomColor: '#fac710'
-            }));
-            if (window.track) window.track('share', { method: 'ig_story', spot_id: spot.id });
-            return 'ig_story';
-        }
-        showSpotCardPreview(dataUrl);
-        if (window.track) window.track('share', { method: 'story_card', spot_id: spot.id });
-        return 'story_card';
+        return shareStory(dataUrl, window.buildSpotShareUrl(spot.id), { spot_id: spot.id });
     }).catch(function (e) {
         console.error('스토리 카드 공유 실패, 기본 공유로 폴백:', e);
         if (window.sharePickup) window.sharePickup(spot);
+        return 'fallback';
+    });
+};
+
+// 동호회를 인스타 스토리로 공유.
+window.shareClubToStory = function (club) {
+    if (!club || !club.id) return Promise.resolve();
+    return window.generateClubStoryCard(club).then(function (dataUrl) {
+        return shareStory(dataUrl, window.buildClubShareUrl(club.id), { club_id: club.id });
+    }).catch(function (e) {
+        console.error('스토리 카드 공유 실패, 기본 공유로 폴백:', e);
+        if (window.shareClub) window.shareClub(club);
         return 'fallback';
     });
 };

@@ -188,3 +188,42 @@ describe('shareSpotToStory — 브라우저 폴백', () => {
         // throw 없이 통과하면 OK
     });
 });
+
+const CLUB = {
+    id: 'GVT123', name: 'GVT 배구클럽', target: '성인, 대학생', is_verified: true,
+    schedule: '화·목 19:00~22:00', price: '월 3만원 / 게스트 1만원',
+    address: '서울 송파구 올림픽로 25', lat: 37.51, lng: 127.10
+};
+
+describe('동호회 스토리 카드 (공용 generateStoryCard)', () => {
+    test('generateClubStoryCard → PNG dataURL', async () => {
+        const { window } = loadShare({ withQR: true });
+        const url = await window.generateClubStoryCard(CLUB);
+        assert.ok(url.startsWith('data:image/png'));
+    });
+
+    test('shareClubToStory 브리지 → ?club= 딥링크 계약 + club_id 계측', async () => {
+        const { window, tracks } = loadShare({ withQR: true, nativeShare: true });
+        const result = await window.shareClubToStory(CLUB);
+        assert.strictEqual(result, 'ig_story');
+        const payload = JSON.parse(window.posted[0]);
+        assert.strictEqual(payload.type, 'ig_story');
+        assert.strictEqual(payload.contentUrl, 'https://nulloongzi.github.io/null_oongzi-do/?club=GVT123');
+        assert.ok(payload.stickerImage.startsWith('data:image/png'));
+        const ev = tracks.find(t => t.name === 'share');
+        assert.ok(ev && ev.params.method === 'ig_story' && ev.params.club_id === 'GVT123');
+    });
+
+    test('브리지 없으면 카드 미리보기 폴백', async () => {
+        const { window, els } = loadShare({ withQR: true });
+        const result = await window.shareClubToStory(CLUB);
+        assert.strictEqual(result, 'story_card');
+        assert.strictEqual(els.previewOverlay.style.display, 'flex');
+    });
+
+    test('club/ id 없으면 안전하게 무시', async () => {
+        const { window } = loadShare();
+        await window.shareClubToStory(null);
+        await window.shareClubToStory({ name: 'no id' });
+    });
+});
