@@ -937,4 +937,41 @@ exports.geocodeAddress = onCall(
     }
 );
 
+// ══════════════════════════════════════════════════════════
+// 좌표 → 가까운 지하철역 (카카오 로컬 SW8). 스토리 카드 enrich용.
+// 기존 KAKAO_REST_API_KEY 재사용 (앱의 카카오맵 'Local' API 활성화 필요).
+// 결과 없거나 오류면 {name:null} → 카드는 지역 라벨로 폴백.
+// ══════════════════════════════════════════════════════════
+exports.nearestStation = onCall(
+    { secrets: [KAKAO_REST_API_KEY] },
+    async function (request) {
+        if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+        var lat = request.data && request.data.lat;
+        var lng = request.data && request.data.lng;
+        if (typeof lat !== "number" || typeof lng !== "number") {
+            throw new HttpsError("invalid-argument", "좌표가 필요합니다.");
+        }
+        try {
+            var url = "https://dapi.kakao.com/v2/local/search/category.json"
+                + "?category_group_code=SW8&radius=2000&sort=distance&size=1"
+                + "&x=" + encodeURIComponent(lng) + "&y=" + encodeURIComponent(lat);
+            var res = await fetch(url, {
+                headers: { Authorization: "KakaoAK " + KAKAO_REST_API_KEY.value() }
+            });
+            if (!res.ok) return { name: null, distance: null };
+            var data = await res.json();
+            if (data && data.documents && data.documents.length > 0) {
+                var d = data.documents[0];
+                var nm = (d.place_name || "").replace(/\s*\d+호선.*$/, "").trim()
+                    || d.place_name || "";
+                return { name: nm, distance: parseInt(d.distance, 10) || 0 };
+            }
+            return { name: null, distance: null };
+        } catch (e) {
+            console.error("nearestStation error:", e && e.message);
+            return { name: null, distance: null };
+        }
+    }
+);
+
 
