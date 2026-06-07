@@ -42,6 +42,7 @@ service cloud.firestore {
           && (!('contact_link' in d) || (d.contact_link is string && d.contact_link.size() <= 500))
           && (!('this_week' in d) || (d.this_week is string && d.this_week.size() <= 200))
           && (!('notes' in d) || (d.notes is string && d.notes.size() <= 600))
+          && (!('expire_at' in d) || d.expire_at == null || d.expire_at is timestamp)
           && (!('coordinates' in d) || (d.coordinates is map
                 && d.coordinates.lat is number && d.coordinates.lng is number));
     }

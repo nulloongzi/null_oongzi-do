@@ -357,3 +357,52 @@ describe('verification_requests 룰 (기존 룰, 회귀 방지)', () => {
         }));
     });
 });
+
+describe('pickup_games 룰 (B: expire_at 검증 + 누구나/익명 등록 + 모더레이션 삭제)', () => {
+    const validSpot = (owner, over = {}) => Object.assign({
+        owner_uid: owner,
+        title: '잠실 토요 6인제 픽업',
+        sport: '6s', level: 'any', beginner_friendly: true, english_ok: true,
+        venue_name: '잠실', address: '서울 송파구',
+        coordinates: { lat: 37.5, lng: 127.0 },
+        schedule: '토 19:00~22:00', schedule_raw: [], schedule_text: '',
+        fee_info: '', contact_link: '', this_week: '', notes: '',
+        expire_at: new Date(Date.now() + 30 * 86400000)   // 30일 후 (timestamp)
+    }, over);
+
+    test('owner_uid=self + expire_at(timestamp) 등록 통과', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-ok').set(validSpot('pk-owner')));
+    });
+
+    test('expire_at=null(상시) 등록 통과', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-null').set(validSpot('pk-owner', { expire_at: null })));
+    });
+
+    test('expire_at이 문자열이면 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-badexp').set(validSpot('pk-owner', { expire_at: '내일' })));
+    });
+
+    test('타인 owner_uid 등록 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-badowner').set(validSpot('someone-else')));
+    });
+
+    test('관리자는 타인 스팟 삭제 가능 (모더레이션)', async () => {
+        await testEnv.withSecurityRulesDisabled(async (sctx) => {
+            await sctx.firestore().collection('pickup_games').doc('pk-mod').set(validSpot('pk-owner'));
+        });
+        const db = testEnv.authenticatedContext('admin-uid').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-mod').delete());
+    });
+
+    test('비소유자·비관리자 삭제 거부', async () => {
+        await testEnv.withSecurityRulesDisabled(async (sctx) => {
+            await sctx.firestore().collection('pickup_games').doc('pk-del').set(validSpot('pk-owner'));
+        });
+        const db = testEnv.authenticatedContext('stranger').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-del').delete());
+    });
+});

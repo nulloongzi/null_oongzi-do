@@ -20,9 +20,15 @@
         return window.firebaseDB.collection('pickup_games').get()
             .then(function (snap) {
                 var spots = [];
+                var now = Date.now();
                 snap.docs.forEach(function (doc) {
                     var d = doc.data();
                     d.id = doc.id;
+                    // 유효기간(B): 만료된 스팟은 숨김 (TTL 하드삭제 전이라도)
+                    if (d.expire_at) {
+                        var exp = window.toJsDate(d.expire_at);
+                        if (exp && exp.getTime() < now) return;
+                    }
                     if (d.coordinates) { d.lat = d.coordinates.lat; d.lng = d.coordinates.lng; }
                     spots.push(d);
                 });
@@ -79,7 +85,8 @@
             contact_link: data.contact_link || '',     // 들어가는 문: 단톡/Meetup/IG
             this_week: data.this_week || '',           // 이번주 메모 (가벼운 시한 공지)
             insta_reel: data.insta_reel || '',         // 공개 릴스/게시물 임베드(A) — permalink
-            notes: data.notes || ''
+            notes: data.notes || '',
+            expire_at: data.expire_at || null          // 유효기간(B): 지나면 자동 숨김 + Firestore TTL 하드삭제
         };
     }
 

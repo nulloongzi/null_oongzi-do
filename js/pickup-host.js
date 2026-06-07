@@ -16,6 +16,22 @@
     function setVal(id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); }
     function getVal(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
+    // 유효기간 프리셋 → Date|null (B: 자동 만료)
+    function computeExpireAt(preset) {
+        var now = new Date();
+        if (preset === 'always') return null;
+        if (preset === 'weekend') {
+            var s = new Date(now); var day = s.getDay();          // 0=일
+            s.setDate(s.getDate() + (day === 0 ? 0 : 7 - day));   // 다가오는 일요일
+            s.setHours(23, 59, 59, 0);
+            if (s.getTime() < now.getTime()) s.setDate(s.getDate() + 7);
+            return s;
+        }
+        var m = new Date(now);
+        m.setMonth(m.getMonth() + (preset === '3m' ? 3 : 1));     // 기본 1개월
+        return m;
+    }
+
     var TEXT_FIELDS = ['pkTitle', 'pkVenue', 'pkAddress', 'pkSchedule', 'pkThisWeek', 'pkFee', 'pkContact', 'pkNotes', 'pkReel'];
 
     window.openPickupCreateModal = function () {
@@ -25,6 +41,7 @@
         TEXT_FIELDS.forEach(function (id) { setVal(id, ''); });
         selectChipByVal('pkSportChips', '6s');
         selectChipByVal('pkLevelChips', 'any');
+        selectChipByVal('pkExpireChips', '1m');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.remove('selected');
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.remove('selected');
         window.selectedCoords = null;
@@ -49,6 +66,7 @@
         setVal('pkReel', spot.insta_reel);
         selectChipByVal('pkSportChips', spot.sport || '6s');
         selectChipByVal('pkLevelChips', spot.level || 'any');
+        selectChipByVal('pkExpireChips', spot.expire_at ? '1m' : 'always');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.toggle('selected', !!spot.english_ok);
         window.selectedCoords = null;
@@ -131,7 +149,8 @@
             contact_link: contact,
             this_week: getVal('pkThisWeek'),
             insta_reel: reel,
-            notes: getVal('pkNotes')
+            notes: getVal('pkNotes'),
+            expire_at: computeExpireAt(selectedVal('pkExpireChips', '1m'))
         };
 
         var btn = document.getElementById('pkSubmitBtn');
