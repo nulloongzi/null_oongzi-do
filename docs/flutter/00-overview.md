@@ -16,6 +16,9 @@
 | [07-share](./07-share.md) | 포장하기/스토리 카드, 카카오/IG 공유, 딥링크 | `share.js`, `insta-embed.js` |
 | [08-pickup](./08-pickup.md) | 픽업 탭, 픽업 데이터/마커/리스트/상세/호스트 | `pickup-*.js`, `tabs.js` |
 | [09-i18n](./09-i18n.md) | 다국어, 언어 토글, 데이터 변환 | `i18n.js`, `app.js`(부트) |
+| [10-instagram-flywheel](./10-instagram-flywheel.md) | **인스타 친화 전략(발견↔공유 플라이휠)** — 차별점 | `share.js`, `insta-embed.js` |
+
+> ⭐ **먼저 읽기**: [10-instagram-flywheel](./10-instagram-flywheel.md) 은 이 앱을 다른 배구 플랫폼과 가르는 핵심 전략이다. 공유·임베드·딥링크 기능들이 *왜* 그렇게 설계됐는지의 배경이므로, 관련 기능을 포팅하기 전에 본다.
 
 ---
 
