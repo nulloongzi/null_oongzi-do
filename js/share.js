@@ -731,6 +731,48 @@ window.shareClubToStory = function (club) {
     });
 };
 
+// 링크를 조용히 클립보드에 복사 (IG에서 '링크 스티커'로 붙여넣기 쉽게). alert 없음.
+function storyCopyLink(url) {
+    try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).catch(function () { try { fallbackCopy(url); } catch (e) { } });
+        } else { fallbackCopy(url); }
+    } catch (e) { try { fallbackCopy(url); } catch (e2) { } }
+}
+
+// 첫 1회 "링크 스티커" 코치 후 스토리 공유.
+// IG는 외부 앱이 탭 링크를 자동 삽입하는 걸 막으므로, 올린 사람이 '링크 스티커'를
+// 붙이면 보는 사람이 탭 1번에 입장 가능 → 그 마찰을 (링크 자동복사 + 1회 안내)로 최소화.
+function startStoryShare(kind, item, url) {
+    storyCopyLink(url);
+    var go = function () {
+        if (kind === 'club') { if (window.shareClubToStory) window.shareClubToStory(item); }
+        else { if (window.shareSpotToStory) window.shareSpotToStory(item); }
+    };
+    var coached = false;
+    try { coached = (typeof localStorage !== 'undefined') && localStorage.getItem('nurungji_story_coach'); } catch (e) { }
+    if (coached) { go(); return; }
+    showStoryCoach(go);
+}
+
+function showStoryCoach(onGo) {
+    var T = window.t || function (k, f) { return f || k; };
+    var ov = document.createElement('div');
+    ov.className = 'share-menu-overlay';
+    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    var box = document.createElement('div');
+    box.className = 'share-menu';
+    var h = document.createElement('div'); h.className = 'share-menu-title'; h.textContent = T('sh_coach_title'); box.appendChild(h);
+    var steps = document.createElement('div'); steps.className = 'story-coach-steps'; steps.textContent = T('sh_coach_steps'); box.appendChild(steps);
+    var go = document.createElement('button'); go.className = 'share-menu-item primary'; go.textContent = T('sh_coach_go');
+    go.onclick = function () { try { if (typeof localStorage !== 'undefined') localStorage.setItem('nurungji_story_coach', '1'); } catch (e) { } close(); onGo(); };
+    box.appendChild(go);
+    var skip = document.createElement('button'); skip.className = 'share-menu-cancel'; skip.textContent = T('sh_menu_cancel'); skip.onclick = close; box.appendChild(skip);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+}
+
 // 통합 공유 메뉴(바텀 액션시트): 인스타 스토리 / 카카오톡 / 링크복사 / 다른앱.
 // kind: 'club' | 'spot', item: 해당 객체.
 window.openShareMenu = function (kind, item) {
@@ -758,11 +800,13 @@ window.openShareMenu = function (kind, item) {
         b.onclick = function () { close(); fn(); };
         menu.appendChild(b);
     }
-    // 📸 인스타 스토리 (헤드라인)
-    addItem(T('sh_menu_story'), true, function () {
-        if (isClub) { if (window.shareClubToStory) window.shareClubToStory(item); }
-        else { if (window.shareSpotToStory) window.shareSpotToStory(item); }
-    });
+    // 📸 인스타 스토리 (헤드라인) + 링크스티커 힌트
+    var storyBtn = document.createElement('button');
+    storyBtn.className = 'share-menu-item primary';
+    var sLabel = document.createElement('div'); sLabel.textContent = T('sh_menu_story'); storyBtn.appendChild(sLabel);
+    var sHint = document.createElement('div'); sHint.className = 'share-menu-hint'; sHint.textContent = T('sh_menu_story_hint'); storyBtn.appendChild(sHint);
+    storyBtn.onclick = function () { close(); startStoryShare(kind, item, url); };
+    menu.appendChild(storyBtn);
     // 💬 카카오톡 (기존 카카오 우선 폴백 체인)
     addItem(T('sh_menu_kakao'), false, function () {
         if (isClub) { if (window.shareClub) window.shareClub(item); }

@@ -159,6 +159,10 @@
         sh_menu_copy: { ko: '🔗 링크 복사', en: '🔗 Copy link' },
         sh_menu_more: { ko: '📤 다른 앱으로 (DM 등)', en: '📤 More apps (DM, etc.)' },
         sh_menu_cancel: { ko: '닫기', en: 'Close' },
+        sh_menu_story_hint: { ko: '올린 뒤 링크 스티커로 붙여넣기 → 탭 1번 진입', en: 'Paste as a link sticker after posting → 1-tap entry' },
+        sh_coach_title: { ko: '보는 사람이 한 번에 들어오게 하려면', en: 'Let viewers in with one tap' },
+        sh_coach_steps: { ko: '① 스토리 편집에서 [스티커] → [링크]\n② 붙여넣기 (링크가 복사됐어요!)\n③ 끝 — 보는 사람은 스티커 탭 한 번으로 입장', en: '① In the editor: [Sticker] → [Link]\n② Paste (link is copied!)\n③ Done — viewers tap the sticker to enter' },
+        sh_coach_go: { ko: '📸 인스타로 공유하기', en: '📸 Share to Instagram' },
 
         // 주소 복사
         addr_copied: { ko: '주소가 복사되었습니다! 📋', en: 'Address copied! 📋' },
