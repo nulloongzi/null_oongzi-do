@@ -730,3 +730,62 @@ window.shareClubToStory = function (club) {
         return 'fallback';
     });
 };
+
+// 통합 공유 메뉴(바텀 액션시트): 인스타 스토리 / 카카오톡 / 링크복사 / 다른앱.
+// kind: 'club' | 'spot', item: 해당 객체.
+window.openShareMenu = function (kind, item) {
+    if (!item || !item.id) return;
+    var T = window.t || function (k, f) { return f || k; };
+    var isClub = (kind === 'club');
+    var url = isClub ? window.buildClubShareUrl(item.id) : window.buildSpotShareUrl(item.id);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'share-menu-overlay';
+    function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    var menu = document.createElement('div');
+    menu.className = 'share-menu';
+    var title = document.createElement('div');
+    title.className = 'share-menu-title';
+    title.textContent = T('sh_menu_title');
+    menu.appendChild(title);
+
+    function addItem(label, primary, fn) {
+        var b = document.createElement('button');
+        b.className = 'share-menu-item' + (primary ? ' primary' : '');
+        b.textContent = label;
+        b.onclick = function () { close(); fn(); };
+        menu.appendChild(b);
+    }
+    // 📸 인스타 스토리 (헤드라인)
+    addItem(T('sh_menu_story'), true, function () {
+        if (isClub) { if (window.shareClubToStory) window.shareClubToStory(item); }
+        else { if (window.shareSpotToStory) window.shareSpotToStory(item); }
+    });
+    // 💬 카카오톡 (기존 카카오 우선 폴백 체인)
+    addItem(T('sh_menu_kakao'), false, function () {
+        if (isClub) { if (window.shareClub) window.shareClub(item); }
+        else { if (window.sharePickup) window.sharePickup(item); }
+    });
+    // 🔗 링크 복사
+    addItem(T('sh_menu_copy'), false, function () {
+        copyShareLink(url);
+        if (window.track) window.track('share', { method: 'copy', kind: kind });
+    });
+    // 📤 다른 앱(DM 등) — OS 공유시트
+    if (navigator.share) {
+        addItem(T('sh_menu_more'), false, function () {
+            navigator.share({ url: url, title: item.title || item.name || T('brand') }).catch(function () { });
+            if (window.track) window.track('share', { method: 'os_sheet', kind: kind });
+        });
+    }
+    var cancel = document.createElement('button');
+    cancel.className = 'share-menu-cancel';
+    cancel.textContent = T('sh_menu_cancel');
+    cancel.onclick = close;
+    menu.appendChild(cancel);
+
+    overlay.appendChild(menu);
+    document.body.appendChild(overlay);
+};

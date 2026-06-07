@@ -421,15 +421,10 @@ window.openClubDetail = function (id, opts) {
         btnBookmark.onclick = function () { if (window.bookmarkTeam) window.bookmarkTeam(club.id); };
     }
 
-    // Share button
+    // Share button → 통합 공유 메뉴 (인스타 스토리 / 카카오톡 / 링크)
     var btnShareClub = document.getElementById('btnShareClub');
     if (btnShareClub) {
-        btnShareClub.onclick = function () { if (window.shareClub) window.shareClub(club); };
-    }
-    // 스토리 카드 (셸이면 네이티브 IG, 브라우저면 카드 미리보기)
-    var btnStoryClub = document.getElementById('btnStoryClub');
-    if (btnStoryClub) {
-        btnStoryClub.onclick = function () { if (window.shareClubToStory) window.shareClubToStory(club); };
+        btnShareClub.onclick = function () { if (window.openShareMenu) window.openShareMenu('club', club); };
     }
 
     // 주소창을 공유 가능한 딥링크로 동기화
