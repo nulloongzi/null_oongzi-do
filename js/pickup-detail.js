@@ -110,15 +110,10 @@
             c.appendChild(wrap);
         }
 
-        // 공유 (?spot= 딥링크): 📸 스토리 카드(셸이면 네이티브 IG) + 🔗 링크 공유
-        var shareRow = el('div', 'ps-share-row');
-        var storyBtn = el('button', 'ps-share-story-btn', t('pk_share_story'));
-        storyBtn.onclick = function () { if (window.shareSpotToStory) window.shareSpotToStory(spot); };
-        shareRow.appendChild(storyBtn);
+        // 공유 → 통합 메뉴 (인스타 스토리 / 카카오톡 / 링크)
         var shareBtn = el('button', 'ps-share-btn', t('btn_share'));
-        shareBtn.onclick = function () { if (window.sharePickup) window.sharePickup(spot); };
-        shareRow.appendChild(shareBtn);
-        c.appendChild(shareRow);
+        shareBtn.onclick = function () { if (window.openShareMenu) window.openShareMenu('spot', spot); };
+        c.appendChild(shareBtn);
 
         // 메모
         if (spot.notes) c.appendChild(el('div', 'ps-notes', spot.notes));

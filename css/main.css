@@ -2620,6 +2620,78 @@
             margin-bottom: 12px;
         }
 
+        /* 통합 공유 메뉴 (바텀 액션시트) */
+        .share-menu-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 100000;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .share-menu {
+            width: 100%;
+            max-width: 480px;
+            background: #fff;
+            border-radius: 24px 24px 0 0;
+            padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+            animation: shareMenuUp 0.2s ease;
+        }
+
+        @keyframes shareMenuUp {
+            from { transform: translateY(24px); opacity: 0.5; }
+            to { transform: none; opacity: 1; }
+        }
+
+        .share-menu-title {
+            text-align: center;
+            font-weight: 800;
+            color: var(--nurungji-dark);
+            padding: 6px 0 12px;
+            font-size: 15px;
+        }
+
+        .share-menu-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: #f7f5ef;
+            color: var(--nurungji-dark);
+            border: none;
+            border-radius: 14px;
+            padding: 16px 18px;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: transform 0.12s;
+        }
+
+        .share-menu-item.primary {
+            background: var(--nurungji-yellow);
+            font-weight: 800;
+        }
+
+        .share-menu-item:active {
+            transform: scale(0.99);
+        }
+
+        .share-menu-cancel {
+            display: block;
+            width: 100%;
+            background: none;
+            border: none;
+            color: #999;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 2px;
+        }
+
         /* 📸 스토리 카드 버튼 (클럽 상세, 액션버튼 아래 전체폭 · 누룽지 옐로) */
         .btn-story-card {
             display: block;

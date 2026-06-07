@@ -153,6 +153,12 @@
         sh_view_on: { ko: '누룽지도에서 보기', en: 'View on Nulloongzi-do' },
         sh_view_club_btn: { ko: '동호회 보기', en: 'View club' },
         sh_card_cta: { ko: 'QR 찍으면 누룽지도에서 열려요', en: 'Scan to open in Nulloongzi-do' },
+        sh_menu_title: { ko: '공유 방법 선택', en: 'Share via' },
+        sh_menu_story: { ko: '📸 인스타 스토리', en: '📸 Instagram Story' },
+        sh_menu_kakao: { ko: '💬 카카오톡', en: '💬 KakaoTalk' },
+        sh_menu_copy: { ko: '🔗 링크 복사', en: '🔗 Copy link' },
+        sh_menu_more: { ko: '📤 다른 앱으로 (DM 등)', en: '📤 More apps (DM, etc.)' },
+        sh_menu_cancel: { ko: '닫기', en: 'Close' },
 
         // 주소 복사
         addr_copied: { ko: '주소가 복사되었습니다! 📋', en: 'Address copied! 📋' },
