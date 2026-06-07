@@ -2675,6 +2675,21 @@
             font-weight: 800;
         }
 
+        .share-menu-hint {
+            font-size: 12px;
+            font-weight: 600;
+            color: #7a5a14;
+            margin-top: 4px;
+        }
+
+        .story-coach-steps {
+            white-space: pre-line;
+            color: var(--nurungji-dark);
+            font-size: 14.5px;
+            line-height: 1.8;
+            padding: 2px 6px 14px;
+        }
+
         .share-menu-item:active {
             transform: scale(0.99);
         }
