@@ -12,6 +12,9 @@ var KAKAO_REFRESH_TOKEN = defineSecret("KAKAO_REFRESH_TOKEN");
 var KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
 var KAKAO_CLIENT_SECRET = defineSecret("KAKAO_CLIENT_SECRET");
 var APP_SECRET = defineSecret("WEBHOOK_SECRET");
+// 네이버 클라우드 Maps(지오코딩) 인증 — 시크릿은 서버측만(앱에 노출 금지).
+var NAVER_MAP_CLIENT_ID = defineSecret("NAVER_MAP_CLIENT_ID");
+var NAVER_MAP_CLIENT_SECRET = defineSecret("NAVER_MAP_CLIENT_SECRET");
 
 // ══════════════════════════════════════════════════════════
 // 챗봇 관리자 인증: /admin_kakao_ids/{kakao_user_id} 문서 존재 여부
@@ -870,5 +873,68 @@ exports.migrateUsersPrivate = onCall({ timeoutSeconds: 540 }, async function (re
     console.log("migrateUsersPrivate 결과:", stats, "dryRun:", dryRun);
     return { ok: true, dryRun: dryRun, stats: stats };
 });
+
+// ══════════════════════════════════════════════════════════
+// 주소 → 좌표 (네이버 클라우드 Maps 지오코딩). 시크릿 서버측 보관.
+// 네이티브 등록 폼의 "주소로 검색"이 호출. (구/신 엔드포인트 폴백)
+// 시크릿 설정:
+//   firebase functions:secrets:set NAVER_MAP_CLIENT_ID      (예: t4mzao93mh)
+//   firebase functions:secrets:set NAVER_MAP_CLIENT_SECRET  (NCP 콘솔 Maps 앱의 Client Secret)
+// 콘솔에서 해당 앱에 'Geocoding' 서비스가 활성화돼 있어야 함.
+// ══════════════════════════════════════════════════════════
+exports.geocodeAddress = onCall(
+    { secrets: [NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET] },
+    async function (request) {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+        }
+        var address = ((request.data && request.data.address) || "").toString().trim();
+        if (!address) {
+            throw new HttpsError("invalid-argument", "주소가 비었습니다.");
+        }
+        if (address.length > 200) {
+            throw new HttpsError("invalid-argument", "주소가 너무 깁니다.");
+        }
+
+        var keyId = NAVER_MAP_CLIENT_ID.value();
+        var key = NAVER_MAP_CLIENT_SECRET.value();
+        if (!keyId || !key) {
+            throw new HttpsError("failed-precondition", "지오코딩 키가 설정되지 않았습니다.");
+        }
+
+        var endpoints = [
+            "https://maps.apigw.ntruss.com/map-geocode/v2/geocode",
+            "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode"
+        ];
+        var headers = {
+            "x-ncp-apigw-api-key-id": keyId,
+            "x-ncp-apigw-api-key": key,
+            "Accept": "application/json"
+        };
+        var lastErr = "";
+        for (var i = 0; i < endpoints.length; i++) {
+            try {
+                var url = endpoints[i] + "?query=" + encodeURIComponent(address);
+                var res = await fetch(url, { headers: headers });
+                if (!res.ok) { lastErr = "HTTP " + res.status; continue; }
+                var data = await res.json();
+                var list = data && data.addresses;
+                if (list && list.length > 0) {
+                    var a = list[0];
+                    return {
+                        lat: parseFloat(a.y),
+                        lng: parseFloat(a.x),
+                        roadAddress: a.roadAddress || a.jibunAddress || address
+                    };
+                }
+                // 200인데 결과 없음 → 주소 못 찾음 (폴백 불필요)
+                return { lat: null, lng: null, roadAddress: null };
+            } catch (e) {
+                lastErr = (e && e.message) || String(e);
+            }
+        }
+        throw new HttpsError("unavailable", "지오코딩 실패: " + lastErr);
+    }
+);
 
 
