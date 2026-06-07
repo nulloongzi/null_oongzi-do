@@ -49,6 +49,12 @@
         return !!(window.currentUser && spot && spot.owner_uid === window.currentUser.uid);
     };
 
+    // 수정/삭제 권한: 소유자 또는 관리자(모더레이션). Firestore 규칙도 동일 조건.
+    window.canModifyPickup = function (spot) {
+        if (window.isAdmin) return true;
+        return window.isPickupHost(spot);
+    };
+
     // 무로그인 등록: 로그인 안 했으면 익명 인증으로 uid 확보 (등록 벽 제거 + 소유권 유지)
     function ensureUid() {
         if (window.currentUser) return Promise.resolve(window.currentUser.uid);
