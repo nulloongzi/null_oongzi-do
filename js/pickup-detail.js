@@ -55,7 +55,7 @@
     }
 
     function renderSheet(spot) {
-        var host = window.isPickupHost(spot);
+        var host = window.canModifyPickup(spot);
         var c = document.getElementById('pickupSheetContent');
         if (!c) return;
         c.innerHTML = '';
@@ -140,7 +140,7 @@
 
     function pkDelete(id) {
         var g = window.findPickupGame(id);
-        if (!g || !window.isPickupHost(g)) return;
+        if (!g || !window.canModifyPickup(g)) return;
         if (!confirm(t('pk_delete_confirm'))) return;
         window.deletePickupGame(id).then(function () {
             alert(t('pk_deleted'));

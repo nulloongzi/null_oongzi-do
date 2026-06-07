@@ -34,7 +34,7 @@
     };
 
     window.openPickupEditModal = function (spot) {
-        if (!spot || !window.isPickupHost(spot)) { alert(window.t('reg_no_edit_perm')); return; }
+        if (!spot || !window.canModifyPickup(spot)) { alert(window.t('reg_no_edit_perm')); return; }
         window.editingPickupId = spot.id;
         document.getElementById('pkModalTitle').innerText = window.t('pk_edit_title');
         document.getElementById('pkSubmitBtn').innerText = window.t('pk_save_submit');
