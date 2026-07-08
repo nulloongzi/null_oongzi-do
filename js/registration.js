@@ -165,7 +165,9 @@ window.openEditModal = function (club) {
         var link = club.link || (club.contact && club.contact.link) || '';
         document.getElementById('regInsta').value = insta;
         document.getElementById('regLink').value = link;
-        document.getElementById('regReel').value = club.insta_reel || '';
+        document.getElementById('regReel').value =
+            (club.insta_reels && club.insta_reels.length ? club.insta_reels
+                : (club.insta_reel ? [club.insta_reel] : [])).join('\n');
 
         // 관리자 전용: 소유자 지정 필드
         var ownerGroup = document.getElementById('adminOwnerGroup');
@@ -301,7 +303,17 @@ window.submitRegistration = async function () {
     var price = document.getElementById('regPrice').value.trim();
     var insta = document.getElementById('regInsta').value.trim();
     var link = document.getElementById('regLink').value.trim();
-    var reel = document.getElementById('regReel').value.trim();
+    // 멀티 릴스(앱 패리티): 한 줄에 하나, 각각 permalink 검증. reel=첫 항목(웹 호환 단일).
+    var reelLines = document.getElementById('regReel').value.split('\n');
+    var reels = [];
+    for (var rl = 0; rl < reelLines.length; rl++) {
+        var rlv = reelLines[rl].trim();
+        if (!rlv) continue;
+        var rlsafe = window.sanitizeInstaPostUrl(rlv);
+        if (!rlsafe) { alert(window.t('insta_reel_invalid')); return; }
+        if (reels.indexOf(rlsafe) === -1) reels.push(rlsafe);
+    }
+    var reel = reels.length ? reels[0] : '';
     var is_urgent = false;
     var urgent_msg = "";
 
@@ -332,11 +344,7 @@ window.submitRegistration = async function () {
     }
 
     // 릴스/게시물 링크 검증: 빈 값 허용, 입력했으면 공개 인스타 permalink여야 함
-    if (reel) {
-        var safeReel = window.sanitizeInstaPostUrl(reel);
-        if (!safeReel) { alert(window.t('insta_reel_invalid')); return; }
-        reel = safeReel;
-    }
+    // (릴스 검증은 위 멀티 릴스 루프에서 완료)
 
     var btn = document.getElementById('regSubmitBtn');
     btn.innerText = window.t('processing');
@@ -375,6 +383,7 @@ window.submitRegistration = async function () {
                 price: price,
                 contact: { insta: insta, link: link },
                 insta_reel: reel,
+                insta_reels: reels,
                 "metadata.updated_at": window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date()
             };
 
@@ -421,6 +430,7 @@ window.submitRegistration = async function () {
                 existing.insta = insta;
                 existing.link = link;
                 existing.insta_reel = reel;
+                existing.insta_reels = reels;
                 if (newOwnerUid) existing.registered_by = newOwnerUid;
             }
         } else {
@@ -438,6 +448,7 @@ window.submitRegistration = async function () {
                 price: price,
                 contact: { insta: insta, link: link },
                 insta_reel: reel,
+                insta_reels: reels,
                 is_urgent: is_urgent,
                 urgent_msg: urgent_msg,
                 metadata: {
@@ -464,6 +475,7 @@ window.submitRegistration = async function () {
             newClub.insta = insta;
             newClub.link = link;
             newClub.insta_reel = reel;
+            newClub.insta_reels = reels;
             window.clubs.push(newClub);
             window.allClubs.push(newClub);
         }

@@ -22,6 +22,52 @@
         document.body.appendChild(s);
     }
 
+    // 멀티 릴스(앱 패리티 W1): 첫 릴스는 항상 + 나머지는 '릴스 더 보기 (n)' 토글로 지연 렌더.
+    // urls: insta_reels 배열(없으면 단일 insta_reel을 [1개]로 감싸 전달).
+    window.renderInstaEmbeds = function (container, urls) {
+        if (!container) return false;
+        var list = [];
+        for (var i = 0; i < (urls || []).length; i++) {
+            var s = window.sanitizeInstaPostUrl ? window.sanitizeInstaPostUrl(urls[i]) : '';
+            if (s && list.indexOf(s) === -1) list.push(s);
+        }
+        // 재렌더(언어 전환 등): 목록이 같으면 유지(깜빡임 방지)
+        var key = list.join('|');
+        if (container.dataset.reelsKey === key) return list.length > 0;
+        container.dataset.reelsKey = key;
+        container.innerHTML = '';
+        if (!list.length) { container.style.display = 'none'; return false; }
+        container.style.display = '';
+        var first = document.createElement('div');
+        container.appendChild(first);
+        window.renderInstaEmbed(first, list[0]);
+        if (list.length < 2) return true;
+        var more = document.createElement('button');
+        more.setAttribute('style',
+            'width:100%;margin-top:8px;padding:9px;border:none;border-radius:12px;' +
+            'background:#f0ece2;color:#6d6258;font-weight:700;font-size:13px;cursor:pointer;');
+        var restWrap = document.createElement('div');
+        restWrap.style.display = 'none';
+        var open = false;
+        var moreLabel = window.t('reels_more_label') + ' (' + (list.length - 1) + ') ▾';
+        more.textContent = moreLabel;
+        more.onclick = function () {
+            open = !open;
+            if (open && !restWrap.childNodes.length) {
+                for (var j = 1; j < list.length; j++) {
+                    var d = document.createElement('div');
+                    restWrap.appendChild(d);
+                    window.renderInstaEmbed(d, list[j]);
+                }
+            }
+            restWrap.style.display = open ? '' : 'none';
+            more.textContent = open ? (window.t('reels_hide') + ' ▴') : moreLabel;
+        };
+        container.appendChild(more);
+        container.appendChild(restWrap);
+        return true;
+    };
+
     // container에 url의 인스타 임베드를 렌더. url이 없거나 무효면 container를 비우고 숨김 + false 반환.
     // 같은 url로 재호출되면 재처리 생략(언어 전환 재렌더 등에서 깜빡임/재로드 방지).
     window.renderInstaEmbed = function (container, url) {

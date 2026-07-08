@@ -1846,6 +1846,7 @@
             font-weight: 500;
         }
 
+        .reg-form-group textarea,
         .reg-form-group input[type="text"] {
             width: 100%;
             border: 1px solid #e0e0e0;
