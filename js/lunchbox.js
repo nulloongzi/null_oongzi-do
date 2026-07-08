@@ -500,6 +500,7 @@ function handleSlotClick(index) {
 
 function deleteSlot(index) {
     if (confirm(window.t('lb_remove_confirm'))) {
+        if (window.track) window.track('remove_bookmark'); // 앱 패리티 W4
         var tempSlots = getTempSlots();
         tempSlots[index] = null;
         setTempSlots(tempSlots);
