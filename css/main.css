@@ -863,7 +863,14 @@
             margin-top: 1px;
         }
 
+        /* 라벨 등장 페이드(앱 패리티 W5): 줌 전환으로 다시 붙을 때 부드럽게 */
+        @keyframes labelFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         .label {
+            animation: labelFadeIn 0.25s ease-out;
             padding: 6px 12px;
             background-color: #fff;
             border-radius: 20px;
@@ -1846,6 +1853,7 @@
             font-weight: 500;
         }
 
+        .reg-form-group textarea,
         .reg-form-group input[type="text"] {
             width: 100%;
             border: 1px solid #e0e0e0;

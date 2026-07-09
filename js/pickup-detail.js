@@ -119,10 +119,12 @@
         if (spot.notes) c.appendChild(el('div', 'ps-notes', spot.notes));
 
         // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
-        if (spot.insta_reel && window.renderInstaEmbed) {
+        var reelUrls = (spot.insta_reels && spot.insta_reels.length)
+            ? spot.insta_reels : (spot.insta_reel ? [spot.insta_reel] : []);
+        if (reelUrls.length && window.renderInstaEmbeds) {
             var reelBox = el('div', 'insta-embed-box');
             c.appendChild(reelBox);
-            window.renderInstaEmbed(reelBox, spot.insta_reel);
+            window.renderInstaEmbeds(reelBox, reelUrls);
         }
 
         // 소유자: 수정/삭제

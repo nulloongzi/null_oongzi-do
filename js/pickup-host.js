@@ -63,7 +63,9 @@
         setVal('pkFee', spot.fee_info);
         setVal('pkContact', spot.contact_link);
         setVal('pkNotes', spot.notes);
-        setVal('pkReel', spot.insta_reel);
+        setVal('pkReel',
+            (spot.insta_reels && spot.insta_reels.length ? spot.insta_reels
+                : (spot.insta_reel ? [spot.insta_reel] : [])).join('\n'));
         selectChipByVal('pkSportChips', spot.sport || '6s');
         selectChipByVal('pkLevelChips', spot.level || 'any');
         selectChipByVal('pkExpireChips', spot.expire_at ? '1m' : 'always');
@@ -124,12 +126,17 @@
         }
 
         // 릴스/게시물 링크 (선택): 공개 인스타 permalink만
-        var reel = getVal('pkReel');
-        if (reel) {
-            var sr = window.sanitizeInstaPostUrl(reel);
+        // 멀티 릴스(앱 패리티): 한 줄에 하나, 각각 검증. reel=첫 항목(단일 호환).
+        var reelLines = getVal('pkReel').split('\n');
+        var reels = [];
+        for (var rl = 0; rl < reelLines.length; rl++) {
+            var rlv = reelLines[rl].trim();
+            if (!rlv) continue;
+            var sr = window.sanitizeInstaPostUrl(rlv);
             if (!sr) { alert(window.t('insta_reel_invalid')); return; }
-            reel = sr;
+            if (reels.indexOf(sr) === -1) reels.push(sr);
         }
+        var reel = reels.length ? reels[0] : '';
 
         var beginnerChip = document.getElementById('pkBeginnerChip');
         var englishChip = document.getElementById('pkEnglishChip');
@@ -149,6 +156,7 @@
             contact_link: contact,
             this_week: getVal('pkThisWeek'),
             insta_reel: reel,
+            insta_reels: reels,
             notes: getVal('pkNotes'),
             expire_at: computeExpireAt(selectedVal('pkExpireChips', '1m'))
         };

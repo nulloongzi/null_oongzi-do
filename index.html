@@ -150,6 +150,9 @@
     <div id="filterSheet" class="filter-sheet">
         <div class="fs-header"><div class="fs-title" data-i18n="filter_title">검색 조건 설정</div></div>
         <div class="fs-body">
+            <div class="fs-section"><span class="fs-label" data-i18n="fs_keyword_label">🔎 키워드</span>
+                <input type="text" id="fsKeyword" style="width:100%;padding:10px 12px;border:1px solid #e0e0e0;border-radius:12px;font-size:14px;box-sizing:border-box;" placeholder="팀명, 지역으로 검색..." data-i18n-placeholder="search_ph">
+            </div>
             <div class="fs-section"><span class="fs-label" data-i18n="region_label">📍 지역 (중복 선택 가능)</span>
                 <div class="chip-group" id="regionChips">
                     <div class="chip" onclick="toggleFilter('region', '서울', this)" data-i18n="r_seoul">서울</div>
@@ -286,7 +289,7 @@
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="reg_reel_label">인스타 릴스/게시물 링크 (선택)</label>
-                    <input type="text" id="regReel" placeholder="예: https://www.instagram.com/reel/..." data-i18n-placeholder="reg_reel_ph">
+                    <textarea id="regReel" rows="3" style="resize:vertical;" placeholder="한 줄에 하나씩: https://www.instagram.com/reel/..." data-i18n-placeholder="reg_reel_ph"></textarea>
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="reg_link_label">가입/문의 링크 (선택)</label>
@@ -369,7 +372,7 @@
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_reel">릴스/게시물 링크 (선택)</label>
-                    <input type="text" id="pkReel" placeholder="예: https://www.instagram.com/reel/..." data-i18n-placeholder="pk_f_reel_ph">
+                    <textarea id="pkReel" rows="3" style="resize:vertical;" placeholder="한 줄에 하나씩: https://www.instagram.com/reel/..." data-i18n-placeholder="pk_f_reel_ph"></textarea>
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_notes">추가 안내 (선택)</label>
