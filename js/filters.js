@@ -25,7 +25,12 @@ window.resetFilters = function () {
 window.applyFilters = function () {
     // 픽업 탭에서는 동호회 필터/마커 로직을 건너뜀 (픽업 마커가 지워지는 것 방지)
     if (window.currentTab === 'pickup') return;
-    if (window.event && window.event.type === 'click') window.closeFilterSheet();
+    if (window.event && window.event.type === 'click') {
+        // 시트 안 키워드(앱 패리티 W6) → 상단 검색바로 동기화 후 닫기
+        var fsKw = document.getElementById('fsKeyword');
+        if (fsKw) document.getElementById('topSearchInput').value = fsKw.value;
+        window.closeFilterSheet();
+    }
 
     var keyword = document.getElementById('topSearchInput').value.trim();
     var filterCount = window.activeFilters.region.length + window.activeFilters.day.length + window.activeFilters.target.length;
@@ -120,6 +125,9 @@ window.applyFilters = function () {
 // ── Filter sheet open/close ──
 
 window.openFilterSheet = function () {
+    // 시트 키워드를 상단 검색바 값으로 프리필(앱 패리티 W6)
+    var fsKw = document.getElementById('fsKeyword');
+    if (fsKw) fsKw.value = document.getElementById('topSearchInput').value;
     document.getElementById('filterSheet').style.transform = "translateY(0)";
 };
 

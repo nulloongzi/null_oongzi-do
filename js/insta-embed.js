@@ -22,6 +22,38 @@
         document.body.appendChild(s);
     }
 
+    // 릴스 지연 로딩(앱 패리티 W3): 포스터 카드만 먼저 → 탭하면 그 자리에서 실제 임베드.
+    // 임베드 iframe을 즉시 안 붙여 상세 오픈이 가볍고 스크롤이 매끄러움.
+    function lazyReelCard(host, url) {
+        var card = document.createElement('div');
+        card.setAttribute('style',
+            'display:flex;align-items:center;gap:12px;margin-top:10px;padding:14px;' +
+            'background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:14px;cursor:pointer;');
+        var icon = document.createElement('div');
+        icon.setAttribute('style',
+            'width:46px;height:46px;flex:none;border-radius:12px;display:flex;align-items:center;' +
+            'justify-content:center;color:#fff;font-size:20px;' +
+            'background:linear-gradient(45deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5);');
+        icon.textContent = '▶';
+        var txt = document.createElement('div');
+        var t1 = document.createElement('div');
+        t1.setAttribute('style', 'font-weight:800;font-size:14px;color:#4e342e;');
+        t1.textContent = window.t('insta_reel_title');
+        var t2 = document.createElement('div');
+        t2.setAttribute('style', 'font-size:12px;color:#8d6e63;');
+        t2.textContent = window.t('reel_tap_play');
+        txt.appendChild(t1);
+        txt.appendChild(t2);
+        card.appendChild(icon);
+        card.appendChild(txt);
+        card.onclick = function () {
+            var box = document.createElement('div');
+            host.replaceChild(box, card);
+            window.renderInstaEmbed(box, url);
+        };
+        host.appendChild(card);
+    }
+
     // 멀티 릴스(앱 패리티 W1): 첫 릴스는 항상 + 나머지는 '릴스 더 보기 (n)' 토글로 지연 렌더.
     // urls: insta_reels 배열(없으면 단일 insta_reel을 [1개]로 감싸 전달).
     window.renderInstaEmbeds = function (container, urls) {
@@ -38,9 +70,7 @@
         container.innerHTML = '';
         if (!list.length) { container.style.display = 'none'; return false; }
         container.style.display = '';
-        var first = document.createElement('div');
-        container.appendChild(first);
-        window.renderInstaEmbed(first, list[0]);
+        lazyReelCard(container, list[0]); // 포스터 → 탭 재생(W3)
         if (list.length < 2) return true;
         var more = document.createElement('button');
         more.setAttribute('style',
@@ -55,9 +85,7 @@
             open = !open;
             if (open && !restWrap.childNodes.length) {
                 for (var j = 1; j < list.length; j++) {
-                    var d = document.createElement('div');
-                    restWrap.appendChild(d);
-                    window.renderInstaEmbed(d, list[j]);
+                    lazyReelCard(restWrap, list[j]); // 각 릴스도 포스터 → 탭 재생
                 }
             }
             restWrap.style.display = open ? '' : 'none';

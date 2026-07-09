@@ -58,10 +58,55 @@ function buildClubLabelEl(club, includeVerifiedBadge) {
         el.appendChild(document.createTextNode('🔥 '));
     }
     el.appendChild(document.createTextNode(club.name || ''));
+    // 라벨 롱프레스(550ms) → 릴스 피크(앱 패리티 W2). 발화 직후 click(상세 열림)은 억제.
+    var peekTimer = null, peekFired = false;
+    function peekStart() {
+        peekFired = false;
+        peekTimer = setTimeout(function () { peekFired = true; showReelPeek(club); }, 550);
+    }
+    function peekCancel() { if (peekTimer) { clearTimeout(peekTimer); peekTimer = null; } }
+    el.addEventListener('touchstart', peekStart, { passive: true });
+    el.addEventListener('touchmove', peekCancel, { passive: true });
+    el.addEventListener('touchend', peekCancel);
+    el.addEventListener('mousedown', peekStart);
+    el.addEventListener('mouseup', peekCancel);
+    el.addEventListener('mouseleave', peekCancel);
+    el.addEventListener('click', function (e) {
+        if (peekFired) { peekFired = false; e.stopImmediatePropagation(); e.preventDefault(); }
+    });
     el.addEventListener('click', function () {
         window.openClubDetail(club.id);
     });
     return el;
+}
+
+// 릴스 피크 오버레이(앱 마커 롱프레스 대응): 블러 딤 + 팀명 + 첫 릴스 임베드. 바깥 탭 닫기.
+function showReelPeek(club) {
+    var urls = (club.insta_reels && club.insta_reels.length)
+        ? club.insta_reels : (club.insta_reel ? [club.insta_reel] : []);
+    if (!urls.length) return; // 릴스 없는 팀: 무시(라벨 클릭=상세로 충분)
+    var ov = document.createElement('div');
+    ov.setAttribute('style',
+        'position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;' +
+        'background:rgba(93,64,55,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);' +
+        'animation:fadeIn .25s;');
+    var card = document.createElement('div');
+    card.setAttribute('style',
+        'width:88%;max-width:360px;max-height:80vh;overflow:auto;background:#fff;border-radius:20px;' +
+        'padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);');
+    var title = document.createElement('div');
+    title.setAttribute('style', 'font-weight:800;color:#4e342e;margin:2px 4px 8px;');
+    title.textContent = (club.is_urgent ? '🔥 ' : '') + (club.name || '');
+    var box = document.createElement('div');
+    card.appendChild(title);
+    card.appendChild(box);
+    ov.appendChild(card);
+    ov.addEventListener('click', function (e) {
+        if (e.target === ov) document.body.removeChild(ov);
+    });
+    document.body.appendChild(ov);
+    if (window.renderInstaEmbed) window.renderInstaEmbed(box, urls[0]);
+    if (window.track) window.track('reel_peek', { via: 'label' });
 }
 
 window.initMarkers = function () {
