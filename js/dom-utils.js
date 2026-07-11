@@ -61,7 +61,7 @@
         if (!value) return 'photo';
         var s = String(value).trim();
         // 경로 구분자/제어문자 제거
-        s = s.replace(/[\/\\:\x00-\x1f]/g, '_');
+        s = s.replace(/[/\\:\x00-\x1f]/g, '_');
         // 영문/숫자/.-_ 외 문자는 _로 치환
         s = s.replace(/[^A-Za-z0-9._-]/g, '_');
         // 연속된 _ 압축
