@@ -2,7 +2,7 @@ var { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 var { onDocumentCreated } = require("firebase-functions/v2/firestore");
 var { defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin");
-var crypto = require("crypto");
+var pure = require("./lib/pure");
 
 admin.initializeApp();
 var db = admin.firestore();
@@ -36,28 +36,9 @@ async function isAllowedKakaoUser(req) {
     }
 }
 
-// 권한 없음 응답 (통일 포맷)
-function unauthorizedResponse() {
-    return {
-        version: "2.0",
-        template: {
-            outputs: [{
-                simpleText: {
-                    text: "⛔ 권한이 없습니다.\n\n이 명령어는 관리자 전용입니다."
-                }
-            }]
-        }
-    };
-}
-
-// HMAC 토큰 생성 (승인/거절 링크 보안용)
-function generateToken(secret, requestId, action) {
-    return crypto
-        .createHmac("sha256", secret)
-        .update(requestId + action)
-        .digest("hex")
-        .substring(0, 16);
-}
+// 순수 로직(토큰/파싱/템플릿)은 functions/lib/pure.js — 루트 node --test로 검증됨.
+var unauthorizedResponse = pure.unauthorizedResponse;
+var generateToken = pure.generateToken;
 
 // 카카오 액세스 토큰 획득 (Firestore 캐시 + refresh token 자동 갱신)
 // 만료 1분 전에 미리 갱신. refresh token이 새로 내려오면 경고 로그 (secret 수동 교체 필요)
@@ -240,14 +221,9 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
     }
 });
 
-function renderResultPage(title, message) {
-    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-        '<title>누룽지도 인증 관리</title>' +
-        '<style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#fff8e1;}' +
-        '.card{background:#fff;border-radius:20px;padding:40px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:400px;}' +
-        'h1{color:#4e342e;font-size:24px;}p{color:#666;font-size:16px;line-height:1.5;}</style></head>' +
-        '<body><div class="card"><h1>' + title + '</h1><p>' + message + '</p></div></body></html>';
-}
+// 결과 페이지: pure.renderResultPage — 사용자 유래 문자열(club_name/status)을
+// 이스케이프하여 삽입 (기존엔 미이스케이프 → 관리자 브라우저 XSS 가능성).
+var renderResultPage = pure.renderResultPage;
 
 // ══════════════════════════════════════════════════════════
 // 카카오 i 오픈빌더 챗봇 스킬 엔드포인트
@@ -319,14 +295,9 @@ exports.chatbotApprove = onRequest({ cors: true, invoker: "public" }, async func
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
         // Button action="block"의 extra로 전달된 request_id를 우선 사용, 없으면 utterance 파싱 (폴백)
-        var clientExtra = (req.body.action && req.body.action.clientExtra) || {};
-        var requestId = clientExtra.request_id || "";
-        if (!requestId) {
-            var utterance = (req.body.userRequest && req.body.userRequest.utterance) || "";
-            var parts = utterance.split(/\s+/);
-            requestId = parts.length > 1 ? parts[parts.length - 1].trim() : "";
-        }
-        console.log("chatbotApprove - requestId:", JSON.stringify(requestId), "source:", clientExtra.request_id ? "clientExtra" : "utterance");
+        var parsed = pure.extractRequestId(req.body);
+        var requestId = parsed.requestId;
+        console.log("chatbotApprove - requestId:", JSON.stringify(requestId), "source:", parsed.source);
 
         var requestRef = db.collection("verification_requests").doc(requestId);
         var requestSnap = await requestRef.get();
@@ -390,13 +361,7 @@ exports.chatbotRejectAsk = onRequest({ cors: true, invoker: "public" }, async fu
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
         // Button action="block"의 extra로 전달된 request_id를 우선 사용, 없으면 utterance 파싱 (폴백)
-        var clientExtra = (req.body.action && req.body.action.clientExtra) || {};
-        var requestId = clientExtra.request_id || "";
-        if (!requestId) {
-            var utterance = (req.body.userRequest && req.body.userRequest.utterance) || "";
-            var parts = utterance.split(/\s+/);
-            requestId = parts.length > 1 ? parts[parts.length - 1].trim() : "";
-        }
+        var requestId = pure.extractRequestId(req.body).requestId;
 
         var requestSnap = await db.collection("verification_requests").doc(requestId).get();
 
@@ -456,29 +421,12 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
-        // QuickReply action=block의 extra 우선 사용 (reason 포함), 없으면 컨텍스트/utterance 폴백
-        var clientExtra = (req.body.action && req.body.action.clientExtra) || {};
-        var requestId = clientExtra.request_id || null;
-        var clubName = clientExtra.club_name || null;
-        var reason = clientExtra.reason || (req.body.userRequest && req.body.userRequest.utterance) || "";
-        var contexts = clientExtra.contexts || req.body.contexts || [];
-
-        // 폴백: action.params (컨텍스트 파라미터)
-        if (!requestId && req.body.action && req.body.action.params) {
-            requestId = req.body.action.params.request_id;
-            clubName = req.body.action.params.club_name;
-        }
-        // 폴백: context.values
-        if (!requestId && Array.isArray(contexts)) {
-            for (var i = 0; i < contexts.length; i++) {
-                if (contexts[i].name === "reject_context") {
-                    requestId = contexts[i].params.request_id && contexts[i].params.request_id.value;
-                    clubName = contexts[i].params.club_name && contexts[i].params.club_name.value;
-                    break;
-                }
-            }
-        }
-        console.log("chatbotRejectConfirm - requestId:", requestId, "reason:", reason, "source:", clientExtra.request_id ? "clientExtra" : "fallback");
+        // QuickReply extra 우선(reason 포함) → action.params → contexts 3중 폴백 (pure.extractRejectInfo)
+        var info = pure.extractRejectInfo(req.body);
+        var requestId = info.requestId;
+        var clubName = info.clubName;
+        var reason = info.reason;
+        console.log("chatbotRejectConfirm - requestId:", requestId, "reason:", reason, "source:", info.source);
 
         if (!requestId) {
             res.json({
