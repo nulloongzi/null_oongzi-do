@@ -62,13 +62,34 @@ module.exports = [
   {
     ignores: [
       'node_modules/**',
-      'functions/**',
+      'functions/node_modules/**',
+      'functions/index.js', // 배포 코드 — Phase 3에서 lint 편입 검토
       '.old/**',
       'scripts/**',
       '**/*.min.js',
       'test.html',
       'test_new.html',
     ],
+  },
+
+  // Cloud Functions 순수 모듈 (Node CommonJS)
+  {
+    files: ['functions/lib/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        console: 'readonly',
+        Buffer: 'readonly',
+        process: 'readonly',
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-unused-vars': 'off',
+    },
   },
 
   // 브라우저 클래식 스크립트 (js/)
@@ -112,6 +133,7 @@ module.exports = [
         Buffer: 'readonly',
         Blob: 'readonly',
         Uint8Array: 'readonly',
+        URL: 'readonly',
         console: 'readonly',
         setTimeout: 'readonly',
         global: 'readonly',

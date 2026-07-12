@@ -10,3 +10,7 @@ firebase-debug.log
 
 # Windows junk
 nul
+
+# Playwright
+test-results/
+playwright-report/

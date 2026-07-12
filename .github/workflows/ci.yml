@@ -59,3 +59,26 @@ jobs:
 
       - name: Rules tests (emulators:exec)
         run: npm run test:emulator
+
+  # 티어 3: 헤드리스 스모크 (Playwright) — 로드/패리티 DOM/필터시트/i18n 토글.
+  # 외부 SDK(kakao/firebase CDN) 유래 에러는 허용목록, 앱 코드 회귀는 게이팅.
+  smoke:
+    name: Headless smoke (Playwright)
+    runs-on: ubuntu-latest
+    needs: lint-and-unit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npm run test:smoke
