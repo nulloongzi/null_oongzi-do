@@ -1841,6 +1841,63 @@
             overflow-y: auto;
         }
 
+        /* 인라인 에러 배너 (alert 대체) */
+        .reg-error {
+            background: #fdecea;
+            border: 1px solid #f5c2c0;
+            border-left: 3px solid #d32f2f;
+            color: #b71c1c;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        /* 필수 필드 미입력 하이라이트 */
+        .reg-invalid,
+        input.reg-invalid,
+        textarea.reg-invalid {
+            border-color: #d32f2f !important;
+            box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.12);
+        }
+        .chip-group.reg-invalid {
+            outline: 2px solid rgba(211, 47, 47, 0.4);
+            outline-offset: 3px;
+            border-radius: 10px;
+        }
+
+        /* 선택 정보 접기 섹션 */
+        .reg-optional {
+            margin-bottom: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            padding-top: 8px;
+        }
+        .reg-optional-summary {
+            cursor: pointer;
+            list-style: none;
+            padding: 10px 2px;
+            font-weight: 600;
+            color: var(--nurungji-brown, #8d6e63);
+            font-size: 14px;
+            user-select: none;
+        }
+        .reg-optional-summary::-webkit-details-marker { display: none; }
+        .reg-optional[open] > .reg-optional-summary { margin-bottom: 6px; }
+
+        /* 로그인 게이트 안내 (등록 이어가기) */
+        .reg-login-hint {
+            background: rgba(255, 193, 7, 0.14);
+            border-left: 3px solid #ffc107;
+            color: #6d4c41;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.45;
+            text-align: left;
+        }
+
         .reg-form-group {
             margin-bottom: 15px;
         }

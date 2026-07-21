@@ -224,6 +224,8 @@ window.setupAuthListener = function () {
             await window.loadOrCreateUserProfile(user);
             await window.checkIsAdmin(user);
             window.updateProfileUI(true);
+            // 로그인 게이트로 중단됐던 팀 등록이 있으면 이어서 자동 재제출
+            if (window.resumePendingRegistration) window.resumePendingRegistration();
         } else {
             window.currentUser = null;
             window.currentProfileData = null;

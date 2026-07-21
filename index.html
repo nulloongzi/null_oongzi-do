@@ -28,7 +28,7 @@
     <link rel="apple-touch-icon" href="app_ui/nulloongzido%20logo_512px.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
     <!-- ?v=N: JS/CSS 수정 후 배포할 때마다 버전을 올려 캐시 무효화 (returning user 혼합버전 방지) -->
-    <link rel="stylesheet" href="css/main.css?v=11">
+    <link rel="stylesheet" href="css/main.css?v=12">
 
     <!-- Firebase compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -38,8 +38,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
-    <script src="js/firebase-init.js?v=11"></script>
-    <script src="js/dom-utils.js?v=11"></script>
+    <script src="js/firebase-init.js?v=12"></script>
+    <script src="js/dom-utils.js?v=12"></script>
 
     <!-- html2canvas (공유 기능) -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -116,6 +116,7 @@
         <div class="profile-card" id="myProfileCard" onclick="event.stopPropagation()">
             <div id="pcRiceWatermark" class="pc-rice-type"></div>
             <div id="loginSection" class="login-section">
+                <div id="regLoginHint" class="reg-login-hint" style="display:none;" data-i18n="reg_login_hint">팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록됩니다.</div>
                 <button class="btn-google-login" onclick="loginWithGoogle()">
                     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="G">
                     <span data-i18n="login_google">구글로 간편 로그인</span>
@@ -249,6 +250,7 @@
                 <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px 15px; margin-bottom: 20px; font-size: 13px; color: #555; line-height: 1.4; border-radius: 4px;" data-i18n-html="reg_tip">
                     <strong>tip:</strong> 요일별로 체육관 위치가 다른 경우, 정확한 핀 표시를 위해 <strong>장소별로 각각 등록</strong> 부탁드립니다!
                 </div>
+                <div id="regError" class="reg-error" role="alert" aria-live="assertive" style="display:none;"></div>
                 <div class="reg-form-group">
                     <label data-i18n="reg_name_label">팀 이름 (필수)</label>
                     <input type="text" id="regName" placeholder="예: GVT 배구클럽" data-i18n-placeholder="reg_name_ph">
@@ -274,27 +276,30 @@
                         <button type="button" onclick="startMapPicker()" style="padding: 0 15px; background: #fff; border: 1px solid var(--nurungji-brown); color: var(--nurungji-brown); border-radius: 10px; font-weight: bold; cursor: pointer; white-space: nowrap;" data-i18n="reg_addr_find">지도에서 찾기</button>
                     </div>
                 </div>
-                <div class="reg-form-group">
-                    <label data-i18n="reg_sched_label">운동 시간 (스케줄)</label>
-                    <div id="scheduleContainer" class="sched-blocks"></div>
-                    <button type="button" class="sched-add-btn" onclick="addScheduleBlock()" data-i18n="reg_sched_add">＋ 시간대 추가</button>
-                </div>
-                <div class="reg-form-group">
-                    <label data-i18n="reg_price_label">회비 및 게스트비</label>
-                    <input type="text" id="regPrice" placeholder="예: 월 3만원 / 게스트 1만원" data-i18n-placeholder="reg_price_ph">
-                </div>
-                <div class="reg-form-group">
-                    <label data-i18n="reg_insta_label">인스타그램 핸들 (선택)</label>
-                    <input type="text" id="regInsta" placeholder="예: gvt__official" data-i18n-placeholder="reg_insta_ph">
-                </div>
-                <div class="reg-form-group">
-                    <label data-i18n="reg_reel_label">인스타 릴스/게시물 링크 (선택)</label>
-                    <textarea id="regReel" rows="3" style="resize:vertical;" placeholder="한 줄에 하나씩: https://www.instagram.com/reel/..." data-i18n-placeholder="reg_reel_ph"></textarea>
-                </div>
-                <div class="reg-form-group">
-                    <label data-i18n="reg_link_label">가입/문의 링크 (선택)</label>
-                    <input type="text" id="regLink" placeholder="예: https://open.kakao.com/o/..." data-i18n-placeholder="reg_link_ph">
-                </div>
+                <details id="regOptional" class="reg-optional">
+                    <summary class="reg-optional-summary" data-i18n="reg_optional_summary">추가 정보 입력 (선택) ▾</summary>
+                    <div class="reg-form-group">
+                        <label data-i18n="reg_sched_label">운동 시간 (스케줄)</label>
+                        <div id="scheduleContainer" class="sched-blocks"></div>
+                        <button type="button" class="sched-add-btn" onclick="addScheduleBlock()" data-i18n="reg_sched_add">＋ 시간대 추가</button>
+                    </div>
+                    <div class="reg-form-group">
+                        <label data-i18n="reg_price_label">회비 및 게스트비</label>
+                        <input type="text" id="regPrice" placeholder="예: 월 3만원 / 게스트 1만원" data-i18n-placeholder="reg_price_ph">
+                    </div>
+                    <div class="reg-form-group">
+                        <label data-i18n="reg_insta_label">인스타그램 핸들 (선택)</label>
+                        <input type="text" id="regInsta" placeholder="예: gvt__official" data-i18n-placeholder="reg_insta_ph">
+                    </div>
+                    <div class="reg-form-group">
+                        <label data-i18n="reg_reel_label">인스타 릴스/게시물 링크 (선택)</label>
+                        <textarea id="regReel" rows="3" style="resize:vertical;" placeholder="한 줄에 하나씩: https://www.instagram.com/reel/..." data-i18n-placeholder="reg_reel_ph"></textarea>
+                    </div>
+                    <div class="reg-form-group">
+                        <label data-i18n="reg_link_label">가입/문의 링크 (선택)</label>
+                        <input type="text" id="regLink" placeholder="예: https://open.kakao.com/o/..." data-i18n-placeholder="reg_link_ph">
+                    </div>
+                </details>
                 <div id="adminOwnerGroup" class="reg-form-group" style="display:none; background:rgba(244,67,54,0.05); border-left:3px solid #d32f2f; padding:10px 12px; border-radius:4px;">
                     <label style="color:#d32f2f; font-weight:600;">⚠️ 관리자 전용: 소유자 지정</label>
                     <input type="text" id="regOwnerEmail" placeholder="예: paul@example.com (비우면 변경 안 됨)">
@@ -408,23 +413,23 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
-    <script src="js/i18n.js?v=11"></script>
-    <script src="js/data.js?v=11"></script>
-    <script src="js/pickup-data.js?v=11"></script>
-    <script src="js/profile.js?v=11"></script>
-    <script src="js/auth.js?v=11"></script>
-    <script src="js/lunchbox.js?v=11"></script>
-    <script src="js/share.js?v=11"></script>
-    <script src="js/insta-embed.js?v=11"></script>
-    <script src="js/map-core.js?v=11"></script>
-    <script src="js/club-detail.js?v=11"></script>
-    <script src="js/filters.js?v=11"></script>
-    <script src="js/registration.js?v=11"></script>
-    <script src="js/verification.js?v=11"></script>
-    <script src="js/pickup-ui.js?v=11"></script>
-    <script src="js/tabs.js?v=11"></script>
-    <script src="js/pickup-host.js?v=11"></script>
-    <script src="js/pickup-detail.js?v=11"></script>
-    <script src="js/app.js?v=11"></script>
+    <script src="js/i18n.js?v=12"></script>
+    <script src="js/data.js?v=12"></script>
+    <script src="js/pickup-data.js?v=12"></script>
+    <script src="js/profile.js?v=12"></script>
+    <script src="js/auth.js?v=12"></script>
+    <script src="js/lunchbox.js?v=12"></script>
+    <script src="js/share.js?v=12"></script>
+    <script src="js/insta-embed.js?v=12"></script>
+    <script src="js/map-core.js?v=12"></script>
+    <script src="js/club-detail.js?v=12"></script>
+    <script src="js/filters.js?v=12"></script>
+    <script src="js/registration.js?v=12"></script>
+    <script src="js/verification.js?v=12"></script>
+    <script src="js/pickup-ui.js?v=12"></script>
+    <script src="js/tabs.js?v=12"></script>
+    <script src="js/pickup-host.js?v=12"></script>
+    <script src="js/pickup-detail.js?v=12"></script>
+    <script src="js/app.js?v=12"></script>
 </body>
 </html>
