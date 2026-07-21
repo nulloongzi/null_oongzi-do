@@ -4,6 +4,31 @@
 
 window.selectedCoords = null;
 window.editingClubId = null; // 편집 모드: club.id 설정 시 submitRegistration이 수정 경로로 분기
+window._regResumePending = false; // 로그인 게이트: 로그인 후 자동 재제출 대기 플래그
+
+// ── 인라인 에러 배너 (alert 대체) ──
+// 폼 상단에 메시지를 띄우고 스크롤로 보여줌. alert처럼 흐름을 끊지 않음.
+window.showRegError = function (msg) {
+    var box = document.getElementById('regError');
+    if (!box) { alert(msg); return; } // 폴백
+    box.textContent = msg;
+    box.style.display = 'block';
+    var body = box.parentElement;
+    if (body && typeof body.scrollTo === 'function') { body.scrollTo({ top: 0, behavior: 'smooth' }); }
+    else if (body) { body.scrollTop = 0; }
+};
+
+window.clearRegError = function () {
+    var box = document.getElementById('regError');
+    if (box) { box.textContent = ''; box.style.display = 'none'; }
+    // 필수 필드 하이라이트 해제
+    ['regName', 'regAddress'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('reg-invalid');
+    });
+    var chips = document.getElementById('regTargetChips');
+    if (chips) chips.classList.remove('reg-invalid');
+};
 
 window.generateTimeOptions = function () {
     var options = '';
@@ -111,6 +136,10 @@ window.openRegistrationModal = function (isUrgent) {
     try {
         // 편집 모드 초기화 (이전 openEditModal 흔적 제거)
         window.editingClubId = null;
+        if (window.clearRegError) window.clearRegError();
+        // 선택 정보 섹션은 신규 등록 시 접힌 상태로 시작 (체감 길이 축소)
+        var optDetails = document.getElementById('regOptional');
+        if (optDetails) optDetails.open = false;
         var submitBtn = document.getElementById('regSubmitBtn');
         if (submitBtn) submitBtn.innerText = window.t('reg_submit');
         window.setRegTargetValue(''); // 칩/메모 초기화
@@ -125,6 +154,7 @@ window.openRegistrationModal = function (isUrgent) {
         }
 
         document.getElementById('regModalOverlay').style.display = 'flex';
+        if (window.track) window.track('registration_open', { mode: 'create' });
         console.log('Successfully opened registration modal');
     } catch (e) {
         console.error('Error opening registration modal:', e);
@@ -135,6 +165,8 @@ window.closeRegistrationModal = function () {
     document.getElementById('regModalOverlay').style.display = 'none';
     window.editingClubId = null; // 편집 모드 초기화
     window.selectedCoords = null;
+    window._regResumePending = false; // 로그인 게이트 대기 해제
+    if (window.clearRegError) window.clearRegError();
 };
 
 // 편집 모달 열기: 기존 등록 폼에 값 미리 채우고, submit 시 update 경로로 분기
@@ -145,6 +177,10 @@ window.openEditModal = function (club) {
         return;
     }
     try {
+        if (window.clearRegError) window.clearRegError();
+        // 편집 시에는 기존 값 확인/수정을 위해 선택 정보 섹션을 펼쳐둠
+        var optDetails = document.getElementById('regOptional');
+        if (optDetails) optDetails.open = true;
         // 제목과 버튼 라벨 변경
         var titleEl = document.getElementById('regModalTitle');
         if (titleEl) titleEl.innerText = window.t('reg_edit_title');
@@ -280,8 +316,16 @@ window.confirmMapPicker = function () {
 // ── Submit registration ──
 
 window.submitRegistration = async function () {
+    if (window.clearRegError) window.clearRegError();
+
     if (!window.currentUser) {
-        alert(window.t('reg_login_required'));
+        // 로그인 게이트: 폼 내용을 버리지 않고 로그인 유도 → 로그인 성공 시 자동 재제출.
+        if (window.track) window.track('registration_login_gate');
+        window._regResumePending = true;
+        document.getElementById('regModalOverlay').style.display = 'none';
+        var hint = document.getElementById('regLoginHint');
+        if (hint) hint.style.display = 'block';
+        document.getElementById('profileOverlay').style.display = 'flex';
         return;
     }
 
@@ -293,7 +337,14 @@ window.submitRegistration = async function () {
     var address = document.getElementById('regAddress').value.trim();
 
     if (!name || !target || !address) {
-        alert(window.t('reg_required'));
+        // 비어있는 필수 필드 하이라이트
+        var nameEl = document.getElementById('regName');
+        if (nameEl && !name) nameEl.classList.add('reg-invalid');
+        var addrEl = document.getElementById('regAddress');
+        if (addrEl && !address) addrEl.classList.add('reg-invalid');
+        var chipsEl = document.getElementById('regTargetChips');
+        if (chipsEl && !target) chipsEl.classList.add('reg-invalid');
+        window.showRegError(window.t('reg_required'));
         return;
     }
 
@@ -310,7 +361,7 @@ window.submitRegistration = async function () {
         var rlv = reelLines[rl].trim();
         if (!rlv) continue;
         var rlsafe = window.sanitizeInstaPostUrl(rlv);
-        if (!rlsafe) { alert(window.t('insta_reel_invalid')); return; }
+        if (!rlsafe) { window.showRegError(window.t('insta_reel_invalid')); return; }
         if (reels.indexOf(rlsafe) === -1) reels.push(rlsafe);
     }
     var reel = reels.length ? reels[0] : '';
@@ -318,16 +369,16 @@ window.submitRegistration = async function () {
     var urgent_msg = "";
 
     // 길이 가드 (DoS · 도큐먼트 비대화 방지)
-    if (name.length > 60) { alert(window.t('reg_name_max')); return; }
-    if (target.length > 80) { alert(window.t('reg_target_max')); return; }
-    if (address.length > 200) { alert(window.t('reg_addr_max')); return; }
-    if (price.length > 100) { alert(window.t('reg_price_max')); return; }
+    if (name.length > 60) { window.showRegError(window.t('reg_name_max')); return; }
+    if (target.length > 80) { window.showRegError(window.t('reg_target_max')); return; }
+    if (address.length > 200) { window.showRegError(window.t('reg_addr_max')); return; }
+    if (price.length > 100) { window.showRegError(window.t('reg_price_max')); return; }
 
     // insta 핸들 검증: 빈 값은 허용, 입력했으면 형식 통과해야 함
     if (insta) {
         var safeInsta = window.sanitizeInstaHandle(insta);
         if (!safeInsta) {
-            alert(window.t('reg_insta_invalid'));
+            window.showRegError(window.t('reg_insta_invalid'));
             return;
         }
         insta = safeInsta;
@@ -337,7 +388,7 @@ window.submitRegistration = async function () {
     if (link) {
         var safeLink = window.sanitizeUrl(link);
         if (safeLink === '#' || !safeLink) {
-            alert(window.t('reg_link_invalid'));
+            window.showRegError(window.t('reg_link_invalid'));
             return;
         }
         link = safeLink;
@@ -356,16 +407,28 @@ window.submitRegistration = async function () {
         if (window.selectedCoords) {
             coords = window.selectedCoords;
         } else {
-            var geocoder = new kakao.maps.services.Geocoder();
-            coords = await new Promise(function (resolve, reject) {
-                geocoder.addressSearch(address, function (result, status) {
-                    if (status === kakao.maps.services.Status.OK) {
-                        resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
-                    } else {
-                        reject(new Error(window.t('reg_addr_notfound')));
-                    }
+            try {
+                var geocoder = new kakao.maps.services.Geocoder();
+                coords = await new Promise(function (resolve, reject) {
+                    geocoder.addressSearch(address, function (result, status) {
+                        if (status === kakao.maps.services.Status.OK && result[0]) {
+                            resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
+                        } else {
+                            reject(new Error('GEOCODE_FAIL'));
+                        }
+                    });
                 });
-            });
+            } catch (geoErr) {
+                // 지오코딩 실패 → 하드 블록 대신 지도 피커로 폴백 유도.
+                // 피커에서 위치 확정 시 selectedCoords가 채워지고 주소칸도 갱신되어,
+                // 다시 '등록하기'를 누르면 지오코딩 없이 그대로 진행된다.
+                if (window.track) window.track('registration_geocode_fail');
+                btn.innerText = window.t('reg_submit');
+                btn.disabled = false;
+                window.showRegError(window.t('reg_addr_geocode_fallback'));
+                window.startMapPicker();
+                return;
+            }
         }
 
         var isEditing = !!__capturedEditingClubId;
@@ -510,9 +573,24 @@ window.submitRegistration = async function () {
 
     } catch (error) {
         console.error(error);
-        alert(window.t('reg_error') + error.message);
+        window.showRegError(window.t('reg_error') + error.message);
     } finally {
         btn.innerText = window.t('reg_submit');
         btn.disabled = false;
     }
+};
+
+// ── 로그인 게이트 자동 재개 ──
+// setupAuthListener가 실제 로그인 성공 직후 호출한다. 로그인 게이트로 중단됐던
+// 등록을 폼 내용 그대로 이어서 자동 재제출한다. 사용자가 로그인 없이 오버레이를
+// 닫으면 toggleProfileCard가 폼을 복원하고 이 플래그를 해제한다.
+window.resumePendingRegistration = function () {
+    if (!window._regResumePending) return;
+    window._regResumePending = false;
+    var hint = document.getElementById('regLoginHint');
+    if (hint) hint.style.display = 'none';
+    var prof = document.getElementById('profileOverlay');
+    if (prof) prof.style.display = 'none';
+    document.getElementById('regModalOverlay').style.display = 'flex';
+    window.submitRegistration();
 };

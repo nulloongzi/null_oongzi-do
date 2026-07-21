@@ -140,5 +140,14 @@ window.editNickname = async function () {
 
 window.toggleProfileCard = function () {
     var overlay = document.getElementById('profileOverlay');
-    overlay.style.display = (overlay.style.display === 'flex') ? 'none' : 'flex';
+    var closing = overlay.style.display === 'flex';
+    overlay.style.display = closing ? 'none' : 'flex';
+    // 로그인 게이트 상태에서 로그인 없이 닫으면: 작성 중이던 등록 폼을 복원하고 대기 해제
+    if (closing && window._regResumePending) {
+        window._regResumePending = false;
+        var hint = document.getElementById('regLoginHint');
+        if (hint) hint.style.display = 'none';
+        var reg = document.getElementById('regModalOverlay');
+        if (reg) reg.style.display = 'flex';
+    }
 };

@@ -117,6 +117,9 @@
         reg_link_label: { ko: '가입/문의 링크 (선택)', en: 'Join/contact link (optional)' },
         reg_link_ph: { ko: '예: https://open.kakao.com/o/...', en: 'e.g. https://open.kakao.com/o/...' },
         reg_submit: { ko: '등록하기', en: 'Register' },
+        reg_optional_summary: { ko: '추가 정보 입력 (선택) ▾', en: 'Add more details (optional) ▾' },
+        reg_login_hint: { ko: '팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록됩니다.', en: 'Log in to finish registering your team. Your entries are kept and submitted automatically after login.' },
+        reg_addr_geocode_fallback: { ko: '주소를 자동으로 찾지 못했어요. 지도에서 위치를 직접 찍어주세요.', en: "Couldn't locate that address automatically. Please drop a pin on the map." },
 
         // 지도 위치 선택
         mp_confirm: { ko: '이 위치로 주소 설정', en: 'Set address to this spot' },
