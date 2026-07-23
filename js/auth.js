@@ -38,6 +38,7 @@ window.loginWithGoogle = async function () {
     var provider = new firebase.auth.GoogleAuthProvider();
     try {
         await firebase.auth().signInWithPopup(provider);
+        if (window.rememberLoginProvider) window.rememberLoginProvider('google');
         if (window.track) window.track('login', { method: 'google' });
     } catch (error) {
         alert(window.t('au_login_fail') + error.message);
