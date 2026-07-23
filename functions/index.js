@@ -820,3 +820,10 @@ exports.migrateUsersPrivate = onCall({ timeoutSeconds: 540 }, async function (re
 });
 
 
+
+// ══════════════════════════════════════════════════════════
+// 소셜 로그인(카카오/네이버) → Firebase 커스텀 토큰. 구현은 social-auth.js.
+// ══════════════════════════════════════════════════════════
+var socialAuth = require("./social-auth");
+exports.kakaoCustomToken = socialAuth.kakaoCustomToken;
+exports.naverCustomToken = socialAuth.naverCustomToken;
