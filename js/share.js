@@ -455,178 +455,160 @@ window.generateStoryCard = function (data) {
     }).then(function (res) {
         var logo = res[0], station = res[1];
 
-        // ── 배경: 따뜻한 누룽지 그라데이션 + 누룽지(밥알) 텍스처 ──
-        var g = ctx.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, '#fff7e3'); g.addColorStop(0.5, '#ffe9b8'); g.addColorStop(1, '#f7d27e');
-        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-        var seed = 1234567;
-        function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
-        var specks = ['rgba(216,164,65,0.20)', 'rgba(180,120,50,0.16)', 'rgba(255,255,255,0.22)'];
-        for (var sp = 0; sp < 520; sp++) {
-            ctx.fillStyle = specks[sp % specks.length];
-            ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, 1.5 + rnd() * 4, 0, Math.PI * 2); ctx.fill();
-        }
-
-        // ── 상단 브랜드 ──
+        // ===== 리디자인 카드 (에디토리얼 일러스트 지도 + 라인 아이콘) =====
+        var INK = '#3d2c22', SUB = '#a99a8c', accentC = accent;
         var brand = window.t ? window.t('brand') : '누룽지도';
-        ctx.font = '900 58px ' + FONT;
-        var brandW = ctx.measureText(brand).width;
-        var logoSize = 92, gap = 26;
-        var gx = (W - ((logo ? logoSize + gap : 0) + brandW)) / 2, gy = 96;
-        if (logo) {
-            ctx.save();
-            ctx.beginPath(); ctx.arc(gx + logoSize / 2, gy + logoSize / 2, logoSize / 2, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
-            ctx.drawImage(logo, gx, gy, logoSize, logoSize);
-            ctx.restore();
-            gx += logoSize + gap;
-        }
-        ctx.fillStyle = DARK; ctx.textBaseline = 'middle';
-        ctx.fillText(brand, gx, gy + logoSize / 2 + 2);
-        ctx.textBaseline = 'top';
+        var url = data.url;
+        function rr(x, y, w, h, r) { storyRoundRect(ctx, x, y, w, h, r); }
+        function sh(a, blur, dy) { ctx.shadowColor = 'rgba(93,64,55,' + a + ')'; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy; }
+        function nosh() { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+        function strk(c, lw) { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; }
+        function icoCal(x, y, s, c) { strk(c, s * 0.08); rr(x + s * 0.1, y + s * 0.16, s * 0.8, s * 0.72, s * 0.13); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + s * 0.1, y + s * 0.36); ctx.lineTo(x + s * 0.9, y + s * 0.36); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + s * 0.32, y + s * 0.06); ctx.lineTo(x + s * 0.32, y + s * 0.24); ctx.moveTo(x + s * 0.68, y + s * 0.06); ctx.lineTo(x + s * 0.68, y + s * 0.24); ctx.stroke(); }
+        function icoWon(x, y, s, c) { strk(c, s * 0.08); ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.4, 0, 7); ctx.stroke(); ctx.font = '700 ' + (s * 0.5) + 'px ' + FONT; ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('\u20A9', x + s / 2, y + s / 2 + s * 0.03); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; }
+        function icoPin(x, y, s, c) { strk(c, s * 0.08); ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.4, s * 0.28, Math.PI * 0.85, Math.PI * 0.15, false); ctx.lineTo(x + s / 2, y + s * 0.9); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.4, s * 0.11, 0, 7); ctx.stroke(); }
+        function icoSub(x, y, s, c) { strk(c, s * 0.08); rr(x + s * 0.18, y + s * 0.12, s * 0.64, s * 0.6, s * 0.16); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + s * 0.18, y + s * 0.44); ctx.lineTo(x + s * 0.82, y + s * 0.44); ctx.stroke(); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + s * 0.34, y + s * 0.58, s * 0.05, 0, 7); ctx.arc(x + s * 0.66, y + s * 0.58, s * 0.05, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + s * 0.3, y + s * 0.74); ctx.lineTo(x + s * 0.22, y + s * 0.9); ctx.moveTo(x + s * 0.7, y + s * 0.74); ctx.lineTo(x + s * 0.78, y + s * 0.9); ctx.stroke(); }
+        function volley(cx, cy, r, c) { strk(c, r * 0.12); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(cx - r * 0.2, cy - r * 0.1, r * 1.1, -0.5, 0.7); ctx.stroke(); ctx.beginPath(); ctx.arc(cx + r * 0.5, cy + r * 0.6, r * 1.1, 3.3, 4.4); ctx.stroke(); ctx.beginPath(); ctx.arc(cx - r * 0.4, cy + r * 0.7, r * 1.1, 1.5, 2.6); ctx.stroke(); }
 
-        // ── 위치 패널: 일러스트 지도 + 핀 + 지하철역 ──
-        var mpX = pad, mpY = 250, mpW = W - pad * 2, mpH = 540;
-        ctx.save();
-        ctx.shadowColor = 'rgba(93,64,55,0.18)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 16;
-        ctx.fillStyle = '#fffaf0'; storyRoundRect(ctx, mpX, mpY, mpW, mpH, 44); ctx.fill();
+        // 배경: 절제된 크림 + 은은한 웜 비네트
+        ctx.fillStyle = '#fbf3e2'; ctx.fillRect(0, 0, W, H);
+        var vg = ctx.createRadialGradient(W / 2, H * 0.42, 200, W / 2, H * 0.42, H * 0.7);
+        vg.addColorStop(0, 'rgba(255,252,240,0.6)'); vg.addColorStop(1, 'rgba(240,226,196,0.5)');
+        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+        // 브랜드 헤더 (로고 타일 + 워드마크)
+        ctx.font = '800 50px ' + FONT;
+        var wmW = ctx.measureText(brand).width, tile = 64, tgap = 18;
+        var total = tile + tgap + wmW, hsx = (W - total) / 2, hty = 118;
+        ctx.save(); sh(0.16, 14, 6); ctx.fillStyle = YELLOW; rr(hsx, hty, tile, tile, 18); ctx.fill(); ctx.restore();
+        volley(hsx + tile / 2, hty + tile / 2, 20, '#fff');
+        ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        ctx.fillText(brand, hsx + tile + tgap, hty + tile / 2 + 1); ctx.textBaseline = 'top';
+
+        // ===== 히어로: 에디토리얼 일러스트 지도 =====
+        var mx = pad, my = 252, mw = W - pad * 2, mh = 560, PANEL_R = 28;
+        ctx.save(); sh(0.15, 36, 18); ctx.fillStyle = '#fff'; rr(mx, my, mw, mh, PANEL_R); ctx.fill(); ctx.restore();
+        ctx.save(); rr(mx, my, mw, mh, PANEL_R); ctx.clip();
+        ctx.fillStyle = '#f7edd6'; ctx.fillRect(mx, my, mw, mh);
+        // 실제 좌표로 시드 (장소마다 고유·안정)
+        var mseed = Math.floor(Math.abs((Math.round((data.lat || 37.55) * 1e4) * 73856093) ^ (Math.round((data.lng || 126.98) * 1e4) * 19349663))) % 2147483647 || 12345;
+        function mr() { mseed = (mseed * 1103515245 + 12345) & 0x7fffffff; return mseed / 0x7fffffff; }
+        // 공원 + 나무
+        ctx.fillStyle = '#dbe4bf'; ctx.beginPath(); ctx.ellipse(mx + mw * 0.78, my + mh * 0.3, 150, 120, 0.3, 0, 7); ctx.fill();
+        ctx.fillStyle = '#c3d29a'; for (var tI = 0; tI < 4; tI++) { ctx.beginPath(); ctx.arc(mx + mw * 0.72 + tI * 34, my + mh * 0.24 + (tI % 2) * 30, 11, 0, 7); ctx.fill(); }
+        // 물길
+        ctx.fillStyle = '#d7e6e4'; ctx.beginPath();
+        ctx.moveTo(mx, my + mh * 0.72); ctx.bezierCurveTo(mx + mw * 0.28, my + mh * 0.64, mx + mw * 0.34, my + mh * 0.9, mx + mw * 0.62, my + mh * 0.86);
+        ctx.lineTo(mx + mw * 0.62, my + mh); ctx.lineTo(mx, my + mh); ctx.closePath(); ctx.fill();
+        // 구획 블록 (좌표 시드로 약간 변주)
+        var blocks = [[0.08, 0.12, 120, 88], [0.3, 0.1, 96, 78], [0.1, 0.4, 104, 70], [0.32, 0.44, 110, 84], [0.55, 0.14, 86, 76], [0.53, 0.5, 96, 70], [0.8, 0.62, 110, 80], [0.16, 0.7, 92, 66]];
+        for (var bI = 0; bI < blocks.length; bI++) { var b = blocks[bI]; ctx.fillStyle = mr() > 0.5 ? '#ecdfbb' : '#e6d6ac'; rr(mx + mw * b[0] + (mr() - 0.5) * 20, my + mh * b[1] + (mr() - 0.5) * 16, b[2], b[3], 10); ctx.fill(); }
+        // 도로 (곡선 리본) + 점선 센터라인
+        strk('#fdf8ec', 30);
+        ctx.beginPath(); ctx.moveTo(mx - 20, my + mh * 0.58); ctx.bezierCurveTo(mx + mw * 0.35, my + mh * 0.5, mx + mw * 0.5, my + mh * 0.66, mx + mw + 20, my + mh * 0.52); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(mx + mw * 0.42, my - 20); ctx.bezierCurveTo(mx + mw * 0.46, my + mh * 0.4, mx + mw * 0.38, my + mh * 0.6, mx + mw * 0.44, my + mh + 20); ctx.stroke();
+        ctx.save(); strk('#e8cf94', 4); ctx.setLineDash([16, 18]);
+        ctx.beginPath(); ctx.moveTo(mx - 20, my + mh * 0.58); ctx.bezierCurveTo(mx + mw * 0.35, my + mh * 0.5, mx + mw * 0.5, my + mh * 0.66, mx + mw + 20, my + mh * 0.52); ctx.stroke();
         ctx.restore();
-        ctx.save();
-        storyRoundRect(ctx, mpX, mpY, mpW, mpH, 44); ctx.clip();
-        // 추상 동네 블록(누룽지 톤)
-        var bseed = 99; function brnd() { bseed = (bseed * 1103515245 + 12345) & 0x7fffffff; return bseed / 0x7fffffff; }
-        for (var bx = mpX + 10; bx < mpX + mpW - 30; bx += 150) {
-            for (var by = mpY + 10; by < mpY + mpH - 70; by += 120) {
-                ctx.fillStyle = brnd() > 0.5 ? '#f1e3bf' : '#efe6cf';
-                storyRoundRect(ctx, bx + brnd() * 18, by + brnd() * 14, 84 + brnd() * 46, 60 + brnd() * 34, 12); ctx.fill();
-            }
-        }
-        // 하천 느낌
-        ctx.fillStyle = 'rgba(150,200,220,0.45)';
-        ctx.beginPath();
-        ctx.moveTo(mpX, mpY + mpH - 60);
-        ctx.bezierCurveTo(mpX + mpW * 0.3, mpY + mpH - 100, mpX + mpW * 0.6, mpY + mpH - 20, mpX + mpW, mpY + mpH - 70);
-        ctx.lineTo(mpX + mpW, mpY + mpH); ctx.lineTo(mpX, mpY + mpH); ctx.closePath(); ctx.fill();
         ctx.restore();
-        // 핀
-        var pinX = mpX + mpW / 2, headY = mpY + 178, R = 66;
-        ctx.fillStyle = 'rgba(0,0,0,0.10)';
-        ctx.beginPath(); ctx.ellipse(pinX, headY + 104, 46, 14, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.20)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
-        ctx.fillStyle = accent;
-        ctx.beginPath(); ctx.moveTo(pinX - 36, headY + 22); ctx.lineTo(pinX + 36, headY + 22); ctx.lineTo(pinX, headY + 100); ctx.closePath(); ctx.fill();
-        ctx.beginPath(); ctx.arc(pinX, headY, R, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(pinX, headY, 42, 0, Math.PI * 2); ctx.fill();
-        ctx.font = '44px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(data.icon || '🏐', pinX, headY + 2);
-        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        // 지역(상단 작게) + 지하철역/위치 칩(하단)
+
+        // 지역 pill (상단, 한 번만)
         var region = storyRegion(data.address);
-        if (region) { ctx.font = '700 26px ' + FONT; ctx.fillStyle = BROWN; ctx.textAlign = 'center'; ctx.fillText('📍 ' + region, pinX, mpY + 34); ctx.textAlign = 'left'; }
-        var chipText;
-        if (station && station.name) {
-            var walk = station.distance ? Math.max(1, Math.round(station.distance / 67)) : 0;
-            chipText = '🚇 ' + station.name + (station.distance ? '  ' + station.distance + 'm · 도보 ' + walk + '분' : '');
-        } else { chipText = data.venue || region || ''; }
-        if (chipText) {
-            ctx.font = '800 34px ' + FONT;
-            var chW = Math.min(mpW - 60, ctx.measureText(chipText).width + 56), chX = mpX + (mpW - chW) / 2, chY = mpY + mpH - 94;
-            ctx.save();
-            ctx.shadowColor = 'rgba(0,0,0,0.14)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
-            ctx.fillStyle = '#ffffff'; storyRoundRect(ctx, chX, chY, chW, 64, 32); ctx.fill();
-            ctx.restore();
-            ctx.fillStyle = DARK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(chipText, mpX + mpW / 2, chY + 33);
-            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        if (region) {
+            ctx.font = '700 27px ' + FONT; var rw = ctx.measureText(region).width + 72;
+            ctx.save(); sh(0.12, 8, 4); ctx.fillStyle = '#fff'; rr(mx + (mw - rw) / 2, my + 24, rw, 54, 27); ctx.fill(); ctx.restore();
+            icoPin(mx + (mw - rw) / 2 + 18, my + 24 + 13, 28, BROWN);
+            ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(region, mx + (mw - rw) / 2 + 52, my + 24 + 28); ctx.textBaseline = 'top';
         }
 
-        // ── 정보 카드 ──
-        var cardX = pad, cardY = 830, cardW = W - pad * 2, cardH = 1500 - cardY;
-        ctx.save();
-        ctx.shadowColor = 'rgba(93,64,55,0.18)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 20;
-        ctx.fillStyle = '#ffffff'; storyRoundRect(ctx, cardX, cardY, cardW, cardH, 44); ctx.fill();
-        ctx.restore();
-        var ix = cardX + 60, iw = cardW - 120, y = cardY + 60;
+        // 핀 (중앙, 라인아트 배구공)
+        var px = mx + mw / 2, py = my + mh * 0.48, pr = 52;
+        ctx.fillStyle = 'rgba(93,64,55,0.14)'; ctx.beginPath(); ctx.ellipse(px, py + 82, 40, 12, 0, 0, 7); ctx.fill();
+        ctx.save(); sh(0.22, 16, 8); ctx.fillStyle = accentC;
+        ctx.beginPath(); ctx.moveTo(px - 30, py + 14); ctx.lineTo(px + 30, py + 14); ctx.lineTo(px, py + 80); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.arc(px, py, pr, 0, 7); ctx.fill(); ctx.restore();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 34, 0, 7); ctx.fill();
+        volley(px, py, 22, accentC);
 
-        // 제목 (+ 인증 ✔)
-        ctx.fillStyle = DARK; ctx.font = '800 72px ' + FONT;
-        var titleLines = storyWrapLines(ctx, data.title || (window.t ? window.t('sh_club_fallback') : ''), iw - (data.verified ? 64 : 0), 2);
+        // 지오 힌트 pill (하단): 가까운 역 우선 → 장소명
+        var stTxt = '', stIsSub = false;
+        if (station && station.name) { var walk = station.distance ? Math.max(1, Math.round(station.distance / 67)) : 0; stTxt = station.name + (station.distance ? ' \u00B7 ' + station.distance + 'm \u00B7 \uB3C4\uBCF4 ' + walk + '\uBD84' : ''); stIsSub = true; }
+        else if (data.venue) { stTxt = data.venue; }
+        if (stTxt) {
+            ctx.font = '700 30px ' + FONT; var sw = Math.min(mw - 40, ctx.measureText(stTxt).width + 82);
+            var ssx = mx + (mw - sw) / 2, ssy = my + mh - 82;
+            ctx.save(); sh(0.16, 10, 5); ctx.fillStyle = '#fff'; rr(ssx, ssy, sw, 60, 30); ctx.fill(); ctx.restore();
+            if (stIsSub) icoSub(ssx + 20, ssy + 15, 30, accentC); else icoPin(ssx + 20, ssy + 15, 30, accentC);
+            ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(stTxt, ssx + 58, ssy + 31); ctx.textBaseline = 'top';
+        }
+
+        // ===== 정보 카드 (콘텐츠 맞춤 높이 + 존 중앙) =====
+        var cardX = pad, cardW = W - pad * 2, cpad = 56, ix = cardX + cpad, iw = cardW - cpad * 2;
+        ctx.font = '800 64px ' + FONT;
+        var titleLines = storyWrapLines(ctx, data.title || (window.t ? window.t('sh_club_fallback') : ''), iw - (data.verified ? 66 : 0), 2);
+        var titleH = titleLines.length * 76;
+        var chips = data.tags || [];
+        var chipH = 54, chipPad = 22, chipGap = 12;
+        ctx.font = '600 30px ' + FONT;
+        var chipLayout = [], ccx = 0, crow = 0;
+        for (var k = 0; k < chips.length; k++) { var cw = ctx.measureText(chips[k].t).width + chipPad * 2; if (ccx + cw > iw && ccx > 0) { crow++; ccx = 0; } chipLayout.push({ t: chips[k], x: ccx, row: crow, w: cw }); ccx += cw + chipGap; }
+        var chipRows = chips.length ? crow + 1 : 0;
+        var chipsH = chipRows ? (chipRows * chipH + (chipRows - 1) * chipGap + 30) : 0;
+        var twLines = null, bannerBodyH = 0, twBadge = '';
+        if (data.thisWeek) { ctx.font = '700 32px ' + FONT; twLines = storyWrapLines(ctx, data.thisWeek, iw - 44, 2); twBadge = data.thisWeekBadge || (window.t ? window.t('pk_thisweek_badge') : '이번주'); bannerBodyH = 76 + twLines.length * 42 + 16; }
+        var bannerH = twLines ? bannerBodyH + 28 : 0;
+        ctx.font = '500 36px ' + FONT;
+        var infoDefs = [['cal', data.schedule, 2], ['won', data.fee, 1], ['pin', data.venue ? (data.venue + (data.address ? ' \u00B7 ' + data.address : '')) : data.address, 2]];
+        var infoItems = [], infoH = 0;
+        for (var q = 0; q < infoDefs.length; q++) { if (!infoDefs[q][1]) continue; var ln = storyWrapLines(ctx, infoDefs[q][1], iw - 62, infoDefs[q][2]); infoItems.push({ icon: infoDefs[q][0], lines: ln }); infoH += Math.max(54, ln.length * 46) + 18; }
+        var contentH = titleH + chipsH + bannerH + infoH;
+        var cardH = contentH + cpad * 2 - 6;
+        var zoneTop = my + mh + 34, zoneBot = 1444;
+        var cardY = Math.round(Math.max(zoneTop, Math.min(zoneBot - cardH, zoneTop + (zoneBot - zoneTop - cardH) / 2)));
+        ctx.save(); sh(0.15, 40, 20); ctx.fillStyle = '#fffdf8'; rr(cardX, cardY, cardW, cardH, 28); ctx.fill(); ctx.restore();
+
+        var y = cardY + cpad;
+        ctx.fillStyle = INK; ctx.font = '800 64px ' + FONT;
         for (var ti = 0; ti < titleLines.length; ti++) {
             ctx.fillText(titleLines[ti], ix, y);
-            if (ti === 0 && data.verified) {
-                var tw0 = ctx.measureText(titleLines[0]).width;
-                ctx.fillStyle = '#1DA1F2'; ctx.font = '700 46px ' + FONT; ctx.fillText('✔', ix + tw0 + 14, y + 10);
-                ctx.fillStyle = DARK; ctx.font = '800 72px ' + FONT;
-            }
-            y += 86;
+            if (ti === 0 && data.verified) { var tw0 = ctx.measureText(titleLines[0]).width; ctx.fillStyle = '#12a89e'; ctx.beginPath(); ctx.arc(ix + tw0 + 34, y + 34, 22, 0, 7); ctx.fill(); strk('#fff', 5); ctx.beginPath(); ctx.moveTo(ix + tw0 + 24, y + 34); ctx.lineTo(ix + tw0 + 31, y + 42); ctx.lineTo(ix + tw0 + 45, y + 26); ctx.stroke(); ctx.fillStyle = INK; }
+            y += 76;
         }
-        y += 10;
-
-        // 칩
-        var chips = data.tags || [];
-        ctx.font = '700 32px ' + FONT;
-        var chipH = 58, chipPad = 24, chipGap = 14, cx = ix, cl0 = y;
-        ctx.textBaseline = 'middle';
-        for (var k = 0; k < chips.length; k++) {
-            var cw = ctx.measureText(chips[k].t).width + chipPad * 2;
-            if (cx + cw > ix + iw) { cx = ix; cl0 += chipH + chipGap; }
-            ctx.fillStyle = chips[k].bg; storyRoundRect(ctx, cx, cl0, cw, chipH, chipH / 2); ctx.fill();
-            ctx.fillStyle = chips[k].fg; ctx.fillText(chips[k].t, cx + chipPad, cl0 + chipH / 2 + 1);
-            cx += cw + chipGap;
+        y += 8;
+        if (chipRows) {
+            ctx.font = '600 30px ' + FONT; ctx.textBaseline = 'middle';
+            for (var ci = 0; ci < chipLayout.length; ci++) { var it = chipLayout[ci], cxx = ix + it.x, cyy = y + it.row * (chipH + chipGap); ctx.fillStyle = it.t.bg || '#f4ecdb'; rr(cxx, cyy, it.w, chipH, chipH / 2); ctx.fill(); ctx.fillStyle = it.t.fg || BROWN; ctx.fillText(it.t.t, cxx + chipPad, cyy + chipH / 2 + 1); }
+            ctx.textBaseline = 'top'; y += chipRows * chipH + (chipRows - 1) * chipGap + 30;
         }
-        ctx.textBaseline = 'top';
-        y = cl0 + (chips.length ? chipH + 32 : 0);
-
-        // 이번주 배너
-        if (data.thisWeek) {
-            ctx.font = '700 34px ' + FONT;
-            var twLines = storyWrapLines(ctx, data.thisWeek, iw - 48, 2);
-            var twBadge = data.thisWeekBadge || (window.t ? window.t('pk_thisweek_badge') : '이번주');
-            var bannerH = 84 + twLines.length * 44 + 18;
-            ctx.fillStyle = 'rgba(250,199,16,0.22)'; storyRoundRect(ctx, ix, y, iw, bannerH, 20); ctx.fill();
-            ctx.font = '800 28px ' + FONT;
-            var badgeW = ctx.measureText(twBadge).width + 32;
-            ctx.fillStyle = YELLOW; storyRoundRect(ctx, ix + 22, y + 22, badgeW, 44, 22); ctx.fill();
-            ctx.fillStyle = DARK; ctx.textBaseline = 'middle'; ctx.fillText(twBadge, ix + 22 + 16, y + 22 + 23); ctx.textBaseline = 'top';
-            ctx.font = '700 34px ' + FONT; ctx.fillStyle = DARK;
-            var ly = y + 84;
-            for (var bi = 0; bi < twLines.length; bi++) { ctx.fillText(twLines[bi], ix + 22, ly); ly += 44; }
-            y += bannerH + 30;
+        if (twLines) {
+            ctx.fillStyle = 'rgba(250,199,16,0.22)'; rr(ix, y, iw, bannerBodyH, 18); ctx.fill();
+            ctx.font = '800 27px ' + FONT; var badgeW = ctx.measureText(twBadge).width + 30;
+            ctx.fillStyle = YELLOW; rr(ix + 22, y + 20, badgeW, 42, 21); ctx.fill();
+            ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.fillText(twBadge, ix + 22 + 15, y + 20 + 22); ctx.textBaseline = 'top';
+            ctx.font = '700 32px ' + FONT; var ly = y + 76; for (var bi = 0; bi < twLines.length; bi++) { ctx.fillText(twLines[bi], ix + 22, ly); ly += 42; }
+            y += bannerH;
+        }
+        for (var iiI = 0; iiI < infoItems.length; iiI++) {
+            var ic = infoItems[iiI].icon;
+            if (ic === 'cal') icoCal(ix, y - 2, 40, BROWN); else if (ic === 'won') icoWon(ix, y - 2, 40, BROWN); else icoPin(ix, y - 2, 40, BROWN);
+            ctx.fillStyle = DARK; ctx.font = '500 36px ' + FONT; ctx.textBaseline = 'middle';
+            var lines = infoItems[iiI].lines, iy = y + 20;
+            for (var li = 0; li < lines.length; li++) { ctx.fillText(lines[li], ix + 62, iy); iy += 46; }
+            ctx.textBaseline = 'top'; y += Math.max(54, lines.length * 46) + 18;
         }
 
-        // 정보 행
-        ctx.font = '600 38px ' + FONT;
-        function infoRow(icon, text, maxLines) {
-            if (!text) return;
-            ctx.fillStyle = DARK; ctx.fillText(icon, ix, y);
-            var lines = storyWrapLines(ctx, text, iw - 62, maxLines || 2);
-            for (var li = 0; li < lines.length; li++) { ctx.fillText(lines[li], ix + 62, y); y += 50; }
-            y += 12;
-        }
-        infoRow('🗓', data.schedule, 2);
-        infoRow('💰', data.fee, 1);
-        infoRow('📍', data.venue ? (data.venue + (data.address ? ' · ' + data.address : '')) : data.address, 2);
-
-        // ── 푸터: QR + CTA ──
-        var url = data.url;
-        var footY = 1545, footH = 300, qrSize = 250;
-        var qrX = pad, qrY = footY + (footH - qrSize) / 2;
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.12)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8;
-        ctx.fillStyle = '#fff'; storyRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 24); ctx.fill();
-        ctx.restore();
+        // ===== 푸터: QR + CTA =====
+        var footH = 210, qrSize = 190, footY = 1670 - footH, qrX = pad, qrY = footY + (footH - qrSize) / 2;
+        ctx.save(); sh(0.14, 16, 8); ctx.fillStyle = '#fff'; rr(qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 18); ctx.fill(); ctx.restore();
         var haveQR = storyDrawQR(ctx, url, qrX, qrY, qrSize);
-        if (!haveQR) { ctx.fillStyle = BROWN; ctx.font = '700 26px ' + FONT; ctx.textBaseline = 'middle'; ctx.fillText(brand, qrX + 8, qrY + qrSize / 2); ctx.textBaseline = 'top'; }
-        var tx = qrX + qrSize + 56, twf = W - pad - tx;
-        ctx.fillStyle = DARK; ctx.font = '800 48px ' + FONT;
-        var ctaLines = storyWrapLines(ctx, window.t ? window.t('sh_card_cta') : '', twf, 2);
-        var fy = footY + 60;
-        for (var cl = 0; cl < ctaLines.length; cl++) { ctx.fillText(ctaLines[cl], tx, fy); fy += 56; }
-        ctx.fillStyle = BROWN; ctx.font = '600 28px ' + FONT;
-        var urlLines = storyWrapLines(ctx, String(url).replace(/^https?:\/\//, ''), twf, 2);
-        fy += 8;
-        for (var ul = 0; ul < urlLines.length; ul++) { ctx.fillText(urlLines[ul], tx, fy); fy += 36; }
+        if (!haveQR) { ctx.fillStyle = BROWN; ctx.font = '700 24px ' + FONT; ctx.textBaseline = 'middle'; ctx.fillText(brand, qrX + 8, qrY + qrSize / 2); ctx.textBaseline = 'top'; }
+        var tx = qrX + qrSize + 50;
+        ctx.fillStyle = SUB; ctx.font = '700 24px ' + FONT; ctx.fillText('S C A N', tx, footY + 30);
+        ctx.fillStyle = INK; ctx.font = '800 42px ' + FONT;
+        var ctaLines = storyWrapLines(ctx, window.t ? window.t('sh_card_cta') : '', W - pad - tx, 2);
+        var fy = footY + 66;
+        for (var cl = 0; cl < ctaLines.length; cl++) { ctx.fillText(ctaLines[cl], tx, fy); fy += 50; }
+        ctx.fillStyle = BROWN; ctx.font = '500 27px ' + FONT; fy += 4;
+        ctx.fillText(String(url).replace(/^https?:\/\//, '').replace(/\/$/, ''), tx, fy);
 
         ctx.textBaseline = 'alphabetic';
         return canvas.toDataURL('image/png');
