@@ -827,3 +827,10 @@ exports.migrateUsersPrivate = onCall({ timeoutSeconds: 540 }, async function (re
 var socialAuth = require("./social-auth");
 exports.kakaoCustomToken = socialAuth.kakaoCustomToken;
 exports.naverCustomToken = socialAuth.naverCustomToken;
+
+// ══════════════════════════════════════════════════════════
+// 릴스 정지 커버 캐싱(발견 카드용) → 인스타 oEmbed. 구현은 insta-cover.js.
+// ══════════════════════════════════════════════════════════
+var instaCover = require("./insta-cover");
+exports.cacheClubReelCovers = instaCover.cacheClubReelCovers;
+exports.cachePickupReelCovers = instaCover.cachePickupReelCovers;
