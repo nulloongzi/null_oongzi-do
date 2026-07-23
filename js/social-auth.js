@@ -134,9 +134,18 @@
         btn.appendChild(chip);
     }
 
+    // 미설정 제공자 버튼 숨김(에러 버튼 노출 방지). 네이버 Client ID 없으면 네이버 버튼 숨김.
+    function hideUnconfigured() {
+        if (!NAVER_CLIENT_ID) {
+            var nb = document.getElementById('btnNaverLogin');
+            if (nb) nb.style.display = 'none';
+        }
+    }
+
     function init() {
         ensureKakao();
         handleRedirect();
+        hideUnconfigured();
         markLastUsed();
     }
     if (document.readyState === 'loading') {
