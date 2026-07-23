@@ -46,6 +46,20 @@ window.instaCssIcon = '<div class="instagram" title="인스타그램 보러가�
 // 넘기는 대신 HTMLElement를 직접 생성하고 이벤트 리스너를 부착한다.
 var VERIFIED_BADGE_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:3px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
 
+// 릴스 발견 신호(앱 마커 링 배지 대응): 인스타 그라데이션 링 + 재생 삼각형.
+// 지도만 훑어도 '분위기를 보여주는 팀'을 알아보고 → 라벨 롱프레스로 피크.
+function buildReelBadgeEl() {
+    var b = document.createElement('span');
+    b.setAttribute('style',
+        'display:inline-flex;align-items:center;justify-content:center;vertical-align:text-bottom;' +
+        'width:15px;height:15px;margin-left:4px;border-radius:50%;' +
+        'background:linear-gradient(45deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5);' +
+        'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.25);');
+    // 정적 재생 삼각형 SVG(사용자 입력 없음)
+    b.innerHTML = '<svg width="8" height="8" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>';
+    return b;
+}
+
 function buildClubLabelEl(club, includeVerifiedBadge) {
     var el = document.createElement('div');
     el.className = club.is_urgent ? 'label urgent' : 'label';
@@ -58,6 +72,10 @@ function buildClubLabelEl(club, includeVerifiedBadge) {
         el.appendChild(document.createTextNode('🔥 '));
     }
     el.appendChild(document.createTextNode(club.name || ''));
+    // 릴스 있는 팀: 이름 뒤에 미세한 발견 링(앱 패리티). insta_reels 배열 우선, insta_reel 단일 폴백.
+    if ((club.insta_reels && club.insta_reels.length) || club.insta_reel) {
+        el.appendChild(buildReelBadgeEl());
+    }
     // 라벨 롱프레스(550ms) → 릴스 피크(앱 패리티 W2). 발화 직후 click(상세 열림)은 억제.
     var peekTimer = null, peekFired = false;
     function peekStart() {
