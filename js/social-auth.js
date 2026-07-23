@@ -13,7 +13,7 @@
     // 카카오 JavaScript 키 — 지도/공유와 동일(공개값). Kakao.Auth.authorize가 이 키로 동작.
     var KAKAO_JS_KEY = '69f821ba943db5e3532ac90ea5ca1080';
     // 네이버 Client ID(공개값 — 브라우저 authorize URL에 사용). CF의 NAVER_CLIENT_ID와 동일.
-    var NAVER_CLIENT_ID = '41TDNsngcV0J7W6lCtDj';
+    var NAVER_CLIENT_ID = '41TDNsngcV0J7W6ICtDj';
 
     var LS_LAST_PROVIDER = 'nulloong_last_login_provider';
     var SS_OAUTH_STATE = 'nulloong_oauth_state';
