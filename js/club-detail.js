@@ -303,7 +303,8 @@ window.openClubDetail = function (id, opts) {
 
     // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
     if (window.renderInstaEmbeds) window.renderInstaEmbeds(document.getElementById('clubReelEmbed'),
-        (club.insta_reels && club.insta_reels.length) ? club.insta_reels : (club.insta_reel ? [club.insta_reel] : []));
+        (club.insta_reels && club.insta_reels.length) ? club.insta_reels : (club.insta_reel ? [club.insta_reel] : []),
+        club.insta_reel_covers);
 
     var urgentArea = document.getElementById('urgentArea');
     if (club.is_urgent && club.urgent_msg) {

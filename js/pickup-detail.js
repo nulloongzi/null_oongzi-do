@@ -124,7 +124,7 @@
         if (reelUrls.length && window.renderInstaEmbeds) {
             var reelBox = el('div', 'insta-embed-box');
             c.appendChild(reelBox);
-            window.renderInstaEmbeds(reelBox, reelUrls);
+            window.renderInstaEmbeds(reelBox, reelUrls, spot.insta_reel_covers);
         }
 
         // 소유자: 수정/삭제

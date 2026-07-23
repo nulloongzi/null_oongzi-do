@@ -123,7 +123,11 @@ function showReelPeek(club) {
         if (e.target === ov) document.body.removeChild(ov);
     });
     document.body.appendChild(ov);
-    if (window.renderInstaEmbed) window.renderInstaEmbed(box, urls[0]);
+    // 커버 있으면 정지 커버 포스터 → 탭하면 임베드(빠른 감 잡기). 없으면 기존 임베드.
+    var covers = club.insta_reel_covers;
+    var cover = (covers && window.reelCodeFromUrl) ? (covers[window.reelCodeFromUrl(urls[0])] || '') : '';
+    if (window.renderReelPoster) window.renderReelPoster(box, urls[0], cover);
+    else if (window.renderInstaEmbed) window.renderInstaEmbed(box, urls[0]);
     if (window.track) window.track('reel_peek', { via: 'label' });
 }
 
