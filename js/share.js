@@ -479,8 +479,14 @@ window.generateStoryCard = function (data) {
         ctx.font = '800 50px ' + FONT;
         var wmW = ctx.measureText(brand).width, tile = 64, tgap = 18;
         var total = tile + tgap + wmW, hsx = (W - total) / 2, hty = 118;
-        ctx.save(); sh(0.16, 14, 6); ctx.fillStyle = YELLOW; rr(hsx, hty, tile, tile, 18); ctx.fill(); ctx.restore();
-        volley(hsx + tile / 2, hty + tile / 2, 20, '#fff');
+        ctx.save(); sh(0.16, 14, 6); ctx.fillStyle = logo ? '#ffffff' : YELLOW; rr(hsx, hty, tile, tile, 18); ctx.fill(); ctx.restore();
+        if (logo) {
+            ctx.save(); rr(hsx, hty, tile, tile, 18); ctx.clip();
+            ctx.drawImage(logo, hsx, hty, tile, tile);
+            ctx.restore();
+        } else {
+            volley(hsx + tile / 2, hty + tile / 2, 20, '#fff');
+        }
         ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
         ctx.fillText(brand, hsx + tile + tgap, hty + tile / 2 + 1); ctx.textBaseline = 'top';
 
