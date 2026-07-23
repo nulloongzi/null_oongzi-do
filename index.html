@@ -117,9 +117,17 @@
             <div id="pcRiceWatermark" class="pc-rice-type"></div>
             <div id="loginSection" class="login-section">
                 <div id="regLoginHint" class="reg-login-hint" style="display:none;" data-i18n="reg_login_hint">팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록됩니다.</div>
-                <button class="btn-google-login" onclick="loginWithGoogle()">
+                <button id="btnGoogleLogin" class="btn-google-login" onclick="loginWithGoogle()">
                     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="G">
                     <span data-i18n="login_google">구글로 간편 로그인</span>
+                </button>
+                <button id="btnKakaoLogin" class="btn-google-login" style="background:#FEE500;color:#191600;border-color:#FEE500;" onclick="loginWithKakao()">
+                    <span style="font-weight:900;font-size:17px;line-height:1;">💬</span>
+                    <span data-i18n="login_kakao">카카오로 로그인</span>
+                </button>
+                <button id="btnNaverLogin" class="btn-google-login" style="background:#03C75A;color:#fff;border-color:#03C75A;" onclick="loginWithNaver()">
+                    <span style="font-weight:900;font-size:16px;line-height:1;">N</span>
+                    <span data-i18n="login_naver">네이버로 로그인</span>
                 </button>
                 <div class="divider" data-i18n="or">또는</div>
                 <div class="input-group">
@@ -418,6 +426,7 @@
     <script src="js/pickup-data.js?v=12"></script>
     <script src="js/profile.js?v=12"></script>
     <script src="js/auth.js?v=12"></script>
+    <script src="js/social-auth.js?v=12"></script>
     <script src="js/lunchbox.js?v=12"></script>
     <script src="js/share.js?v=12"></script>
     <script src="js/insta-embed.js?v=12"></script>

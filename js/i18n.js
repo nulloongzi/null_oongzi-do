@@ -27,6 +27,9 @@
 
         // 로그인 / 프로필
         login_google: { ko: '구글로 간편 로그인', en: 'Sign in with Google' },
+        login_kakao: { ko: '카카오로 로그인', en: 'Sign in with Kakao' },
+        login_naver: { ko: '네이버로 로그인', en: 'Sign in with Naver' },
+        login_last_used: { ko: '지난번에 사용', en: 'Last used' },
         or: { ko: '또는', en: 'or' },
         email_ph: { ko: '이메일 입력', en: 'Email' },
         pw_ph: { ko: '비밀번호 (6자리 이상)', en: 'Password (6+ characters)' },

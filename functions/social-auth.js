@@ -12,24 +12,56 @@
 // (네이버 앱 스코프 강제 검증은 v1 범위 밖 — 하드닝 TODO.)
 
 var { onCall, HttpsError } = require("firebase-functions/v2/https");
-var { defineString } = require("firebase-functions/params");
+var { defineString, defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin"); // index.js에서 initializeApp() 완료됨
 
 // 카카오 앱의 숫자 app_id (개발자 콘솔 → 앱 설정). 설정 시 위조 토큰 방지 강화.
 var KAKAO_APP_ID = defineString("KAKAO_APP_ID", { default: "" });
+// 웹(리다이렉트+code) 흐름에서 code→access_token 교환용. 챗봇과 동일 시크릿 재사용.
+var KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
+var KAKAO_CLIENT_SECRET = defineSecret("KAKAO_CLIENT_SECRET");
 
 // 커스텀 토큰 발급. provider 클레임을 실어 보안 규칙에서 활용 가능.
 function mintToken(uid, provider) {
     return admin.auth().createCustomToken(uid, { provider: provider });
 }
 
-// ── 카카오 ──
-// data: { accessToken }  →  { token }
-exports.kakaoCustomToken = onCall(async function (request) {
-    var accessToken = (request.data || {}).accessToken;
-    if (!accessToken) {
-        throw new HttpsError("invalid-argument", "accessToken이 필요합니다.");
+// 카카오 access_token 확보: 앱은 accessToken 직접 전달, 웹은 code→교환.
+// (Kakao JS SDK v2는 클라에서 access_token을 안 주고 authorization code만 준다.)
+async function resolveKakaoAccessToken(data) {
+    if (data.accessToken) return data.accessToken;
+    if (!data.code || !data.redirectUri) {
+        throw new HttpsError("invalid-argument", "accessToken 또는 (code, redirectUri)가 필요합니다.");
     }
+    var restKey = KAKAO_REST_API_KEY.value();
+    if (!restKey) {
+        throw new HttpsError("failed-precondition", "KAKAO_REST_API_KEY 미설정 - 웹 카카오 로그인 불가.");
+    }
+    var body = "grant_type=authorization_code" +
+        "&client_id=" + encodeURIComponent(restKey) +
+        "&redirect_uri=" + encodeURIComponent(data.redirectUri) +
+        "&code=" + encodeURIComponent(data.code);
+    var clientSecret = KAKAO_CLIENT_SECRET.value();
+    if (clientSecret) body += "&client_secret=" + encodeURIComponent(clientSecret);
+    var tokRes = await fetch("https://kauth.kakao.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
+        body: body
+    });
+    var tok = await tokRes.json();
+    if (!tokRes.ok || !tok.access_token) {
+        console.error("카카오 code 교환 실패:", JSON.stringify(tok));
+        throw new HttpsError("unauthenticated", "카카오 인증 코드 교환에 실패했습니다.");
+    }
+    return tok.access_token;
+}
+
+// ── 카카오 ──
+// data: { accessToken }  (앱 네이티브)  또는  { code, redirectUri }  (웹 리다이렉트)  →  { token }
+exports.kakaoCustomToken = onCall(
+    { secrets: [KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] },
+    async function (request) {
+    var accessToken = await resolveKakaoAccessToken(request.data || {});
     var authHeader = { Authorization: "Bearer " + accessToken };
 
     // 1) 토큰 유효성 + (설정 시) 우리 앱 발급 여부 확인
@@ -59,13 +91,42 @@ exports.kakaoCustomToken = onCall(async function (request) {
     return { token: token };
 });
 
-// ── 네이버 ──
-// data: { accessToken }  →  { token }
-exports.naverCustomToken = onCall(async function (request) {
-    var accessToken = (request.data || {}).accessToken;
-    if (!accessToken) {
-        throw new HttpsError("invalid-argument", "accessToken이 필요합니다.");
+// 네이버 앱의 Client ID/Secret (개발자센터). 웹(code) 교환용. ID는 공개값, Secret은 비밀.
+var NAVER_CLIENT_ID = defineString("NAVER_CLIENT_ID", { default: "" });
+var NAVER_CLIENT_SECRET = defineSecret("NAVER_CLIENT_SECRET");
+
+// 네이버 access_token 확보: 앱은 accessToken 직접, 웹은 code→교환.
+async function resolveNaverAccessToken(data) {
+    if (data.accessToken) return data.accessToken;
+    if (!data.code || !data.state) {
+        throw new HttpsError("invalid-argument", "accessToken 또는 (code, state)가 필요합니다.");
     }
+    var clientId = NAVER_CLIENT_ID.value();
+    var clientSecret = NAVER_CLIENT_SECRET.value();
+    if (!clientId || !clientSecret) {
+        throw new HttpsError("failed-precondition", "NAVER_CLIENT_ID/SECRET 미설정 - 웹 네이버 로그인 불가.");
+    }
+    var url = "https://nid.naver.com/oauth2.0/token" +
+        "?grant_type=authorization_code" +
+        "&client_id=" + encodeURIComponent(clientId) +
+        "&client_secret=" + encodeURIComponent(clientSecret) +
+        "&code=" + encodeURIComponent(data.code) +
+        "&state=" + encodeURIComponent(data.state);
+    var tokRes = await fetch(url);
+    var tok = await tokRes.json();
+    if (!tokRes.ok || !tok.access_token) {
+        console.error("네이버 code 교환 실패:", JSON.stringify(tok));
+        throw new HttpsError("unauthenticated", "네이버 인증 코드 교환에 실패했습니다.");
+    }
+    return tok.access_token;
+}
+
+// ── 네이버 ──
+// data: { accessToken }  (앱)  또는  { code, state }  (웹)  →  { token }
+exports.naverCustomToken = onCall(
+    { secrets: [NAVER_CLIENT_SECRET] },
+    async function (request) {
+    var accessToken = await resolveNaverAccessToken(request.data || {});
 
     var res = await fetch("https://openapi.naver.com/v1/nid/me", {
         headers: { Authorization: "Bearer " + accessToken }
