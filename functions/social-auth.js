@@ -92,7 +92,7 @@ exports.kakaoCustomToken = onCall(
 });
 
 // 네이버 앱의 Client ID/Secret (개발자센터). 웹(code) 교환용. ID는 공개값, Secret은 비밀.
-var NAVER_CLIENT_ID = defineString("NAVER_CLIENT_ID", { default: "41TDNsngcV0J7W6lCtDj" });
+var NAVER_CLIENT_ID = defineString("NAVER_CLIENT_ID", { default: "41TDNsngcV0J7W6ICtDj" });
 var NAVER_CLIENT_SECRET = defineSecret("NAVER_CLIENT_SECRET");
 
 // 네이버 access_token 확보: 앱은 accessToken 직접, 웹은 code→교환.
