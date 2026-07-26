@@ -37,26 +37,48 @@ async function resolveKakaoAccessToken(data) {
     if (!restKey) {
         throw new HttpsError("failed-precondition", "KAKAO_REST_API_KEY 미설정 - 웹 카카오 로그인 불가.");
     }
+    var clientSecret = KAKAO_CLIENT_SECRET.value();
     var body = "grant_type=authorization_code" +
         "&client_id=" + encodeURIComponent(restKey) +
         "&redirect_uri=" + encodeURIComponent(data.redirectUri) +
         "&code=" + encodeURIComponent(data.code);
-    var clientSecret = KAKAO_CLIENT_SECRET.value();
     if (clientSecret) body += "&client_secret=" + encodeURIComponent(clientSecret);
-    // 헤더는 작동하는 챗봇(getKakaoAccessToken)과 바이트 단위로 동일하게 맞춘다.
-    // GCF에서 KOE001 not_acceptable(406)은 Accept/Content-Type 협상 문제로 보고됨:
-    // charset 앞 공백 포함 + Accept: application/json 명시로 회피.
+
+    // 진단 로깅: 무엇을 보내는지(코드·시크릿은 마스킹). KOE001 malformed 원인 추적용.
+    console.log("카카오 토큰 교환 요청:", JSON.stringify({
+        client_id_prefix: restKey.slice(0, 6),
+        redirect_uri: data.redirectUri,
+        code_len: data.code ? data.code.length : 0,
+        has_client_secret: !!clientSecret
+    }));
+
+    // User-Agent 명시: GCF의 undici fetch는 기본 UA를 안 붙인다. 카카오 엣지가
+    // UA 없는 요청을 malformed(KOE001)로 튕기는 케이스가 있어 방어적으로 추가.
     var tokRes = await fetch("https://kauth.kakao.com/oauth/token", {
         method: "POST",
         headers: {
-            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-            "Accept": "application/json"
+            "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+            "Accept": "application/json",
+            "User-Agent": "nulloongzi-do-functions/1.0"
         },
         body: body
     });
-    var tok = await tokRes.json();
-    if (!tokRes.ok || !tok.access_token) {
-        console.error("카카오 code 교환 실패:", tokRes.status, tokRes.statusText, JSON.stringify(tok));
+
+    // 성공/실패 무관하게 원문을 먼저 확보(진단: status·응답헤더·body 전부 로깅).
+    var rawBody = await tokRes.text();
+    if (!tokRes.ok) {
+        var respHeaders = {};
+        try { tokRes.headers.forEach(function (v, k) { respHeaders[k] = v; }); } catch (e) {}
+        console.error("카카오 code 교환 실패:",
+            tokRes.status, tokRes.statusText,
+            "| headers=", JSON.stringify(respHeaders),
+            "| body=", rawBody);
+        throw new HttpsError("unauthenticated", "카카오 인증 코드 교환에 실패했습니다.");
+    }
+    var tok = {};
+    try { tok = JSON.parse(rawBody); } catch (e) {}
+    if (!tok.access_token) {
+        console.error("카카오 응답에 access_token 없음:", tokRes.status, "| body=", rawBody);
         throw new HttpsError("unauthenticated", "카카오 인증 코드 교환에 실패했습니다.");
     }
     return tok.access_token;
