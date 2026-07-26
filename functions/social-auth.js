@@ -14,6 +14,8 @@
 var { onCall, HttpsError } = require("firebase-functions/v2/https");
 var { defineString, defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin"); // index.js에서 initializeApp() 완료됨
+var providerHttp = require("./lib/provider-http");
+var secretValue = providerHttp.secretValue;
 
 // 카카오 앱의 숫자 app_id (개발자 콘솔 → 앱 설정). 설정 시 위조 토큰 방지 강화.
 var KAKAO_APP_ID = defineString("KAKAO_APP_ID", { default: "" });
@@ -26,6 +28,34 @@ function mintToken(uid, provider) {
     return admin.auth().createCustomToken(uid, { provider: provider });
 }
 
+// 토큰 교환 실패 원인 분류용 프로브(실패 경로에서만 1회).
+// 일부러 틀린 refresh_token으로 같은 엔드포인트를 두드려 본다.
+//  - 프로브도 406이면 → 카카오 엣지가 이 런타임의 요청 자체를 막는 것(헤더/IP 문제)
+//  - 프로브가 정상 JSON 에러면 → 엣지는 정상, authorization_code 파라미터/앱 설정 문제
+async function diagnoseKakaoTokenFailure(res, data, restKey, hasSecret) {
+    console.error("카카오 code 교환 실패:", JSON.stringify({
+        status: res.status,
+        body: res.body,
+        redirectUri: data.redirectUri,
+        codeLen: String(data.code || "").length,
+        clientIdLen: restKey.length,
+        clientIdTail: restKey.slice(-4),
+        hasClientSecret: hasSecret
+    }));
+    try {
+        var probe = await providerHttp.postForm(providerHttp.KAUTH_HOST, "/oauth/token",
+            "grant_type=refresh_token" +
+            "&client_id=" + encodeURIComponent(restKey) +
+            "&refresh_token=nulloongzi_probe");
+        console.error("카카오 엣지 프로브:", probe.status, probe.body,
+            probe.status === 406
+                ? "→ 엣지가 런타임 요청 자체를 차단(헤더/IP 문제)"
+                : "→ 엣지 정상, authorization_code 파라미터/앱 설정 문제");
+    } catch (e) {
+        console.error("카카오 엣지 프로브 실패:", e && e.message);
+    }
+}
+
 // 카카오 access_token 확보: 앱은 accessToken 직접 전달, 웹은 code→교환.
 // (Kakao JS SDK v2는 클라에서 access_token을 안 주고 authorization code만 준다.)
 async function resolveKakaoAccessToken(data) {
@@ -33,7 +63,7 @@ async function resolveKakaoAccessToken(data) {
     if (!data.code || !data.redirectUri) {
         throw new HttpsError("invalid-argument", "accessToken 또는 (code, redirectUri)가 필요합니다.");
     }
-    var restKey = KAKAO_REST_API_KEY.value();
+    var restKey = secretValue(KAKAO_REST_API_KEY);
     if (!restKey) {
         throw new HttpsError("failed-precondition", "KAKAO_REST_API_KEY 미설정 - 웹 카카오 로그인 불가.");
     }
@@ -41,17 +71,16 @@ async function resolveKakaoAccessToken(data) {
         "&client_id=" + encodeURIComponent(restKey) +
         "&redirect_uri=" + encodeURIComponent(data.redirectUri) +
         "&code=" + encodeURIComponent(data.code);
-    var clientSecret = KAKAO_CLIENT_SECRET.value();
+    var clientSecret = secretValue(KAKAO_CLIENT_SECRET);
     if (clientSecret) body += "&client_secret=" + encodeURIComponent(clientSecret);
-    var tokRes = await fetch("https://kauth.kakao.com/oauth/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-        body: body
-    });
-    var tok = await tokRes.json();
-    if (!tokRes.ok || !tok.access_token) {
-        console.error("카카오 code 교환 실패:", JSON.stringify(tok));
-        throw new HttpsError("unauthenticated", "카카오 인증 코드 교환에 실패했습니다.");
+
+    var tokRes = await providerHttp.postForm(providerHttp.KAUTH_HOST, "/oauth/token", body);
+    var tok = providerHttp.parseJson(tokRes.body);
+    if (tokRes.status !== 200 || !tok.access_token) {
+        await diagnoseKakaoTokenFailure(tokRes, data, restKey, !!clientSecret);
+        // 원인 추적이 되도록 카카오 에러 코드를 클라이언트 메시지에 그대로 실어 보낸다.
+        throw new HttpsError("unauthenticated",
+            "카카오 인증 코드 교환에 실패했습니다. (" + (tok.error_code || tok.error || tokRes.status) + ")");
     }
     return tok.access_token;
 }
@@ -62,27 +91,26 @@ exports.kakaoCustomToken = onCall(
     { secrets: [KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] },
     async function (request) {
     var accessToken = await resolveKakaoAccessToken(request.data || {});
-    var authHeader = { Authorization: "Bearer " + accessToken };
 
     // 1) 토큰 유효성 + (설정 시) 우리 앱 발급 여부 확인
-    var infoRes = await fetch("https://kapi.kakao.com/v1/user/access_token_info", {
-        headers: authHeader
-    });
-    if (!infoRes.ok) {
+    var infoRes = await providerHttp.getWithToken(providerHttp.KAPI_HOST, "/v1/user/access_token_info", accessToken);
+    if (infoRes.status !== 200) {
+        console.error("카카오 토큰 정보 조회 실패:", infoRes.status, infoRes.body);
         throw new HttpsError("unauthenticated", "카카오 토큰이 유효하지 않습니다.");
     }
-    var info = await infoRes.json();
+    var info = providerHttp.parseJson(infoRes.body);
     var expectedAppId = KAKAO_APP_ID.value();
     if (expectedAppId && String(info.app_id) !== String(expectedAppId)) {
         throw new HttpsError("permission-denied", "다른 앱에서 발급된 카카오 토큰입니다.");
     }
 
     // 2) 사용자 ID 조회
-    var meRes = await fetch("https://kapi.kakao.com/v2/user/me", { headers: authHeader });
-    if (!meRes.ok) {
+    var meRes = await providerHttp.getWithToken(providerHttp.KAPI_HOST, "/v2/user/me", accessToken);
+    if (meRes.status !== 200) {
+        console.error("카카오 사용자 조회 실패:", meRes.status, meRes.body);
         throw new HttpsError("unauthenticated", "카카오 사용자 조회에 실패했습니다.");
     }
-    var me = await meRes.json();
+    var me = providerHttp.parseJson(meRes.body);
     if (!me || me.id === undefined || me.id === null) {
         throw new HttpsError("internal", "카카오 사용자 ID를 확인할 수 없습니다.");
     }
@@ -101,21 +129,21 @@ async function resolveNaverAccessToken(data) {
     if (!data.code || !data.state) {
         throw new HttpsError("invalid-argument", "accessToken 또는 (code, state)가 필요합니다.");
     }
-    var clientId = NAVER_CLIENT_ID.value();
-    var clientSecret = NAVER_CLIENT_SECRET.value();
+    var clientId = (NAVER_CLIENT_ID.value() || "").trim();
+    var clientSecret = secretValue(NAVER_CLIENT_SECRET);
     if (!clientId || !clientSecret) {
         throw new HttpsError("failed-precondition", "NAVER_CLIENT_ID/SECRET 미설정 - 웹 네이버 로그인 불가.");
     }
-    var url = "https://nid.naver.com/oauth2.0/token" +
+    var path = "/oauth2.0/token" +
         "?grant_type=authorization_code" +
         "&client_id=" + encodeURIComponent(clientId) +
         "&client_secret=" + encodeURIComponent(clientSecret) +
         "&code=" + encodeURIComponent(data.code) +
         "&state=" + encodeURIComponent(data.state);
-    var tokRes = await fetch(url);
-    var tok = await tokRes.json();
-    if (!tokRes.ok || !tok.access_token) {
-        console.error("네이버 code 교환 실패:", JSON.stringify(tok));
+    var tokRes = await providerHttp.getJson(providerHttp.NAVER_AUTH_HOST, path);
+    var tok = providerHttp.parseJson(tokRes.body);
+    if (tokRes.status !== 200 || !tok.access_token) {
+        console.error("네이버 code 교환 실패:", tokRes.status, tokRes.body);
         throw new HttpsError("unauthenticated", "네이버 인증 코드 교환에 실패했습니다.");
     }
     return tok.access_token;
@@ -128,13 +156,12 @@ exports.naverCustomToken = onCall(
     async function (request) {
     var accessToken = await resolveNaverAccessToken(request.data || {});
 
-    var res = await fetch("https://openapi.naver.com/v1/nid/me", {
-        headers: { Authorization: "Bearer " + accessToken }
-    });
-    if (!res.ok) {
+    var res = await providerHttp.getWithToken(providerHttp.NAVER_API_HOST, "/v1/nid/me", accessToken);
+    if (res.status !== 200) {
+        console.error("네이버 토큰 정보 조회 실패:", res.status, res.body);
         throw new HttpsError("unauthenticated", "네이버 토큰이 유효하지 않습니다.");
     }
-    var body = await res.json();
+    var body = providerHttp.parseJson(res.body);
     if (!body || body.resultcode !== "00" || !body.response || !body.response.id) {
         throw new HttpsError("unauthenticated", "네이버 사용자 조회에 실패했습니다.");
     }

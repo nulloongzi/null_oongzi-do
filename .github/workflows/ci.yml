@@ -30,6 +30,11 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      # functions/ 는 별도 패키지. tests/functions-provider-http.test.js 가
+      # 실제 핸들러를 로드하므로 여기 의존성이 없으면 테스트가 통째로 취소된다.
+      - name: Install functions deps
+        run: npm ci --prefix functions
+
       - name: ESLint
         run: npm run lint
 
