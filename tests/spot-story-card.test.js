@@ -16,12 +16,16 @@ const vm = require('node:vm');
 const shareSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'share.js'), 'utf-8');
 
 // ── 가벼운 mock들 ──────────────────────────────────────────────────────────
-// 2D 컨텍스트: 모든 메서드는 no-op, measureText/createLinearGradient만 특수 처리.
+// 2D 컨텍스트: 모든 메서드는 no-op, 반환값을 쓰는 것만 특수 처리.
+// 그래디언트는 addColorStop을 즉시 호출하므로 no-op 함수(undefined 반환)로 두면 터진다.
+// share.js가 쓰는 종류가 바뀔 수 있어(리디자인 때 linear→radial로 바뀌었다) 둘 다 둔다.
 function makeCtx() {
+    const gradient = () => ({ addColorStop() { } });
     return new Proxy({}, {
         get(target, prop) {
             if (prop === 'measureText') return (s) => ({ width: (s ? String(s).length : 0) * 12 });
-            if (prop === 'createLinearGradient') return () => ({ addColorStop() { } });
+            if (prop === 'createLinearGradient') return gradient;
+            if (prop === 'createRadialGradient') return gradient;
             if (prop in target) return target[prop];
             return function () { };
         },
@@ -95,7 +99,14 @@ function loadShare(opts) {
         window.NativeShare = { postMessage: (m) => window.posted.push(m) };
     }
 
-    const sandbox = { window, document, Image: ImageMock, console: { log() { }, warn() { }, error() { } } };
+    // 브라우저에는 navigator가 항상 있다. 샌드박스에 없으면 share.js의
+    // `if (navigator.share)` 같은 정상 코드가 ReferenceError로 죽어, 진짜 원인을 가린다.
+    const navigator = opts.navigator || {};
+
+    const sandbox = {
+        window, document, navigator, Image: ImageMock,
+        console: { log() { }, warn() { }, error() { } }
+    };
     vm.createContext(sandbox);
     vm.runInContext(shareSrc, sandbox);
     return { window, document, els, tracks };
