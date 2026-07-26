@@ -3,6 +3,8 @@ var { onDocumentCreated } = require("firebase-functions/v2/firestore");
 var { defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin");
 var pure = require("./lib/pure");
+// 카카오 호출은 전역 fetch 금지 — 이유는 lib/provider-http.js 상단 주석 참고(406/KOE001).
+var providerHttp = require("./lib/provider-http");
 
 admin.initializeApp();
 var db = admin.firestore();
@@ -54,12 +56,12 @@ async function getKakaoAccessToken() {
         }
     }
 
-    var refreshToken = KAKAO_REFRESH_TOKEN.value();
-    var restApiKey = KAKAO_REST_API_KEY.value();
-    var clientSecret = KAKAO_CLIENT_SECRET.value();
+    var refreshToken = providerHttp.secretValue(KAKAO_REFRESH_TOKEN);
+    var restApiKey = providerHttp.secretValue(KAKAO_REST_API_KEY);
+    var clientSecret = providerHttp.secretValue(KAKAO_CLIENT_SECRET);
     if (!refreshToken || !restApiKey) {
         console.warn("KAKAO_REFRESH_TOKEN 또는 KAKAO_REST_API_KEY 미설정 - seed access token 사용");
-        return KAKAO_TOKEN.value();
+        return providerHttp.secretValue(KAKAO_TOKEN);
     }
 
     var body = "grant_type=refresh_token" +
@@ -69,16 +71,12 @@ async function getKakaoAccessToken() {
         body += "&client_secret=" + encodeURIComponent(clientSecret);
     }
 
-    var refreshRes = await fetch("https://kauth.kakao.com/oauth/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
-        body: body
-    });
-    var result = await refreshRes.json();
+    var refreshRes = await providerHttp.postForm(providerHttp.KAUTH_HOST, "/oauth/token", body);
+    var result = providerHttp.parseJson(refreshRes.body);
 
     if (!result.access_token) {
-        console.error("카카오 토큰 갱신 실패:", result);
-        throw new Error("카카오 토큰 갱신 실패: " + JSON.stringify(result));
+        console.error("카카오 토큰 갱신 실패:", refreshRes.status, refreshRes.body);
+        throw new Error("카카오 토큰 갱신 실패: " + refreshRes.status + " " + refreshRes.body);
     }
 
     var expiresAt = now + (result.expires_in * 1000);
@@ -144,16 +142,9 @@ exports.onVerificationCreated = onDocumentCreated(
                 }
             };
             var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
-            var kakaoRes = await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
-                method: "POST",
-                headers: {
-                    Authorization: "Bearer " + kakaoToken,
-                    "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
-                },
-                body: body
-            });
-            var kakaoResult = await kakaoRes.json();
-            console.log("카카오톡 메시지 전송 결과:", kakaoResult);
+            var kakaoRes = await providerHttp.postForm(
+                providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send", body, kakaoToken);
+            console.log("카카오톡 메시지 전송 결과:", kakaoRes.status, kakaoRes.body);
         } catch (kakaoErr) {
             console.error("카카오톡 메시지 전송 실패:", kakaoErr);
         }
@@ -468,14 +459,9 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
                     text: "[인증 거절 완료]\n\n팀: " + clubName + "\n사유: " + reason,
                     link: { web_url: "https://nulloongzido.com", mobile_web_url: "https://nulloongzido.com" }
                 };
-                await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
-                    method: "POST",
-                    headers: {
-                        Authorization: "Bearer " + kakaoToken,
-                        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
-                    },
-                    body: "template_object=" + encodeURIComponent(JSON.stringify(templateObject))
-                });
+                await providerHttp.postForm(providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
+                    "template_object=" + encodeURIComponent(JSON.stringify(templateObject)),
+                    kakaoToken);
             } catch (kakaoErr) {
                 console.error("거절 알림 전송 실패:", kakaoErr);
             }

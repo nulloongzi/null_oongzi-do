@@ -48,8 +48,11 @@ nickname, suffix, full_nickname, color, created_at, email, bookmarks[], customTe
 이 헤더 조합을 거부한다. 로컬 curl/axios는 성공하고 배포본만 실패하는 이유가 이것.
 `fetch`에 User-Agent만 추가해도 `sec-fetch-mode`는 지울 수 없어(forbidden header) 해결되지 않는다.
 
-해결: `functions/social-auth.js`는 카카오 호출을 `node:https`로 직접 보내 헤더를 통제한다.
+해결: `functions/lib/provider-http.js`가 모든 제공자 호출을 `node:https`로 보내 헤더를 통제한다.
 `Content-Type` / `Content-Length` / `Accept` / `User-Agent` 만 나간다.
+카카오/네이버로 나가는 요청은 **전부 이 모듈을 거쳐야 한다** — `fetch`로 직접 부르면 재발한다.
+회귀 방지 테스트: `tests/functions-provider-http.test.js` (`npm run test:unit`).
+같은 결함이 챗봇 토큰 갱신·알림 전송(`functions/index.js`)에도 있어 함께 전환했다.
 
 교환이 다시 실패하면 실패 로그 다음 줄의 `카카오 엣지 프로브:` 결과로 원인이 갈린다.
 - 프로브도 406 → 엣지가 런타임 요청 자체를 차단 (헤더/IP 문제)
