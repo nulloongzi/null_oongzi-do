@@ -1,0 +1,57 @@
+name: Deploy Functions
+
+# 수동 배포 전용 워크플로. PC 없이 폰에서 GitHub Actions 탭 → Run workflow 로 배포한다.
+# 자동 배포(push 트리거)는 일부러 안 넣었다 — Functions 배포는 되돌리기가 비싸다.
+#
+# 사전 준비(1회): GCP 서비스 계정 키를 리포지토리 시크릿 GCP_SA_KEY 에 넣는다.
+# 절차는 docs/deploy.md 참고.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "배포 대상 (firebase deploy --only 값)"
+        required: true
+        default: "functions"
+        type: string
+
+# 동시 배포 방지 — 겹치면 Functions 상태가 꼬인다
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy (${{ inputs.target }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install deps
+        run: |
+          npm ci
+          npm ci --prefix functions
+
+      # 배포되는 코드에 해당하는 테스트만 게이팅한다.
+      # (전체 test:unit 은 이 변경과 무관한 기존 실패가 있어 여기서 막지 않는다)
+      - name: Functions tests
+        run: node --test tests/functions-pure.test.js tests/functions-provider-http.test.js
+
+      - name: Auth to Google Cloud
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+
+      # --force 를 일부러 안 준다. 로컬 소스에 없는 함수가 프로젝트에 있으면
+      # 삭제 대신 여기서 실패하고 멈춘다 (geocodeAddress 삭제 사고 재발 방지).
+      - name: Deploy
+        run: npx firebase-tools deploy --only "${{ inputs.target }}" --project nulloongzi-do --non-interactive
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
