@@ -10,8 +10,11 @@
 // Depends on: firebase-init.js(firebaseCallable), Kakao JS SDK(index.html), i18n(window.t)
 
 (function () {
-    // 카카오 JavaScript 키 — 지도/공유와 동일(공개값). Kakao.Auth.authorize가 이 키로 동작.
+    // 카카오 JavaScript 키 — 지도/공유용(공개값).
     var KAKAO_JS_KEY = '69f821ba943db5e3532ac90ea5ca1080';
+    // 카카오 REST API 키 — 로그인 authorize의 client_id(공개값, OAuth code flow 표준).
+    // CF 토큰 교환의 KAKAO_REST_API_KEY와 동일해야 함(authorize·token 클라이언트 일치 → KOE001 방지).
+    var KAKAO_REST_KEY = '9d17b379d6a4de94c06563a990609336';
     // 네이버 Client ID(공개값 — 브라우저 authorize URL에 사용). CF의 NAVER_CLIENT_ID와 동일.
     var NAVER_CLIENT_ID = '41TDNsngcV0J7W6ICtDj';
 
@@ -45,14 +48,18 @@
         return !!(window.Kakao && window.Kakao.isInitialized());
     }
 
-    // ── 카카오 로그인 시작 ──
+    // ── 카카오 로그인 시작 ── (REST authorize URL: client_id=REST키)
+    // Kakao.Auth.authorize(JS SDK)는 JS키+auth_tran_id로 돌아 서버 REST 토큰 교환과 불일치(KOE001).
+    // 서버사이드 code 교환에는 authorize도 REST키로 해야 client_id가 일치한다.
     window.loginWithKakao = function () {
-        if (!ensureKakao()) { alert(window.t('au_login_fail') + 'Kakao SDK'); return; }
         setLastProvider('kakao');
-        window.Kakao.Auth.authorize({
-            redirectUri: redirectUri(),
-            state: makeState('kakao')
-        });
+        var st = makeState('kakao');
+        var url = 'https://kauth.kakao.com/oauth/authorize' +
+            '?response_type=code' +
+            '&client_id=' + encodeURIComponent(KAKAO_REST_KEY) +
+            '&redirect_uri=' + encodeURIComponent(redirectUri()) +
+            '&state=' + encodeURIComponent(st);
+        window.location.href = url;
     };
 
     // ── 네이버 로그인 시작 ── (수동 authorize URL: 공개 Client ID만 사용)
