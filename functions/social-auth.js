@@ -43,14 +43,20 @@ async function resolveKakaoAccessToken(data) {
         "&code=" + encodeURIComponent(data.code);
     var clientSecret = KAKAO_CLIENT_SECRET.value();
     if (clientSecret) body += "&client_secret=" + encodeURIComponent(clientSecret);
+    // 헤더는 작동하는 챗봇(getKakaoAccessToken)과 바이트 단위로 동일하게 맞춘다.
+    // GCF에서 KOE001 not_acceptable(406)은 Accept/Content-Type 협상 문제로 보고됨:
+    // charset 앞 공백 포함 + Accept: application/json 명시로 회피.
     var tokRes = await fetch("https://kauth.kakao.com/oauth/token", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+            "Accept": "application/json"
+        },
         body: body
     });
     var tok = await tokRes.json();
     if (!tokRes.ok || !tok.access_token) {
-        console.error("카카오 code 교환 실패:", JSON.stringify(tok));
+        console.error("카카오 code 교환 실패:", tokRes.status, tokRes.statusText, JSON.stringify(tok));
         throw new HttpsError("unauthenticated", "카카오 인증 코드 교환에 실패했습니다.");
     }
     return tok.access_token;
