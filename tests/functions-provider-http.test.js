@@ -73,6 +73,7 @@ function patchHttps() {
 // ── 테스트 대상 로드 (firebase-admin은 스텁으로 교체) ──
 let socialAuth;
 let providerHttp;
+let indexFns;
 
 before(async () => {
     await startServer();
@@ -96,8 +97,12 @@ before(async () => {
     // 로컬 테스트 프로세스에는 그 주입이 없으므로 직접 세팅한다.
     process.env.NAVER_CLIENT_ID = '41TDNsngcV0J7W6ICtDj';
 
+    process.env.NAVER_MAP_CLIENT_ID = 'ncpid';
+    process.env.NAVER_MAP_CLIENT_SECRET = 'ncpsecret';
+
     providerHttp = require('../functions/lib/provider-http');
     socialAuth = require('../functions/social-auth');
+    indexFns = require('../functions/index.js');
 });
 
 after(() => {
@@ -277,6 +282,98 @@ describe('naverCustomToken 핸들러', () => {
         await assert.rejects(
             () => socialAuth.naverCustomToken.run({ data: { code: 'C', state: 'naver_abc' } }),
             (err) => err.code === 'unauthenticated'
+        );
+    });
+});
+
+// 이 둘은 main에 없어 전체 배포 때 삭제된 적이 있다. 소스가 여기 고정돼 있고
+// 카카오 호스트로는 fetch가 아닌 providerHttp로 나가는지까지 묶어 둔다.
+describe('geocodeAddress / nearestStation (복원된 함수)', () => {
+    test('geocodeAddress: NCP 헤더로 조회 후 좌표 반환', async () => {
+        reset(() => ({
+            status: 200,
+            body: '{"addresses":[{"y":"37.5","x":"127.02","roadAddress":"서울시 강남구 테헤란로 1"}]}'
+        }));
+        const out = await indexFns.geocodeAddress.run({
+            auth: { uid: 'u1' }, data: { address: '테헤란로 1' }
+        });
+        assert.deepStrictEqual(out, { lat: 37.5, lng: 127.02, roadAddress: '서울시 강남구 테헤란로 1' });
+
+        const r = received[0];
+        assert.strictEqual(r.host, 'maps.apigw.ntruss.com');
+        assert.strictEqual(r.headers['x-ncp-apigw-api-key-id'], 'ncpid');
+        assert.strictEqual(r.headers['x-ncp-apigw-api-key'], 'ncpsecret');
+        assert.strictEqual(r.headers['accept-language'], undefined);
+        assert.match(r.url, /query=/);
+    });
+
+    test('geocodeAddress: 첫 게이트웨이가 5xx면 두 번째로 폴백', async () => {
+        reset((req) => (req.headers.host === 'maps.apigw.ntruss.com'
+            ? { status: 500, body: 'boom' }
+            : { status: 200, body: '{"addresses":[{"y":"1","x":"2"}]}' }));
+        const out = await indexFns.geocodeAddress.run({
+            auth: { uid: 'u1' }, data: { address: '어딘가' }
+        });
+        assert.strictEqual(out.lat, 1);
+        assert.deepStrictEqual(received.map((r) => r.host),
+            ['maps.apigw.ntruss.com', 'naveropenapi.apigw.ntruss.com']);
+    });
+
+    test('geocodeAddress: 결과 없으면 null 3종 (앱은 지도 피커로 폴백)', async () => {
+        reset(() => ({ status: 200, body: '{"addresses":[]}' }));
+        const out = await indexFns.geocodeAddress.run({
+            auth: { uid: 'u1' }, data: { address: '없는주소' }
+        });
+        assert.deepStrictEqual(out, { lat: null, lng: null, roadAddress: null });
+    });
+
+    test('geocodeAddress: 비로그인/빈 주소는 거부', async () => {
+        reset(() => ({ status: 200, body: '{}' }));
+        await assert.rejects(
+            () => indexFns.geocodeAddress.run({ data: { address: 'x' } }),
+            (e) => e.code === 'unauthenticated'
+        );
+        await assert.rejects(
+            () => indexFns.geocodeAddress.run({ auth: { uid: 'u1' }, data: { address: '   ' } }),
+            (e) => e.code === 'invalid-argument'
+        );
+        assert.strictEqual(received.length, 0);
+    });
+
+    test('nearestStation: KakaoAK 헤더 + 역명 정리', async () => {
+        reset(() => ({
+            status: 200,
+            body: '{"documents":[{"place_name":"강남역 2호선","distance":"350"}]}'
+        }));
+        const out = await indexFns.nearestStation.run({
+            auth: { uid: 'u1' }, data: { lat: 37.5, lng: 127.02 }
+        });
+        assert.deepStrictEqual(out, { name: '강남역', distance: 350 });
+
+        const r = received[0];
+        assert.strictEqual(r.host, 'dapi.kakao.com');
+        assert.match(r.headers.authorization, /^KakaoAK restkey123$/); // 시크릿 개행 제거 확인
+        assert.strictEqual(r.headers['accept-language'], undefined, '카카오 호스트인데 undici 헤더가 나감');
+        assert.strictEqual(r.headers['user-agent'], 'nulloongzi-do-functions/1.0');
+    });
+
+    test('nearestStation: 실패/무결과는 throw 없이 null', async () => {
+        reset(() => ({ status: 401, body: '{"msg":"unauthorized"}' }));
+        assert.deepStrictEqual(
+            await indexFns.nearestStation.run({ auth: { uid: 'u1' }, data: { lat: 1, lng: 2 } }),
+            { name: null, distance: null });
+
+        reset(() => ({ status: 200, body: '{"documents":[]}' }));
+        assert.deepStrictEqual(
+            await indexFns.nearestStation.run({ auth: { uid: 'u1' }, data: { lat: 1, lng: 2 } }),
+            { name: null, distance: null });
+    });
+
+    test('nearestStation: 좌표 누락은 invalid-argument', async () => {
+        reset(() => ({ status: 200, body: '{}' }));
+        await assert.rejects(
+            () => indexFns.nearestStation.run({ auth: { uid: 'u1' }, data: { lat: '37.5', lng: 127 } }),
+            (e) => e.code === 'invalid-argument'
         );
     });
 });

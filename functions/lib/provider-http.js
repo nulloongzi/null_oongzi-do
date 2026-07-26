@@ -52,28 +52,29 @@ function postForm(host, path, form, accessToken) {
     return requestRaw({ host: host, path: path, method: "POST", headers: headers }, payload);
 }
 
+// GET. extraHeaders로 Authorization 등을 얹는다(카카오 로컬 API는 "KakaoAK ",
+// 네이버 클라우드 지오코딩은 x-ncp-* 헤더를 쓰므로 스킴을 고정하지 않는다).
+function get(host, path, extraHeaders) {
+    var headers = { "Accept": "application/json", "User-Agent": UA };
+    if (extraHeaders) {
+        Object.keys(extraHeaders).forEach(function (k) { headers[k] = extraHeaders[k]; });
+    }
+    return requestRaw({ host: host, path: path, method: "GET", headers: headers });
+}
+
 // 토큰 없는 GET (네이버 code 교환처럼 쿼리스트링으로 보내는 엔드포인트)
 function getJson(host, path) {
-    return requestRaw({
-        host: host,
-        path: path,
-        method: "GET",
-        headers: { "Accept": "application/json", "User-Agent": UA }
-    });
+    return get(host, path);
 }
 
 // Bearer 토큰 GET (kapi 사용자 API, 네이버 /nid/me)
 function getWithToken(host, path, accessToken) {
-    return requestRaw({
-        host: host,
-        path: path,
-        method: "GET",
-        headers: {
-            Authorization: "Bearer " + accessToken,
-            "Accept": "application/json",
-            "User-Agent": UA
-        }
-    });
+    return get(host, path, { Authorization: "Bearer " + accessToken });
+}
+
+// fetch의 res.ok 와 동일한 판정 (2xx)
+function isOk(status) {
+    return status >= 200 && status < 300;
 }
 
 // 카카오가 엣지 단에서 막으면 JSON이 아니라 HTML을 줄 수도 있다. 절대 throw하지 않는다.
@@ -100,12 +101,15 @@ function secretValue(param) {
 
 module.exports = {
     postForm: postForm,
+    get: get,
     getJson: getJson,
+    isOk: isOk,
     getWithToken: getWithToken,
     parseJson: parseJson,
     secretValue: secretValue,
     KAUTH_HOST: "kauth.kakao.com",
     KAPI_HOST: "kapi.kakao.com",
     NAVER_AUTH_HOST: "nid.naver.com",
-    NAVER_API_HOST: "openapi.naver.com"
+    NAVER_API_HOST: "openapi.naver.com",
+    KAKAO_LOCAL_HOST: "dapi.kakao.com"
 };

@@ -14,6 +14,11 @@ var KAKAO_REFRESH_TOKEN = defineSecret("KAKAO_REFRESH_TOKEN");
 var KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
 var KAKAO_CLIENT_SECRET = defineSecret("KAKAO_CLIENT_SECRET");
 var APP_SECRET = defineSecret("WEBHOOK_SECRET");
+// 네이버 클라우드 플랫폼 Maps(지오코딩). 콘솔에서 해당 앱에 'Geocoding' 활성화 필요.
+//   firebase functions:secrets:set NAVER_MAP_CLIENT_ID
+//   firebase functions:secrets:set NAVER_MAP_CLIENT_SECRET
+var NAVER_MAP_CLIENT_ID = defineSecret("NAVER_MAP_CLIENT_ID");
+var NAVER_MAP_CLIENT_SECRET = defineSecret("NAVER_MAP_CLIENT_SECRET");
 
 // ══════════════════════════════════════════════════════════
 // 챗봇 관리자 인증: /admin_kakao_ids/{kakao_user_id} 문서 존재 여부
@@ -820,3 +825,103 @@ exports.naverCustomToken = socialAuth.naverCustomToken;
 var instaCover = require("./insta-cover");
 exports.cacheClubReelCovers = instaCover.cacheClubReelCovers;
 exports.cachePickupReelCovers = instaCover.cachePickupReelCovers;
+
+// ══════════════════════════════════════════════════════════
+// 주소 → 좌표 (네이버 클라우드 지오코딩). 앱 등록 폼에서 호출.
+// 시크릿은 함수에만 있고 앱에는 없다. 실패 시 앱은 지도 피커로 폴백한다.
+//
+// 이 두 함수는 원래 main에 머지되지 않은 브랜치에서만 배포돼 있어서, main 기준으로
+// 전체 배포할 때마다 "로컬 소스에 없는 함수"로 삭제됐다. 소스를 여기로 옮겨 고정한다.
+// ══════════════════════════════════════════════════════════
+exports.geocodeAddress = onCall(
+    { secrets: [NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET] },
+    async function (request) {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+        }
+        var address = ((request.data && request.data.address) || "").toString().trim();
+        if (!address) {
+            throw new HttpsError("invalid-argument", "주소가 비었습니다.");
+        }
+        if (address.length > 200) {
+            throw new HttpsError("invalid-argument", "주소가 너무 깁니다.");
+        }
+
+        var keyId = providerHttp.secretValue(NAVER_MAP_CLIENT_ID);
+        var key = providerHttp.secretValue(NAVER_MAP_CLIENT_SECRET);
+        if (!keyId || !key) {
+            throw new HttpsError("failed-precondition", "지오코딩 키가 설정되지 않았습니다.");
+        }
+
+        // 구/신 게이트웨이 호스트 순서대로 시도
+        var hosts = ["maps.apigw.ntruss.com", "naveropenapi.apigw.ntruss.com"];
+        var headers = {
+            "x-ncp-apigw-api-key-id": keyId,
+            "x-ncp-apigw-api-key": key
+        };
+        var lastErr = "";
+        for (var i = 0; i < hosts.length; i++) {
+            try {
+                var path = "/map-geocode/v2/geocode?query=" + encodeURIComponent(address);
+                var res = await providerHttp.get(hosts[i], path, headers);
+                if (!providerHttp.isOk(res.status)) { lastErr = "HTTP " + res.status; continue; }
+                var data = providerHttp.parseJson(res.body);
+                var list = data && data.addresses;
+                if (list && list.length > 0) {
+                    var a = list[0];
+                    return {
+                        lat: parseFloat(a.y),
+                        lng: parseFloat(a.x),
+                        roadAddress: a.roadAddress || a.jibunAddress || address
+                    };
+                }
+                // 200인데 결과 없음 → 주소 못 찾음 (폴백 불필요)
+                return { lat: null, lng: null, roadAddress: null };
+            } catch (e) {
+                lastErr = (e && e.message) || String(e);
+            }
+        }
+        throw new HttpsError("unavailable", "지오코딩 실패: " + lastErr);
+    }
+);
+
+// ══════════════════════════════════════════════════════════
+// 좌표 → 가까운 지하철역 (카카오 로컬 SW8). 스토리 카드 enrich용.
+// 기존 KAKAO_REST_API_KEY 재사용 (앱의 카카오맵 'Local' API 활성화 필요).
+// 결과 없거나 오류면 {name:null} → 카드는 지역 라벨로 폴백.
+// ══════════════════════════════════════════════════════════
+exports.nearestStation = onCall(
+    { secrets: [KAKAO_REST_API_KEY] },
+    async function (request) {
+        if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+        var lat = request.data && request.data.lat;
+        var lng = request.data && request.data.lng;
+        if (typeof lat !== "number" || typeof lng !== "number") {
+            throw new HttpsError("invalid-argument", "좌표가 필요합니다.");
+        }
+        try {
+            var path = "/v2/local/search/category.json"
+                + "?category_group_code=SW8&radius=2000&sort=distance&size=1"
+                + "&x=" + encodeURIComponent(lng) + "&y=" + encodeURIComponent(lat);
+            // 카카오 호스트 → 전역 fetch 금지 (406/KOE001). providerHttp 경유.
+            var res = await providerHttp.get(providerHttp.KAKAO_LOCAL_HOST, path, {
+                Authorization: "KakaoAK " + providerHttp.secretValue(KAKAO_REST_API_KEY)
+            });
+            if (!providerHttp.isOk(res.status)) {
+                console.error("nearestStation 실패:", res.status, res.body);
+                return { name: null, distance: null };
+            }
+            var data = providerHttp.parseJson(res.body);
+            if (data && data.documents && data.documents.length > 0) {
+                var d = data.documents[0];
+                var nm = (d.place_name || "").replace(/\s*\d+호선.*$/, "").trim()
+                    || d.place_name || "";
+                return { name: nm, distance: parseInt(d.distance, 10) || 0 };
+            }
+            return { name: null, distance: null };
+        } catch (e) {
+            console.error("nearestStation error:", e && e.message);
+            return { name: null, distance: null };
+        }
+    }
+);
