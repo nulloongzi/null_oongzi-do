@@ -53,6 +53,7 @@
     // 서버사이드 code 교환에는 authorize도 REST키로 해야 client_id가 일치한다.
     window.loginWithKakao = function () {
         setLastProvider('kakao');
+        if (window.showAuthLoading) window.showAuthLoading('auth_redirecting_kakao', 'auth_redirect_desc');
         var st = makeState('kakao');
         var url = 'https://kauth.kakao.com/oauth/authorize' +
             '?response_type=code' +
@@ -66,6 +67,7 @@
     window.loginWithNaver = function () {
         if (!NAVER_CLIENT_ID) { alert(window.t('au_login_fail') + 'Naver clientId'); return; }
         setLastProvider('naver');
+        if (window.showAuthLoading) window.showAuthLoading('auth_redirecting_naver', 'auth_redirect_desc');
         var st = makeState('naver');
         var url = 'https://nid.naver.com/oauth2.0/authorize' +
             '?response_type=code' +
@@ -81,29 +83,54 @@
         } catch (e) {}
     }
 
-    // ── 리다이렉트 복귀 처리 ── (?code=&state=)
+    // 로딩 오버레이 해제. 성공 경로에서는 호출하지 않는다 —
+    // 프로필 로딩까지 끝난 뒤 auth.js(onAuthStateChanged)가 내린다.
+    function stopLoading() {
+        if (window.hideAuthLoading) window.hideAuthLoading();
+    }
+
+    // ── 리다이렉트 복귀 처리 ── (?code=&state= / 거부 시 ?error=&state=)
     async function handleRedirect() {
         var params = new URLSearchParams(window.location.search);
         var code = params.get('code');
         var state = params.get('state');
+        var error = params.get('error');
+
+        // 사용자가 제공자 화면에서 취소/거부한 경우
+        if (error && state) {
+            stopLoading();
+            if (error !== 'access_denied') {
+                alert(window.t('au_login_fail') + (params.get('error_description') || error));
+            } else {
+                alert(window.t('au_login_cancelled'));
+            }
+            try { sessionStorage.removeItem(SS_OAUTH_STATE); } catch (e) {}
+            cleanUrl();
+            return;
+        }
+
         if (!code || !state) return;
+
+        // 토큰 교환 구간 동안 "로그인 중" 화면 유지 (head에서 이미 켜졌지만 방어적으로 보장)
+        if (window.showAuthLoading) window.showAuthLoading('auth_signing_in', 'auth_signing_in_desc');
 
         // CSRF: 저장해둔 state와 일치해야 함
         var saved = '';
         try { saved = sessionStorage.getItem(SS_OAUTH_STATE) || ''; } catch (e) {}
         if (saved && state !== saved) {
             console.warn('OAuth state 불일치 - 무시');
+            stopLoading();
             cleanUrl();
             return;
         }
 
         var provider = state.indexOf('kakao') === 0 ? 'kakao'
             : state.indexOf('naver') === 0 ? 'naver' : '';
-        if (!provider) { cleanUrl(); return; }
+        if (!provider) { stopLoading(); cleanUrl(); return; }
 
         try {
             var callable = window.firebaseCallable(provider + 'CustomToken');
-            if (!callable) { cleanUrl(); return; }
+            if (!callable) { stopLoading(); cleanUrl(); return; }
             var payload = provider === 'kakao'
                 ? { code: code, redirectUri: redirectUri() }
                 : { code: code, state: state };
@@ -112,9 +139,12 @@
             if (token) {
                 await firebase.auth().signInWithCustomToken(token);
                 if (window.track) window.track('login', { method: provider });
+            } else {
+                stopLoading();
             }
         } catch (e) {
             console.error(provider + ' 로그인 실패:', e);
+            stopLoading();
             alert(window.t('au_login_fail') + (e.message || ''));
         } finally {
             try { sessionStorage.removeItem(SS_OAUTH_STATE); } catch (e) {}

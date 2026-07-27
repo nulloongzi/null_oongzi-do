@@ -2874,3 +2874,99 @@
             font-weight: 800;
             cursor: pointer;
         }
+
+        /* [소셜 로그인 진행 오버레이]
+           카카오/네이버는 리다이렉트 로그인이라 복귀 직후 토큰 교환/프로필 로딩 구간이 생긴다.
+           그 사이 지도가 먼저 보였다가 갑자기 로그인되는 걸 막기 위해 첫 페인트부터 덮는다.
+           표시 여부는 <html>의 .auth-loading 클래스로 제어 (js/auth-loading.js). */
+        .auth-loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 248, 225, 0.94);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 200000;
+        }
+
+        html.auth-loading .auth-loading-overlay {
+            display: flex;
+        }
+
+        .al-card {
+            width: 85%;
+            max-width: 320px;
+            padding: 32px 22px 26px;
+            text-align: center;
+            background: var(--glass-bg-darker, rgba(255, 248, 225, 0.85));
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 28px;
+            box-shadow: 0 20px 50px rgba(93, 64, 55, 0.15);
+        }
+
+        .al-spinner {
+            width: 42px;
+            height: 42px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            border: 4px solid rgba(141, 110, 99, 0.2);
+            border-top-color: var(--nurungji-yellow, #fac710);
+            animation: alSpin 0.9s linear infinite;
+        }
+
+        @keyframes alSpin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .al-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--nurungji-dark, #4e342e);
+            margin-bottom: 8px;
+        }
+
+        .al-desc {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--nurungji-brown, #8d6e63);
+        }
+
+        /* 오래 걸릴 때만 노출: 사용자가 로딩 화면에 갇히지 않도록 탈출구 제공 */
+        .al-slow,
+        .al-close {
+            display: none;
+        }
+
+        html.auth-loading-slow .al-slow {
+            display: block;
+            margin-top: 14px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #b26a3f;
+        }
+
+        html.auth-loading-slow .al-close {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 9px 22px;
+            background: #fff;
+            color: var(--nurungji-dark, #4e342e);
+            border: 1px solid rgba(141, 110, 99, 0.35);
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .al-spinner {
+                animation-duration: 2.4s;
+            }
+        }

@@ -225,6 +225,8 @@ window.setupAuthListener = function () {
             await window.loadOrCreateUserProfile(user);
             await window.checkIsAdmin(user);
             window.updateProfileUI(true);
+            // 카카오/네이버 리다이렉트 로그인 안내 화면은 프로필까지 준비된 뒤에 내린다
+            if (window.hideAuthLoading) window.hideAuthLoading();
             // 로그인 게이트로 중단됐던 팀 등록이 있으면 이어서 자동 재제출
             if (window.resumePendingRegistration) window.resumePendingRegistration();
         } else {

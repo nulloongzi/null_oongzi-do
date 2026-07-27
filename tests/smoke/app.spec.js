@@ -51,6 +51,39 @@ test('인터랙션: 필터 시트 열기', async ({ page }) => {
     await expect(page.locator('#fsKeyword')).toBeVisible();
 });
 
+// 카카오/네이버는 리다이렉트 로그인 → 복귀 후 토큰 교환 구간이 비어 보이면 안 된다.
+// 외부 SDK를 차단해 결정적으로 만들고, 토큰 교환은 끝나지 않는 Promise로 흉내낸다.
+async function stubSlowTokenExchange(page) {
+    await page.route('**', (route) => {
+        const url = route.request().url();
+        return url.startsWith('http://localhost:4173') ? route.continue() : route.abort();
+    });
+    await page.addInitScript(() => {
+        window.firebaseCallable = function () {
+            return function () { return new Promise(function () {}); };
+        };
+    });
+}
+
+test('소셜 로그인 복귀(?code=&state=): 로그인 중 안내가 뜬다', async ({ page }) => {
+    await stubSlowTokenExchange(page);
+    await page.goto('/?code=dummy&state=kakao_dummy');
+    await expect(page.locator('#authLoadingOverlay')).toBeVisible();
+    await expect(page.locator('#authLoadingTitle')).not.toBeEmpty();
+});
+
+test('일반 방문에는 로그인 안내가 뜨지 않는다', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#authLoadingOverlay')).toBeHidden();
+});
+
+test('소셜 로그인 취소(?error=): 안내를 내리고 URL을 정리한다', async ({ page }) => {
+    await stubSlowTokenExchange(page);
+    await page.goto('/?error=access_denied&state=naver_dummy');
+    await expect(page.locator('#authLoadingOverlay')).toBeHidden();
+    await expect.poll(() => page.url()).not.toContain('error=');
+});
+
 test('인터랙션: KO↔EN 언어 토글이 DOM 텍스트를 바꿈', async ({ page }) => {
     await page.goto('/');
     const tab = page.locator('#tabClubs');
