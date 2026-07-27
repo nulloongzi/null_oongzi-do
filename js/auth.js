@@ -36,11 +36,17 @@ window.canModifyClub = function (club) {
 
 window.loginWithGoogle = async function () {
     var provider = new firebase.auth.GoogleAuthProvider();
+    // 팝업 로그인이 지연될 때만 안개 효과 레이어 표시 (빠르면 안 뜸).
+    // 성공 해제는 onAuthStateChanged가 프로필 로딩 후 담당.
+    if (window.showAuthLoadingDelayed) {
+        window.showAuthLoadingDelayed(800, 'auth_signing_in', 'auth_signing_in_desc', 'google');
+    }
     try {
         await firebase.auth().signInWithPopup(provider);
         if (window.rememberLoginProvider) window.rememberLoginProvider('google');
         if (window.track) window.track('login', { method: 'google' });
     } catch (error) {
+        if (window.hideAuthLoading) window.hideAuthLoading();
         alert(window.t('au_login_fail') + error.message);
     }
 };
@@ -49,10 +55,15 @@ window.registerWithEmail = async function () {
     var email = document.getElementById('emailInput').value;
     var pw = document.getElementById('pwInput').value;
     if (!email || !pw) { alert(window.t('au_enter_info')); return; }
+    // 누룽지도 계정 지연 시 이스터에그: 노란 습기(스팀) 레이어
+    if (window.showAuthLoadingDelayed) {
+        window.showAuthLoadingDelayed(800, 'auth_signing_in', 'auth_signing_in_desc', 'rice');
+    }
     try {
         await firebase.auth().createUserWithEmailAndPassword(email, pw);
         if (window.track) window.track('sign_up', { method: 'email' });
     } catch (e) {
+        if (window.hideAuthLoading) window.hideAuthLoading();
         alert(e.message);
     }
 };
@@ -61,10 +72,14 @@ window.loginWithEmail = async function () {
     var email = document.getElementById('emailInput').value;
     var pw = document.getElementById('pwInput').value;
     if (!email || !pw) { alert(window.t('au_enter_info')); return; }
+    if (window.showAuthLoadingDelayed) {
+        window.showAuthLoadingDelayed(800, 'auth_signing_in', 'auth_signing_in_desc', 'rice');
+    }
     try {
         await firebase.auth().signInWithEmailAndPassword(email, pw);
         if (window.track) window.track('login', { method: 'email' });
     } catch (e) {
+        if (window.hideAuthLoading) window.hideAuthLoading();
         alert(e.message);
     }
 };
@@ -225,6 +240,8 @@ window.setupAuthListener = function () {
             await window.loadOrCreateUserProfile(user);
             await window.checkIsAdmin(user);
             window.updateProfileUI(true);
+            // 카카오/네이버 리다이렉트 로그인 안내 화면은 프로필까지 준비된 뒤에 내린다
+            if (window.hideAuthLoading) window.hideAuthLoading();
             // 로그인 게이트로 중단됐던 팀 등록이 있으면 이어서 자동 재제출
             if (window.resumePendingRegistration) window.resumePendingRegistration();
         } else {
@@ -236,7 +253,12 @@ window.setupAuthListener = function () {
             var wm = document.getElementById('pcRiceWatermark');
             if (wm) wm.innerText = '';
             var card = document.getElementById('myProfileCard');
-            if (card) card.style.backgroundColor = '#fff9c4';
+            if (card) {
+                card.style.backgroundColor = '#fff9c4';
+                card.classList.remove('has-provider-mark');
+            }
+            var pm = document.getElementById('pcProviderMark');
+            if (pm) { pm.innerHTML = ''; pm.className = 'pc-provider-mark'; }
         }
     });
 };

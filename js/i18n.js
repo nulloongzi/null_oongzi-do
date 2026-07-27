@@ -209,6 +209,22 @@
         au_enter_info: { ko: '정보를 입력해주세요.', en: 'Please enter your information.' },
         au_logout_confirm: { ko: '로그아웃 하시겠습니까?', en: 'Log out?' },
         au_welcome: { ko: '환영합니다! [{name}]님이 되셨습니다!', en: 'Welcome! Your rice name is [{name}] 🍚' },
+        au_login_cancelled: { ko: '로그인이 취소되었어요.', en: 'Login was cancelled.' },
+
+        // 소셜 로그인 진행 오버레이 (js/auth-loading.js — 동일 키의 최소 사전을 자체 보유)
+        auth_signing_in: { ko: '로그인 중이에요', en: 'Signing you in…' },
+        auth_signing_in_desc: {
+            ko: '계정을 확인하고 있어요. 잠시만 기다려 주세요 🍚',
+            en: 'Verifying your account. This only takes a moment 🍚'
+        },
+        auth_redirecting_kakao: { ko: '카카오로 이동 중이에요', en: 'Redirecting to Kakao…' },
+        auth_redirecting_naver: { ko: '네이버로 이동 중이에요', en: 'Redirecting to Naver…' },
+        auth_redirect_desc: { ko: '로그인 화면으로 이동하고 있어요.', en: 'Taking you to the login page.' },
+        auth_slow_hint: {
+            ko: '조금 오래 걸리고 있어요. 네트워크 상태를 확인해 주세요.',
+            en: 'This is taking longer than usual. Please check your connection.'
+        },
+        auth_close: { ko: '닫기', en: 'Close' },
 
         // 인증 신청(verification)
         vf_title: { ko: '인증 신청', en: 'Request verification' },
