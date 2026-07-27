@@ -3155,8 +3155,8 @@
             position: absolute;
             top: 13px;
             left: 16px;
-            width: 19px;
-            height: 19px;
+            width: 20px;
+            height: 20px;
             opacity: 0.42;
             pointer-events: none;
             display: none;
@@ -3177,12 +3177,14 @@
         .pc-provider-mark.pc-provider-google { color: #795548; }
         .pc-provider-mark.pc-provider-rice { color: #a8842c; }
 
-        /* 구글은 문자 G 스탬프 */
+        /* 구글: 옛 로고(1998~2015, Catull 세리프 + 입체 그림자) 오마주 — 세리프 G 스탬프 */
         .pc-provider-mark.pc-provider-google {
-            font-size: 16px;
-            font-weight: 900;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 17px;
+            font-weight: 700;
             line-height: 19px;
             text-align: center;
+            text-shadow: 1px 1px 0 rgba(78, 52, 46, 0.28);
         }
 
         /* 스탬프가 찍히면 밥 이름 워터마크를 오른쪽으로 밀어 나란히 */

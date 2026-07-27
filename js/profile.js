@@ -76,9 +76,11 @@ window.detectLoginProvider = function (user) {
 // 로그인 수단 스탬프 아이콘 (정적 SVG — 사용자 입력 없음).
 // 단색 currentColor로 그려 CSS(.pc-provider-*)가 색을 정한다.
 var PROVIDER_MARK_SVG = {
-    // 카카오: 말풍선
+    // 카카오: 초기 카카오톡 앱 아이콘 오마주 — 말풍선 안 TALK 각인.
+    // 진짜 knockout(mask)은 html2canvas 공유 캡처에서 깨질 수 있어 밝은 반투명 텍스트로 대체.
     kakao: '<svg viewBox="0 0 24 24" fill="currentColor">' +
-        '<path d="M12 4C7 4 3 7.2 3 11.2c0 2.6 1.7 4.9 4.3 6.2l-.8 3c-.1.4.3.7.6.5l3.5-2.3c.5.1.9.1 1.4.1 5 0 9-3.2 9-7.2S17 4 12 4z"/></svg>',
+        '<path d="M12 4C7 4 3 7.2 3 11.2c0 2.6 1.7 4.9 4.3 6.2l-.8 3c-.1.4.3.7.6.5l3.5-2.3c.5.1.9.1 1.4.1 5 0 9-3.2 9-7.2S17 4 12 4z"/>' +
+        '<text x="12" y="12.9" text-anchor="middle" font-size="4.6" font-weight="800" letter-spacing=".2" fill="rgba(255,255,255,.92)">TALK</text></svg>',
     // 네이버: 옛 로고 오마주 — 날개 달린 모자
     naver: '<svg viewBox="0 0 24 24" fill="currentColor">' +
         '<circle cx="12" cy="5.2" r="1.1"/>' +
