@@ -3145,3 +3145,48 @@
                 animation-duration: 2.4s;
             }
         }
+
+        /* [로그인 수단 스탬프 — 이스터에그]
+           네임카드 왼쪽 상단, 밥 이름 워터마크 옆에 로그인 제공자를 단색 저채도
+           아이콘으로 눌러 찍는다 (원색 로고가 아니라 카드 소재에 찍힌 스탬프 느낌).
+           카카오=말풍선, 네이버=옛 로고 오마주(날개 모자), 구글=G, 누룽지도=밥그릇.
+           아이콘 주입: profile.js renderProviderMark() */
+        .pc-provider-mark {
+            position: absolute;
+            top: 13px;
+            left: 16px;
+            width: 19px;
+            height: 19px;
+            opacity: 0.42;
+            pointer-events: none;
+            display: none;
+        }
+
+        .pc-provider-mark svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #myProfileCard.has-provider-mark .pc-provider-mark {
+            display: block;
+        }
+
+        .pc-provider-mark.pc-provider-kakao { color: #a97c00; }
+        .pc-provider-mark.pc-provider-naver { color: #0a7a43; }
+        .pc-provider-mark.pc-provider-google { color: #795548; }
+        .pc-provider-mark.pc-provider-rice { color: #a8842c; }
+
+        /* 구글은 문자 G 스탬프 */
+        .pc-provider-mark.pc-provider-google {
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 19px;
+            text-align: center;
+        }
+
+        /* 스탬프가 찍히면 밥 이름 워터마크를 오른쪽으로 밀어 나란히 */
+        #myProfileCard.has-provider-mark .pc-rice-type {
+            left: 40px;
+            top: 16px;
+        }

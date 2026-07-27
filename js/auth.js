@@ -253,7 +253,12 @@ window.setupAuthListener = function () {
             var wm = document.getElementById('pcRiceWatermark');
             if (wm) wm.innerText = '';
             var card = document.getElementById('myProfileCard');
-            if (card) card.style.backgroundColor = '#fff9c4';
+            if (card) {
+                card.style.backgroundColor = '#fff9c4';
+                card.classList.remove('has-provider-mark');
+            }
+            var pm = document.getElementById('pcProviderMark');
+            if (pm) { pm.innerHTML = ''; pm.className = 'pc-provider-mark'; }
         }
     });
 };

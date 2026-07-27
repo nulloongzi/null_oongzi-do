@@ -56,6 +56,59 @@ window.checkDuplicateNickname = async function (nickname) {
     return !snapshot.empty;
 };
 
+// 로그인 수단 판별: 카카오/네이버는 커스텀 토큰 uid 규칙('kakao:{id}'/'naver:{id}',
+// functions/social-auth.js), 구글/이메일은 Firebase providerData로 구분.
+window.detectLoginProvider = function (user) {
+    if (!user) return '';
+    var uid = user.uid || '';
+    if (uid.indexOf('kakao:') === 0) return 'kakao';
+    if (uid.indexOf('naver:') === 0) return 'naver';
+    var pd = user.providerData || [];
+    for (var i = 0; i < pd.length; i++) {
+        if (pd[i] && pd[i].providerId === 'google.com') return 'google';
+    }
+    for (var j = 0; j < pd.length; j++) {
+        if (pd[j] && pd[j].providerId === 'password') return 'rice';
+    }
+    return '';
+};
+
+// 로그인 수단 스탬프 아이콘 (정적 SVG — 사용자 입력 없음).
+// 단색 currentColor로 그려 CSS(.pc-provider-*)가 색을 정한다.
+var PROVIDER_MARK_SVG = {
+    // 카카오: 말풍선
+    kakao: '<svg viewBox="0 0 24 24" fill="currentColor">' +
+        '<path d="M12 4C7 4 3 7.2 3 11.2c0 2.6 1.7 4.9 4.3 6.2l-.8 3c-.1.4.3.7.6.5l3.5-2.3c.5.1.9.1 1.4.1 5 0 9-3.2 9-7.2S17 4 12 4z"/></svg>',
+    // 네이버: 옛 로고 오마주 — 날개 달린 모자
+    naver: '<svg viewBox="0 0 24 24" fill="currentColor">' +
+        '<circle cx="12" cy="5.2" r="1.1"/>' +
+        '<path d="M12 6.4c-3.2 0-5.8 2-6 4.6h12c-.2-2.6-2.8-4.6-6-4.6z"/>' +
+        '<path d="M4.6 11.8h14.8a1 1 0 0 1 0 2H4.6a1 1 0 0 1 0-2z"/>' +
+        '<path d="M6.3 10.2C5 8.4 3 7.5 1.2 7.7c.4 1.9 1.9 3.3 3.8 3.6z"/>' +
+        '<path d="M17.7 10.2c1.3-1.8 3.3-2.7 5.1-2.5-.4 1.9-1.9 3.3-3.8 3.6z"/></svg>',
+    // 누룽지도: 로고 단순화 — 그릇에 얹어진 밥
+    rice: '<svg viewBox="0 0 24 24" fill="currentColor">' +
+        '<path d="M12 4.6c-1.9 0-3.2 1-3.9 2.2-1-.4-2.4.3-2.4 1.7 0 .9.7 1.5 1.4 1.5h9.8c.7 0 1.4-.6 1.4-1.5 0-1.4-1.4-2.1-2.4-1.7-.7-1.2-2-2.2-3.9-2.2z"/>' +
+        '<path d="M4.2 11.6h15.6c0 3.1-2.5 5.6-5.8 6.2v.9c0 .4-.3.7-.7.7h-2.6a.7.7 0 0 1-.7-.7v-.9c-3.3-.6-5.8-3.1-5.8-6.2z"/></svg>'
+    // google은 SVG 대신 문자 'G' 스탬프 (CSS .pc-provider-google)
+};
+
+// 네임카드 왼쪽 상단에 로그인 수단 스탬프를 찍는다 (이스터에그).
+function renderProviderMark() {
+    var mark = document.getElementById('pcProviderMark');
+    var card = document.getElementById('myProfileCard');
+    if (!mark || !card) return;
+    var p = window.detectLoginProvider(window.currentUser);
+    mark.className = 'pc-provider-mark' + (p ? ' pc-provider-' + p : '');
+    if (!p) {
+        mark.innerHTML = '';
+        card.classList.remove('has-provider-mark');
+        return;
+    }
+    mark.innerHTML = p === 'google' ? 'G' : (PROVIDER_MARK_SVG[p] || '');
+    card.classList.add('has-provider-mark');
+}
+
 window.renderProfileCard = function () {
     if (!window.currentProfileData) return;
 
@@ -81,6 +134,7 @@ window.renderProfileCard = function () {
     var bgColor = foundRice ? foundRice.color : "#fff9c4";
     card.style.backgroundColor = bgColor;
     riceWatermark.innerText = riceName;
+    renderProviderMark();
 
     // 가입일 표시 (NaN 방지)
     if (window.currentProfileData.created_at) {

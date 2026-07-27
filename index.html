@@ -28,7 +28,7 @@
     <link rel="apple-touch-icon" href="app_ui/nulloongzido%20logo_512px.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
     <!-- ?v=N: JS/CSS 수정 후 배포할 때마다 버전을 올려 캐시 무효화 (returning user 혼합버전 방지) -->
-    <link rel="stylesheet" href="css/main.css?v=14">
+    <link rel="stylesheet" href="css/main.css?v=15">
 
     <!-- Firebase compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -38,10 +38,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
-    <script src="js/firebase-init.js?v=14"></script>
-    <script src="js/dom-utils.js?v=14"></script>
+    <script src="js/firebase-init.js?v=15"></script>
+    <script src="js/dom-utils.js?v=15"></script>
     <!-- 소셜 로그인 진행 오버레이 — 첫 페인트 전에 상태를 잡아야 해서 head에서 로드 -->
-    <script src="js/auth-loading.js?v=14"></script>
+    <script src="js/auth-loading.js?v=15"></script>
 
     <!-- html2canvas (공유 기능) -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -131,6 +131,8 @@
     <!-- 프로필 오버레이 -->
     <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
         <div class="profile-card" id="myProfileCard" onclick="event.stopPropagation()">
+            <!-- 로그인 수단 스탬프 (이스터에그): profile.js가 제공자 감지 후 아이콘 주입 -->
+            <div id="pcProviderMark" class="pc-provider-mark" aria-hidden="true"></div>
             <div id="pcRiceWatermark" class="pc-rice-type"></div>
             <div id="loginSection" class="login-section">
                 <div id="regLoginHint" class="reg-login-hint" style="display:none;" data-i18n="reg_login_hint">팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록됩니다.</div>
@@ -438,24 +440,24 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
-    <script src="js/i18n.js?v=14"></script>
-    <script src="js/data.js?v=14"></script>
-    <script src="js/pickup-data.js?v=14"></script>
-    <script src="js/profile.js?v=14"></script>
-    <script src="js/auth.js?v=14"></script>
-    <script src="js/social-auth.js?v=14"></script>
-    <script src="js/lunchbox.js?v=14"></script>
-    <script src="js/share.js?v=14"></script>
-    <script src="js/insta-embed.js?v=14"></script>
-    <script src="js/map-core.js?v=14"></script>
-    <script src="js/club-detail.js?v=14"></script>
-    <script src="js/filters.js?v=14"></script>
-    <script src="js/registration.js?v=14"></script>
-    <script src="js/verification.js?v=14"></script>
-    <script src="js/pickup-ui.js?v=14"></script>
-    <script src="js/tabs.js?v=14"></script>
-    <script src="js/pickup-host.js?v=14"></script>
-    <script src="js/pickup-detail.js?v=14"></script>
-    <script src="js/app.js?v=14"></script>
+    <script src="js/i18n.js?v=15"></script>
+    <script src="js/data.js?v=15"></script>
+    <script src="js/pickup-data.js?v=15"></script>
+    <script src="js/profile.js?v=15"></script>
+    <script src="js/auth.js?v=15"></script>
+    <script src="js/social-auth.js?v=15"></script>
+    <script src="js/lunchbox.js?v=15"></script>
+    <script src="js/share.js?v=15"></script>
+    <script src="js/insta-embed.js?v=15"></script>
+    <script src="js/map-core.js?v=15"></script>
+    <script src="js/club-detail.js?v=15"></script>
+    <script src="js/filters.js?v=15"></script>
+    <script src="js/registration.js?v=15"></script>
+    <script src="js/verification.js?v=15"></script>
+    <script src="js/pickup-ui.js?v=15"></script>
+    <script src="js/tabs.js?v=15"></script>
+    <script src="js/pickup-host.js?v=15"></script>
+    <script src="js/pickup-detail.js?v=15"></script>
+    <script src="js/app.js?v=15"></script>
 </body>
 </html>
