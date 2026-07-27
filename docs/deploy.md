@@ -62,6 +62,17 @@ Cloud Shell은 이미 구글 계정으로 인증돼 있어 `firebase login` 이 
 
 한 번 쓰고 나면 홈 디렉터리가 유지되므로 다음부터는 `cd null_oongzi-do && git pull` 만 하면 된다.
 
+## 파라미터 파일 (`functions/.env.nulloongzi-do`)
+
+`defineString` 파라미터(`KAKAO_APP_ID`, `NAVER_CLIENT_ID`) 값이 들어있다. **시크릿이 아니다** —
+실제 비밀값은 전부 Secret Manager에 있고, 이 파일은 커밋되어 있다.
+
+이 파일이 없으면 `firebase deploy` 가 값을 대화형으로 물어본다. `defineString` 에 `default: ""`
+를 줘도 프롬프트는 뜨므로, 새로 클론한 PC에서 무심코 엔터를 치면 **빈 값이 그대로 배포된다.**
+실제로 그렇게 `KAKAO_APP_ID` 가 빈 값으로 나간 적이 있다. 파일을 커밋해둔 이유가 이것이다.
+
+값을 바꿨으면 파일도 같이 커밋할 것. 안 그러면 다음 사람이 다시 프롬프트를 만난다.
+
 ## 방법 3: PC
 
 ```bash
