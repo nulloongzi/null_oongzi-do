@@ -53,7 +53,7 @@
     // 서버사이드 code 교환에는 authorize도 REST키로 해야 client_id가 일치한다.
     window.loginWithKakao = function () {
         setLastProvider('kakao');
-        if (window.showAuthLoading) window.showAuthLoading('auth_redirecting_kakao', 'auth_redirect_desc');
+        if (window.showAuthLoading) window.showAuthLoading('auth_redirecting_kakao', 'auth_redirect_desc', 'kakao');
         var st = makeState('kakao');
         var url = 'https://kauth.kakao.com/oauth/authorize' +
             '?response_type=code' +
@@ -67,7 +67,7 @@
     window.loginWithNaver = function () {
         if (!NAVER_CLIENT_ID) { alert(window.t('au_login_fail') + 'Naver clientId'); return; }
         setLastProvider('naver');
-        if (window.showAuthLoading) window.showAuthLoading('auth_redirecting_naver', 'auth_redirect_desc');
+        if (window.showAuthLoading) window.showAuthLoading('auth_redirecting_naver', 'auth_redirect_desc', 'naver');
         var st = makeState('naver');
         var url = 'https://nid.naver.com/oauth2.0/authorize' +
             '?response_type=code' +
@@ -112,7 +112,10 @@
         if (!code || !state) return;
 
         // 토큰 교환 구간 동안 "로그인 중" 화면 유지 (head에서 이미 켜졌지만 방어적으로 보장)
-        if (window.showAuthLoading) window.showAuthLoading('auth_signing_in', 'auth_signing_in_desc');
+        if (window.showAuthLoading) {
+            window.showAuthLoading('auth_signing_in', 'auth_signing_in_desc',
+                state.indexOf('kakao') === 0 ? 'kakao' : state.indexOf('naver') === 0 ? 'naver' : '');
+        }
 
         // CSRF: 저장해둔 state와 일치해야 함
         var saved = '';

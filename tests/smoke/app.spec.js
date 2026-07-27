@@ -6,6 +6,7 @@
 //  · 패리티 DOM: 검색(#fsKeyword)·필터시트·탭·언어토글 등 핵심 UI 존재.
 //  · 인터랙션: 필터시트 열기, KO↔EN 토글이 실제 DOM 텍스트를 바꾸는지.
 'use strict';
+/* global window -- addInitScript 콜백은 브라우저 컨텍스트에서 실행됨 */
 
 const { test, expect } = require('@playwright/test');
 
@@ -70,6 +71,8 @@ test('소셜 로그인 복귀(?code=&state=): 로그인 중 안내가 뜬다', a
     await page.goto('/?code=dummy&state=kakao_dummy');
     await expect(page.locator('#authLoadingOverlay')).toBeVisible();
     await expect(page.locator('#authLoadingTitle')).not.toBeEmpty();
+    // 제공자별 반투명 효과 테마가 state 접두사로 결정되는지
+    await expect(page.locator('html')).toHaveClass(/auth-theme-kakao/);
 });
 
 test('일반 방문에는 로그인 안내가 뜨지 않는다', async ({ page }) => {

@@ -2875,10 +2875,12 @@
             cursor: pointer;
         }
 
-        /* [소셜 로그인 진행 오버레이]
-           카카오/네이버는 리다이렉트 로그인이라 복귀 직후 토큰 교환/프로필 로딩 구간이 생긴다.
-           그 사이 지도가 먼저 보였다가 갑자기 로그인되는 걸 막기 위해 첫 페인트부터 덮는다.
-           표시 여부는 <html>의 .auth-loading 클래스로 제어 (js/auth-loading.js). */
+
+        /* [로그인 진행 레이어]
+           로그인 화면은 지도 위의 팝업(z 500)이므로, 진행 표시도 "화면 전환"이 아니라
+           지도 앞(크롬 z≤300) + 팝업 뒤에 끼는 반투명 레이어(z 400)로 표현한다.
+           표시: html.auth-loading / 테마: html.auth-theme-{kakao|naver|google|rice}
+           (js/auth-loading.js) */
         .auth-loading-overlay {
             position: fixed;
             top: 0;
@@ -2886,59 +2888,225 @@
             width: 100%;
             height: 100%;
             display: none;
-            justify-content: center;
-            align-items: center;
-            background: rgba(255, 248, 225, 0.94);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            z-index: 200000;
+            z-index: 400;
+            overflow: hidden;
+            pointer-events: auto;
         }
 
         html.auth-loading .auth-loading-overlay {
-            display: flex;
+            display: block;
         }
 
-        .al-card {
-            width: 85%;
-            max-width: 320px;
-            padding: 32px 22px 26px;
+        /* 효과 레이어 (테마별 배경) */
+        .al-fx {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            animation: alFadeIn 0.4s ease-out;
+        }
+
+        @keyframes alFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .al-fx::before,
+        .al-fx::after {
+            content: '';
+            position: absolute;
+        }
+
+        /* ── 카카오: 노랑 반투명 틴트 + 간헐적 번개 섬광 ── */
+        html.auth-theme-kakao .al-fx {
+            background: rgba(250, 199, 16, 0.16);
+        }
+
+        html.auth-theme-kakao .al-fx::before {
+            inset: 0;
+            background:
+                linear-gradient(115deg,
+                    transparent 42%,
+                    rgba(255, 244, 179, 0.85) 47%,
+                    rgba(255, 255, 255, 0.95) 50%,
+                    rgba(255, 244, 179, 0.85) 53%,
+                    transparent 58%);
+            opacity: 0;
+            animation: alLightning 3.2s ease-out infinite;
+        }
+
+        html.auth-theme-kakao .al-fx::after {
+            inset: 0;
+            background: rgba(255, 234, 128, 0.5);
+            opacity: 0;
+            animation: alLightningGlow 3.2s ease-out infinite;
+        }
+
+        /* 번쩍-잔광-번쩍: 짧은 이중 플래시 후 긴 휴지 */
+        @keyframes alLightning {
+            0%, 100% { opacity: 0; }
+            3% { opacity: 1; }
+            6% { opacity: 0; }
+            9% { opacity: 0.7; }
+            13% { opacity: 0; }
+        }
+
+        @keyframes alLightningGlow {
+            0%, 100% { opacity: 0; }
+            3% { opacity: 0.9; }
+            16% { opacity: 0; }
+        }
+
+        /* ── 네이버: 초록 반투명 물결 (큰 원형 2개가 하단에서 천천히 회전) ── */
+        html.auth-theme-naver .al-fx {
+            background: rgba(3, 199, 90, 0.10);
+        }
+
+        html.auth-theme-naver .al-fx::before,
+        html.auth-theme-naver .al-fx::after {
+            width: 220vmax;
+            height: 220vmax;
+            left: 50%;
+            top: 82%;
+            border-radius: 43%;
+            background: rgba(3, 199, 90, 0.18);
+            animation: alWave 9s linear infinite;
+        }
+
+        html.auth-theme-naver .al-fx::after {
+            border-radius: 46%;
+            background: rgba(3, 199, 90, 0.13);
+            animation-duration: 13s;
+            animation-direction: reverse;
+        }
+
+        @keyframes alWave {
+            from { transform: translate(-50%, 0) rotate(0deg); }
+            to { transform: translate(-50%, 0) rotate(360deg); }
+        }
+
+        /* ── 구글: 안개 낀 느낌 (회색 블롭이 느리게 떠다님 + 약한 blur) ── */
+        html.auth-theme-google .al-fx {
+            background: rgba(158, 158, 168, 0.14);
+            backdrop-filter: blur(2.5px);
+            -webkit-backdrop-filter: blur(2.5px);
+        }
+
+        html.auth-theme-google .al-fx::before,
+        html.auth-theme-google .al-fx::after {
+            width: 140vmax;
+            height: 140vmax;
+            border-radius: 50%;
+            filter: blur(60px);
+            background:
+                radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.55) 0%, transparent 45%),
+                radial-gradient(circle at 70% 65%, rgba(200, 200, 210, 0.45) 0%, transparent 40%);
+            animation: alFogDrift 16s ease-in-out infinite alternate;
+        }
+
+        html.auth-theme-google .al-fx::before {
+            left: -45vmax;
+            top: -55vmax;
+        }
+
+        html.auth-theme-google .al-fx::after {
+            right: -50vmax;
+            bottom: -60vmax;
+            animation-duration: 21s;
+            animation-delay: -8s;
+        }
+
+        @keyframes alFogDrift {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(9vmax, 5vmax) scale(1.12); }
+        }
+
+        /* ── 누룽지도(이메일) 이스터에그: 노란 습기가 아래서 피어오름 ── */
+        html.auth-theme-rice .al-fx {
+            background: rgba(250, 199, 16, 0.08);
+        }
+
+        html.auth-theme-rice .al-fx::before,
+        html.auth-theme-rice .al-fx::after {
+            width: 60vmax;
+            height: 60vmax;
+            left: 8%;
+            bottom: -65vmax;
+            border-radius: 50%;
+            filter: blur(45px);
+            background: radial-gradient(circle, rgba(255, 213, 79, 0.55) 0%, rgba(255, 224, 130, 0.25) 45%, transparent 70%);
+            animation: alSteam 7s ease-in infinite;
+        }
+
+        html.auth-theme-rice .al-fx::after {
+            left: auto;
+            right: 5%;
+            width: 48vmax;
+            height: 48vmax;
+            animation-duration: 8.5s;
+            animation-delay: -4s;
+        }
+
+        @keyframes alSteam {
+            0% { transform: translateY(0) scale(0.9); opacity: 0; }
+            25% { opacity: 1; }
+            100% { transform: translateY(-140vmax) scale(1.35); opacity: 0; }
+        }
+
+        /* 상태 필: 하단 중앙 컴팩트 (탭바 위) */
+        .al-pill {
+            position: absolute;
+            left: 50%;
+            bottom: max(96px, calc(env(safe-area-inset-bottom, 0px) + 96px));
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: min(86vw, 340px);
+            padding: 12px 20px;
             text-align: center;
-            background: var(--glass-bg-darker, rgba(255, 248, 225, 0.85));
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.7);
-            border-radius: 28px;
-            box-shadow: 0 20px 50px rgba(93, 64, 55, 0.15);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(93, 64, 55, 0.18);
+            animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .al-pill-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
         }
 
         .al-spinner {
-            width: 42px;
-            height: 42px;
-            margin: 0 auto 16px;
+            width: 17px;
+            height: 17px;
+            flex: none;
             border-radius: 50%;
-            border: 4px solid rgba(141, 110, 99, 0.2);
+            border: 2.5px solid rgba(141, 110, 99, 0.25);
             border-top-color: var(--nurungji-yellow, #fac710);
             animation: alSpin 0.9s linear infinite;
         }
 
         @keyframes alSpin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         .al-title {
-            font-size: 17px;
+            font-size: 14.5px;
             font-weight: 800;
             color: var(--nurungji-dark, #4e342e);
-            margin-bottom: 8px;
+            white-space: nowrap;
         }
 
         .al-desc {
-            font-size: 13px;
-            line-height: 1.5;
+            margin-top: 4px;
+            font-size: 12px;
+            line-height: 1.45;
             color: var(--nurungji-brown, #8d6e63);
         }
 
-        /* 오래 걸릴 때만 노출: 사용자가 로딩 화면에 갇히지 않도록 탈출구 제공 */
+        /* 오래 걸릴 때만 노출: 로딩에 갇히지 않도록 탈출구 제공 */
         .al-slow,
         .al-close {
             display: none;
@@ -2946,26 +3114,33 @@
 
         html.auth-loading-slow .al-slow {
             display: block;
-            margin-top: 14px;
-            font-size: 12px;
+            margin-top: 10px;
+            font-size: 11.5px;
             line-height: 1.5;
             color: #b26a3f;
         }
 
         html.auth-loading-slow .al-close {
             display: inline-block;
-            margin-top: 14px;
-            padding: 9px 22px;
+            margin-top: 10px;
+            padding: 8px 20px;
             background: #fff;
             color: var(--nurungji-dark, #4e342e);
             border: 1px solid rgba(141, 110, 99, 0.35);
-            border-radius: 12px;
-            font-size: 13px;
+            border-radius: 11px;
+            font-size: 12.5px;
             font-weight: 800;
             cursor: pointer;
         }
 
+        /* 모션 최소화: 효과 애니메이션 전부 끄고 단순 반투명 틴트만 */
         @media (prefers-reduced-motion: reduce) {
+            .al-fx,
+            .al-fx::before,
+            .al-fx::after {
+                animation: none;
+            }
+
             .al-spinner {
                 animation-duration: 2.4s;
             }
