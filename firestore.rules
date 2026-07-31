@@ -44,6 +44,9 @@ service cloud.firestore {
           && (!('notes' in d) || (d.notes is string && d.notes.size() <= 600))
           && (!('insta' in d) || (d.insta is string && d.insta.size() <= 80))
           && (!('region' in d) || (d.region is string && d.region.size() <= 20))
+          // 'curated' = 공개 인스타 정보로 시딩된 항목(본인 등록 아님).
+          // UI가 출처를 밝히고 삭제 요청 통로를 띄우는 근거 — 옵트아웃 모델의 최소 조건.
+          && (!('source' in d) || (d.source is string && d.source.size() <= 20))
           && (!('expire_at' in d) || d.expire_at == null || d.expire_at is timestamp)
           // 좌표는 선택 — 장소가 유동적인 크루(지도에 안 뜨고 목록에만)를 허용한다.
           // null 명시도 통과시켜야 클라이언트가 필드를 지울 수 있다.

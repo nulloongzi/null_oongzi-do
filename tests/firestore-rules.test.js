@@ -446,6 +446,18 @@ describe('pickup_games 룰 (B: expire_at 검증 + 누구나/익명 등록 + 모�
             .set(validSpot('pk-owner', { insta: 12345 })));
     });
 
+    test("source='curated' 등록 통과 (시딩 항목 표시 → UI가 삭제요청 통로를 띄운다)", async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-curated')
+            .set(validSpot('pk-owner', { source: 'curated' })));
+    });
+
+    test('source가 20자 초과면 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-longsource')
+            .set(validSpot('pk-owner', { source: 'x'.repeat(21) })));
+    });
+
     test('region 등록 통과 / 20자 초과 거부', async () => {
         const db = testEnv.authenticatedContext('pk-owner').firestore();
         await assertSucceeds(db.collection('pickup_games').doc('pk-region')

@@ -7,6 +7,9 @@
     var t = window.t;
     window.currentPickupId = null;
 
+    // 시딩 항목 삭제/수정 요청 수신처 (Play Console 연락처와 동일)
+    var PK_TAKEDOWN_EMAIL = 'paulyoo999@gmail.com';
+
     function el(tag, cls, text) {
         var e = document.createElement(tag);
         if (cls) e.className = cls;
@@ -130,6 +133,26 @@
 
         // 메모
         if (spot.notes) c.appendChild(el('div', 'ps-notes', spot.notes));
+
+        // 시딩 항목(공개 인스타 정보로 모은 크루): 출처를 밝히고 내려달라 할 통로를 준다.
+        // 본인이 올린 게 아니라 owner_uid가 관리자라, 이 링크가 유일한 옵트아웃 경로다.
+        if (spot.source === 'curated') {
+            var note = el('div', 'ps-curated');
+            note.appendChild(document.createTextNode(t('pk_curated_note') + ' '));
+            var req = el('a', 'ps-curated-link', t('pk_curated_takedown'));
+            req.href = window.sanitizeUrl(
+                'mailto:' + PK_TAKEDOWN_EMAIL
+                + '?subject=' + encodeURIComponent(t('pk_takedown_subject'))
+                + '&body=' + encodeURIComponent(
+                    t('pk_takedown_body') + '\n\n'
+                    + '- ' + (spot.title || '') + '\n'
+                    + '- id: ' + spot.id + '\n'
+                    + (spot.insta ? '- @' + spot.insta + '\n' : '')
+                )
+            );
+            note.appendChild(req);
+            c.appendChild(note);
+        }
 
         // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
         var reelUrls = (spot.insta_reels && spot.insta_reels.length)

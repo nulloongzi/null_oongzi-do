@@ -270,6 +270,16 @@
         pk_empty: { ko: '아직 등록된 픽업이 없어요.\n첫 픽업을 올려보세요! 🏐', en: 'No pickup spots yet.\nBe the first to add one! 🏐' },
         pk_host_title: { ko: '픽업 등록', en: 'Add a pickup' },
         pk_region_all: { ko: '지역 전체', en: 'All regions' },
+        pk_curated_note: {
+            ko: '공개된 인스타 정보를 보고 누룽지가 모아둔 크루예요. 직접 등록한 팀이 아니에요.',
+            en: "Collected by Nulloongzi from public Instagram info — not submitted by the crew itself."
+        },
+        pk_curated_takedown: { ko: '우리 팀이에요 · 수정/삭제 요청', en: "This is us · request edit/removal" },
+        pk_takedown_subject: { ko: '[누룽지도] 픽업 크루 수정/삭제 요청', en: '[Nulloongzi-do] Pickup crew edit/removal request' },
+        pk_takedown_body: {
+            ko: '아래 크루에 대해 수정 또는 삭제를 요청합니다. (확인 후 바로 처리해 드릴게요)',
+            en: 'I request an edit or removal for the crew below. (We will action it as soon as we verify.)'
+        },
         pk_list_share: { ko: '🔗 목록 공유', en: '🔗 Share list' },
         pk_list_link_copied: { ko: '이 목록 링크를 복사했어요. 그대로 보내면 같은 목록이 열려요!', en: 'List link copied — send it and they see the same list!' },
         pk_search_ph: { ko: '픽업, 장소로 검색...', en: 'Search pickups or venues...' },

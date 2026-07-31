@@ -2405,6 +2405,25 @@
             text-decoration: none;
         }
 
+        /* 시딩 항목 출처 고지 + 삭제요청 링크 — 눈에 띄되 본문을 가리지 않게 */
+        .ps-curated {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: var(--nurungji-card, #fffdf6);
+            border: 1px solid var(--nurungji-line, #e6ddd2);
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: #8a8079;
+        }
+
+        .ps-curated-link {
+            color: #1565C0;
+            font-weight: 700;
+            text-decoration: underline;
+            white-space: nowrap;
+        }
+
         .pl-en-toggle {
             font-size: 12px;
             font-weight: 700;
