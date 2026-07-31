@@ -21,11 +21,12 @@
  *     https://www.instagram.com/nest_volleyball?igsh=MTZyOWE1...
  *     @op.vball
  *     sus_volleyball | SUS Volleyball
- *     bundang_wed | 분당 수요 픽업 | 경기
+ *     bundang_wed | 분당 수요 픽업 | 경기 | 중급
  *
- *   `|` 뒤는 선택: 두 번째=표시 이름, 세 번째=지역. 생략하면 이름은 핸들 그대로,
- *   지역은 `--region` 값을 쓴다. 지역/English OK는 링크에 없는 정보라 플래그로 채운다:
- *     --region 서울 --english
+ *   `|` 뒤는 선택: 두 번째=표시 이름, 세 번째=지역, 네 번째=레벨.
+ *   레벨은 입문/중급/상급/선출(또는 beginner/intermediate/advanced/elite/any) 다 받는다.
+ *   생략하면 이름은 핸들 그대로, 지역·레벨은 플래그 기본값:
+ *     --region 서울 --english --level any
  *
  * ── 입력 B: 전체 필드 지정 (.json 배열) ──
  *   [
@@ -36,7 +37,7 @@
  *       "english_ok": true,
  *       "beginner_friendly": false,
  *       "sport": "6s",                     // 6s | 9s | mixed  (기본 6s)
- *       "level": "any",                    // beginner | intermediate | advanced | any
+ *       "level": "any",                    // beginner|intermediate|advanced|elite|any (한글 별칭도 가능)
  *       "venue_name": "",                  // 선택
  *       "address": "",                     // 선택 — 있으면 좌표 없이도 지역 폴백 매칭
  *       "schedule_text": "일요일 저녁",       // 선택
@@ -59,7 +60,28 @@ const path = require('node:path');
 
 const REGIONS = ['서울', '경기', '인천', '강원', '충청', '전라', '경상', '제주'];
 const SPORTS = ['6s', '9s', 'mixed'];
-const LEVELS = ['beginner', 'intermediate', 'advanced', 'any'];
+const LEVELS = ['beginner', 'intermediate', 'advanced', 'elite', 'any'];
+
+// 한글 별칭 — 목록을 사람이 손으로 쓰므로 KO 라벨을 그대로 적어도 받는다.
+const LEVEL_ALIASES = {
+    '입문': 'beginner',
+    '초보': 'beginner',
+    '중급': 'intermediate',
+    '상급': 'advanced',
+    '고급': 'advanced',
+    '선출': 'elite',
+    '선출급': 'elite',
+    '대학팀급': 'elite',
+    '누구나': 'any',
+    '무관': 'any',
+    '레벨무관': 'any',
+};
+
+function normalizeLevel(v) {
+    const s = String(v || '').trim();
+    if (!s) return 'any';
+    return LEVEL_ALIASES[s] || s;
+}
 
 // 인스타 핸들 규칙: 영문/숫자/언더스코어/점 1~30자 (웹 sanitizeInstaHandle 와 동일)
 const INSTA_RE = /^[A-Za-z0-9._]{1,30}$/;
@@ -94,7 +116,7 @@ function parseTextList(text, defaults) {
         .map((ln) => ln.trim())
         .filter((ln) => ln && !ln.startsWith('#'))
         .map((ln) => {
-            const [link, title, region] = ln.split('|').map((p) => (p || '').trim());
+            const [link, title, region, level] = ln.split('|').map((p) => (p || '').trim());
             const handle = toHandle(link);
             return {
                 // 제목 미지정이면 핸들을 그대로 쓴다. 억지로 예쁘게 만들면(대소문자·띄어쓰기 추측)
@@ -102,6 +124,7 @@ function parseTextList(text, defaults) {
                 title: title || handle || link,
                 insta: handle || link, // 파싱 실패해도 원문을 남겨 validate 가 오류로 잡게 한다
                 region: region || defaults.region,
+                level: normalizeLevel(level || defaults.level),
                 english_ok: defaults.englishOk,
                 sport: defaults.sport,
             };
@@ -137,8 +160,10 @@ function validate(raw, i) {
     const sport = String(raw.sport || '6s').trim();
     if (!SPORTS.includes(sport)) errors.push(`sport 값 오류: "${sport}"`);
 
-    const level = String(raw.level || 'any').trim();
-    if (!LEVELS.includes(level)) errors.push(`level 값 오류: "${level}"`);
+    const level = normalizeLevel(raw.level);
+    if (!LEVELS.includes(level)) {
+        errors.push(`level 값 오류: "${raw.level}" (${LEVELS.join('/')} 또는 입문/중급/상급/선출)`);
+    }
 
     // 인스타도 단톡도 없으면 "연락할 방법"이 없다 — 발견 wedge로서 의미가 없으므로 거른다.
     const contactLink = String(raw.contact_link || '').trim();
@@ -186,6 +211,7 @@ async function main() {
     const defaults = {
         region: flag('region', ''),
         sport: flag('sport', '6s'),
+        level: flag('level', 'any'),
         englishOk: rest.includes('--english'),
     };
 
@@ -249,6 +275,7 @@ async function main() {
     for (const r of good) {
         const tags = [
             r.doc.region || '지역미지정',
+            r.doc.level,
             r.doc.english_ok ? 'EN' : '',
             r.doc.insta ? `@${r.doc.insta}` : r.doc.contact_link,
         ].filter(Boolean).join(' · ');

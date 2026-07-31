@@ -6,7 +6,9 @@
 # 규칙
 #   · 한 줄에 하나. 빈 줄과 이 줄 같은 `#` 주석은 무시.
 #   · `?igsh=...` 추적 파라미터는 자동으로 떨어진다.
-#   · `|` 뒤는 선택 — 두 번째=표시 이름, 세 번째=지역(생략 시 --region 값).
+#   · `|` 뒤는 선택 — 두 번째=표시 이름, 세 번째=지역, 네 번째=레벨.
+#     레벨은 입문/중급/상급/선출 또는 beginner/intermediate/advanced/elite/any.
+#     생략하면 '누구나 환영'(any) — 어떤 레벨 필터에도 걸려서 노출이 안 줄어든다.
 #   · 이름을 안 주면 핸들이 그대로 제목이 된다. 목록 카드에서 핸들이 두 번 보이니
 #     크루가 실제로 쓰는 이름을 아는 경우엔 채워주는 편이 낫다.
 #
@@ -15,5 +17,5 @@
 
 https://www.instagram.com/example_crew?igsh=AAAAAAAAAAAA
 @another_crew
-third_crew | Third Crew Volleyball
-fourth_crew | 분당 수요 픽업 | 경기
+third_crew | Third Crew Volleyball | 서울 | 상급
+fourth_crew | 분당 수요 픽업 | 경기 | 중급
