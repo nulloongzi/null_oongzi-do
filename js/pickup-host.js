@@ -32,7 +32,23 @@
         return m;
     }
 
-    var TEXT_FIELDS = ['pkTitle', 'pkVenue', 'pkAddress', 'pkSchedule', 'pkThisWeek', 'pkFee', 'pkContact', 'pkNotes', 'pkReel'];
+    var TEXT_FIELDS = ['pkTitle', 'pkVenue', 'pkAddress', 'pkSchedule', 'pkThisWeek', 'pkFee', 'pkContact', 'pkInsta', 'pkNotes', 'pkReel'];
+
+    // 지역 칩: 단일선택이되 "선택 안 함"도 허용(다시 누르면 해제) → 지역 미지정 크루도 등록 가능.
+    window.pkToggleRegionChip = function (el) {
+        var wasOn = el.classList.contains('selected');
+        el.parentElement.querySelectorAll('.pk-chip').forEach(function (c) { c.classList.remove('selected'); });
+        if (!wasOn) el.classList.add('selected');
+    };
+    function selectedRegion() {
+        var el = document.querySelector('#pkRegionChips .pk-chip.selected');
+        return el ? el.getAttribute('data-val') : '';
+    }
+    function selectRegion(val) {
+        document.querySelectorAll('#pkRegionChips .pk-chip').forEach(function (c) {
+            c.classList.toggle('selected', !!val && c.getAttribute('data-val') === val);
+        });
+    }
 
     window.openPickupCreateModal = function () {
         window.editingPickupId = null;
@@ -42,6 +58,7 @@
         selectChipByVal('pkSportChips', '6s');
         selectChipByVal('pkLevelChips', 'any');
         selectChipByVal('pkExpireChips', '1m');
+        selectRegion('');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.remove('selected');
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.remove('selected');
         window.selectedCoords = null;
@@ -62,6 +79,7 @@
         setVal('pkThisWeek', spot.this_week);
         setVal('pkFee', spot.fee_info);
         setVal('pkContact', spot.contact_link);
+        setVal('pkInsta', spot.insta);
         setVal('pkNotes', spot.notes);
         setVal('pkReel',
             (spot.insta_reels && spot.insta_reels.length ? spot.insta_reels
@@ -69,6 +87,7 @@
         selectChipByVal('pkSportChips', spot.sport || '6s');
         selectChipByVal('pkLevelChips', spot.level || 'any');
         selectChipByVal('pkExpireChips', spot.expire_at ? '1m' : 'always');
+        selectRegion(spot.region || '');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.toggle('selected', !!spot.english_ok);
         window.selectedCoords = null;
@@ -115,7 +134,9 @@
         var capturedEditId = window.editingPickupId;
         var title = getVal('pkTitle');
         var address = getVal('pkAddress');
-        if (!title || !address) { alert(window.t('pk_req_fields')); return; }
+        // 주소는 선택 — 장소가 유동적인 크루(인스타로만 굴러가는 모임)를 막지 않는다.
+        // 주소 없이 등록하면 지도 마커 없이 목록에만 뜬다.
+        if (!title) { alert(window.t('pk_req_fields')); return; }
 
         // 링크 검증 (선택): 단톡/Meetup 등 http(s)만
         var contact = getVal('pkContact');
@@ -123,6 +144,14 @@
             var sc = window.sanitizeUrl(contact);
             if (!sc || sc === '#') { alert(window.t('reg_link_invalid')); return; }
             contact = sc;
+        }
+
+        // 인스타 핸들 (선택): 외국인에게 건네는 주 연락처. 동호회 등록과 동일 검증 재사용.
+        var insta = getVal('pkInsta');
+        if (insta) {
+            var si = window.sanitizeInstaHandle(insta);
+            if (!si) { alert(window.t('reg_insta_invalid')); return; }
+            insta = si;
         }
 
         // 릴스/게시물 링크 (선택): 공개 인스타 permalink만
@@ -149,12 +178,14 @@
             english_ok: !!(englishChip && englishChip.classList.contains('selected')),
             venue_name: getVal('pkVenue'),
             address: address,
+            region: selectedRegion(),
             schedule: sd.text,
             schedule_raw: sd.raw,
             schedule_text: getVal('pkSchedule'),
             fee_info: getVal('pkFee'),
             contact_link: contact,
             this_week: getVal('pkThisWeek'),
+            insta: insta,
             insta_reel: reel,
             insta_reels: reels,
             notes: getVal('pkNotes'),
@@ -166,8 +197,15 @@
         btn.disabled = true;
         btn.innerText = window.t('processing');
         try {
-            // 지도에서 찍었으면 그 좌표, 아니면 주소 지오코딩
-            fields.coordinates = window.selectedCoords ? window.selectedCoords : await geocode(address);
+            // 지도에서 찍었으면 그 좌표, 아니면 주소 지오코딩.
+            // 주소가 없거나 지오코딩이 실패해도 등록은 진행한다 — 좌표 없는 크루는 목록에만 뜬다.
+            if (window.selectedCoords) {
+                fields.coordinates = window.selectedCoords;
+            } else if (address) {
+                fields.coordinates = await geocode(address).catch(function () { return null; });
+            } else {
+                fields.coordinates = null;
+            }
             if (capturedEditId) {
                 await window.updatePickupGame(capturedEditId, fields);
                 alert(window.t('pk_updated'));

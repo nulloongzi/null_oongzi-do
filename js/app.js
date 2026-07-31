@@ -28,6 +28,7 @@
             // ?club=<id> 딥링크: 해당 클럽 상세 자동 오픈
             openDeepLinkClub();
             openDeepLinkSpot();
+            openPickupListLink();
         });
     }
 
@@ -58,6 +59,38 @@
             } else if (tries++ < 12) {
                 setTimeout(tryOpen, 400);
             }
+        })();
+    }
+
+    // ?tab=pickup&region=서울&english=1 착지 — 필터가 걸린 픽업 목록을 그대로 재현한다.
+    // (외국인에게 "서울 ∧ English OK" 목록을 링크 하나로 보내는 용도. ?spot= 단건 딥링크와 별개)
+    function openPickupListLink() {
+        var p = new URLSearchParams(location.search);
+        if (p.get('tab') !== 'pickup') return;
+        if (p.get('spot')) return; // 단건 딥링크가 우선
+
+        var region = p.get('region') || '';
+        var english = p.get('english') === '1';
+
+        if (window.switchTab) window.switchTab('pickup');
+
+        var tries = 0;
+        (function apply() {
+            if (!window.renderPickupList || !window.pickupGames) {
+                if (tries++ < 12) setTimeout(apply, 400);
+                return;
+            }
+            window.pkRegion = region;
+            window.pkEnglishOnly = english;
+
+            var sel = document.getElementById('pkRegionFilter');
+            if (sel) sel.value = region;
+            var enBtn = document.getElementById('pkEnFilter');
+            if (enBtn) enBtn.classList.toggle('on', english);
+
+            window.renderPickupList();
+            if (window.renderPickupMarkers) window.renderPickupMarkers();
+            if (window.track) window.track('deep_link_open', { type: 'pickup_list', region: region, english: english });
         })();
     }
 

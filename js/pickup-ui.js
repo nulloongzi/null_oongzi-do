@@ -11,7 +11,57 @@
     window.togglePkEnglishOnly = function (el) {
         window.pkEnglishOnly = !window.pkEnglishOnly;
         if (el) el.classList.toggle('on', window.pkEnglishOnly);
+        refreshPickupViews();
+    };
+
+    // 지역 필터 (리스트 헤더 셀렉트). '' = 전체
+    window.pkRegion = '';
+    window.setPkRegion = function (val) {
+        window.pkRegion = val || '';
+        refreshPickupViews();
+    };
+
+    function refreshPickupViews() {
         window.renderPickupList();
+        if (window.renderPickupMarkers) window.renderPickupMarkers();
+        window.syncPickupUrl();
+    }
+
+    // 필터 상태를 주소창에 반영 → 그대로 복사해 보내면 상대도 같은 목록을 본다.
+    // (외국인에게 "서울 ∧ English OK" 목록을 링크 하나로 건네는 게 이 기능의 핵심)
+    window.syncPickupUrl = function () {
+        if (window.currentTab !== 'pickup') return;
+        try {
+            var p = new URLSearchParams();
+            p.set('tab', 'pickup');
+            if (window.pkRegion) p.set('region', window.pkRegion);
+            if (window.pkEnglishOnly) p.set('english', '1');
+            window.history.replaceState(null, '', '?' + p.toString());
+        } catch (e) { /* 히스토리 조작 실패는 무시 */ }
+    };
+
+    // 현재 필터 상태의 공유 링크
+    window.pickupListShareUrl = function () {
+        var p = new URLSearchParams();
+        p.set('tab', 'pickup');
+        if (window.pkRegion) p.set('region', window.pkRegion);
+        if (window.pkEnglishOnly) p.set('english', '1');
+        return (window.SITE_BASE_URL || '') + '?' + p.toString();
+    };
+
+    window.sharePickupList = function () {
+        var url = window.pickupListShareUrl();
+        if (navigator.share) {
+            navigator.share({ title: window.t('pk_list_title'), url: url }).catch(function () { });
+            return;
+        }
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function () {
+                alert(window.t('pk_list_link_copied'));
+            }).catch(function () { prompt(window.t('pk_list_link_copied'), url); });
+            return;
+        }
+        prompt(window.t('pk_list_link_copied'), url);
     };
 
     // 동호회(노랑)와 구분되는 티얼 핀 (전용 에셋 없이 SVG data URI)
@@ -56,7 +106,8 @@
     window.renderPickupMarkers = function () {
         window.clearPickupMarkers();
         var clusterMarkers = [];
-        window.pickupGames.forEach(function (g) {
+        // 목록과 같은 필터를 적용한다(앱 _visibleSpots 와 동일). 좌표 없는 크루는 목록에만 뜬다.
+        window.visiblePickupSpots().forEach(function (g) {
             if (!g.lat || !g.lng) return;
             var latlng = new kakao.maps.LatLng(g.lat, g.lng);
             var marker = new kakao.maps.Marker({ position: latlng, image: pickupImage });
@@ -131,8 +182,30 @@
             v.className = 'pl-venue';
             v.textContent = '📍 ' + g.venue_name;
             meta.appendChild(v);
+        } else if (g.region) {
+            // 장소가 유동적인 크루: 체육관 대신 지역만
+            var rg = document.createElement('span');
+            rg.className = 'pl-venue';
+            rg.textContent = '📍 ' + g.region;
+            meta.appendChild(rg);
         }
         item.appendChild(meta);
+
+        // 인스타 핸들 — 외국인에게 건네는 주 연락처. 목록에서 바로 보이게 한다.
+        // XSS: 핸들은 textContent, href는 저장 시 sanitizeInstaHandle 로 정규화된 값.
+        if (g.insta) {
+            var ig = document.createElement('a');
+            ig.className = 'pl-insta';
+            ig.href = 'https://instagram.com/' + encodeURIComponent(g.insta);
+            ig.target = '_blank';
+            ig.rel = 'noopener noreferrer';
+            ig.textContent = '📷 @' + g.insta;
+            ig.addEventListener('click', function (ev) {
+                ev.stopPropagation(); // 카드 클릭(상세 열기)과 분리
+                if (window.track) window.track('pickup_contact', { id: g.id, type: 'insta', sport: g.sport });
+            });
+            item.appendChild(ig);
+        }
 
         if (g.fee_info) {
             var fee = document.createElement('div');
@@ -151,22 +224,24 @@
         return item;
     }
 
+    // 현재 필터가 적용된 스팟 목록 (지도 마커·리스트 공통)
+    window.visiblePickupSpots = function () {
+        var kw = '';
+        var si = document.getElementById('topSearchInput');
+        if (si && window.currentTab === 'pickup') kw = si.value || '';
+        return window.filterPickupSpots(window.pickupGames, {
+            region: window.pkRegion,
+            englishOnly: window.pkEnglishOnly,
+            keyword: kw
+        });
+    };
+
     window.renderPickupList = function () {
         var body = document.getElementById('pickupListBody');
         if (!body) return;
         body.innerHTML = '';
 
-        var kw = '';
-        var si = document.getElementById('topSearchInput');
-        if (si && window.currentTab === 'pickup') kw = (si.value || '').trim().toLowerCase();
-
-        var spots = window.pickupGames.filter(function (g) {
-            if (window.pkEnglishOnly && !g.english_ok) return false;
-            if (!kw) return true;
-            return (g.title || '').toLowerCase().indexOf(kw) !== -1
-                || (g.venue_name || '').toLowerCase().indexOf(kw) !== -1
-                || (g.address || '').toLowerCase().indexOf(kw) !== -1;
-        });
+        var spots = window.visiblePickupSpots();
 
         if (spots.length === 0) {
             var empty = document.createElement('div');
@@ -178,11 +253,35 @@
         spots.forEach(function (g) { body.appendChild(buildListItem(g)); });
     };
 
+    // ── 지역 셀렉트 채우기 (라벨은 동호회 필터와 같은 i18n 키 재사용) ──
+    var REGION_I18N = {
+        '서울': 'r_seoul', '경기': 'r_gyeonggi', '인천': 'r_incheon', '강원': 'r_gangwon',
+        '충청': 'r_chungcheong', '전라': 'r_jeolla', '경상': 'r_gyeongsang', '제주': 'r_jeju'
+    };
+    window.buildPkRegionOptions = function () {
+        var sel = document.getElementById('pkRegionFilter');
+        if (!sel) return;
+        sel.innerHTML = '';
+        var all = document.createElement('option');
+        all.value = '';
+        all.textContent = window.t('pk_region_all');
+        sel.appendChild(all);
+        (window.PICKUP_REGIONS || []).forEach(function (r) {
+            var o = document.createElement('option');
+            o.value = r;
+            o.textContent = window.t(REGION_I18N[r] || '', r);
+            sel.appendChild(o);
+        });
+        sel.value = window.pkRegion || '';
+    };
+    window.buildPkRegionOptions();
+
     // 줌 변경 시 픽업 라벨 가시성
     if (window.map) kakao.maps.event.addListener(window.map, 'zoom_changed', updatePickupLabels);
 
-    // 언어 전환 시 리스트 재렌더
+    // 언어 전환 시 리스트·지역 셀렉트 재렌더
     document.addEventListener('nurungji:langchange', function () {
+        window.buildPkRegionOptions();
         if (window.currentTab === 'pickup') window.renderPickupList();
     });
 })();

@@ -269,6 +269,9 @@
         pk_list_title: { ko: '여기서 픽업이 열려요', en: 'Where pickup happens' },
         pk_empty: { ko: '아직 등록된 픽업이 없어요.\n첫 픽업을 올려보세요! 🏐', en: 'No pickup spots yet.\nBe the first to add one! 🏐' },
         pk_host_title: { ko: '픽업 등록', en: 'Add a pickup' },
+        pk_region_all: { ko: '지역 전체', en: 'All regions' },
+        pk_list_share: { ko: '🔗 목록 공유', en: '🔗 Share list' },
+        pk_list_link_copied: { ko: '이 목록 링크를 복사했어요. 그대로 보내면 같은 목록이 열려요!', en: 'List link copied — send it and they see the same list!' },
         pk_search_ph: { ko: '픽업, 장소로 검색...', en: 'Search pickups or venues...' },
 
         // 픽업 발견형 신규 키 (보통일정 / 이번주 / 들어가는 문)
@@ -343,9 +346,12 @@
         pk_f_date: { ko: '날짜 (필수)', en: 'Date (required)' },
         pk_f_start: { ko: '시작', en: 'Start' },
         pk_f_end: { ko: '종료', en: 'End' },
+        pk_f_region: { ko: '지역', en: 'Region' },
+        pk_f_insta: { ko: '인스타 아이디 (선택)', en: 'Instagram handle (optional)' },
+        pk_f_insta_ph: { ko: '예: nulloongzi (@ 없이)', en: 'e.g. nulloongzi (without @)' },
         pk_f_venue: { ko: '체육관 이름', en: 'Venue name' },
         pk_f_venue_ph: { ko: '예: 잠실학생체육관', en: 'e.g. Jamsil Gym' },
-        pk_f_addr: { ko: '주소 (필수)', en: 'Address (required)' },
+        pk_f_addr: { ko: '주소 (선택 · 없으면 목록에만 표시)', en: 'Address (optional — list only if blank)' },
         pk_f_addr_ph: { ko: '예: 서울 송파구 올림픽로 25', en: 'e.g. 25 Olympic-ro, Songpa-gu, Seoul' },
         pk_f_capacity: { ko: '정원 (필수)', en: 'Capacity (required)' },
         pk_f_capacity_ph: { ko: '예: 12', en: 'e.g. 12' },
@@ -371,7 +377,7 @@
 
         // 호스트 - 검증/메시지
         pk_login_required: { ko: '게임을 열려면 먼저 로그인해주세요.', en: 'Please log in to host a game.' },
-        pk_req_fields: { ko: '픽업 이름과 주소는 필수예요.', en: 'Name and address are required.' },
+        pk_req_fields: { ko: '픽업 이름은 필수예요.', en: 'A name is required.' },
         pk_bad_capacity: { ko: '정원은 1~200 사이 숫자로 입력해주세요.', en: 'Capacity must be a number between 1 and 200.' },
         pk_bad_time: { ko: '종료 시간이 시작보다 빨라요.', en: 'End time is before the start time.' },
         pk_past_time: { ko: '지난 시간은 선택할 수 없어요.', en: "You can't pick a time in the past." },

@@ -83,17 +83,30 @@
             if (spot.schedule && spot.schedule_text) c.appendChild(infoRow('📝', spot.schedule_text));
         }
 
-        // 장소 + 주소 복사
-        var where = el('span', 'ps-where-text');
-        if (spot.venue_name) { where.appendChild(el('b', null, spot.venue_name)); where.appendChild(document.createElement('br')); }
-        where.appendChild(document.createTextNode(spot.address || ''));
-        var whereRow = infoRow('📍', where);
-        if (spot.address) {
-            var copyBtn = el('button', 'ps-mini-btn', t('btn_copy'));
-            copyBtn.onclick = function () { if (window.copyAddress) window.copyAddress(spot.address); };
-            whereRow.appendChild(copyBtn);
+        // 장소 + 주소 복사. 셋 다 없으면(장소 유동적인 크루) 행 자체를 생략한다.
+        if (spot.venue_name || spot.address || spot.region) {
+            var where = el('span', 'ps-where-text');
+            if (spot.venue_name) { where.appendChild(el('b', null, spot.venue_name)); where.appendChild(document.createElement('br')); }
+            where.appendChild(document.createTextNode(spot.address || spot.region || ''));
+            var whereRow = infoRow('📍', where);
+            if (spot.address) {
+                var copyBtn = el('button', 'ps-mini-btn', t('btn_copy'));
+                copyBtn.onclick = function () { if (window.copyAddress) window.copyAddress(spot.address); };
+                whereRow.appendChild(copyBtn);
+            }
+            c.appendChild(whereRow);
         }
-        c.appendChild(whereRow);
+
+        // 인스타 핸들 — 단톡 링크가 없는 크루의 실질적인 "들어가는 문"
+        if (spot.insta) {
+            var igLink = el('a', 'ps-insta-link', '@' + spot.insta);
+            igLink.href = 'https://instagram.com/' + encodeURIComponent(spot.insta);
+            igLink.target = '_blank';
+            igLink.rel = 'noopener noreferrer';
+            // 물꼬 계측: 인스타 클릭도 픽업의 first-contact (Q2 지표)
+            igLink.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, type: 'insta', sport: spot.sport }); };
+            c.appendChild(infoRow('📷', igLink));
+        }
 
         // 게임비 정보 (텍스트만, 거래 없음)
         if (spot.fee_info) c.appendChild(infoRow('💰', spot.fee_info));
@@ -104,7 +117,7 @@
             var cta = el('a', 'ps-join-btn', t('pk_contact_cta'));
             cta.href = safeContact; cta.target = '_blank'; cta.rel = 'noopener noreferrer';
             // 물꼬 계측: 단톡 들어가기 = 픽업의 first-contact 순간 (Q2 지표)
-            cta.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, sport: spot.sport }); };
+            cta.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, type: 'link', sport: spot.sport }); };
             var wrap = el('div', 'ps-rsvp');
             wrap.appendChild(cta);
             c.appendChild(wrap);
