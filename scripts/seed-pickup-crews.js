@@ -9,13 +9,25 @@
  * 출처 고지 + 삭제요청 통로를 띄운다. 이 필드를 빼면 옵트아웃 모델이 성립하지 않는다.
  *
  * 사용:
- *   GOOGLE_APPLICATION_CREDENTIALS=<serviceAccount.json> \
- *   node scripts/seed-pickup-crews.js data/pickup-crews.json [--commit]
+ *   node scripts/seed-pickup-crews.js <목록.txt|목록.json> [--region 서울] [--english] [--commit]
+ *   (--commit 시에만 GOOGLE_APPLICATION_CREDENTIALS=<serviceAccount.json> 필요)
  *
  * --commit 없이 실행하면 **드라이런**(쓰지 않고 계획만 출력). 실수로 프로덕션에
  * 쏟아붓는 사고를 막기 위한 기본값이다.
  *
- * 입력 JSON 형식 (배열):
+ * ── 입력 A: 링크 목록 (.txt) — 인스타 DM에서 받은 링크를 그대로 붙여넣는 경로 ──
+ *   한 줄에 하나. 빈 줄과 `#` 주석은 무시. `?igsh=...` 추적 파라미터는 자동 제거.
+ *
+ *     https://www.instagram.com/nest_volleyball?igsh=MTZyOWE1...
+ *     @op.vball
+ *     sus_volleyball | SUS Volleyball
+ *     bundang_wed | 분당 수요 픽업 | 경기
+ *
+ *   `|` 뒤는 선택: 두 번째=표시 이름, 세 번째=지역. 생략하면 이름은 핸들 그대로,
+ *   지역은 `--region` 값을 쓴다. 지역/English OK는 링크에 없는 정보라 플래그로 채운다:
+ *     --region 서울 --english
+ *
+ * ── 입력 B: 전체 필드 지정 (.json 배열) ──
  *   [
  *     {
  *       "title": "Seoul Sunday 6s",        // 필수
@@ -52,6 +64,50 @@ const LEVELS = ['beginner', 'intermediate', 'advanced', 'any'];
 // 인스타 핸들 규칙: 영문/숫자/언더스코어/점 1~30자 (웹 sanitizeInstaHandle 와 동일)
 const INSTA_RE = /^[A-Za-z0-9._]{1,30}$/;
 
+/**
+ * 인스타 URL/핸들 문자열 → 핸들. 실패 시 ''.
+ * DM으로 받는 링크는 `?igsh=...` 추적 파라미터가 붙어 오므로 쿼리를 통째로 버린다.
+ *   https://www.instagram.com/nest_volleyball?igsh=MTZ... → nest_volleyball
+ *   @nest_volleyball → nest_volleyball
+ */
+function toHandle(raw) {
+    let s = String(raw || '').trim();
+    if (!s) return '';
+    s = s.split(/[?#]/)[0]; // 추적 파라미터 제거
+    const m = s.match(/instagram\.com\/([^/\s]+)/i);
+    if (m) s = m[1];
+    s = s.replace(/^@/, '').replace(/\/+$/, '');
+    return INSTA_RE.test(s) ? s : '';
+}
+
+/**
+ * 텍스트 목록 → 시딩 행. DM에서 링크를 그대로 붙여넣는 흐름을 그대로 받는다.
+ * 한 줄에 하나, 빈 줄·`#` 주석 무시. `|` 로 선택 필드를 덧붙일 수 있다:
+ *   nest_volleyball
+ *   https://www.instagram.com/op.vball?igsh=MTh1...
+ *   sus_volleyball | SUS Volleyball
+ *   bundang_wed | 분당 수요 픽업 | 경기
+ */
+function parseTextList(text, defaults) {
+    return text
+        .split('\n')
+        .map((ln) => ln.trim())
+        .filter((ln) => ln && !ln.startsWith('#'))
+        .map((ln) => {
+            const [link, title, region] = ln.split('|').map((p) => (p || '').trim());
+            const handle = toHandle(link);
+            return {
+                // 제목 미지정이면 핸들을 그대로 쓴다. 억지로 예쁘게 만들면(대소문자·띄어쓰기 추측)
+                // 크루가 쓰지도 않는 이름이 박히므로, 이름은 사람이 채우게 둔다.
+                title: title || handle || link,
+                insta: handle || link, // 파싱 실패해도 원문을 남겨 validate 가 오류로 잡게 한다
+                region: region || defaults.region,
+                english_ok: defaults.englishOk,
+                sport: defaults.sport,
+            };
+        });
+}
+
 function slug(s) {
     return String(s)
         .trim()
@@ -68,10 +124,11 @@ function validate(raw, i) {
     if (!title) errors.push('title 없음');
     if (title.length > 80) errors.push('title 80자 초과');
 
-    let insta = String(raw.insta || '').trim().replace(/^@/, '');
-    if (insta && !INSTA_RE.test(insta)) {
-        errors.push(`insta 형식 오류: "${insta}"`);
-        insta = '';
+    // URL로 들어와도 받아준다(JSON 입력에서도 링크를 그대로 붙여넣는 경우가 있다).
+    const rawInsta = String(raw.insta || '').trim();
+    let insta = toHandle(rawInsta);
+    if (rawInsta && !insta) {
+        errors.push(`insta 형식 오류: "${rawInsta}"`);
     }
 
     const region = String(raw.region || '').trim();
@@ -121,9 +178,21 @@ function validate(raw, i) {
 async function main() {
     const [, , fileArg, ...rest] = process.argv;
     const commit = rest.includes('--commit');
+    const flag = (name, fallback) => {
+        const i = rest.indexOf(`--${name}`);
+        return i >= 0 && rest[i + 1] && !rest[i + 1].startsWith('--') ? rest[i + 1] : fallback;
+    };
+    // .txt 입력의 기본값 — DM에서 받은 링크에는 지역/언어 정보가 없어서 여기서 채운다.
+    const defaults = {
+        region: flag('region', ''),
+        sport: flag('sport', '6s'),
+        englishOk: rest.includes('--english'),
+    };
 
     if (!fileArg) {
-        console.error('사용: node scripts/seed-pickup-crews.js <크루목록.json> [--commit]');
+        console.error(
+            '사용: node scripts/seed-pickup-crews.js <목록.json|목록.txt> [--region 서울] [--english] [--sport 6s] [--commit]',
+        );
         process.exit(1);
     }
 
@@ -133,16 +202,28 @@ async function main() {
         process.exit(1);
     }
 
+    const text = fs.readFileSync(filePath, 'utf-8');
     let rows;
-    try {
-        rows = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    } catch (e) {
-        console.error(`JSON 파싱 실패: ${e.message}`);
-        process.exit(1);
-    }
-    if (!Array.isArray(rows)) {
-        console.error('최상위가 배열이어야 합니다.');
-        process.exit(1);
+    if (path.extname(filePath).toLowerCase() === '.json') {
+        try {
+            rows = JSON.parse(text);
+        } catch (e) {
+            console.error(`JSON 파싱 실패: ${e.message}`);
+            process.exit(1);
+        }
+        if (!Array.isArray(rows)) {
+            console.error('최상위가 배열이어야 합니다.');
+            process.exit(1);
+        }
+    } else {
+        // 링크 목록(.txt) — DM에서 그대로 복사해 붙여넣는 경로
+        rows = parseTextList(text, defaults);
+        const tag = [
+            defaults.region || '지역미지정',
+            defaults.englishOk ? 'English OK' : 'English OK 아님',
+            defaults.sport,
+        ].join(' · ');
+        console.log(`링크 목록 모드 — 기본값: ${tag}\n`);
     }
 
     const results = rows.map(validate);
