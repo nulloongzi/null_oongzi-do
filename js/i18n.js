@@ -305,10 +305,26 @@
         pk_sport_6s: { ko: '6인제', en: '6s' },
         pk_sport_9s: { ko: '9인제', en: '9s' },
         pk_sport_mixed: { ko: '혼성·자유', en: 'Mixed' },
-        pk_lv_beginner: { ko: '입문', en: 'Beginner' },
-        pk_lv_intermediate: { ko: '중급', en: 'Intermediate' },
-        pk_lv_advanced: { ko: '고급', en: 'Advanced' },
-        pk_lv_any: { ko: '레벨무관', en: 'All levels' },
+        // 레벨 라벨: KO는 한국식, EN은 USAV 성인부 문자 등급(B/BB/A/AA·Open).
+        // 저장값은 동일 — 외국인은 문자 등급을 알고 한국인은 모르기 때문에 라벨만 갈랐다.
+        pk_lv_beginner: { ko: '입문', en: 'B · Beginner' },
+        pk_lv_intermediate: { ko: '중급', en: 'BB · Intermediate' },
+        pk_lv_advanced: { ko: '상급', en: 'A · Competitive' },
+        pk_lv_elite: { ko: '선출·대학팀급', en: 'AA/Open · Collegiate+' },
+        pk_lv_any: { ko: '누구나 환영', en: 'All welcome' },
+
+        // 각 레벨 한 줄 설명 — 등록 폼·필터 양쪽에 노출한다.
+        pk_lv_beginner_desc: { ko: '배구 처음 · 기본기 배우는 중', en: 'New to volleyball, learning the basics' },
+        pk_lv_intermediate_desc: { ko: '규칙·로테이션 이해 · 패스/셋/스파이크 어느 정도', en: 'Know rules & rotations; pass/set/hit fairly consistently' },
+        pk_lv_advanced_desc: { ko: '경험 많고 기본기 탄탄 · 팀 공수 전술 이해', en: 'Experienced, solid skills, knows team offense/defense' },
+        pk_lv_elite_desc: { ko: '선수 출신 또는 대학팀급', en: 'Collegiate-level ability or equivalent' },
+        pk_lv_any_desc: { ko: '실력 상관없이 누구나', en: 'Anyone, any level' },
+
+        // 자가 선택 가이드 — 미국 오픈짐들이 공통으로 붙이는 문구. 레벨 제도가 굴러가게 하는 장치다.
+        pk_level_hint: {
+            ko: '애매하면 낮은 쪽을 골라주세요. 남과 비교하지 말고 설명 기준으로요.',
+            en: "When in doubt, pick the lower level. Judge by the description, not by other players."
+        },
         pk_beginner_ok: { ko: '🌱 초보환영', en: '🌱 Beginners welcome' },
         pk_english_ok: { ko: '🌐 English OK', en: '🌐 English OK' },
         pk_f_english: { ko: '🌐 외국인 환영 (English OK)', en: '🌐 English OK / foreigners welcome' },

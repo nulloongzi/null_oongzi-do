@@ -293,12 +293,15 @@
         all.value = '';
         all.textContent = window.t('pk_level_all');
         sel.appendChild(all);
+        // 필터에도 설명을 붙인다 — 목록을 보는 사람(특히 외국인)이 기준을 알아야 고를 수 있다.
         (window.PICKUP_LEVELS || []).forEach(function (l) {
             var o = document.createElement('option');
             o.value = l;
-            o.textContent = window.pkLevelLabel(l);
+            o.textContent = window.pkLevelLabel(l) + ' — ' + window.t('pk_lv_' + l + '_desc', '');
+            o.title = window.t('pk_lv_' + l + '_desc', '');
             sel.appendChild(o);
         });
+        sel.title = window.t('pk_level_hint');
         sel.value = window.pkLevel || '';
     };
 

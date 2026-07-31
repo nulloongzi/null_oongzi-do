@@ -19,6 +19,15 @@ vm.createContext(sandbox);
 vm.runInContext(scriptSource, sandbox);
 const { pickupRegionMatch, pickupLevelMatch, filterPickupSpots, PICKUP_REGIONS } = sandbox.window;
 
+describe('PICKUP_LEVELS', () => {
+    test('4단계 — USAV B/BB/A/AA·Open 을 접은 값 집합', () => {
+        assert.deepStrictEqual(
+            Array.from(sandbox.window.PICKUP_LEVELS),
+            ['beginner', 'intermediate', 'advanced', 'elite'],
+        );
+    });
+});
+
 describe('pickupLevelMatch', () => {
     test('레벨 미지정이면 전부 통과', () => {
         assert.strictEqual(pickupLevelMatch({ level: 'advanced' }, ''), true);
@@ -36,6 +45,12 @@ describe('pickupLevelMatch', () => {
 
     test('level 필드가 없으면 any 로 취급', () => {
         assert.strictEqual(pickupLevelMatch({}, 'beginner'), true);
+    });
+
+    test('elite 도 다른 등급과 동일 규칙', () => {
+        assert.strictEqual(pickupLevelMatch({ level: 'elite' }, 'elite'), true);
+        assert.strictEqual(pickupLevelMatch({ level: 'elite' }, 'beginner'), false);
+        assert.strictEqual(pickupLevelMatch({ level: 'any' }, 'elite'), true);
     });
 });
 

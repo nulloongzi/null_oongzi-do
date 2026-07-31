@@ -37,7 +37,11 @@
         return false;
     };
 
-    window.PICKUP_LEVELS = ['beginner', 'intermediate', 'advanced'];
+    // 레벨 4단계. 값은 저장 그대로, 표시 라벨만 언어별로 다르다(i18n.js):
+    //   KO 입문/중급/상급/선출·대학팀급  ·  EN B/BB/A/AA·Open (USAV 성인부 관행)
+    // 외국인은 USAV 문자 등급을 이미 알고, 한국인은 모른다 — 그래서 값 하나에 라벨 둘.
+    // USAV는 B/BB/A/AA/Open 5단계지만 서울 픽업 규모에선 AA·Open이 사실상 한 칸이라 접었다.
+    window.PICKUP_LEVELS = ['beginner', 'intermediate', 'advanced', 'elite'];
 
     // 레벨 매칭. 외국인에게 크루를 소개할 때 "나 초보인데 가도 되나"가 핵심 질문이라
     // 지역 다음으로 중요한 필터다.

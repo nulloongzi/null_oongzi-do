@@ -6,10 +6,20 @@
 (function () {
     window.editingPickupId = null;
 
+    // 선택한 레벨의 한 줄 설명을 폼에 띄운다 — 크루가 자기 레벨을 제대로 고르게 하는 장치.
+    window.syncPkLevelDesc = function () {
+        var box = document.getElementById('pkLevelDesc');
+        if (!box) return;
+        var sel = document.querySelector('#pkLevelChips .pk-chip.selected');
+        var val = sel ? sel.getAttribute('data-val') : 'any';
+        box.textContent = window.t('pk_lv_' + val + '_desc', '');
+    };
+
     // 단일선택 칩 (종목/레벨)
     window.pkSelectChip = function (el) {
         el.parentElement.querySelectorAll('.pk-chip').forEach(function (c) { c.classList.remove('selected'); });
         el.classList.add('selected');
+        if (el.parentElement.id === 'pkLevelChips') window.syncPkLevelDesc();
     };
     function selectedVal(id, fb) { var el = document.querySelector('#' + id + ' .pk-chip.selected'); return el ? el.getAttribute('data-val') : fb; }
     function selectChipByVal(id, val) { document.querySelectorAll('#' + id + ' .pk-chip').forEach(function (c) { c.classList.toggle('selected', c.getAttribute('data-val') === val); }); }
@@ -69,6 +79,7 @@
         selectChipByVal('pkExpireChips', '1m');
         selectRegion('');
         syncCuratedRow(false);
+        window.syncPkLevelDesc();
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.remove('selected');
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.remove('selected');
         window.selectedCoords = null;
@@ -99,6 +110,7 @@
         selectChipByVal('pkExpireChips', spot.expire_at ? '1m' : 'always');
         selectRegion(spot.region || '');
         syncCuratedRow(spot.source === 'curated');
+        window.syncPkLevelDesc();
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.toggle('selected', !!spot.english_ok);
         window.selectedCoords = null;

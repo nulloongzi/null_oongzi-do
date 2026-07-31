@@ -369,9 +369,13 @@
                     <div class="chip-group reg-target-chips" id="pkLevelChips">
                         <div class="chip pk-chip" data-val="beginner" onclick="pkSelectChip(this)" data-i18n="pk_lv_beginner">입문</div>
                         <div class="chip pk-chip" data-val="intermediate" onclick="pkSelectChip(this)" data-i18n="pk_lv_intermediate">중급</div>
-                        <div class="chip pk-chip" data-val="advanced" onclick="pkSelectChip(this)" data-i18n="pk_lv_advanced">고급</div>
-                        <div class="chip pk-chip selected" data-val="any" onclick="pkSelectChip(this)" data-i18n="pk_lv_any">레벨무관</div>
+                        <div class="chip pk-chip" data-val="advanced" onclick="pkSelectChip(this)" data-i18n="pk_lv_advanced">상급</div>
+                        <div class="chip pk-chip" data-val="elite" onclick="pkSelectChip(this)" data-i18n="pk_lv_elite">선출·대학팀급</div>
+                        <div class="chip pk-chip selected" data-val="any" onclick="pkSelectChip(this)" data-i18n="pk_lv_any">누구나 환영</div>
                     </div>
+                    <!-- 선택한 칩의 설명 (pickup-host.js가 채움) -->
+                    <div class="reg-form-hint" id="pkLevelDesc"></div>
+                    <div class="reg-form-hint" data-i18n="pk_level_hint">애매하면 낮은 쪽을 골라주세요. 남과 비교하지 말고 설명 기준으로요.</div>
                     <div class="chip-group reg-target-chips" style="margin-top:8px;">
                         <div class="chip pk-chip" id="pkBeginnerChip" onclick="toggleRegChip(this)" data-i18n="pk_f_beginner">초보 환영</div>
                         <div class="chip pk-chip" id="pkEnglishChip" onclick="toggleRegChip(this)" data-i18n="pk_f_english">🌐 외국인 환영 (English OK)</div>
