@@ -21,6 +21,13 @@
         refreshPickupViews();
     };
 
+    // 레벨 필터 (리스트 헤더 셀렉트). '' = 전체
+    window.pkLevel = '';
+    window.setPkLevel = function (val) {
+        window.pkLevel = val || '';
+        refreshPickupViews();
+    };
+
     function refreshPickupViews() {
         window.renderPickupList();
         if (window.renderPickupMarkers) window.renderPickupMarkers();
@@ -35,6 +42,7 @@
             var p = new URLSearchParams();
             p.set('tab', 'pickup');
             if (window.pkRegion) p.set('region', window.pkRegion);
+            if (window.pkLevel) p.set('level', window.pkLevel);
             if (window.pkEnglishOnly) p.set('english', '1');
             window.history.replaceState(null, '', '?' + p.toString());
         } catch (e) { /* 히스토리 조작 실패는 무시 */ }
@@ -45,6 +53,7 @@
         var p = new URLSearchParams();
         p.set('tab', 'pickup');
         if (window.pkRegion) p.set('region', window.pkRegion);
+        if (window.pkLevel) p.set('level', window.pkLevel);
         if (window.pkEnglishOnly) p.set('english', '1');
         return (window.SITE_BASE_URL || '') + '?' + p.toString();
     };
@@ -231,6 +240,7 @@
         if (si && window.currentTab === 'pickup') kw = si.value || '';
         return window.filterPickupSpots(window.pickupGames, {
             region: window.pkRegion,
+            level: window.pkLevel,
             englishOnly: window.pkEnglishOnly,
             keyword: kw
         });
@@ -274,7 +284,26 @@
         });
         sel.value = window.pkRegion || '';
     };
+
+    window.buildPkLevelOptions = function () {
+        var sel = document.getElementById('pkLevelFilter');
+        if (!sel) return;
+        sel.innerHTML = '';
+        var all = document.createElement('option');
+        all.value = '';
+        all.textContent = window.t('pk_level_all');
+        sel.appendChild(all);
+        (window.PICKUP_LEVELS || []).forEach(function (l) {
+            var o = document.createElement('option');
+            o.value = l;
+            o.textContent = window.pkLevelLabel(l);
+            sel.appendChild(o);
+        });
+        sel.value = window.pkLevel || '';
+    };
+
     window.buildPkRegionOptions();
+    window.buildPkLevelOptions();
 
     // 줌 변경 시 픽업 라벨 가시성
     if (window.map) kakao.maps.event.addListener(window.map, 'zoom_changed', updatePickupLabels);
@@ -282,6 +311,7 @@
     // 언어 전환 시 리스트·지역 셀렉트 재렌더
     document.addEventListener('nurungji:langchange', function () {
         window.buildPkRegionOptions();
+        window.buildPkLevelOptions();
         if (window.currentTab === 'pickup') window.renderPickupList();
     });
 })();

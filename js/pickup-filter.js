@@ -37,16 +37,35 @@
         return false;
     };
 
-    // 목록 필터. opts = { region, englishOnly, keyword }
+    window.PICKUP_LEVELS = ['beginner', 'intermediate', 'advanced'];
+
+    // 레벨 매칭. 외국인에게 크루를 소개할 때 "나 초보인데 가도 되나"가 핵심 질문이라
+    // 지역 다음으로 중요한 필터다.
+    //
+    // 가치필터 #1(랭킹·별점 금지)과 충돌하지 않는다 — 이건 크루의 우열이 아니라
+    // "나랑 맞나"(적합·소속) 정보다. PHILOSOPHY 후기 원칙이 허용하는 성격 태그 쪽.
+    //
+    // 'any'(레벨무관) 크루는 어떤 레벨 필터에도 걸린다 — 누구나 환영이라는 뜻이므로
+    // 초보가 '입문'으로 걸러도 후보에서 빠지면 안 된다.
+    window.pickupLevelMatch = function (spot, level) {
+        if (!level) return true;
+        if (!spot) return false;
+        var l = spot.level || 'any';
+        return l === 'any' || l === level;
+    };
+
+    // 목록 필터. opts = { region, level, englishOnly, keyword }
     window.filterPickupSpots = function (spots, opts) {
         opts = opts || {};
         var kw = (opts.keyword || '').trim().toLowerCase();
         var region = opts.region || '';
+        var level = opts.level || '';
         var englishOnly = !!opts.englishOnly;
 
         return (spots || []).filter(function (g) {
             if (englishOnly && !g.english_ok) return false;
             if (!window.pickupRegionMatch(g, region)) return false;
+            if (!window.pickupLevelMatch(g, level)) return false;
             if (!kw) return true;
             return (g.title || '').toLowerCase().indexOf(kw) !== -1
                 || (g.venue_name || '').toLowerCase().indexOf(kw) !== -1

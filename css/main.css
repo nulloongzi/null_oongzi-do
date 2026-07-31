@@ -2405,6 +2405,14 @@
             text-decoration: none;
         }
 
+        /* 등록 폼 보조 설명 (관리자 '대신 등록' 안내 등) */
+        .reg-form-hint {
+            margin-top: 6px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #8a8079;
+        }
+
         /* 시딩 항목 출처 고지 + 삭제요청 링크 — 눈에 띄되 본문을 가리지 않게 */
         .ps-curated {
             margin-top: 14px;

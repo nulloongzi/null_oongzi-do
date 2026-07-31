@@ -50,6 +50,15 @@
         });
     }
 
+    // 관리자 전용 "대신 등록" 행 — 공개 정보로 남의 크루를 올릴 때만 쓴다.
+    // 일반 사용자에겐 아예 보이지 않는다(본인 등록에 이 개념이 필요 없다).
+    function syncCuratedRow(on) {
+        var row = document.getElementById('pkCuratedRow');
+        if (row) row.style.display = window.isAdmin ? '' : 'none';
+        var chip = document.getElementById('pkCuratedChip');
+        if (chip) chip.classList.toggle('selected', !!on);
+    }
+
     window.openPickupCreateModal = function () {
         window.editingPickupId = null;
         document.getElementById('pkModalTitle').innerText = window.t('pk_create_title');
@@ -59,6 +68,7 @@
         selectChipByVal('pkLevelChips', 'any');
         selectChipByVal('pkExpireChips', '1m');
         selectRegion('');
+        syncCuratedRow(false);
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.remove('selected');
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.remove('selected');
         window.selectedCoords = null;
@@ -88,6 +98,7 @@
         selectChipByVal('pkLevelChips', spot.level || 'any');
         selectChipByVal('pkExpireChips', spot.expire_at ? '1m' : 'always');
         selectRegion(spot.region || '');
+        syncCuratedRow(spot.source === 'curated');
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.toggle('selected', !!spot.english_ok);
         window.selectedCoords = null;
@@ -191,6 +202,13 @@
             notes: getVal('pkNotes'),
             expire_at: computeExpireAt(selectedVal('pkExpireChips', '1m'))
         };
+
+        // source는 관리자만 건드린다. 일반 사용자가 남의 curated 항목을 수정할 때
+        // 이 키를 보내면 표시가 지워져 삭제요청 통로가 사라지므로, 아예 넣지 않는다.
+        if (window.isAdmin) {
+            var cc = document.getElementById('pkCuratedChip');
+            fields.source = (cc && cc.classList.contains('selected')) ? 'curated' : '';
+        }
 
         var btn = document.getElementById('pkSubmitBtn');
         var orig = btn.innerText;

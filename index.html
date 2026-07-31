@@ -106,6 +106,9 @@
                 <select id="pkRegionFilter" class="pl-region-select" onchange="setPkRegion(this.value)" aria-label="지역">
                     <option value="" data-i18n="pk_region_all">지역 전체</option>
                 </select>
+                <select id="pkLevelFilter" class="pl-region-select" onchange="setPkLevel(this.value)" aria-label="레벨">
+                    <option value="" data-i18n="pk_level_all">레벨 전체</option>
+                </select>
                 <div id="pkEnFilter" class="pl-en-toggle" onclick="togglePkEnglishOnly(this)" data-i18n="pk_english_ok">🌐 English OK</div>
                 <button class="pl-share-btn" onclick="window.sharePickupList && window.sharePickupList()" data-i18n="pk_list_share" title="이 목록 링크 공유">🔗 목록 공유</button>
                 <button class="pl-host-btn" onclick="window.openPickupCreateModal && window.openPickupCreateModal()" data-i18n="pk_host_title">픽업 등록</button>
@@ -422,6 +425,14 @@
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_insta">인스타 아이디 (선택)</label>
                     <input type="text" id="pkInsta" placeholder="예: nulloongzi (@ 없이)" data-i18n-placeholder="pk_f_insta_ph">
+                </div>
+                <!-- 관리자 전용: 공개 정보로 남의 크루를 대신 올릴 때 (pickup-host.js가 표시 제어) -->
+                <div class="reg-form-group" id="pkCuratedRow" style="display:none;">
+                    <label data-i18n="pk_f_curated">대신 등록</label>
+                    <div class="chip-group reg-target-chips">
+                        <div class="chip pk-chip" id="pkCuratedChip" onclick="toggleRegChip(this)" data-i18n="pk_f_curated_chip">🔎 공개 정보로 대신 등록</div>
+                    </div>
+                    <div class="reg-form-hint" data-i18n="pk_f_curated_hint">켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 표시됩니다.</div>
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_reel">릴스/게시물 링크 (선택)</label>

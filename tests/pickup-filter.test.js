@@ -17,7 +17,27 @@ const scriptSource = fs.readFileSync(scriptPath, 'utf-8');
 const sandbox = { window: {} };
 vm.createContext(sandbox);
 vm.runInContext(scriptSource, sandbox);
-const { pickupRegionMatch, filterPickupSpots, PICKUP_REGIONS } = sandbox.window;
+const { pickupRegionMatch, pickupLevelMatch, filterPickupSpots, PICKUP_REGIONS } = sandbox.window;
+
+describe('pickupLevelMatch', () => {
+    test('레벨 미지정이면 전부 통과', () => {
+        assert.strictEqual(pickupLevelMatch({ level: 'advanced' }, ''), true);
+    });
+
+    test('같은 레벨만 매칭', () => {
+        assert.strictEqual(pickupLevelMatch({ level: 'beginner' }, 'beginner'), true);
+        assert.strictEqual(pickupLevelMatch({ level: 'advanced' }, 'beginner'), false);
+    });
+
+    test("'레벨무관' 크루는 어떤 레벨 필터에도 걸린다 (누구나 환영이므로 후보에서 빠지면 안 됨)", () => {
+        assert.strictEqual(pickupLevelMatch({ level: 'any' }, 'beginner'), true);
+        assert.strictEqual(pickupLevelMatch({ level: 'any' }, 'advanced'), true);
+    });
+
+    test('level 필드가 없으면 any 로 취급', () => {
+        assert.strictEqual(pickupLevelMatch({}, 'beginner'), true);
+    });
+});
 
 describe('PICKUP_REGIONS', () => {
     test('동호회 필터와 같은 8개 지역', () => {
@@ -107,6 +127,36 @@ describe('filterPickupSpots', () => {
 
     test('키워드 공백은 무시', () => {
         assert.strictEqual(filterPickupSpots(spots, { keyword: '   ' }).length, 4);
+    });
+
+    test('레벨 필터 — any 크루는 남고 다른 레벨은 빠진다', () => {
+        const lv = [
+            { id: 'beg', title: '입문', level: 'beginner' },
+            { id: 'adv', title: '고급', level: 'advanced' },
+            { id: 'any', title: '무관', level: 'any' },
+            { id: 'none', title: '미지정' },
+        ];
+        assert.deepStrictEqual(
+            filterPickupSpots(lv, { level: 'beginner' }).map((s) => s.id),
+            ['beg', 'any', 'none'],
+        );
+        assert.deepStrictEqual(
+            filterPickupSpots(lv, { level: 'advanced' }).map((s) => s.id),
+            ['adv', 'any', 'none'],
+        );
+    });
+
+    test('지역+레벨+English 조합', () => {
+        const mix = [
+            { id: 'a', title: 'A', region: '서울', level: 'beginner', english_ok: true },
+            { id: 'b', title: 'B', region: '서울', level: 'advanced', english_ok: true },
+            { id: 'c', title: 'C', region: '경기', level: 'beginner', english_ok: true },
+            { id: 'd', title: 'D', region: '서울', level: 'beginner', english_ok: false },
+        ];
+        assert.deepStrictEqual(
+            filterPickupSpots(mix, { region: '서울', level: 'beginner', englishOnly: true }).map((s) => s.id),
+            ['a'],
+        );
     });
 
     test('좌표 없는 크루도 목록에는 남는다 (지도에만 안 뜸)', () => {

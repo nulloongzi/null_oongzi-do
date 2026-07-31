@@ -70,6 +70,7 @@
         if (p.get('spot')) return; // 단건 딥링크가 우선
 
         var region = p.get('region') || '';
+        var level = p.get('level') || '';
         var english = p.get('english') === '1';
 
         if (window.switchTab) window.switchTab('pickup');
@@ -81,16 +82,19 @@
                 return;
             }
             window.pkRegion = region;
+            window.pkLevel = level;
             window.pkEnglishOnly = english;
 
             var sel = document.getElementById('pkRegionFilter');
             if (sel) sel.value = region;
+            var lvl = document.getElementById('pkLevelFilter');
+            if (lvl) lvl.value = level;
             var enBtn = document.getElementById('pkEnFilter');
             if (enBtn) enBtn.classList.toggle('on', english);
 
             window.renderPickupList();
             if (window.renderPickupMarkers) window.renderPickupMarkers();
-            if (window.track) window.track('deep_link_open', { type: 'pickup_list', region: region, english: english });
+            if (window.track) window.track('deep_link_open', { type: 'pickup_list', region: region, level: level, english: english });
         })();
     }
 

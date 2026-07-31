@@ -270,6 +270,13 @@
         pk_empty: { ko: '아직 등록된 픽업이 없어요.\n첫 픽업을 올려보세요! 🏐', en: 'No pickup spots yet.\nBe the first to add one! 🏐' },
         pk_host_title: { ko: '픽업 등록', en: 'Add a pickup' },
         pk_region_all: { ko: '지역 전체', en: 'All regions' },
+        pk_level_all: { ko: '레벨 전체', en: 'All levels' },
+        pk_f_curated: { ko: '대신 등록 (관리자)', en: 'Add on behalf (admin)' },
+        pk_f_curated_chip: { ko: '🔎 공개 정보로 대신 등록', en: '🔎 Added from public info' },
+        pk_f_curated_hint: {
+            ko: '켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 표시됩니다. 남의 크루를 대신 올릴 때만 켜세요.',
+            en: 'Shows a "collected from public Instagram info" notice plus an edit/removal request link on the detail sheet. Only for crews you add on their behalf.'
+        },
         pk_curated_note: {
             ko: '공개된 인스타 정보를 보고 누룽지가 모아둔 크루예요. 직접 등록한 팀이 아니에요.',
             en: "Collected by Nulloongzi from public Instagram info — not submitted by the crew itself."
