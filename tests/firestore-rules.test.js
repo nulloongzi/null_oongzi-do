@@ -405,4 +405,64 @@ describe('pickup_games 룰 (B: expire_at 검증 + 누구나/익명 등록 + 모�
         const db = testEnv.authenticatedContext('stranger').firestore();
         await assertFails(db.collection('pickup_games').doc('pk-del').delete());
     });
+
+    // ── 좌표 선택 + 인스타/지역 (장소가 유동적인 크루) ──
+    test('coordinates 없이 등록 통과 (지도에 안 뜨고 목록에만)', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        const spot = validSpot('pk-owner');
+        delete spot.coordinates;
+        delete spot.address;
+        spot.region = '서울';
+        await assertSucceeds(db.collection('pickup_games').doc('pk-nocoord').set(spot));
+    });
+
+    test('coordinates=null 명시도 통과 (클라이언트가 좌표를 지울 수 있어야 함)', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-nullcoord')
+            .set(validSpot('pk-owner', { coordinates: null })));
+    });
+
+    test('coordinates가 map이지만 lat/lng 없으면 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-badcoord')
+            .set(validSpot('pk-owner', { coordinates: { foo: 1 } })));
+    });
+
+    test('insta 핸들 등록 통과', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-insta')
+            .set(validSpot('pk-owner', { insta: 'nulloongzi' })));
+    });
+
+    test('insta가 80자 초과면 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-longinsta')
+            .set(validSpot('pk-owner', { insta: 'a'.repeat(81) })));
+    });
+
+    test('insta가 문자열이 아니면 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-numinsta')
+            .set(validSpot('pk-owner', { insta: 12345 })));
+    });
+
+    test("source='curated' 등록 통과 (시딩 항목 표시 → UI가 삭제요청 통로를 띄운다)", async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-curated')
+            .set(validSpot('pk-owner', { source: 'curated' })));
+    });
+
+    test('source가 20자 초과면 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertFails(db.collection('pickup_games').doc('pk-longsource')
+            .set(validSpot('pk-owner', { source: 'x'.repeat(21) })));
+    });
+
+    test('region 등록 통과 / 20자 초과 거부', async () => {
+        const db = testEnv.authenticatedContext('pk-owner').firestore();
+        await assertSucceeds(db.collection('pickup_games').doc('pk-region')
+            .set(validSpot('pk-owner', { region: '서울' })));
+        await assertFails(db.collection('pickup_games').doc('pk-longregion')
+            .set(validSpot('pk-owner', { region: '가'.repeat(21) })));
+    });
 });

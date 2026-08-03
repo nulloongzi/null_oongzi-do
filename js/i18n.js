@@ -269,6 +269,26 @@
         pk_list_title: { ko: '여기서 픽업이 열려요', en: 'Where pickup happens' },
         pk_empty: { ko: '아직 등록된 픽업이 없어요.\n첫 픽업을 올려보세요! 🏐', en: 'No pickup spots yet.\nBe the first to add one! 🏐' },
         pk_host_title: { ko: '픽업 등록', en: 'Add a pickup' },
+        pk_region_all: { ko: '지역 전체', en: 'All regions' },
+        pk_level_all: { ko: '레벨 전체', en: 'All levels' },
+        pk_f_curated: { ko: '대신 등록 (관리자)', en: 'Add on behalf (admin)' },
+        pk_f_curated_chip: { ko: '🔎 공개 정보로 대신 등록', en: '🔎 Added from public info' },
+        pk_f_curated_hint: {
+            ko: '켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 표시됩니다. 남의 크루를 대신 올릴 때만 켜세요.',
+            en: 'Shows a "collected from public Instagram info" notice plus an edit/removal request link on the detail sheet. Only for crews you add on their behalf.'
+        },
+        pk_curated_note: {
+            ko: '공개된 인스타 정보를 보고 누룽지가 모아둔 크루예요. 직접 등록한 팀이 아니에요.',
+            en: "Collected by Nulloongzi from public Instagram info — not submitted by the crew itself."
+        },
+        pk_curated_takedown: { ko: '우리 팀이에요 · 수정/삭제 요청', en: "This is us · request edit/removal" },
+        pk_takedown_subject: { ko: '[누룽지도] 픽업 크루 수정/삭제 요청', en: '[Nulloongzi-do] Pickup crew edit/removal request' },
+        pk_takedown_body: {
+            ko: '아래 크루에 대해 수정 또는 삭제를 요청합니다. (확인 후 바로 처리해 드릴게요)',
+            en: 'I request an edit or removal for the crew below. (We will action it as soon as we verify.)'
+        },
+        pk_list_share: { ko: '🔗 목록 공유', en: '🔗 Share list' },
+        pk_list_link_copied: { ko: '이 목록 링크를 복사했어요. 그대로 보내면 같은 목록이 열려요!', en: 'List link copied — send it and they see the same list!' },
         pk_search_ph: { ko: '픽업, 장소로 검색...', en: 'Search pickups or venues...' },
 
         // 픽업 발견형 신규 키 (보통일정 / 이번주 / 들어가는 문)
@@ -285,10 +305,26 @@
         pk_sport_6s: { ko: '6인제', en: '6s' },
         pk_sport_9s: { ko: '9인제', en: '9s' },
         pk_sport_mixed: { ko: '혼성·자유', en: 'Mixed' },
-        pk_lv_beginner: { ko: '입문', en: 'Beginner' },
-        pk_lv_intermediate: { ko: '중급', en: 'Intermediate' },
-        pk_lv_advanced: { ko: '고급', en: 'Advanced' },
-        pk_lv_any: { ko: '레벨무관', en: 'All levels' },
+        // 레벨 라벨: KO는 한국식, EN은 USAV 성인부 문자 등급(B/BB/A/AA·Open).
+        // 저장값은 동일 — 외국인은 문자 등급을 알고 한국인은 모르기 때문에 라벨만 갈랐다.
+        pk_lv_beginner: { ko: '입문', en: 'B · Beginner' },
+        pk_lv_intermediate: { ko: '중급', en: 'BB · Intermediate' },
+        pk_lv_advanced: { ko: '상급', en: 'A · Competitive' },
+        pk_lv_elite: { ko: '선출·대학팀급', en: 'AA/Open · Collegiate+' },
+        pk_lv_any: { ko: '누구나 환영', en: 'All welcome' },
+
+        // 각 레벨 한 줄 설명 — 등록 폼·필터 양쪽에 노출한다.
+        pk_lv_beginner_desc: { ko: '배구 처음 · 기본기 배우는 중', en: 'New to volleyball, learning the basics' },
+        pk_lv_intermediate_desc: { ko: '규칙·로테이션 이해 · 패스/셋/스파이크 어느 정도', en: 'Know rules & rotations; pass/set/hit fairly consistently' },
+        pk_lv_advanced_desc: { ko: '경험 많고 기본기 탄탄 · 팀 공수 전술 이해', en: 'Experienced, solid skills, knows team offense/defense' },
+        pk_lv_elite_desc: { ko: '선수 출신 또는 대학팀급', en: 'Collegiate-level ability or equivalent' },
+        pk_lv_any_desc: { ko: '실력 상관없이 누구나', en: 'Anyone, any level' },
+
+        // 자가 선택 가이드 — 미국 오픈짐들이 공통으로 붙이는 문구. 레벨 제도가 굴러가게 하는 장치다.
+        pk_level_hint: {
+            ko: '애매하면 낮은 쪽을 골라주세요. 남과 비교하지 말고 설명 기준으로요.',
+            en: "When in doubt, pick the lower level. Judge by the description, not by other players."
+        },
         pk_beginner_ok: { ko: '🌱 초보환영', en: '🌱 Beginners welcome' },
         pk_english_ok: { ko: '🌐 English OK', en: '🌐 English OK' },
         pk_f_english: { ko: '🌐 외국인 환영 (English OK)', en: '🌐 English OK / foreigners welcome' },
@@ -343,9 +379,12 @@
         pk_f_date: { ko: '날짜 (필수)', en: 'Date (required)' },
         pk_f_start: { ko: '시작', en: 'Start' },
         pk_f_end: { ko: '종료', en: 'End' },
+        pk_f_region: { ko: '지역', en: 'Region' },
+        pk_f_insta: { ko: '인스타 아이디 (선택)', en: 'Instagram handle (optional)' },
+        pk_f_insta_ph: { ko: '예: nulloongzi (@ 없이)', en: 'e.g. nulloongzi (without @)' },
         pk_f_venue: { ko: '체육관 이름', en: 'Venue name' },
         pk_f_venue_ph: { ko: '예: 잠실학생체육관', en: 'e.g. Jamsil Gym' },
-        pk_f_addr: { ko: '주소 (필수)', en: 'Address (required)' },
+        pk_f_addr: { ko: '주소 (선택 · 없으면 목록에만 표시)', en: 'Address (optional — list only if blank)' },
         pk_f_addr_ph: { ko: '예: 서울 송파구 올림픽로 25', en: 'e.g. 25 Olympic-ro, Songpa-gu, Seoul' },
         pk_f_capacity: { ko: '정원 (필수)', en: 'Capacity (required)' },
         pk_f_capacity_ph: { ko: '예: 12', en: 'e.g. 12' },
@@ -371,7 +410,7 @@
 
         // 호스트 - 검증/메시지
         pk_login_required: { ko: '게임을 열려면 먼저 로그인해주세요.', en: 'Please log in to host a game.' },
-        pk_req_fields: { ko: '픽업 이름과 주소는 필수예요.', en: 'Name and address are required.' },
+        pk_req_fields: { ko: '픽업 이름은 필수예요.', en: 'A name is required.' },
         pk_bad_capacity: { ko: '정원은 1~200 사이 숫자로 입력해주세요.', en: 'Capacity must be a number between 1 and 200.' },
         pk_bad_time: { ko: '종료 시간이 시작보다 빨라요.', en: 'End time is before the start time.' },
         pk_past_time: { ko: '지난 시간은 선택할 수 없어요.', en: "You can't pick a time in the past." },

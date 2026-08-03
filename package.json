@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "eslint js/ tests/ functions/lib/",
     "test": "npm run test:unit",
-    "test:unit": "node --test tests/dom-utils.test.js tests/insta-embed.test.js tests/spot-story-card.test.js tests/functions-pure.test.js tests/functions-provider-http.test.js",
+    "test:unit": "node --test tests/dom-utils.test.js tests/pickup-filter.test.js tests/insta-embed.test.js tests/spot-story-card.test.js tests/functions-pure.test.js tests/functions-provider-http.test.js",
     "test:dom": "node --test tests/dom-utils.test.js",
     "test:rules": "node --test tests/firestore-rules.test.js tests/storage-rules.test.js",
     "test:emulator": "firebase emulators:exec --only firestore,storage \"npm run test:rules\"",

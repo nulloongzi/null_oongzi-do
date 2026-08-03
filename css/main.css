@@ -2355,6 +2355,81 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            /* 지역·English·공유·등록 4개가 좁은 폭에서 넘칠 수 있어 줄바꿈 허용 */
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .pl-region-select {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 8px;
+            border-radius: 11px;
+            border: 1px solid var(--nurungji-line, #e6ddd2);
+            background: #fff;
+            color: var(--nurungji-brown);
+            cursor: pointer;
+            max-width: 110px;
+        }
+
+        .pl-share-btn {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 11px;
+            border: 1px solid var(--nurungji-line, #e6ddd2);
+            background: #fff;
+            color: var(--nurungji-brown);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: transform 0.15s;
+        }
+
+        .pl-share-btn:active {
+            transform: scale(0.94);
+        }
+
+        /* 목록 카드의 인스타 핸들 — 외국인에게 건네는 주 연락처라 눈에 띄게 */
+        .pl-insta {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1565C0;
+            text-decoration: none;
+        }
+
+        .ps-insta-link {
+            font-weight: 700;
+            color: #1565C0;
+            text-decoration: none;
+        }
+
+        /* 등록 폼 보조 설명 (관리자 '대신 등록' 안내 등) */
+        .reg-form-hint {
+            margin-top: 6px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #8a8079;
+        }
+
+        /* 시딩 항목 출처 고지 + 삭제요청 링크 — 눈에 띄되 본문을 가리지 않게 */
+        .ps-curated {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: var(--nurungji-card, #fffdf6);
+            border: 1px solid var(--nurungji-line, #e6ddd2);
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: #8a8079;
+        }
+
+        .ps-curated-link {
+            color: #1565C0;
+            font-weight: 700;
+            text-decoration: underline;
+            white-space: nowrap;
         }
 
         .pl-en-toggle {

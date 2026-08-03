@@ -77,14 +77,18 @@
             english_ok: !!data.english_ok,
             venue_name: data.venue_name || '',
             address: data.address || '',
-            coordinates: data.coordinates,
+            region: data.region || '',                 // 지역 칩(서울/경기/…). 좌표 없는 크루의 필터 기준
+            // 좌표는 선택 — 장소가 유동적인 크루는 좌표 없이 목록에만 뜬다(마커 없음).
+            coordinates: data.coordinates || null,
             schedule: data.schedule || '',             // 구조화 일정 텍스트 "토 19:00~22:00, 일 ..."
             schedule_raw: data.schedule_raw || [],     // [{day,start,end}] (동호회와 동일 포맷)
             schedule_text: data.schedule_text || '',   // 일정 메모(비정기·기타)
             fee_info: data.fee_info || '',             // 정보용 텍스트 "보통 1만·현장" (거래 X)
             contact_link: data.contact_link || '',     // 들어가는 문: 단톡/Meetup/IG
+            insta: data.insta || '',                   // 인스타 핸들(@ 없이) — 크루의 주 연락처
             this_week: data.this_week || '',           // 이번주 메모 (가벼운 시한 공지)
             insta_reel: data.insta_reel || '',         // 공개 릴스/게시물 임베드(A) — permalink
+            insta_reels: data.insta_reels || [],       // 멀티 릴스 (누락 시 create에서 유실되던 버그 수정)
             notes: data.notes || '',
             expire_at: data.expire_at || null          // 유효기간(B): 지나면 자동 숨김 + Firestore TTL 하드삭제
         };

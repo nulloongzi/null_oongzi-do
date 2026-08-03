@@ -14,3 +14,9 @@ nul
 # Playwright
 test-results/
 playwright-report/
+
+# 시딩용 실제 크루 목록 — 레포에 커밋하지 않는다.
+# 삭제 요청이 오면 Firestore 문서를 지우는데, 목록이 git 히스토리에 남으면
+# 옵트아웃이 반쪽이 된다. 형식은 scripts/pickup-crews.example.txt 참고.
+data/pickup-crews*.txt
+data/pickup-crews*.json

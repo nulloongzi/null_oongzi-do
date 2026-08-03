@@ -103,7 +103,14 @@
         <div class="pl-header">
             <div class="pl-title" data-i18n="pk_list_title">여기서 픽업이 열려요</div>
             <div class="pl-header-actions">
+                <select id="pkRegionFilter" class="pl-region-select" onchange="setPkRegion(this.value)" aria-label="지역">
+                    <option value="" data-i18n="pk_region_all">지역 전체</option>
+                </select>
+                <select id="pkLevelFilter" class="pl-region-select" onchange="setPkLevel(this.value)" aria-label="레벨">
+                    <option value="" data-i18n="pk_level_all">레벨 전체</option>
+                </select>
                 <div id="pkEnFilter" class="pl-en-toggle" onclick="togglePkEnglishOnly(this)" data-i18n="pk_english_ok">🌐 English OK</div>
+                <button class="pl-share-btn" onclick="window.sharePickupList && window.sharePickupList()" data-i18n="pk_list_share" title="이 목록 링크 공유">🔗 목록 공유</button>
                 <button class="pl-host-btn" onclick="window.openPickupCreateModal && window.openPickupCreateModal()" data-i18n="pk_host_title">픽업 등록</button>
             </div>
         </div>
@@ -362,9 +369,13 @@
                     <div class="chip-group reg-target-chips" id="pkLevelChips">
                         <div class="chip pk-chip" data-val="beginner" onclick="pkSelectChip(this)" data-i18n="pk_lv_beginner">입문</div>
                         <div class="chip pk-chip" data-val="intermediate" onclick="pkSelectChip(this)" data-i18n="pk_lv_intermediate">중급</div>
-                        <div class="chip pk-chip" data-val="advanced" onclick="pkSelectChip(this)" data-i18n="pk_lv_advanced">고급</div>
-                        <div class="chip pk-chip selected" data-val="any" onclick="pkSelectChip(this)" data-i18n="pk_lv_any">레벨무관</div>
+                        <div class="chip pk-chip" data-val="advanced" onclick="pkSelectChip(this)" data-i18n="pk_lv_advanced">상급</div>
+                        <div class="chip pk-chip" data-val="elite" onclick="pkSelectChip(this)" data-i18n="pk_lv_elite">선출·대학팀급</div>
+                        <div class="chip pk-chip selected" data-val="any" onclick="pkSelectChip(this)" data-i18n="pk_lv_any">누구나 환영</div>
                     </div>
+                    <!-- 선택한 칩의 설명 (pickup-host.js가 채움) -->
+                    <div class="reg-form-hint" id="pkLevelDesc"></div>
+                    <div class="reg-form-hint" data-i18n="pk_level_hint">애매하면 낮은 쪽을 골라주세요. 남과 비교하지 말고 설명 기준으로요.</div>
                     <div class="chip-group reg-target-chips" style="margin-top:8px;">
                         <div class="chip pk-chip" id="pkBeginnerChip" onclick="toggleRegChip(this)" data-i18n="pk_f_beginner">초보 환영</div>
                         <div class="chip pk-chip" id="pkEnglishChip" onclick="toggleRegChip(this)" data-i18n="pk_f_english">🌐 외국인 환영 (English OK)</div>
@@ -375,7 +386,20 @@
                     <input type="text" id="pkVenue" placeholder="예: 잠실학생체육관" data-i18n-placeholder="pk_f_venue_ph">
                 </div>
                 <div class="reg-form-group">
-                    <label data-i18n="pk_f_addr">주소 (필수)</label>
+                    <label data-i18n="pk_f_region">지역</label>
+                    <div class="chip-group reg-target-chips" id="pkRegionChips">
+                        <div class="chip pk-chip" data-val="서울" onclick="pkToggleRegionChip(this)" data-i18n="r_seoul">서울</div>
+                        <div class="chip pk-chip" data-val="경기" onclick="pkToggleRegionChip(this)" data-i18n="r_gyeonggi">경기</div>
+                        <div class="chip pk-chip" data-val="인천" onclick="pkToggleRegionChip(this)" data-i18n="r_incheon">인천</div>
+                        <div class="chip pk-chip" data-val="강원" onclick="pkToggleRegionChip(this)" data-i18n="r_gangwon">강원</div>
+                        <div class="chip pk-chip" data-val="충청" onclick="pkToggleRegionChip(this)" data-i18n="r_chungcheong">충청</div>
+                        <div class="chip pk-chip" data-val="전라" onclick="pkToggleRegionChip(this)" data-i18n="r_jeolla">전라</div>
+                        <div class="chip pk-chip" data-val="경상" onclick="pkToggleRegionChip(this)" data-i18n="r_gyeongsang">경상</div>
+                        <div class="chip pk-chip" data-val="제주" onclick="pkToggleRegionChip(this)" data-i18n="r_jeju">제주</div>
+                    </div>
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_addr">주소 (선택 · 없으면 지도에 안 뜨고 목록에만)</label>
                     <div style="display: flex; gap: 10px; align-items: stretch;">
                         <input type="text" id="pkAddress" placeholder="예: 서울 송파구 올림픽로 25" data-i18n-placeholder="pk_f_addr_ph" style="flex:1;" oninput="window.selectedCoords=null;">
                         <button type="button" onclick="startMapPicker({overlay:'pkModalOverlay', input:'pkAddress'})" style="padding: 0 15px; background: #fff; border: 1px solid var(--nurungji-brown); color: var(--nurungji-brown); border-radius: 10px; font-weight: bold; cursor: pointer; white-space: nowrap;" data-i18n="reg_addr_find">지도에서 찾기</button>
@@ -401,6 +425,18 @@
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_contact">단톡/Meetup 링크 (들어가는 문)</label>
                     <input type="text" id="pkContact" placeholder="예: https://open.kakao.com/o/..." data-i18n-placeholder="pk_f_contact_ph">
+                </div>
+                <div class="reg-form-group">
+                    <label data-i18n="pk_f_insta">인스타 아이디 (선택)</label>
+                    <input type="text" id="pkInsta" placeholder="예: nulloongzi (@ 없이)" data-i18n-placeholder="pk_f_insta_ph">
+                </div>
+                <!-- 관리자 전용: 공개 정보로 남의 크루를 대신 올릴 때 (pickup-host.js가 표시 제어) -->
+                <div class="reg-form-group" id="pkCuratedRow" style="display:none;">
+                    <label data-i18n="pk_f_curated">대신 등록</label>
+                    <div class="chip-group reg-target-chips">
+                        <div class="chip pk-chip" id="pkCuratedChip" onclick="toggleRegChip(this)" data-i18n="pk_f_curated_chip">🔎 공개 정보로 대신 등록</div>
+                    </div>
+                    <div class="reg-form-hint" data-i18n="pk_f_curated_hint">켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 표시됩니다.</div>
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_reel">릴스/게시물 링크 (선택)</label>
@@ -442,6 +478,7 @@
     <!-- App modules (순서 중요) -->
     <script src="js/i18n.js?v=16"></script>
     <script src="js/data.js?v=16"></script>
+    <script src="js/pickup-filter.js?v=16"></script>
     <script src="js/pickup-data.js?v=16"></script>
     <script src="js/profile.js?v=16"></script>
     <script src="js/auth.js?v=16"></script>

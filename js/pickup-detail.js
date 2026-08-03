@@ -7,6 +7,9 @@
     var t = window.t;
     window.currentPickupId = null;
 
+    // 시딩 항목 삭제/수정 요청 수신처 (Play Console 연락처와 동일)
+    var PK_TAKEDOWN_EMAIL = 'paulyoo999@gmail.com';
+
     function el(tag, cls, text) {
         var e = document.createElement(tag);
         if (cls) e.className = cls;
@@ -83,17 +86,30 @@
             if (spot.schedule && spot.schedule_text) c.appendChild(infoRow('📝', spot.schedule_text));
         }
 
-        // 장소 + 주소 복사
-        var where = el('span', 'ps-where-text');
-        if (spot.venue_name) { where.appendChild(el('b', null, spot.venue_name)); where.appendChild(document.createElement('br')); }
-        where.appendChild(document.createTextNode(spot.address || ''));
-        var whereRow = infoRow('📍', where);
-        if (spot.address) {
-            var copyBtn = el('button', 'ps-mini-btn', t('btn_copy'));
-            copyBtn.onclick = function () { if (window.copyAddress) window.copyAddress(spot.address); };
-            whereRow.appendChild(copyBtn);
+        // 장소 + 주소 복사. 셋 다 없으면(장소 유동적인 크루) 행 자체를 생략한다.
+        if (spot.venue_name || spot.address || spot.region) {
+            var where = el('span', 'ps-where-text');
+            if (spot.venue_name) { where.appendChild(el('b', null, spot.venue_name)); where.appendChild(document.createElement('br')); }
+            where.appendChild(document.createTextNode(spot.address || spot.region || ''));
+            var whereRow = infoRow('📍', where);
+            if (spot.address) {
+                var copyBtn = el('button', 'ps-mini-btn', t('btn_copy'));
+                copyBtn.onclick = function () { if (window.copyAddress) window.copyAddress(spot.address); };
+                whereRow.appendChild(copyBtn);
+            }
+            c.appendChild(whereRow);
         }
-        c.appendChild(whereRow);
+
+        // 인스타 핸들 — 단톡 링크가 없는 크루의 실질적인 "들어가는 문"
+        if (spot.insta) {
+            var igLink = el('a', 'ps-insta-link', '@' + spot.insta);
+            igLink.href = 'https://instagram.com/' + encodeURIComponent(spot.insta);
+            igLink.target = '_blank';
+            igLink.rel = 'noopener noreferrer';
+            // 물꼬 계측: 인스타 클릭도 픽업의 first-contact (Q2 지표)
+            igLink.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, type: 'insta', sport: spot.sport }); };
+            c.appendChild(infoRow('📷', igLink));
+        }
 
         // 게임비 정보 (텍스트만, 거래 없음)
         if (spot.fee_info) c.appendChild(infoRow('💰', spot.fee_info));
@@ -104,7 +120,7 @@
             var cta = el('a', 'ps-join-btn', t('pk_contact_cta'));
             cta.href = safeContact; cta.target = '_blank'; cta.rel = 'noopener noreferrer';
             // 물꼬 계측: 단톡 들어가기 = 픽업의 first-contact 순간 (Q2 지표)
-            cta.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, sport: spot.sport }); };
+            cta.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, type: 'link', sport: spot.sport }); };
             var wrap = el('div', 'ps-rsvp');
             wrap.appendChild(cta);
             c.appendChild(wrap);
@@ -117,6 +133,26 @@
 
         // 메모
         if (spot.notes) c.appendChild(el('div', 'ps-notes', spot.notes));
+
+        // 시딩 항목(공개 인스타 정보로 모은 크루): 출처를 밝히고 내려달라 할 통로를 준다.
+        // 본인이 올린 게 아니라 owner_uid가 관리자라, 이 링크가 유일한 옵트아웃 경로다.
+        if (spot.source === 'curated') {
+            var note = el('div', 'ps-curated');
+            note.appendChild(document.createTextNode(t('pk_curated_note') + ' '));
+            var req = el('a', 'ps-curated-link', t('pk_curated_takedown'));
+            req.href = window.sanitizeUrl(
+                'mailto:' + PK_TAKEDOWN_EMAIL
+                + '?subject=' + encodeURIComponent(t('pk_takedown_subject'))
+                + '&body=' + encodeURIComponent(
+                    t('pk_takedown_body') + '\n\n'
+                    + '- ' + (spot.title || '') + '\n'
+                    + '- id: ' + spot.id + '\n'
+                    + (spot.insta ? '- @' + spot.insta + '\n' : '')
+                )
+            );
+            note.appendChild(req);
+            c.appendChild(note);
+        }
 
         // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
         var reelUrls = (spot.insta_reels && spot.insta_reels.length)
