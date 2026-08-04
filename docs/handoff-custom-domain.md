@@ -74,6 +74,9 @@ Cloudflare Registrar는 네임서버가 Cloudflare 고정이므로 DNS도 같은
 - 처음엔 **DNS only(회색 구름)**로 만들 것. 프록시(주황 구름)를 켜면 GitHub Pages의 인증서 발급이 꼬일 수 있다. 안정된 뒤 프록시는 선택.
 - GitHub → Settings → Pages → **verified domains**에 `nulloongzi.com` 등록 권장(TXT 레코드 인증). 도메인 탈취 방지.
 
+> ⚠️ **apex 설정 타이밍 함정 (중요).** user site 레포(`nulloongzi.github.io`)의 Pages 설정에 커스텀 도메인을 넣는 순간, GitHub은 **자기 커스텀 도메인이 없는 같은 계정의 모든 프로젝트 페이지를 새 도메인 아래로 리다이렉트한다.** 즉 지도가 `nulloongzi.com/null_oongzi-do/...`로 이동해버린다 — 콘솔(카카오 3곳/네이버/Firebase)에 새 도메인이 등록돼 있지 않으면 그 시점부터 로그인·공유가 조용히 깨진다.
+> → **PR 사이트 레포에 코드를 올리는 것까지는 언제든 안전**하지만(github.io로 서빙), **Pages의 custom domain 입력은 지도 전환 작업과 같은 날 하거나, 그 전에 콘솔 3사에 새 도메인을 추가 등록(기존 항목 유지, 추가만)해둔 뒤에 할 것.**
+
 ---
 
 ## 전환 체크리스트
