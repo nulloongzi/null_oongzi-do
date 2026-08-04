@@ -76,6 +76,8 @@ Cloudflare Registrar는 네임서버가 Cloudflare 고정이므로 DNS도 같은
 
 > ⚠️ **apex 설정 타이밍 함정 (중요).** user site 레포(`nulloongzi.github.io`)의 Pages 설정에 커스텀 도메인을 넣는 순간, GitHub은 **자기 커스텀 도메인이 없는 같은 계정의 모든 프로젝트 페이지를 새 도메인 아래로 리다이렉트한다.** 즉 지도가 `nulloongzi.com/null_oongzi-do/...`로 이동해버린다 — 콘솔(카카오 3곳/네이버/Firebase)에 새 도메인이 등록돼 있지 않으면 그 시점부터 로그인·공유가 조용히 깨진다.
 > → **PR 사이트 레포에 코드를 올리는 것까지는 언제든 안전**하지만(github.io로 서빙), **Pages의 custom domain 입력은 지도 전환 작업과 같은 날 하거나, 그 전에 콘솔 3사에 새 도메인을 추가 등록(기존 항목 유지, 추가만)해둔 뒤에 할 것.**
+>
+> **2026-08-04 실제 사고 (이 함정에 실제로 물림).** DNS 레코드를 넣은 김에 Pages custom domain까지 입력 → 위 리다이렉트가 즉시 발동, 지도의 소셜 로그인 3종·카카오 공유가 전부 깨짐(`social-auth.js`의 `redirectUri()`가 `location.origin` 기반이라 미등록 URI를 전송). **당일 custom domain을 제거해 원복.** DNS 레코드(A 4개 + www CNAME, 전부 DNS only)는 남겨뒀고 재사용하면 된다 — DNS 레코드만으로는 아무것도 안 깨진다. **재입력은 반드시 지도 전환 작업의 일부로, 콘솔 등록과 같은 날 할 것.**
 
 ---
 
