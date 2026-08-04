@@ -97,3 +97,50 @@ test('인터랙션: KO↔EN 언어 토글이 DOM 텍스트를 바꿈', async ({ 
     await page.locator('#langToggle').click();
     await expect(tab).toHaveText(before, { timeout: 3000 });
 });
+
+// 픽업 탭 크롬 스왑 — 목록이 하단 46vh를 차지하므로 그 위에 뜨던 FAB을 정리한다.
+// 도시락(🍱)·네임카드(🍚)는 로그인 기능이고 픽업은 무로그인 발견 wedge라 숨긴다.
+// 등록 FAB은 동호회(팀등록) ↔ 픽업(픽업등록) 으로 같은 자리를 물려받는다.
+test('픽업 탭: 로그인 전용 FAB 숨김 + 등록 FAB 스왑', async ({ page }) => {
+    await page.goto('/');
+
+    // 동호회(기본) 상태
+    await expect(page.locator('#fabLunchbox')).toBeVisible();
+    await expect(page.locator('#fabProfile')).toBeVisible();
+    await expect(page.locator('#fabClubRegister')).toBeVisible();
+    await expect(page.locator('#fabPickupCreate')).toBeHidden();
+
+    await page.locator('#tabPickup').click();
+
+    // 픽업 상태: 로그인 FAB 사라지고 등록 FAB이 바뀐다
+    await expect(page.locator('#fabLunchbox')).toBeHidden();
+    await expect(page.locator('#fabProfile')).toBeHidden();
+    await expect(page.locator('#fabClubRegister')).toBeHidden();
+    await expect(page.locator('#fabPickupCreate')).toBeVisible();
+    // 지도 조작인 내 위치는 남고, 목록 패널이 뜬다
+    await expect(page.locator('#pickupListPanel')).toBeVisible();
+    await expect(page.locator('body')).toHaveClass(/pickup-mode/);
+
+    // 동호회로 돌아오면 원상복구 (스왑이 단방향이면 여기서 깨진다)
+    await page.locator('#tabClubs').click();
+    await expect(page.locator('#fabLunchbox')).toBeVisible();
+    await expect(page.locator('#fabProfile')).toBeVisible();
+    await expect(page.locator('#fabClubRegister')).toBeVisible();
+    await expect(page.locator('#fabPickupCreate')).toBeHidden();
+    await expect(page.locator('body')).not.toHaveClass(/pickup-mode/);
+});
+
+// 헤더 과밀 회귀 방지: 필터 3종은 한 줄(.pl-filters), 등록 버튼은 헤더에 없어야 한다.
+test('픽업 목록 헤더: 필터 한 줄 + 등록 버튼은 헤더 밖', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#tabPickup').click();
+
+    const filters = page.locator('.pl-filters');
+    await expect(filters).toBeVisible();
+    await expect(filters.locator('#pkRegionFilter')).toBeVisible();
+    await expect(filters.locator('#pkLevelFilter')).toBeVisible();
+    await expect(filters.locator('#pkEnFilter')).toBeVisible();
+
+    // 등록은 FAB으로 빠졌으므로 헤더 안에 버튼이 남아 있으면 안 된다
+    await expect(page.locator('.pl-header .pl-host-btn')).toHaveCount(0);
+});

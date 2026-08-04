@@ -28,10 +28,20 @@
 
     function applyChrome(tab) {
         var isPickup = tab === 'pickup';
-        // 동호회 팀등록 FAB은 픽업 모드에서 숨김 (픽업 개설은 리스트 헤더 버튼으로)
+        // 등록 FAB: 동호회=팀등록 / 픽업=픽업등록 으로 같은 자리를 스왑
         show($('fabClubRegister'), !isPickup);
+        show($('fabPickupCreate'), isPickup);
         // 필터(⚙️)는 동호회 전용 → 픽업 모드에서 숨김
         show($('filterBtnIcon'), !isPickup);
+
+        // 도시락(🍱)·네임카드(🍚)는 로그인 기능이다. 픽업은 결정로그(2026-06-05 Q3)가
+        // 못박은 무로그인 발견 wedge라 계정과의 결합이 약하고, 목록이 하단 46vh를
+        // 차지하는데 그 위에 로그인 전용 FAB이 떠 있으면 정보 위계가 어긋난다.
+        // → 픽업 탭에선 숨기고, 지도 조작인 📍(내 위치)만 목록 위로 올린다(CSS).
+        show($('fabLunchbox'), !isPickup);
+        show($('fabProfile'), !isPickup);
+        document.body.classList.toggle('pickup-mode', isPickup);
+
         // 픽업 리스트 패널
         show($('pickupListPanel'), isPickup);
         // 급구 티커: 픽업에선 숨김, 동호회에선 내용 있을 때만 표시
