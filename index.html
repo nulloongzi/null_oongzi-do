@@ -90,19 +90,28 @@
         </div>
     </div>
 
-    <div class="fab-lunchbox" onclick="openLunchbox()">🍱</div>
-    <div class="fab-profile" onclick="toggleProfileCard()">🍚</div>
+    <div id="fabLunchbox" class="fab-lunchbox" onclick="openLunchbox()">🍱</div>
+    <div id="fabProfile" class="fab-profile" onclick="toggleProfileCard()">🍚</div>
 
+    <!-- 픽업 탭에선 fabClubRegister 자리를 fabPickupCreate 가 물려받는다 (tabs.js applyChrome).
+         그룹 전체는 body.pickup-mode 일 때 목록 패널 위로 올라간다. -->
     <div class="fab-group">
         <div id="fabClubRegister" class="fab-btn fab-urgent" title="팀 등록하기" onclick="openRegistrationModal(false)">📝</div>
+        <div id="fabPickupCreate" class="fab-btn fab-urgent" title="픽업 등록" style="display:none;" onclick="window.openPickupCreateModal && window.openPickupCreateModal()">🏐</div>
         <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
     </div>
 
     <!-- 픽업 게임 리스트 패널 (픽업 탭에서만 표시) -->
     <div id="pickupListPanel" class="pickup-list-panel" style="display:none;">
+        <!-- 헤더 2줄: 제목+공유 / 필터 3종.
+             '픽업 등록'은 헤더가 아니라 우하단 FAB(#fabPickupCreate)으로 뺐다 —
+             컨트롤 5개가 한 줄에 몰리면 폰에서 3줄로 감겨 리스트가 2~3장밖에 안 보였다. -->
         <div class="pl-header">
-            <div class="pl-title" data-i18n="pk_list_title">여기서 픽업이 열려요</div>
-            <div class="pl-header-actions">
+            <div class="pl-header-top">
+                <div class="pl-title" data-i18n="pk_list_title">여기서 픽업이 열려요</div>
+                <button class="pl-share-btn" onclick="window.sharePickupList && window.sharePickupList()" data-i18n="pk_list_share" title="이 목록 링크 공유">🔗 공유</button>
+            </div>
+            <div class="pl-filters">
                 <select id="pkRegionFilter" class="pl-region-select" onchange="setPkRegion(this.value)" aria-label="지역">
                     <option value="" data-i18n="pk_region_all">지역 전체</option>
                 </select>
@@ -110,8 +119,6 @@
                     <option value="" data-i18n="pk_level_all">레벨 전체</option>
                 </select>
                 <div id="pkEnFilter" class="pl-en-toggle" onclick="togglePkEnglishOnly(this)" data-i18n="pk_english_ok">🌐 English OK</div>
-                <button class="pl-share-btn" onclick="window.sharePickupList && window.sharePickupList()" data-i18n="pk_list_share" title="이 목록 링크 공유">🔗 목록 공유</button>
-                <button class="pl-host-btn" onclick="window.openPickupCreateModal && window.openPickupCreateModal()" data-i18n="pk_host_title">픽업 등록</button>
             </div>
         </div>
         <div id="pickupListBody" class="pl-body"></div>

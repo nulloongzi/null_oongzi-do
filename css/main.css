@@ -2242,10 +2242,15 @@
 
         .pl-header {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 18px 10px;
+            flex-direction: column;
+            padding: 14px 16px 10px;
             flex: 0 0 auto;
+        }
+
+        /* 픽업 탭: 목록 패널(하단 46vh) 위로 FAB 그룹을 올린다.
+           도시락·네임카드는 tabs.js 가 숨기므로 여기선 위치만 다룬다. */
+        body.pickup-mode .fab-group {
+            bottom: calc(46vh + 14px);
         }
 
         .pl-title {
@@ -2254,28 +2259,11 @@
             color: var(--nurungji-dark);
         }
 
-        .pl-host-btn {
-            background: var(--nurungji-yellow);
-            color: var(--nurungji-dark);
-            border: none;
-            padding: 8px 15px;
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 13px;
-            cursor: pointer;
-            transition: transform 0.15s;
-            white-space: nowrap;
-        }
-
-        .pl-host-btn:active {
-            transform: scale(0.94);
-        }
-
         .pl-body {
             flex: 1 1 auto;
             overflow-y: auto;
-            /* 하단 FAB(프로필/도시락/위치)에 마지막 항목이 가리지 않도록 여유 */
-            padding: 0 14px 84px;
+            /* FAB이 패널 위로 올라갔으므로(body.pickup-mode) 하단 여유는 홈 인디케이터 정도만 */
+            padding: 0 14px calc(16px + env(safe-area-inset-bottom, 0px));
             -webkit-overflow-scrolling: touch;
         }
 
@@ -2351,13 +2339,32 @@
             color: #2b50aa;
         }
 
-        .pl-header-actions {
+        /* 헤더 1행: 제목 + 공유 */
+        .pl-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        /* 헤더 2행: 필터 3종. 한 줄에 들어가되 좁으면 가로 스크롤로 흘린다 —
+           줄바꿈을 허용하면 헤더가 커지면서 46vh 안의 리스트를 잡아먹는다. */
+        .pl-filters {
             display: flex;
             align-items: center;
             gap: 8px;
-            /* 지역·English·공유·등록 4개가 좁은 폭에서 넘칠 수 있어 줄바꿈 허용 */
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            margin-top: 10px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .pl-filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .pl-filters>* {
+            flex: 0 0 auto;
         }
 
         .pl-region-select {
