@@ -1,7 +1,39 @@
-# 장애 — `nulloongzi.github.io` → `nulloongzi.com` 리다이렉트 (미해결)
+# 장애 — `nulloongzi.github.io` → `nulloongzi.com` 리다이렉트 (**해결됨**)
 
-> 작성: 2026-08-05. **진행 중인 장애**다. 새 세션은 이 문서부터 읽고, 아래 "다음 세션이 먼저 할 일"의
-> 응답 헤더 확인부터 하면 된다. 추측으로 시작하지 말 것 — 이 세션이 그러다 세 번 틀렸다.
+> 작성: 2026-08-05. **2026-08-05 같은 날 해결됐다.** 아래 본문은 진단 과정의 기록이고,
+> 결말과 교훈은 이 박스 바로 다음 "해결" 절에 있다. 현행 도메인 구조는
+> `docs/handoff-custom-domain.md`가 정본이다.
+
+## 해결 — 전환을 앞당겨 끝냈다 (2026-08-05)
+
+**리다이렉트를 없애는 대신, 그 리다이렉트가 *옳은 동작*이 되도록 도메인 전환을 완료했다.**
+
+원인은 아래 "남은 가설 ①"이 맞았다: 커스텀 도메인을 뗀 뒤에도 GitHub 엣지에 301이 남았고,
+그걸 덮어쓸 주체인 **user site가 Unpublish 되어 있어** 새 배포가 나갈 수 없었다. 지도 레포를
+재배포해도 소용없던 이유가 이것이다 — 그 규칙의 주인은 지도 레포가 아니라 user site다.
+(가설 ②는 기각: `nulloongzi.github.io` 트래픽은 Cloudflare를 거치지 않고, 도착지 404도
+GitHub이 준 것이라 전 구간이 GitHub 내부 문제였다.)
+
+최종 상태:
+
+| 호스트 | 내용 |
+|---|---|
+| `nulloongzi.com` | 개인 PR 사이트 (`nulloongzi/nulloongzi.github.io`) |
+| `do.nulloongzi.com` | 누룽지도 지도 (이 레포, `CNAME`) |
+| `nulloongzi.github.io/null_oongzi-do/…` | apex 301 → PR 사이트의 스텁이 쿼리 보존해 `do.nulloongzi.com`으로 넘김 |
+
+검증 완료: 지도·픽업 렌더, 소셜 로그인 3종, 카카오 공유(전송+탭), 옛 링크 체인. 앱은 `2.3.0+9`로
+같이 전환(AAB 빌드 완료). 순서·콘솔 등록값·재발 방지는 `docs/handoff-custom-domain.md` 참조.
+
+> **핵심 교훈**: user/org Pages 사이트의 커스텀 도메인은 **붙이는 것보다 떼는 게 어렵다.**
+> 프로젝트 페이지까지 전부 끌려가고, 되돌려도 엣지에 잔존하며, Unpublish는 복구 수단을 없앤다.
+> 프로젝트를 별도 도메인에 둘 거면 **프로젝트 레포에 자기 `CNAME`을 먼저 주고**,
+> **콘솔(카카오 3곳·네이버·Firebase) 등록을 도메인 연결보다 먼저** 해야 한다.
+
+---
+
+<details>
+<summary>이하: 해결 전 진단 기록 (당시 시점 그대로 보존)</summary>
 
 ## 증상
 
@@ -87,13 +119,14 @@ curl -sSI https://nulloongzi.github.io/
 
 ## 부수 미해결 과제
 
-- **캐시버스터 미갱신**: 픽업 PR(#45)에서 `js/pickup-filter.js`를 새로 추가하면서 `index.html`의 `?v=16`을 안 올렸다. `index.html` 주석이 "배포할 때마다 올려 혼합버전 방지"라고 명시하는데 어겼다. 장애와 무관하지만 고쳐야 한다 (`?v=17`).
-- **핸드오프 문서 2개로 분기**: 이 레포 `docs/handoff-custom-domain.md`(구식, apex 단일 전제)와 별도 세션이 만든 `claude/custom-domain-handoff-wyd9xx` 브랜치 문서. 하나로 합치고 나머지는 삭제할 것.
+- ~~**캐시버스터 미갱신**~~ → 해결. 전환 PR(#46)에서 `?v=17`로 올렸다.
+- ~~**핸드오프 문서 2개로 분기**~~ → 해결. `docs/handoff-custom-domain.md` 하나로 통합됐고(main),
+  이 브랜치에 있던 중복 커밋은 리베이스에서 드롭했다.
 
-## 현재 상태 (2026-08-05)
+## 당시 상태 (2026-08-05, 장애 시점 스냅샷)
 
 - 웹 main = `ffd0de1` (픽업 크루 기능 머지 완료). Firestore 룰 배포 완료.
-- 서울 크루 4팀(DVB/SUS/OP/NEST) Firestore 등록 완료 — **데이터는 안전하다.** 사이트만 접속 불가.
-- 앱 `2.2.0+8` 머지 완료, 서명 AAB 빌드됨(런 #6, 아티팩트 만료 2026-08-17). **스토어 업로드 미완.**
-- 미머지 브랜치 `claude/latest-aab-store-registration-85dxtg`(웹): 픽업 탭 크롬 정리(FAB 숨김·헤더 2줄) + `docs/handoff-custom-domain.md`
-- 미머지 브랜치 동명(앱): 픽업 기본 뷰 = 목록
+- 서울 크루 4팀(DVB/SUS/OP/NEST) Firestore 등록 완료 — **데이터는 안전했다.** 사이트만 접속 불가였다.
+- 앱 `2.2.0+8` 머지 완료, 서명 AAB 빌드됨(런 #6). 스토어 업로드 미완.
+
+</details>
