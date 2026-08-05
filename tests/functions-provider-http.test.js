@@ -185,7 +185,7 @@ describe('kakaoCustomToken 핸들러 (실제 코드 .run 호출)', () => {
         });
 
         const out = await socialAuth.kakaoCustomToken.run({
-            data: { code: 'AUTHCODE', redirectUri: 'https://nulloongzi.github.io/null_oongzi-do/' }
+            data: { code: 'AUTHCODE', redirectUri: 'https://do.nulloongzi.com/' }
         });
 
         assert.strictEqual(out.token, 'CUSTOM:kakao:98765:{"provider":"kakao"}');

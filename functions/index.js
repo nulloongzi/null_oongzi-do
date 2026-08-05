@@ -531,7 +531,7 @@ exports.chatbotTeamList = onRequest({ cors: true, invoker: "public" }, async fun
         clubs.sort(function (a, b) { return b._createdMs - a._createdMs; });
         var top = clubs.slice(0, 10);
 
-        var DEFAULT_THUMB = "https://nulloongzi.github.io/null_oongzi-do/app_ui/nulloongzido%20logo_512px.png";
+        var DEFAULT_THUMB = "https://do.nulloongzi.com/app_ui/nulloongzido%20logo_512px.png";
         var items = top.map(function (c) {
             var verifyText = c.is_verified ? "✅ 인증됨" : "⏳ 미인증";
             var ownerText = c.registered_by ? "" : " · 레거시";

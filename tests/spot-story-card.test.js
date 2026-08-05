@@ -124,7 +124,7 @@ describe('buildSpotShareUrl', () => {
         const { window } = loadShare();
         assert.strictEqual(
             window.buildSpotShareUrl('ABC123xyz'),
-            'https://nulloongzi.github.io/null_oongzi-do/?spot=ABC123xyz'
+            'https://do.nulloongzi.com/?spot=ABC123xyz'
         );
     });
 });
@@ -161,7 +161,7 @@ describe('shareSpotToStory — 네이티브 브리지(셸)', () => {
         const payload = JSON.parse(window.posted[0]);
         assert.strictEqual(payload.type, 'ig_story');
         assert.ok(payload.stickerImage.startsWith('data:image/png'), 'stickerImage=PNG dataURL');
-        assert.strictEqual(payload.contentUrl, 'https://nulloongzi.github.io/null_oongzi-do/?spot=ABC123xyz');
+        assert.strictEqual(payload.contentUrl, 'https://do.nulloongzi.com/?spot=ABC123xyz');
         assert.strictEqual(payload.topColor, '#fff8e1');
         assert.strictEqual(payload.bottomColor, '#fac710');
 
@@ -219,7 +219,7 @@ describe('동호회 스토리 카드 (공용 generateStoryCard)', () => {
         assert.strictEqual(result, 'ig_story');
         const payload = JSON.parse(window.posted[0]);
         assert.strictEqual(payload.type, 'ig_story');
-        assert.strictEqual(payload.contentUrl, 'https://nulloongzi.github.io/null_oongzi-do/?club=GVT123');
+        assert.strictEqual(payload.contentUrl, 'https://do.nulloongzi.com/?club=GVT123');
         assert.ok(payload.stickerImage.startsWith('data:image/png'));
         const ev = tracks.find(t => t.name === 'share');
         assert.ok(ev && ev.params.method === 'ig_story' && ev.params.club_id === 'GVT123');
