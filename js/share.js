@@ -192,7 +192,7 @@ window.downloadImage = function () {
 
 // ── 클럽 딥링크 공유 (카카오 / 웹공유 / 링크복사 폴백) ──
 
-window.SITE_BASE_URL = 'https://nulloongzi.github.io/null_oongzi-do/';
+window.SITE_BASE_URL = 'https://do.nulloongzi.com/';
 
 window.buildClubShareUrl = function (id) {
     return window.SITE_BASE_URL + '?club=' + encodeURIComponent(id);

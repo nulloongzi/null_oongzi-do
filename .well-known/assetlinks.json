@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.nulloongzi.nulloongzido",
+      "sha256_cert_fingerprints": [
+        "6D:03:5A:A1:B7:63:6D:58:6B:29:C2:31:62:C6:6A:40:CE:3C:0A:A2:AC:99:74:DA:05:FB:25:62:88:A3:45:B0"
+      ]
+    }
+  }
+]
