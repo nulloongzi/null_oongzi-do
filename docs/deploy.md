@@ -95,12 +95,12 @@ Functions 배포는 **"배포하는 브랜치의 소스"를 프로젝트 전체�
 
 | 파일/값 | 어디에 등록돼 있나 | 깨지면 생기는 일 |
 |---|---|---|
-| `privacy.html` (`https://nulloongzido.com/privacy.html`) | Google Play Console → 앱 콘텐츠 → 개인정보처리방침 | 심사에서 "잘못된 개인정보처리방침" 반려 |
+| `privacy.html` (`https://do.nulloongzi.com/privacy.html`) | Google Play Console → 앱 콘텐츠 → 개인정보처리방침 | 심사에서 "잘못된 개인정보처리방침" 반려 |
 | `data-deletion.html` | Play 데이터 안전 → 계정 삭제 요청 URL | 데이터 안전 설문 반려 |
 | `com.nulloongzi.nulloongzido` (패키지명) | Play 리스팅 · 네이버 로그인 콘솔 · NCP Maps | 업데이트 업로드 불가 / 네이버 로그인·지도 실패 |
 | 카카오 키해시 3종 (디버그·앱서명·업로드) | Kakao Developers → 플랫폼 → Android | 카카오 로그인·공유 실패 |
 | `KAKAO_APP_ID` = `1352411` | `functions/.env.nulloongzi-do` ↔ Kakao 콘솔 앱 ID | 빈 값이면 위조 토큰 검증이 꺼짐 |
-| 리다이렉트 URI `https://nulloongzido.com/` | Kakao / Naver 로그인 콘솔 | OAuth 콜백 거부 |
+| 리다이렉트 URI `https://do.nulloongzi.com/` | Kakao / Naver 로그인 콘솔 | OAuth 콜백 거부 |
 
 **실제 사고:** 2026-07-28에 `privacy.md`(빈 템플릿으로 보였다)를 "미사용 파일 정리"로 지웠는데,
 Play Console 개인정보처리방침 URL이 정확히 그 파일을 가리키고 있어 404 → 심사 반려로 이어졌다.
