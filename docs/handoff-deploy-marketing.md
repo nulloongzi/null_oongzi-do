@@ -11,7 +11,7 @@
 ## 레포 2개
 | 레포 | 스택 | 배포 |
 |---|---|---|
-| `nulloongzi/null_oongzi-do` (웹) | Vanilla JS + Firebase + Kakao Maps | GitHub Pages, 라이브 (nulloongzido.com) |
+| `nulloongzi/null_oongzi-do` (웹) | Vanilla JS + Firebase + Kakao Maps | GitHub Pages, 라이브 (do.nulloongzi.com) |
 | `nulloongzi/null_oongzi-do-app` (앱) | Flutter 네이티브 + 네이버맵 | ⚠️ 아래 "배포 이력" 참고 |
 
 ## 배포 이력 (중요)
@@ -53,7 +53,7 @@ Phase 1~3 완료, 두 레포 main green. 코드 변경 시 자동 게이트가 �
   전국 배구 동호회를 지도 한 눈에.
 - 타깃: 배구 동호회 가입 희망자, 픽업 게임 참가자. (KO 우선, EN 지원)
 - 채널 아이디어(다음 세션에서 구체화): 배구 커뮤니티/카페/인스타, 동호회 총무 대상 등록 유도,
-  기존 웹(nulloongzido.com)과의 유입 연계.
+  기존 웹(do.nulloongzi.com)과의 유입 연계.
 
 ## 참고 파일 경로
 - 앱: `lib/main.dart`(SDK 키/초기화) · `android/app/build.gradle.kts`(패키지·서명) ·

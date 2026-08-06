@@ -13,12 +13,13 @@
 > 웹 코드 전환(A 체크리스트 웹 항목 전부 + CNAME + assetlinks.json + 캐시버스터 v=17)은 이 브랜치에서
 > 완료, 유닛 115 통과. **콘솔 등록(B)이 머지보다 먼저다 — "콘솔 먼저, 도메인 나중".**
 
-## TL;DR
+## TL;DR — **전환 완료 (2026-08-05)**
 
-- **현재 서비스 도메인은 `https://nulloongzi.github.io/null_oongzi-do/`.** `CNAME` 파일이 없어 커스텀 도메인 미설정.
-- **`nulloongzi.com`을 Cloudflare Registrar에서 구매 완료 (2026-08-04).** 구조: apex는 개인 PR 사이트, 지도는 `do.nulloongzi.com` 서브도메인. 아직 DNS·코드 전환은 안 했다.
-- 일부 문서(`handoff-deploy-marketing.md`, `marketing-launch.md`)에 `nulloongzido.com`이라 적혀 있는데 **그건 틀린 기록이다.** 산 적 없고 앞으로도 안 산다(`nulloongzi.com`으로 확정). 코드·콘솔은 전부 github.io 기준.
-- 도메인을 사기로 한 이유와 **전환 시 손봐야 할 곳 전체 목록**이 아래에 있다. 하나라도 빠지면 소셜 로그인이나 카카오 공유가 조용히 깨진다.
+- **지도 = `https://do.nulloongzi.com`** (이 레포 `CNAME`), **개인 PR 사이트 = `https://nulloongzi.com`**(`nulloongzi/nulloongzi.github.io`). 둘 다 라이브·HTTPS.
+- 옛 `github.io/null_oongzi-do/…` 링크는 apex 301 → PR 사이트의 스텁/404 캐치올이 경로·쿼리를 보존해 새 도메인으로 넘긴다. **기배포 링크·구버전 앱(2.1.0+7) 공유 링크가 이 체인에 의존하므로 스텁을 지우지 말 것.**
+- 앱은 `2.3.0+9`로 함께 전환, Play 프로덕션 제출 완료(개인정보처리방침 URL도 새 주소로 제출).
+- `nulloongzido.com`은 **구매된 적 없는 주소다.** 그렇게 적혀 있던 문서는 전부 정정했다(아래 "문서 정정" 참조).
+- 아래 본문은 전환 당시의 판단 근거·체크리스트·사고 기록이다. **같은 작업을 또 할 때(새 서브도메인 추가 등) 그대로 쓰면 된다.** 장애 전말은 `docs/incident-github-io-redirect.md`.
 
 ---
 
@@ -166,11 +167,11 @@ Cloudflare Registrar는 네임서버가 Cloudflare 고정이므로 DNS도 같은
 - `docs/deploy.md` — 수동 배포 워크플로 사용법
 - `docs/PHILOSOPHY.md` — 도메인 결정도 결국 "누룽지에게 DM하는 느낌"에 종속
 
-### 문서 정정 필요 (전환과 함께)
+### 문서 정정 — ✅ 완료 (2026-08-05)
 
-`nulloongzido.com`을 이미 쓰는 것처럼 적어둔 곳들 — **실제 도메인은 `nulloongzi.com`(지도는 `do.nulloongzi.com`)으로 확정됐으므로 전환 시 전부 고쳐야 한다.** 그대로 두면 영구히 틀린 기록이 된다:
+`nulloongzido.com`(구매된 적 없는 주소)을 쓰는 것처럼 적어둔 곳들을 전부 `do.nulloongzi.com`으로 고쳤다:
 
-- `docs/handoff-deploy-marketing.md:14,56`
-- `docs/marketing-launch.md:103`
-- `docs/chatbot-test-guide.md:30`
-- `docs/security-review-log.md:8,143`
+- `docs/handoff-deploy-marketing.md` · `docs/marketing-launch.md` · `docs/chatbot-test-guide.md` · `docs/security-review-log.md`
+- `docs/deploy.md`의 "외부 콘솔에 등록된 URL·값" 표(#44)도 머지 전에 정정
+
+이 문서에 남은 `nulloongzido.com` 언급은 **"안 샀다"는 역사 기록**이라 의도적으로 둔다.

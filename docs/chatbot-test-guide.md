@@ -27,7 +27,7 @@
 ```
 claude "테스트 인증 요청 데이터를 pending 상태로 Firestore에 넣어줘"
 ```
-또는 직접 앱(nulloongzido.com)에서 팀 등록 후 인증 신청
+또는 직접 앱(do.nulloongzi.com)에서 팀 등록 후 인증 신청
 
 ### 2. 테스트 데이터 리셋 (이미 승인/거절한 경우)
 ```
