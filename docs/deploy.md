@@ -42,6 +42,17 @@ gcloud iam service-accounts keys create key.json --iam-account=$EMAIL
 cat key.json
 ```
 
+서비스 계정으로 배포하려면 **Cloud Billing API도 켜져 있어야 한다.**
+
+```bash
+gcloud services enable cloudbilling.googleapis.com --project=nulloongzi-do
+```
+
+Firebase CLI는 배포 전 프로젝트가 Blaze 요금제인지 확인하는데, 사용자 계정으로 로그인했을 때와
+달리 서비스 계정에서는 Cloud Billing API를 직접 호출한다. 이 API가 꺼져 있으면 배포가
+`403 Cloud Billing API has not been used in project ...` 로 실패한다.
+API를 켜는 것 자체는 무료이고 요금제도 바뀌지 않는다 (결제 정보를 읽기만 한다).
+
 출력된 JSON 전체를 복사 → GitHub 리포지토리 **Settings → Secrets and variables → Actions → New repository secret** → 이름 `GCP_SA_KEY`, 값에 붙여넣기.
 
 그 다음 Cloud Shell에서 `rm key.json` 으로 지운다. 이 키는 만료가 없는 자격증명이라 유출되면 프로젝트가 통째로 넘어간다 — 채팅·이슈·커밋에 절대 붙여넣지 말 것.
