@@ -5,7 +5,7 @@
 > 실제 결과는 Extension의 답변을 그대로 또는 요약해서 채우고, FAIL이면 `docs/security.md`의 해당 phase 변경 이력에 후속 커밋 SHA를 기록한다.
 
 ## 환경
-- **Staging URL**: `__SET_ME__` (예: `https://nulloong-staging.web.app` 또는 `https://nulloongzido.com` if you push to prod directly)
+- **Staging URL**: `__SET_ME__` (예: `https://nulloong-staging.web.app` 또는 `https://do.nulloongzi.com` if you push to prod directly)
 - **검증자 계정**:
   - 일반 사용자 A: `__SET_ME__`
   - 일반 사용자 B (다른 uid, 비owner 테스트용): `__SET_ME__`
@@ -140,7 +140,7 @@
 ### IN-3: 링크 스킴 화이트리스트
 **Extension 프롬프트:**
 > 홈페이지 링크 칸에 다음을 차례로 시도하고 결과 보고:
-> (a) `https://nulloongzido.com` → 통과
+> (a) `https://do.nulloongzi.com` → 통과
 > (b) `http://example.com` → 통과
 > (c) `ftp://files.example.com` → 거절
 > (d) `data:text/html,<script>...` → 거절
