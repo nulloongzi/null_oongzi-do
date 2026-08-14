@@ -132,6 +132,10 @@ function showReelPeek(club) {
 }
 
 window.initMarkers = function () {
+    // 픽업 탭에선 동호회(급구 포함) 마커를 그리지 않는다. 급구 마커는 클러스터를
+    // 거치지 않고 지도에 직접 붙어서, teardownMarkers 이후 이 함수가 재호출되면
+    // (예: 데이터 로드/급구 토글) 픽업 탭인데도 되살아난다.
+    if (window.currentTab && window.currentTab !== 'clubs') return;
     window.markers = [];
 
     window.allClubs.forEach(function (club) {
@@ -185,6 +189,8 @@ window.updateLabelVisibility = function () {
 };
 
 window.refreshMarkers = function () {
+    // 픽업 탭에선 동호회 마커 재생성 금지(급구 마커 누수 방지 — initMarkers 참고).
+    if (window.currentTab && window.currentTab !== 'clubs') return;
     var existingIds = {};
     window.markers.forEach(function (item) {
         existingIds[item.club.id] = true;
