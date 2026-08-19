@@ -317,20 +317,15 @@ exports.chatbotApprove = onRequest({ cors: true, invoker: "public" }, async func
             return;
         }
 
-        await requestRef.update({
-            status: "approved",
-            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-        });
-        try {
-            await db.collection("clubs").doc(requestData.club_id).update({
+        await Promise.all([
+            requestRef.update({
+                status: "approved",
+                reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+            }),
+            db.collection("clubs").doc(requestData.club_id).set({
                 is_verified: true
-            });
-        } catch (clubErr) {
-            console.warn("clubs 문서 업데이트 실패 (문서 없을 수 있음):", clubErr.message);
-            await db.collection("clubs").doc(requestData.club_id).set({
-                is_verified: true
-            }, { merge: true });
-        }
+            }, { merge: true })
+        ]);
 
         res.json({
             version: "2.0",
