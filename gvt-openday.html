@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GVT 오픈짐 배치표</title>
+  <meta name="description" content="GVT 오픈짐 라운드별 팀 배치표 — 6:6 정규 게임, 세트당 18점 단판">
+  <meta name="robots" content="noindex">
+  <style>
+    :root {
+      --white: #fff;
+      --nurungji-yellow: #fac710;
+      --nurungji-brown: #8d6e63;
+      --nurungji-dark: #4e342e;
+      --nurungji-bg: #fff8e1;
+      --nurungji-light: #fffde7;
+      --urgent-color: #ff7043;
+      --shadow: 0 8px 32px rgba(93, 64, 55, .15);
+      --shadow-sm: 0 4px 12px rgba(93, 64, 55, .12);
+      --line: rgba(141, 110, 99, .22);
+
+      --pos-s: #fac710;
+      --pos-s-fg: #4e342e;
+      --pos-op: #ff7043;
+      --pos-oh: #8d6e63;
+      --pos-mb: #4e342e;
+      --pos-li: #00897b;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto,
+        "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--nurungji-bg);
+      color: var(--nurungji-dark);
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .wrap {
+      max-width: 940px;
+      margin: 0 auto;
+      padding: 20px 14px 64px;
+    }
+
+    /* ---------- header ---------- */
+    header.hero {
+      background: linear-gradient(135deg, #fffdf3, var(--nurungji-light));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 20px 20px 18px;
+    }
+
+    .kicker {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: var(--nurungji-brown);
+    }
+
+    h1 {
+      margin: 6px 0 4px;
+      font-size: 26px;
+      letter-spacing: -.02em;
+    }
+
+    .sub {
+      font-size: 14px;
+      color: var(--nurungji-brown);
+      font-weight: 600;
+    }
+
+    .rules {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .rule {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--nurungji-dark);
+    }
+
+    /* ---------- tabs ---------- */
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 6px;
+      margin: 18px 0 16px;
+      padding: 8px;
+      background: rgba(255, 248, 225, .92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      overflow-x: auto;
+    }
+
+    .tab {
+      flex: 1 0 auto;
+      min-width: 84px;
+      border: 0;
+      cursor: pointer;
+      border-radius: 11px;
+      padding: 9px 10px;
+      background: transparent;
+      color: var(--nurungji-brown);
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.35;
+      transition: .15s;
+    }
+
+    .tab small {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      opacity: .75;
+    }
+
+    .tab[aria-selected="true"] {
+      background: var(--nurungji-yellow);
+      color: var(--nurungji-dark);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ---------- round ---------- */
+    .round-head {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 4px 2px 14px;
+    }
+
+    .round-head h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .round-head .meta {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--nurungji-brown);
+    }
+
+    .notice {
+      background: #fff3e0;
+      border: 1px solid rgba(255, 112, 67, .35);
+      border-left: 4px solid var(--urgent-color);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+      line-height: 1.65;
+      margin-bottom: 14px;
+    }
+
+    .notice b {
+      color: #d84315;
+    }
+
+    .notice ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    /* ---------- game card ---------- */
+    .game {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow-sm);
+      padding: 16px 14px 14px;
+      margin-bottom: 16px;
+    }
+
+    .game-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .badge-no {
+      background: var(--nurungji-dark);
+      color: var(--nurungji-yellow);
+      border-radius: 8px;
+      font-size: 12px;
+      padding: 3px 8px;
+    }
+
+    .court {
+      display: grid;
+      gap: 0;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .side {
+      border: 2px solid var(--nurungji-brown);
+      background: repeating-linear-gradient(45deg, #fffdf5, #fffdf5 10px, #fffbea 10px, #fffbea 20px);
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .side.top {
+      border-radius: 14px 14px 0 0;
+      border-bottom: 0;
+    }
+
+    .side.bottom {
+      border-radius: 0 0 14px 14px;
+      border-top: 0;
+    }
+
+    .net {
+      height: 16px;
+      background: repeating-linear-gradient(90deg, var(--nurungji-dark) 0 2px, transparent 2px 6px);
+      border-top: 3px solid var(--nurungji-dark);
+      border-bottom: 3px solid var(--nurungji-dark);
+      position: relative;
+    }
+
+    .team-label {
+      grid-column: 1/-1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--nurungji-brown);
+      padding: 0 2px;
+    }
+
+    .team-label .tname {
+      background: var(--nurungji-dark);
+      color: var(--white);
+      border-radius: 7px;
+      padding: 2px 8px;
+      font-size: 11.5px;
+      letter-spacing: .04em;
+    }
+
+    .cell {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 7px 5px 6px;
+      text-align: center;
+      min-height: 62px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      transition: .12s;
+    }
+
+    .cell.empty {
+      background: transparent;
+      border-style: dashed;
+      cursor: default;
+      opacity: .5;
+    }
+
+    .cell .zone {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--nurungji-brown);
+      opacity: .8;
+    }
+
+    .cell .name {
+      font-size: 13.5px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      word-break: keep-all;
+    }
+
+    .pos {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 1px 7px;
+      color: #fff;
+      letter-spacing: .02em;
+    }
+
+    .pos.S {
+      background: var(--pos-s);
+      color: var(--pos-s-fg);
+    }
+
+    .pos.OP {
+      background: var(--pos-op);
+    }
+
+    .pos.OH {
+      background: var(--pos-oh);
+    }
+
+    .pos.MB {
+      background: var(--pos-mb);
+    }
+
+    .pos.Li {
+      background: var(--pos-li);
+    }
+
+    .cell.hl {
+      outline: 3px solid var(--nurungji-yellow);
+      outline-offset: 1px;
+      background: #fffbe6;
+      transform: translateY(-1px);
+    }
+
+    .bench {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--nurungji-brown);
+      font-weight: 700;
+    }
+
+    .chip {
+      background: var(--nurungji-bg);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--nurungji-dark);
+      cursor: pointer;
+    }
+
+    .chip.hl {
+      background: var(--nurungji-yellow);
+    }
+
+    /* ---------- option switch ---------- */
+    .opt-switch {
+      display: flex;
+      gap: 6px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 6px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .opt-switch button {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      border-radius: 10px;
+      padding: 9px 6px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--nurungji-brown);
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .opt-switch button small {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      opacity: .8;
+    }
+
+    .opt-switch button[aria-selected="true"] {
+      background: var(--nurungji-dark);
+      color: var(--white);
+    }
+
+    /* ---------- tables ---------- */
+    details.sheet {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow-sm);
+      padding: 4px 14px;
+      margin-bottom: 16px;
+    }
+
+    details.sheet>summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 12px 0;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    details.sheet>summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.sheet>summary::after {
+      content: "▾";
+      float: right;
+      color: var(--nurungji-brown);
+    }
+
+    details.sheet[open]>summary::after {
+      content: "▴";
+    }
+
+    .tscroll {
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 460px;
+      font-size: 12.5px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 7px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--nurungji-brown);
+      font-size: 11.5px;
+      letter-spacing: .04em;
+    }
+
+    td.nm {
+      font-weight: 800;
+    }
+
+    td.rest {
+      color: var(--nurungji-brown);
+      opacity: .65;
+    }
+
+    tr.hl td {
+      background: #fffbe6;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0 2px;
+    }
+
+    .vbadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 800;
+      border: 1px solid;
+    }
+
+    .vbadge.ok {
+      background: #e8f5e9;
+      border-color: #a5d6a7;
+      color: #1b5e20;
+    }
+
+    .vbadge.ng {
+      background: #ffebee;
+      border-color: #ef9a9a;
+      color: #b71c1c;
+    }
+
+    footer {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--nurungji-brown);
+      line-height: 1.8;
+    }
+
+    @media (max-width:420px) {
+      .cell {
+        min-height: 58px;
+        padding: 6px 3px;
+      }
+
+      .cell .name {
+        font-size: 12.5px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="kicker">GVT OPEN GYM</div>
+      <h1>오픈짐 라운드 배치표</h1>
+      <div class="sub">토요일 · 광남초 별관 3층 · 13:00–17:00</div>
+      <div class="rules">
+        <span class="rule">6:6 정규 게임</span>
+        <span class="rule">세트당 18점 · 단판</span>
+        <span class="rule">한 라운드 = 3게임</span>
+        <span class="rule">A↔B · B↔C · C↔A</span>
+        <span class="rule">라운드 후 10분 휴식</span>
+        <span class="rule">대각 S↔OP · OH↔OH · MB↔Li</span>
+      </div>
+    </header>
+
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div id="panels"></div>
+
+    <details class="sheet">
+      <summary>인원 &amp; 가능 포지션 (14명)</summary>
+      <div class="tscroll">
+        <table id="rosterTable">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>가능 포지션</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p style="font-size:12.5px;line-height:1.7;color:var(--nurungji-brown)">
+        <b>단일 포지션 주의</b> — Tim · 허민혁 · 김연재(S 전용), 김형준(OP 전용), Kat(Li 전용)은
+        해당 자리가 비어 있을 때만 그 팀에 들어갈 수 있습니다. 다른 포지션으로 채우지 마세요.
+      </p>
+    </details>
+
+    <div id="verify"></div>
+
+    <footer>
+      배치 원칙 — 세터 축(Tim · 허민혁 · 김연재)을 라운드마다 A · B · C에 하나씩 · 한 팀에 세터 2명 금지<br>
+      MB 분산 풀 — 김민상 · 김준우 · 우건세(~15:30) · 유성원 · 강홍준 · 남석현 (정승호 제외)<br>
+      선수 이름을 누르면 전체 라운드에서 위치가 강조됩니다.
+    </footer>
+  </div>
+
+  <script>
+    /* ============================================================
+       데이터 — 가능 포지션
+       ============================================================ */
+    var CAP = {
+      '유성원': ['S', 'OP', 'OH', 'MB', 'Li'],
+      '강홍준': ['S', 'OP', 'OH', 'MB', 'Li'],
+      '이재영': ['OH', 'OP'],
+      '김민상': ['OH', 'MB'],
+      '남석현': ['OP', 'OH', 'MB', 'Li'],
+      '송승목': ['S', 'OP', 'OH', 'Li'],
+      'Tim': ['S'],
+      '우건세': ['OP', 'OH', 'MB'],
+      '정승호': ['S', 'OP', 'OH', 'Li'],
+      '김연재': ['S'],
+      '김형준': ['OP'],
+      '허민혁': ['S'],
+      '김준우': ['OP', 'MB'],
+      'Kat': ['Li']
+    };
+    var NOTE = {
+      '유성원': '회원 · Flex', '강홍준': '회원 · Flex', '이재영': '회원', '김민상': '',
+      '남석현': 'S만 불가', '송승목': 'Kat 이탈 후 리베로 인계', 'Tim': 'S 전용',
+      '우건세': '15:30 이탈', '정승호': 'MB만 불가', '김연재': 'S 전용',
+      '김형준': 'OP 전용', '허민혁': 'S 전용', '김준우': '', 'Kat': 'Li 전용 · 16:00 이탈'
+    };
+    var ALL14 = Object.keys(CAP);
+    var R3 = ALL14.filter(function (n) { return n !== '우건세'; });
+    var R4 = R3.filter(function (n) { return n !== 'Kat'; });
+
+    function t() {
+      var a = [], i;
+      for (i = 0; i < arguments.length; i += 2) a.push({ n: arguments[i], p: arguments[i + 1] });
+      return a;
+    }
+
+    /* ---------- 1R ---------- */
+    var A1 = t('Tim', 'S', '김형준', 'OP', '이재영', 'OH', '송승목', 'OH', '유성원', 'MB', 'Kat', 'Li');
+    var B1 = t('허민혁', 'S', '우건세', 'OP', '정승호', 'OH', '강홍준', 'OH', '김준우', 'MB', '남석현', 'MB');
+    var C1g2 = t('김연재', 'S', '김형준', 'OP', '이재영', 'OH', '송승목', 'OH', '김민상', 'MB', 'Kat', 'Li');
+    var C1g3 = t('김연재', 'S', '우건세', 'OP', '정승호', 'OH', '강홍준', 'OH', '김민상', 'MB', '김준우', 'MB');
+
+    /* ---------- 2R ---------- */
+    var A2 = t('허민혁', 'S', '이재영', 'OP', '김민상', 'OH', '남석현', 'OH', '김준우', 'MB', '유성원', 'MB');
+    var B2 = t('김연재', 'S', '김형준', 'OP', '송승목', 'OH', '정승호', 'OH', '우건세', 'MB', 'Kat', 'Li');
+    var C2g2 = t('Tim', 'S', '김준우', 'OP', '이재영', 'OH', '강홍준', 'OH', '김민상', 'MB', '남석현', 'MB');
+    var C2g3 = t('Tim', 'S', '김형준', 'OP', '송승목', 'OH', '정승호', 'OH', '강홍준', 'MB', 'Kat', 'Li');
+
+    /* ---------- 3R ---------- */
+    var A3 = t('허민혁', 'S', '김형준', 'OP', '송승목', 'OH', '강홍준', 'OH', '김민상', 'MB', '남석현', 'MB');
+    var B3 = t('Tim', 'S', '김준우', 'OP', '이재영', 'OH', '정승호', 'OH', '유성원', 'MB', 'Kat', 'Li');
+    var C3g2 = t('김연재', 'S', '김형준', 'OP', '김민상', 'OH', '남석현', 'OH', '강홍준', 'MB', '송승목', 'Li');
+    var C3g3 = t('김연재', 'S', '유성원', 'OP', '이재영', 'OH', '정승호', 'OH', '김준우', 'MB', 'Kat', 'Li');
+
+    /* ---------- 4R 안1 (5:5) ---------- */
+    var A4 = t('Tim', 'S', '이재영', 'OP', '송승목', 'OH', '남석현', 'OH', '유성원', 'MB');
+    var B4 = t('허민혁', 'S', '김형준', 'OP', '정승호', 'OH', '김민상', 'OH', '김준우', 'MB');
+    var C4g2 = t('김연재', 'S', '이재영', 'OP', '송승목', 'OH', '강홍준', 'OH', '남석현', 'MB');
+    var C4g3 = t('김연재', 'S', '정승호', 'OP', '김민상', 'OH', '강홍준', 'OH', '김준우', 'MB');
+
+    /* ---------- 4R 안2 (6:6 · 세터 1명이 Li 커버) ---------- */
+    var X1 = t('Tim', 'S', '김형준', 'OP', '이재영', 'OH', '송승목', 'OH', '김민상', 'MB', '김연재', 'Li');
+    var Y1 = t('허민혁', 'S', '김준우', 'OP', '정승호', 'OH', '남석현', 'OH', '유성원', 'MB', '강홍준', 'MB');
+    var X2 = t('김연재', 'S', '이재영', 'OP', '김민상', 'OH', '강홍준', 'OH', '남석현', 'MB', '허민혁', 'Li');
+    var Y2 = t('Tim', 'S', '김형준', 'OP', '송승목', 'OH', '정승호', 'OH', '김준우', 'MB', '유성원', 'MB');
+    var X3 = t('허민혁', 'S', '김형준', 'OP', '남석현', 'OH', '송승목', 'OH', '김준우', 'MB', 'Tim', 'Li');
+    var Y3 = t('김연재', 'S', '이재영', 'OP', '정승호', 'OH', '강홍준', 'OH', '김민상', 'MB', '유성원', 'MB');
+
+    var ROUNDS = [
+      {
+        id: '1R', time: '14:00', roster: ALL14, size: 6,
+        note: '전원 14명. A · B 6명 고정 + C 코어 2명(김연재 · 김민상)을 안 뛰는 팀에서 차출해 완성.',
+        games: [
+          { label: 'A vs B', home: { t: 'A', l: A1 }, away: { t: 'B', l: B1 }, bench: ['김연재', '김민상'] },
+          { label: 'B vs C', home: { t: 'B', l: B1 }, away: { t: 'C', l: C1g2 }, bench: ['Tim', '유성원'] },
+          { label: 'C vs A', home: { t: 'C', l: C1g3 }, away: { t: 'A', l: A1 }, bench: ['허민혁', '남석현'] }
+        ]
+      },
+      {
+        id: '2R', time: '14:50', roster: ALL14, size: 6,
+        note: '세터 축 한 칸 회전 — A 허민혁 · B 김연재 · C Tim. 우건세는 3게임(C vs A) 대기로 두어 15:30 이탈 준비.',
+        games: [
+          { label: 'A vs B', home: { t: 'A', l: A2 }, away: { t: 'B', l: B2 }, bench: ['Tim', '강홍준'] },
+          { label: 'B vs C', home: { t: 'B', l: B2 }, away: { t: 'C', l: C2g2 }, bench: ['허민혁', '유성원'] },
+          { label: 'C vs A', home: { t: 'C', l: C2g3 }, away: { t: 'A', l: A2 }, bench: ['김연재', '우건세'] }
+        ]
+      },
+      {
+        id: '3R', time: '15:40', roster: R3, size: 6,
+        note: '우건세 이탈로 13명. 게임마다 세터 1명만 대기(A vs B → 김연재, B vs C → 허민혁, C vs A → Tim), 나머지 12명 전원 출전. 송승목이 2게임에서 리베로를 소화합니다.',
+        games: [
+          { label: 'A vs B', home: { t: 'A', l: A3 }, away: { t: 'B', l: B3 }, bench: ['김연재'] },
+          { label: 'B vs C', home: { t: 'B', l: B3 }, away: { t: 'C', l: C3g2 }, bench: ['허민혁'] },
+          { label: 'C vs A', home: { t: 'C', l: C3g3 }, away: { t: 'A', l: A3 }, bench: ['Tim'] }
+        ]
+      },
+      {
+        id: '4R', time: '16:30', roster: R4, size: 5, alt: true,
+        note: 'Kat 이탈로 12명. 아래 경고 참고 — 규칙 그대로는 6:6이 성립하지 않습니다.',
+        games: [
+          { label: 'A vs B', home: { t: 'A', l: A4 }, away: { t: 'B', l: B4 }, bench: ['김연재', '강홍준'] },
+          { label: 'B vs C', home: { t: 'B', l: B4 }, away: { t: 'C', l: C4g2 }, bench: ['Tim', '유성원'] },
+          { label: 'C vs A', home: { t: 'C', l: C4g3 }, away: { t: 'A', l: A4 }, bench: ['허민혁', '김형준'] }
+        ],
+        altGames: [
+          { label: '1경기', home: { t: 'X', l: X1 }, away: { t: 'Y', l: Y1 }, bench: [] },
+          { label: '2경기', home: { t: 'X', l: X2 }, away: { t: 'Y', l: Y2 }, bench: [] },
+          { label: '3경기', home: { t: 'X', l: X3 }, away: { t: 'Y', l: Y3 }, bench: [] }
+        ]
+      }
+    ];
+
+    /* ============================================================
+       존 배치 — 세터가 존1(우후위)에서 서브 시작
+       S→1 · OP→4 · OH→2,5 · MB→3(,6) · Li→6
+       ============================================================ */
+    function toZones(lineup) {
+      var z = {}, ohs = [2, 5], mbs = [3, 6], i, p;
+      for (i = 0; i < lineup.length; i++) {
+        p = lineup[i];
+        if (p.p === 'S') z[1] = p;
+        else if (p.p === 'OP') z[4] = p;
+        else if (p.p === 'OH') z[ohs.shift()] = p;
+        else if (p.p === 'MB') z[mbs.shift()] = p;
+        else if (p.p === 'Li') z[6] = p;
+      }
+      return z;
+    }
+
+    var TOP_ROWS = [[1, 6, 5], [2, 3, 4]];   // 상대편(뒤→앞)
+    var BOT_ROWS = [[4, 3, 2], [5, 6, 1]];   // 우리편(앞→뒤)
+
+    function cellHTML(pl, zone) {
+      if (!pl) return '<div class="cell empty"><span class="zone">존 ' + zone + '</span>' +
+        '<span class="name" style="font-weight:600">비움</span></div>';
+      return '<div class="cell" data-p="' + pl.n + '">' +
+        '<span class="zone">존 ' + zone + '</span>' +
+        '<span class="name">' + pl.n + '</span>' +
+        '<span><span class="pos ' + pl.p + '">' + pl.p + '</span></span></div>';
+    }
+
+    function sideHTML(team, lineup, isTop) {
+      var z = toZones(lineup), rows = isTop ? TOP_ROWS : BOT_ROWS, html = '', r, i;
+      var label = '<div class="team-label"><span class="tname">TEAM ' + team + '</span>' +
+        '<span>' + lineup.length + '명</span></div>';
+      for (r = 0; r < rows.length; r++)
+        for (i = 0; i < rows[r].length; i++) html += cellHTML(z[rows[r][i]], rows[r][i]);
+      return '<div class="side ' + (isTop ? 'top' : 'bottom') + '">' +
+        (isTop ? label + html : html + label) + '</div>';
+    }
+
+    function gameHTML(g, idx) {
+      var bench = g.bench.length
+        ? g.bench.map(function (n) { return '<span class="chip" data-p="' + n + '">' + n + '</span>'; }).join('')
+        : '<span class="chip" style="opacity:.6">없음 · 전원 출전</span>';
+      return '<div class="game">' +
+        '<div class="game-title"><span class="badge-no">' + (idx + 1) + '경기</span>' + g.label + '</div>' +
+        '<div class="court">' +
+        sideHTML(g.home.t, g.home.l, true) +
+        '<div class="net"></div>' +
+        sideHTML(g.away.t, g.away.l, false) +
+        '</div>' +
+        '<div class="bench"><span>대기</span>' + bench + '</div>' +
+        '</div>';
+    }
+
+    /* ---------- 라운드별 선수 요약표 ---------- */
+    function sheetHTML(roster, games) {
+      var head = '<tr><th>이름</th>' + games.map(function (g, i) {
+        return '<th>' + (i + 1) + '경기 · ' + g.label + '</th>';
+      }).join('') + '</tr>';
+      var body = roster.map(function (n) {
+        var tds = games.map(function (g) {
+          var found = null, side = null, s, i;
+          for (s = 0; s < 2; s++) {
+            var team = s === 0 ? g.home : g.away;
+            for (i = 0; i < team.l.length; i++)
+              if (team.l[i].n === n) { found = team.l[i]; side = team.t; }
+          }
+          return found
+            ? '<td><b>' + side + '</b> · <span class="pos ' + found.p + '">' + found.p + '</span></td>'
+            : '<td class="rest">대기</td>';
+        }).join('');
+        return '<tr data-p="' + n + '"><td class="nm">' + n + '</td>' + tds + '</tr>';
+      }).join('');
+      return '<details class="sheet"><summary>선수별 요약 보기</summary><div class="tscroll">' +
+        '<table><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div></details>';
+    }
+
+    var FOUR_NOTICE =
+      '<div class="notice"><b>4R는 규칙 그대로 6:6이 불가능합니다.</b><br>' +
+      '16:30 로스터 12명 = 6:6이면 코트에 전원이 서야 하는데, S 전용이 Tim · 허민혁 · 김연재 3명입니다. ' +
+      '팀당 세터는 1명뿐이므로 셋 중 하나는 반드시 세터가 아닌 자리에 서야 합니다. ' +
+      '(비 S 전용 인원은 9명, 6:6에 필요한 비세터 자리는 10개 — 한 명 부족. 12명을 6+6으로 나누는 924가지 조합 전수 확인 결과 성립 조합 0건)' +
+      '<ul><li><b>안 1 · 5:5 (기본)</b> — 앞 라운드와 같은 A · B + C 차출 구조. 코트 10명, 게임마다 2명 대기. ' +
+      '팀 구성은 S · OP · OH · OH · MB, 대각(S↔OP, OH↔OH)은 그대로 유지됩니다.</li>' +
+      '<li><b>안 2 · 6:6</b> — 12명 전원 출전. 매 게임 세터 한 명이 리베로(존 6, 후위 수비)를 맡고 세 명이 돌아가며 한 번씩 소화합니다. ' +
+      '<u>세터 본인들의 동의가 필요</u>합니다.</li>' +
+      '<li><b>가장 깔끔한 해결</b> — 16:30에 <b>단 1명만 더</b> 있으면(13명) 3R 구조를 그대로 재사용해 6:6이 성립합니다.</li></ul></div>';
+
+    /* ============================================================
+       렌더
+       ============================================================ */
+    var tabs = document.getElementById('tabs'), panels = document.getElementById('panels');
+    ROUNDS.forEach(function (R, ri) {
+      var b = document.createElement('button');
+      b.className = 'tab'; b.type = 'button'; b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', ri === 0 ? 'true' : 'false');
+      b.innerHTML = R.id + '<small>' + R.time + ' · ' + R.roster.length + '명</small>';
+      b.onclick = function () { select(ri); };
+      tabs.appendChild(b);
+
+      var p = document.createElement('section');
+      p.id = 'panel-' + ri;
+      p.style.display = ri === 0 ? '' : 'none';
+      panels.appendChild(p);
+      renderPanel(p, R, 0);
+    });
+
+    function renderPanel(p, R, optIdx) {
+      var games = (R.alt && optIdx === 1) ? R.altGames : R.games;
+      var html = '<div class="round-head"><h2>' + R.id + ' 라운드</h2>' +
+        '<span class="meta">' + R.time + " 시작 · " + R.roster.length + '명 · 3게임 · 세트당 18점 단판</span></div>';
+      if (R.alt) html += FOUR_NOTICE +
+        '<div class="opt-switch" data-r="' + R.id + '">' +
+        '<button type="button" aria-selected="' + (optIdx === 0) + '" data-o="0">안 1 · 5:5<small>게임당 2명 대기 · 기본</small></button>' +
+        '<button type="button" aria-selected="' + (optIdx === 1) + '" data-o="1">안 2 · 6:6<small>전원 출전 · 세터 1명이 Li</small></button>' +
+        '</div>';
+      else html += '<div class="notice" style="background:var(--nurungji-light);border-color:var(--line);border-left-color:var(--nurungji-yellow)">' + R.note + '</div>';
+      html += games.map(gameHTML).join('');
+      html += sheetHTML(R.roster, games);
+      p.innerHTML = html;
+
+      var sw = p.querySelector('.opt-switch');
+      if (sw) sw.addEventListener('click', function (e) {
+        var btn = e.target.closest('button'); if (!btn) return;
+        renderPanel(p, R, +btn.getAttribute('data-o'));
+      });
+      bindHighlight(p);
+    }
+
+    function select(i) {
+      [].forEach.call(tabs.children, function (b, j) { b.setAttribute('aria-selected', i === j ? 'true' : 'false'); });
+      [].forEach.call(panels.children, function (s, j) { s.style.display = i === j ? '' : 'none'; });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ---------- 이름 강조 ---------- */
+    var picked = null;
+    function applyHighlight() {
+      [].forEach.call(document.querySelectorAll('[data-p]'), function (el) {
+        el.classList.toggle('hl', !!picked && el.getAttribute('data-p') === picked);
+      });
+    }
+    // 리스너는 document 에 한 번만 위임 — 패널을 다시 그려도 중복되지 않는다
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-p]'); if (!el) return;
+      var n = el.getAttribute('data-p');
+      picked = (picked === n) ? null : n;
+      applyHighlight();
+    });
+    function bindHighlight() { applyHighlight(); }
+
+    /* ---------- 로스터 표 ---------- */
+    document.querySelector('#rosterTable tbody').innerHTML = ALL14.map(function (n) {
+      return '<tr data-p="' + n + '"><td class="nm">' + n + '</td><td>' +
+        CAP[n].map(function (p) { return '<span class="pos ' + p + '">' + p + '</span>'; }).join(' ') +
+        '</td><td class="rest">' + (NOTE[n] || '') + '</td></tr>';
+    }).join('');
+    bindHighlight(document.getElementById('rosterTable'));
+
+    /* ============================================================
+       자체 검증 — capability / 대각 템플릿 / coverage / 세터 비중복
+       ============================================================ */
+    (function () {
+      var errs = [], checks = 0;
+      var TPL6 = ['MB2', 'MBLi'], REL = { 'Tim': 1, '허민혁': 1, '김연재': 1 };
+
+      function sig(l) {
+        var c = { S: 0, OP: 0, OH: 0, MB: 0, Li: 0 };
+        l.forEach(function (p) { c[p.p]++; });
+        return c;
+      }
+      function tplOK(c, size) {
+        if (size === 5) return c.S === 1 && c.OP === 1 && c.OH === 2 && c.MB === 1 && c.Li === 0;
+        return c.S === 1 && c.OP === 1 && c.OH === 2 && ((c.MB === 2 && c.Li === 0) || (c.MB === 1 && c.Li === 1));
+      }
+      ROUNDS.forEach(function (R) {
+        var sets = [{ g: R.games, size: R.size, relax: false, tag: R.id }];
+        if (R.altGames) sets.push({ g: R.altGames, size: 6, relax: true, tag: R.id + ' 안2' });
+        sets.forEach(function (S) {
+          S.g.forEach(function (g, gi) {
+            var names = [];
+            [g.home, g.away].forEach(function (T) {
+              T.l.forEach(function (pl) {
+                checks++;
+                var ok = CAP[pl.n].indexOf(pl.p) >= 0 || (S.relax && pl.p === 'Li' && REL[pl.n]);
+                if (!ok) errs.push(S.tag + ' ' + g.label + ' ' + T.t + ': ' + pl.n + '는 ' + pl.p + ' 불가');
+              });
+              var c = sig(T.l); checks += 2;
+              if (!tplOK(c, S.size)) errs.push(S.tag + ' ' + g.label + ' ' + T.t + ': 대각 템플릿 위반');
+              if (c.S !== 1) errs.push(S.tag + ' ' + g.label + ' ' + T.t + ': 팀 내 세터 ' + c.S + '명');
+              names = names.concat(T.l.map(function (p) { return p.n; }));
+            });
+            checks++;
+            var dup = names.filter(function (n, i) { return names.indexOf(n) !== i; });
+            if (dup.length) errs.push(S.tag + ' ' + g.label + ': 양 팀 동시 출전 ' + dup.join(','));
+            checks++;
+            var full = names.concat(g.bench).slice().sort().join('|');
+            if (full !== R.roster.slice().sort().join('|'))
+              errs.push(S.tag + ' ' + g.label + ': coverage 불일치');
+          });
+        });
+      });
+      document.getElementById('verify').innerHTML = errs.length
+        ? '<div class="vbadge ng">검증 실패 ' + errs.length + '건 — ' + errs.join(' / ') + '</div>'
+        : '<div class="vbadge ok">✓ 자체 검증 통과 — capability · 대각 템플릿 · coverage · 세터 비중복 ' + checks + '개 항목</div>';
+    })();
+  </script>
+</body>
+
+</html>
