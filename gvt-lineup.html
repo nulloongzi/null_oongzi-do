@@ -533,6 +533,113 @@
       line-height: 1.7;
     }
 
+
+    /* 세그먼트 선택 */
+    .seg {
+      display: flex;
+      gap: 4px;
+      background: var(--nurungji-bg);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 4px;
+    }
+
+    .seg button {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      border-radius: 9px;
+      padding: 9px 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--nurungji-brown);
+      cursor: pointer;
+      line-height: 1.35;
+    }
+
+    .seg button small {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 600;
+      opacity: .8;
+    }
+
+    .seg button[aria-pressed="true"] {
+      background: var(--nurungji-dark);
+      color: var(--white);
+    }
+
+    .tpl {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tpl button {
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--nurungji-brown);
+      border-radius: 11px;
+      padding: 8px 11px;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1.4;
+      text-align: left;
+    }
+
+    .tpl button small {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 600;
+      opacity: .75;
+    }
+
+    .tpl button[aria-pressed="true"] {
+      background: var(--nurungji-yellow);
+      border-color: var(--nurungji-yellow);
+      color: var(--nurungji-dark);
+    }
+
+    /* 7인 팀의 리베로 */
+    .libero {
+      grid-column: 1/-1;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(0, 137, 123, .09);
+      border: 1px dashed rgba(0, 137, 123, .45);
+      border-radius: 10px;
+      padding: 6px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #00695c;
+      cursor: pointer;
+    }
+
+    .libero .nm {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--nurungji-dark);
+    }
+
+    .libero.hl {
+      background: #fffbe6;
+      border-color: var(--nurungji-yellow);
+    }
+
+    .core {
+      display: inline-block;
+      background: var(--nurungji-dark);
+      color: var(--nurungji-yellow);
+      border-radius: 6px;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 0 5px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
     @media (max-width:420px) {
       .cell {
         min-height: 58px;
@@ -571,13 +678,14 @@
        ============================================================ */
     var POS = ['S', 'OP', 'OH', 'MB', 'Li'];
     var POS_KO = { S: '세터', OP: '라이트', OH: '레프트', MB: '센터', Li: '리베로' };
-    /* 대각 템플릿 — 팀 하나는 이 둘 중 하나여야 한다 */
+
+    /* 팀 구성 템플릿 — 대각(S↔OP, OH↔OH, MB↔Li)을 만족하는 조합 */
     var TEMPLATES = [
-      ['S', 'OP', 'OH', 'OH', 'MB', 'MB'],
-      ['S', 'OP', 'OH', 'OH', 'MB', 'Li']
+      { id: 'mb2', size: 6, label: 'MB 2', desc: '리베로 없음', slots: ['S', 'OP', 'OH', 'OH', 'MB', 'MB'] },
+      { id: 'mb1li', size: 6, label: 'MB 1 + Li 1', desc: '센터 1 · 리베로 1', slots: ['S', 'OP', 'OH', 'OH', 'MB', 'Li'] },
+      { id: 'mb2li', size: 7, label: 'MB 2 + Li 1', desc: '7인 · 리베로가 후위 센터와 교대', slots: ['S', 'OP', 'OH', 'OH', 'MB', 'MB', 'Li'] }
     ];
-    var COURT = 12;                 /* 6:6 */
-    var MAX_SLOT = { S: 2, OP: 2, OH: 4, MB: 4, Li: 2 };
+    function tplById(id) { for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].id === id) return TEMPLATES[i]; return null; }
 
     var DEFAULT_PLAYERS = [
       ['유성원', ['S', 'OP', 'OH', 'MB', 'Li']], ['강홍준', ['S', 'OP', 'OH', 'MB', 'Li']],
@@ -593,23 +701,19 @@
        저장
        ============================================================ */
     var KEY_P = 'gvt.players.v1', KEY_H = 'gvt.stat.v1';
-
     function load(k, fb) {
-      try {
-        var v = localStorage.getItem(k);
-        return v ? JSON.parse(v) : fb;
-      } catch (e) { return fb; }
+      try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch (e) { return fb; }
     }
-    function save(k, v) {
-      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { }
-    }
+    function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
 
     var players = load(KEY_P, null) || DEFAULT_PLAYERS.map(function (d) {
       return { name: d[0], pos: d[1], here: true };
     });
-    /* stat[name] = {play, bench, pos:{S:0,...}} */
     var stat = load(KEY_H, null) || {};
     var round = load('gvt.round.v1', null) || 1;
+    var nGames = load('gvt.ngames.v1', null) || 3;
+    var mode = load('gvt.mode.v1', null) || 'abc';           /* 'abc' | 'free' */
+    var allowed = load('gvt.tpl.v1', null) || ['mb2', 'mb1li'];
 
     function st(n) {
       if (!stat[n]) stat[n] = { play: 0, bench: 0, pos: { S: 0, OP: 0, OH: 0, MB: 0, Li: 0 } };
@@ -618,43 +722,40 @@
     }
     function persist() {
       save(KEY_P, players); save(KEY_H, stat); save('gvt.round.v1', round);
+      save('gvt.ngames.v1', nGames); save('gvt.mode.v1', mode); save('gvt.tpl.v1', allowed);
     }
+    function tpls() {
+      var a = TEMPLATES.filter(function (t) { return allowed.indexOf(t.id) >= 0; });
+      return a.length ? a : [TEMPLATES[0]];
+    }
+    function sizes() {
+      var o = [], t = tpls(), i;
+      for (i = 0; i < t.length; i++) if (o.indexOf(t[i].size) < 0) o.push(t[i].size);
+      return o.sort(function (a, b) { return a - b; });
+    }
+    function tplsOfSize(sz) { return tpls().filter(function (t) { return t.size === sz; }); }
 
     /* ============================================================
-       배치 엔진
+       공정성 비용
        ------------------------------------------------------------
-       한 경기 = 12명을 두 팀으로. 각 팀은 대각 템플릿을 만족해야 한다.
-         1S + 1OP + 2OH + 2MB   또는   1S + 1OP + 2OH + 1MB + 1Li
-       남는 인원은 대기.
-
-       탐색: 남은 후보가 가장 적은 자리부터 채우는 백트래킹(MRV).
-       후보 순서는 "공정성 비용 + 난수"로 정렬해 매번 다른 해가 나오게 하고,
-       여러 번 재시도해 그중 비용이 가장 낮은 해를 고른다.
-       ============================================================ */
-
-    /* 이 사람을 이 포지션에 넣는 비용 (낮을수록 좋음)
-       nOpt = 그 사람이 소화 가능한 포지션 수.
        포지션 반복 벌점은 '고를 수 있는 사람'에게만 매긴다.
-       단일 포지션 인원(세터 전용 등)에게 반복 벌점을 주면
-       그 사람만 계속 대기로 밀려나기 때문. */
+       단일 포지션 인원에게 반복 벌점을 주면 그 사람만 계속 대기로 밀려난다.
+       ============================================================ */
     function slotCost(name, pos, sc, nOpt) {
       var s = sc[name];
-      var c = s.play * 1.5;                  // 출전 수 균등이 최우선
-      c -= (POS.length - nOpt) * 1.0;        // 자리가 정해진 사람부터 그 자리에 배치
+      var c = s.play * 1.5;
+      c -= (POS.length - nOpt) * 1.0;
       if (nOpt > 1) {
-        c += (s.pos[pos] || 0) * 1.2;        // 같은 포지션 반복 억제
-        if (pos === 'MB') c += (s.pos.MB || 0) * 1.2;  // 미들 쏠림 추가 억제
-        if (!s.pos[pos]) c -= 1.5;           // 아직 안 서본 포지션이면 가산점
+        c += (s.pos[pos] || 0) * 1.2;
+        if (pos === 'MB') c += (s.pos.MB || 0) * 1.2;
+        if (!s.pos[pos]) c -= 1.5;
       }
       return c;
     }
-
     function benchCost(name, sc, avgPlay) {
       var s = sc[name];
-      /* 적게 뛴 사람을 쉬게 하면 비용↑, 이미 많이 쉰 사람을 또 쉬게 해도 비용↑ */
       return (avgPlay - s.play) * 3.5 + s.bench * 4.0;
     }
-
     function snapshot(names) {
       var o = {};
       names.forEach(function (n) {
@@ -663,165 +764,354 @@
       });
       return o;
     }
+    function finish(present, sc, assign, slots, teamNames) {
+      var t = [[], []], cost = 0, used = {}, capOf = {};
+      present.forEach(function (q) { capOf[q.name] = q.pos.length; });
+      assign.forEach(function (a) {
+        t[a.team].push({ n: a.n, p: a.p });
+        used[a.n] = 1;
+        cost += slotCost(a.n, a.p, sc, capOf[a.n]);
+      });
+      var bench = present.filter(function (q) { return !used[q.name]; }).map(function (q) { return q.name; });
+      var avg = 0;
+      present.forEach(function (q) { avg += sc[q.name].play; });
+      avg /= present.length;
+      bench.forEach(function (n) { cost += benchCost(n, sc, avg); });
+      return { teams: t, names: teamNames, bench: bench, cost: cost };
+    }
 
-    function attempt(present, sc, tplA, tplB, budget) {
-      var slots = [], i;
-      for (i = 0; i < 6; i++) slots.push({ team: 0, pos: tplA[i] });
-      for (i = 0; i < 6; i++) slots.push({ team: 1, pos: tplB[i] });
+    /* ============================================================
+       공통 백트래킹 — 남은 후보가 가장 적은 자리부터 채운다(MRV)
+         slots[i] = {team, pos, allow}   allow=null 이면 누구나
+         must[team] = 반드시 그 팀에 들어가야 하는 이름 집합 (A·B·C 모드)
+       ============================================================ */
+    function search(present, sc, slots, must, budget) {
+      var N = slots.length, used = {}, assign = new Array(N), nodes = 0, cap = budget || 3000;
+      var left = [0, 0], need = [0, 0], i;
+      for (i = 0; i < N; i++) left[slots[i].team]++;
+      if (must) for (i = 0; i < present.length; i++) {
+        if (must[0][present[i].name]) need[0]++;
+        else if (must[1][present[i].name]) need[1]++;
+      }
 
-      var used = {}, assign = new Array(12), nodes = 0, cap = budget || 3000;
+      function ok(p, sl) {
+        if (used[p.name]) return false;
+        if (p.pos.indexOf(sl.pos) < 0) return false;
+        if (sl.allow && sl.allow.indexOf(p.core) < 0) return false;
+        if (must && must[1 - sl.team][p.name]) return false;
+        return true;
+      }
 
       function bt(depth) {
-        if (depth === 12) return true;
+        /* 코어 인원을 남은 자리 안에 다 못 넣으면 가지치기.
+           depth === N 보다 먼저 봐야 한다. 마지막 자리에 코어가 아닌 사람을
+           넣고 끝내버리면 코어 인원이 벤치로 새기 때문. */
+        if (must && (need[0] > left[0] || need[1] > left[1])) return false;
+        if (depth === N) return true;
         if (++nodes > cap) return false;
-        /* MRV — 후보가 가장 적은 빈 자리 */
-        var bi = -1, bc = null, k, cand;
-        for (k = 0; k < 12; k++) {
+        var bi = -1, bc = null, k, c, q;
+        for (k = 0; k < N; k++) {
           if (assign[k]) continue;
-          cand = [];
-          for (i = 0; i < present.length; i++) {
-            var p = present[i];
-            if (!used[p.name] && p.pos.indexOf(slots[k].pos) >= 0) cand.push(p);
-          }
-          if (bc === null || cand.length < bc.length) { bi = k; bc = cand; }
-          if (cand.length === 0) break;
+          c = [];
+          for (q = 0; q < present.length; q++) if (ok(present[q], slots[k])) c.push(present[q]);
+          if (bc === null || c.length < bc.length) { bi = k; bc = c; }
+          if (c.length === 0) break;
         }
         if (bc === null || bc.length === 0) return false;
         bc = bc.slice().sort(function (a, b) {
           return (slotCost(a.name, slots[bi].pos, sc, a.pos.length) + Math.random() * 1.6) -
             (slotCost(b.name, slots[bi].pos, sc, b.pos.length) + Math.random() * 1.6);
         });
+        var tm = slots[bi].team;
         for (k = 0; k < bc.length; k++) {
-          used[bc[k].name] = 1;
-          assign[bi] = { n: bc[k].name, p: slots[bi].pos, team: slots[bi].team };
+          var p = bc[k];
+          used[p.name] = 1; assign[bi] = { n: p.name, p: slots[bi].pos, team: tm };
+          left[tm]--; if (must && must[tm][p.name]) need[tm]--;
           if (bt(depth + 1)) return true;
-          used[bc[k].name] = 0;
-          assign[bi] = null;
+          left[tm]++; if (must && must[tm][p.name]) need[tm]++;
+          used[p.name] = 0; assign[bi] = null;
         }
         return false;
       }
-
-      if (!bt(0)) return null;
-
-      var t = [[], []], cost = 0, capOf = {};
-      present.forEach(function (q) { capOf[q.name] = q.pos.length; });
-      assign.forEach(function (a) {
-        t[a.team].push({ n: a.n, p: a.p });
-        cost += slotCost(a.n, a.p, sc, capOf[a.n]);
-      });
-      var bench = present.filter(function (p) { return !used[p.name]; })
-        .map(function (p) { return p.name; });
-      var avg = 0;
-      present.forEach(function (p) { avg += sc[p.name].play; });
-      avg = avg / present.length;
-      bench.forEach(function (n) { cost += benchCost(n, sc, avg); });
-      return { teams: t, bench: bench, cost: cost };
+      return bt(0) ? assign : null;
     }
 
-    /* 구조적으로 불가능한지 먼저 싸게 판정 — 탐색을 아예 돌리지 않는다 */
-    function quickInfeasible(present) {
-      var n = present.length;
-      if (n < COURT) return true;
-      var bench = n - COURT, i, P, only, able;
-      for (i = 0; i < POS.length; i++) {
-        P = POS[i];
-        only = present.filter(function (q) { return q.pos.length === 1 && q.pos[0] === P; }).length;
-        if (only > MAX_SLOT[P] + bench) return true;
-      }
-      var need = { S: 2, OP: 2, OH: 4, MB: 2 };
-      for (P in need) {
-        able = present.filter(function (q) { return q.pos.indexOf(P) >= 0; }).length;
-        if (able < need[P]) return true;
-      }
-      return false;
+    function mkSlots(tplA, tplB, allowA, allowB) {
+      var o = [], i;
+      for (i = 0; i < tplA.slots.length; i++) o.push({ team: 0, pos: tplA.slots[i], allow: allowA || null });
+      for (i = 0; i < tplB.slots.length; i++) o.push({ team: 1, pos: tplB.slots[i], allow: allowB || null });
+      return o;
     }
 
-    function solveGame(present, sc, tries) {
-      if (quickInfeasible(present)) return null;
-
-      /* 1단계 — 해가 존재하는지 확인 (템플릿 조합 4가지, 넉넉한 예산) */
-      var combos = [[0, 0], [0, 1], [1, 0], [1, 1]], probe = null, i, r;
-      for (i = 0; i < combos.length && !probe; i++)
-        probe = attempt(present, sc, TEMPLATES[combos[i][0]], TEMPLATES[combos[i][1]], 20000);
+    /* ============================================================
+       자유 편성 — 매 경기 참석자 전원 중에서 두 팀을 새로 짠다
+       ============================================================ */
+    function solveGameFree(present, sc, tries) {
+      var T = tpls(), best = null, i, a, b, as, probe = null;
+      /* 해가 존재하는지 먼저 확인 */
+      for (i = 0; i < T.length && !probe; i++) {
+        for (var j = 0; j < T.length && !probe; j++) {
+          if (T[i].size + T[j].size > present.length) continue;
+          as = search(present, sc, mkSlots(T[i], T[j]), null, 20000);
+          if (as) probe = finish(present, sc, as, null, ['A', 'B']);
+        }
+      }
       if (!probe) return null;
-
-      /* 2단계 — 여러 번 다시 뽑아 가장 고른 해를 고른다 */
-      var best = probe;
+      best = probe;
       for (i = 0; i < (tries || 60); i++) {
-        r = attempt(present, sc,
-          TEMPLATES[Math.random() < .5 ? 0 : 1],
-          TEMPLATES[Math.random() < .5 ? 0 : 1], 3000);
-        if (r && r.cost < best.cost) best = r;
+        a = T[(Math.random() * T.length) | 0]; b = T[(Math.random() * T.length) | 0];
+        if (a.size + b.size > present.length) continue;
+        as = search(present, sc, mkSlots(a, b), null, 3000);
+        if (!as) continue;
+        var r = finish(present, sc, as, null, ['A', 'B']);
+        if (r.cost < best.cost) best = r;
       }
       return best;
     }
 
-    /* 안 되는 이유 진단 */
-    function diagnose(present) {
-      var n = present.length;
-      if (n < COURT) return '6:6을 하려면 <b>12명</b>이 필요합니다. 지금 ' + n + '명 — <b>' + (COURT - n) + '명 부족</b>합니다.';
-      var bench = n - COURT, i, p, msgs = [];
-      POS.forEach(function (P) {
-        var only = present.filter(function (q) { return q.pos.length === 1 && q.pos[0] === P; });
-        if (only.length > MAX_SLOT[P] + bench) {
-          msgs.push('<b>' + P + '(' + POS_KO[P] + ') 전용이 ' + only.length + '명</b>(' +
-            only.map(function (q) { return q.name; }).join(' · ') + ')인데, 코트에 ' + P + ' 자리는 최대 ' +
-            MAX_SLOT[P] + '개이고 대기는 ' + bench + '명뿐입니다.');
-        }
-      });
-      /* 포지션별 소화 가능 인원이 최소 필요 수에 못 미치는 경우 */
-      var need = { S: 2, OP: 2, OH: 4, MB: 2 };
-      Object.keys(need).forEach(function (P) {
-        var able = present.filter(function (q) { return q.pos.indexOf(P) >= 0; }).length;
-        if (able < need[P]) msgs.push('<b>' + P + '(' + POS_KO[P] + ')</b>를 볼 수 있는 사람이 ' +
-          able + '명뿐입니다. 한 경기에 최소 ' + need[P] + '명이 필요합니다.');
-      });
-      if (!msgs.length) msgs.push('포지션 조합이 맞아떨어지지 않습니다. 가능 포지션을 한 명이라도 늘리거나 인원을 조정해 주세요.');
-      return msgs.join('<br>');
+    /* ============================================================
+       A · B · C 고정 + 차출
+       ------------------------------------------------------------
+       세 팀의 코어를 라운드 시작에 정하고, 경기마다 두 팀이 붙는다.
+       코어 인원은 자기 팀 경기에 반드시 출전하고,
+       모자란 자리는 그 경기에 안 뛰는 팀에서 차출해 채운다.
+       ============================================================ */
+    var PAIRS = [[0, 1, 2], [1, 2, 0], [2, 0, 1]];   /* A vs B(C 차출), B vs C(A), C vs A(B) */
+    var TEAM_NAME = ['A', 'B', 'C'];
+
+    function coreSizes(n, T) {
+      if (n < 2 * T || n > 3 * T) return null;
+      var base = Math.floor(n / 3), rem = n % 3;
+      return [base + (rem > 0 ? 1 : 0), base + (rem > 1 ? 1 : 0), base];
     }
 
-    /* 라운드 = 경기 여러 개. 경기마다 임시 기록을 갱신해 라운드 안에서도 분산되게 */
-    function solveRound(present, nGames) {
-      var sc = snapshot(present.map(function (p) { return p.name; }));
-      var games = [], g, i;
-      for (i = 0; i < nGames; i++) {
-        g = solveGame(present, sc);
-        if (!g) return null;
-        games.push(g);
-        g.teams.forEach(function (T) {
-          T.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; });
+    /* 코어 인원이 한 팀 안에 전부 들어갈 수 있는지 (서로 다른 자리로 매칭되는지).
+       무리한 분할을 탐색 전에 걸러내 속도를 크게 줄인다. */
+    function fitsTemplate(members, tpl) {
+      var ms = members.slice().sort(function (a, b) { return a.pos.length - b.pos.length; });
+      var slots = tpl.slots, used = new Array(slots.length);
+      function bt(i) {
+        if (i === ms.length) return true;
+        for (var k = 0; k < slots.length; k++) {
+          if (used[k] || ms[i].pos.indexOf(slots[k]) < 0) continue;
+          used[k] = 1;
+          if (bt(i + 1)) return true;
+          used[k] = 0;
+        }
+        return false;
+      }
+      return bt(0);
+    }
+    function coreFits(core, T) {
+      var opts = tplsOfSize(T), i;
+      for (i = 0; i < opts.length; i++) if (fitsTemplate(core, opts[i])) return true;
+      return false;
+    }
+
+    /* 포지션 선택지가 적은 사람부터 세 코어에 고루 뿌린다 */
+    function makeCores(present, szs) {
+      var byFlex = present.slice().sort(function (a, b) {
+        return (a.pos.length - b.pos.length) || (Math.random() - .5);
+      });
+      var cores = [[], [], []], i, k, order;
+      for (i = 0; i < byFlex.length; i++) {
+        order = [0, 1, 2].filter(function (c) { return cores[c].length < szs[c]; });
+        order.sort(function (a, b) {
+          return (cores[a].length - cores[b].length) || (Math.random() - .5);
         });
+        if (!order.length) return null;
+        k = order[0];
+        cores[k].push(byFlex[i]);
+        byFlex[i].core = k;
+      }
+      return cores;
+    }
+
+    function solveGameABC(present, sc, T, gi, tries) {
+      var pr = PAIRS[gi % 3], X = pr[0], Y = pr[1], Z = pr[2];
+      var must = [{}, {}];
+      present.forEach(function (p) {
+        if (p.core === X) must[0][p.name] = 1;
+        if (p.core === Y) must[1][p.name] = 1;
+      });
+      var opts = tplsOfSize(T), best = null, i, as, r;
+      for (i = 0; i < opts.length && !best; i++) {
+        for (var j = 0; j < opts.length && !best; j++) {
+          as = search(present, sc, mkSlots(opts[i], opts[j], [X, Z], [Y, Z]), must, 6000);
+          if (as) best = finish(present, sc, as, null, [TEAM_NAME[X], TEAM_NAME[Y]]);
+        }
+      }
+      if (!best) return null;
+      for (i = 0; i < (tries || 40); i++) {
+        var a = opts[(Math.random() * opts.length) | 0], b = opts[(Math.random() * opts.length) | 0];
+        as = search(present, sc, mkSlots(a, b, [X, Z], [Y, Z]), must, 3000);
+        if (!as) continue;
+        r = finish(present, sc, as, null, [TEAM_NAME[X], TEAM_NAME[Y]]);
+        if (r.cost < best.cost) best = r;
+      }
+      return best;
+    }
+
+    function runRoundABC(present, nG, T, quality) {
+      var szs = coreSizes(present.length, T);
+      if (!szs) return null;
+      var cs = makeCores(present, szs);
+      if (!cs) return null;
+      if (!coreFits(cs[0], T) || !coreFits(cs[1], T) || !coreFits(cs[2], T)) return null;
+      var sc = snapshot(present.map(function (p) { return p.name; })), games = [], i, g;
+      for (i = 0; i < nG; i++) {
+        g = solveGameABC(present, sc, T, i, quality ? 20 : 0);
+        if (!g) return null;
+        g.cores = [0, 1, 2].map(function (c) {
+          return present.filter(function (p) { return p.core === c; }).map(function (p) { return p.name; });
+        });
+        games.push(g);
+        g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; }); });
         g.bench.forEach(function (n) { sc[n].bench++; });
       }
       return games;
     }
 
+    function solveRoundABC(present, nG) {
+      var szList = sizes().filter(function (T) { return coreSizes(present.length, T); });
+      if (!szList.length) return null;
+      var found = null, T, i;
+      for (i = 0; i < 80 && !found; i++) {
+        T = szList[(Math.random() * szList.length) | 0];
+        found = runRoundABC(present, nG, T, false);
+        if (found) found.T = T;
+      }
+      if (!found) return null;
+      var bestT = found.T, best = found, bestCost = cost(found), k, r;
+      for (k = 0; k < 6; k++) {
+        r = runRoundABC(present, nG, bestT, true);
+        if (r && cost(r) < bestCost) { best = r; bestCost = cost(r); }
+      }
+      return best;
+      function cost(gs) { var c = 0; gs.forEach(function (g) { c += g.cost; }); return c; }
+    }
+
+    function solveRoundFree(present, nG) {
+      var sc = snapshot(present.map(function (p) { return p.name; })), games = [], g, i;
+      for (i = 0; i < nG; i++) {
+        g = solveGameFree(present, sc);
+        if (!g) return null;
+        games.push(g);
+        g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; }); });
+        g.bench.forEach(function (n) { sc[n].bench++; });
+      }
+      return games;
+    }
+
+    function solveRound(present, nG) {
+      return mode === 'abc' ? solveRoundABC(present, nG) : solveRoundFree(present, nG);
+    }
+
+    /* ============================================================
+       안 되는 이유 진단
+       ============================================================ */
+    function maxSlotFor(P) {
+      var m = 0;
+      tpls().forEach(function (t) {
+        var c = t.slots.filter(function (x) { return x === P; }).length;
+        if (c > m) m = c;
+      });
+      return m * 2;
+    }
+    function minSlotFor(P) {
+      var m = 99;
+      tpls().forEach(function (t) {
+        var c = t.slots.filter(function (x) { return x === P; }).length;
+        if (c < m) m = c;
+      });
+      return m * 2;
+    }
+    function minCourt() { return sizes()[0] * 2; }
+
+    function quickInfeasible(present) {
+      var n = present.length, mc = minCourt(), i, P, only, able;
+      if (n < mc) return true;
+      var bench = n - mc;
+      for (i = 0; i < POS.length; i++) {
+        P = POS[i];
+        only = present.filter(function (q) { return q.pos.length === 1 && q.pos[0] === P; }).length;
+        if (only > maxSlotFor(P) + bench) return true;
+      }
+      for (i = 0; i < POS.length; i++) {
+        P = POS[i];
+        if (minSlotFor(P) === 0) continue;
+        able = present.filter(function (q) { return q.pos.indexOf(P) >= 0; }).length;
+        if (able < minSlotFor(P)) return true;
+      }
+      if (mode === 'abc' && !sizes().filter(function (T) { return coreSizes(n, T); }).length) return true;
+      return false;
+    }
+
+    function diagnose(present) {
+      var n = present.length, mc = minCourt(), msgs = [], i, P, only, able;
+      if (n < mc) return '지금 설정으로는 한 경기에 <b>' + mc + '명</b>이 필요합니다. 참석 ' + n +
+        '명 — <b>' + (mc - n) + '명 부족</b>합니다.';
+      var bench = n - mc;
+      for (i = 0; i < POS.length; i++) {
+        P = POS[i];
+        only = present.filter(function (q) { return q.pos.length === 1 && q.pos[0] === P; });
+        if (only.length > maxSlotFor(P) + bench) {
+          msgs.push('<b>' + P + '(' + POS_KO[P] + ') 전용이 ' + only.length + '명</b>(' +
+            only.map(function (q) { return q.name; }).join(' · ') + ')인데, 코트에 ' + P + ' 자리는 최대 ' +
+            maxSlotFor(P) + '개이고 대기는 ' + bench + '명뿐입니다.');
+        }
+        if (minSlotFor(P) > 0) {
+          able = present.filter(function (q) { return q.pos.indexOf(P) >= 0; }).length;
+          if (able < minSlotFor(P)) msgs.push('<b>' + P + '(' + POS_KO[P] + ')</b>를 볼 수 있는 사람이 ' +
+            able + '명뿐입니다. 한 경기에 최소 ' + minSlotFor(P) + '명이 필요합니다.');
+        }
+      }
+      if (mode === 'abc') {
+        var fit = sizes().filter(function (T) { return coreSizes(n, T); });
+        if (!fit.length) msgs.push('A · B · C 모드는 팀 인원의 <b>2배 이상 3배 이하</b>일 때만 됩니다. ' +
+          sizes().map(function (T) { return T + '인 팀이면 ' + (2 * T) + '~' + (3 * T) + '명'; }).join(', ') +
+          ' — 지금 ' + n + '명입니다. <b>자유 편성</b>으로 바꾸거나 팀 구성을 조정해 주세요.');
+      }
+      if (!msgs.length) msgs.push('포지션 조합이 맞아떨어지지 않습니다. 가능 포지션을 늘리거나 팀 구성 · 인원을 조정해 주세요.');
+      return msgs.join('<br>');
+    }
+
     /* ============================================================
        코트 렌더 — 세터가 존1(우후위)에서 서브 시작
+       7인 팀은 리베로를 코트 밖에 따로 표시(후위 센터와 교대)
        ============================================================ */
     function toZones(lineup) {
-      var z = {}, ohs = [2, 5], mbs = [3, 6], i, p;
+      var z = {}, ohs = [2, 5], mbs = [3, 6], libero = null, i, p;
+      var nMB = lineup.filter(function (x) { return x.p === 'MB'; }).length;
+      var nLi = lineup.filter(function (x) { return x.p === 'Li'; }).length;
+      var split = (nMB === 2 && nLi === 1);
       for (i = 0; i < lineup.length; i++) {
         p = lineup[i];
         if (p.p === 'S') z[1] = p;
         else if (p.p === 'OP') z[4] = p;
         else if (p.p === 'OH') z[ohs.shift()] = p;
         else if (p.p === 'MB') z[mbs.shift()] = p;
-        else if (p.p === 'Li') z[6] = p;
+        else if (p.p === 'Li') { if (split) libero = p; else z[6] = p; }
       }
-      return z;
+      return { z: z, libero: libero };
     }
     var TOP_ROWS = [[1, 6, 5], [2, 3, 4]], BOT_ROWS = [[4, 3, 2], [5, 6, 1]];
 
-    function sideHTML(team, lineup, isTop) {
-      var z = toZones(lineup), rows = isTop ? TOP_ROWS : BOT_ROWS, html = '', r, i, zn, pl;
+    function sideHTML(team, lineup, isTop, coreNames) {
+      var r = toZones(lineup), rows = isTop ? TOP_ROWS : BOT_ROWS, html = '', i, k, zn, pl;
       var label = '<div class="team-label"><span class="tname">TEAM ' + team + '</span><span>' +
         lineup.length + '명</span></div>';
-      for (r = 0; r < rows.length; r++) for (i = 0; i < rows[r].length; i++) {
-        zn = rows[r][i]; pl = z[zn];
+      for (i = 0; i < rows.length; i++) for (k = 0; k < rows[i].length; k++) {
+        zn = rows[i][k]; pl = r.z[zn];
         html += '<div class="cell" data-p="' + pl.n + '"><span class="zone">존 ' + zn + '</span>' +
-          '<span class="name">' + pl.n + '</span>' +
-          '<span><span class="pos ' + pl.p + '">' + pl.p + '</span></span></div>';
+          '<span class="name">' + pl.n + (coreNames && coreNames.indexOf(pl.n) < 0 ? '<span class="core">차출</span>' : '') +
+          '</span><span><span class="pos ' + pl.p + '">' + pl.p + '</span></span></div>';
+      }
+      if (r.libero) {
+        html += '<div class="libero" data-p="' + r.libero.n + '"><span class="pos Li">Li</span>' +
+          '<span class="nm">' + r.libero.n +
+          (coreNames && coreNames.indexOf(r.libero.n) < 0 ? '<span class="core">차출</span>' : '') + '</span>' +
+          '<span>후위 센터와 교대</span></div>';
       }
       return '<div class="side ' + (isTop ? 'top' : 'bottom') + '">' +
         (isTop ? label + html : html + label) + '</div>';
@@ -831,40 +1121,64 @@
       var bench = g.bench.length
         ? g.bench.map(function (n) { return '<span class="chip" data-p="' + n + '">' + n + '</span>'; }).join('')
         : '<span class="chip" style="opacity:.6">없음 · 전원 출전</span>';
+      var cores = null;
+      if (g.cores) cores = [g.cores[TEAM_NAME.indexOf(g.names[0])], g.cores[TEAM_NAME.indexOf(g.names[1])]];
       return '<div class="game"><div class="game-title"><span class="badge-no">' + (idx + 1) +
-        '경기</span>A vs B</div><div class="court">' +
-        sideHTML('A', g.teams[0], true) + '<div class="net"></div>' + sideHTML('B', g.teams[1], false) +
+        '경기</span>' + g.names[0] + ' vs ' + g.names[1] + '</div><div class="court">' +
+        sideHTML(g.names[0], g.teams[0], true, cores && cores[0]) + '<div class="net"></div>' +
+        sideHTML(g.names[1], g.teams[1], false, cores && cores[1]) +
         '</div><div class="bench"><span>대기</span>' + bench + '</div></div>';
     }
 
     /* ============================================================
        화면 1 — 배치
        ============================================================ */
-    var current = null;      /* 방금 뽑은 라운드 */
-    var nGames = load('gvt.ngames.v1', null) || 3;
-
+    var current = null;
     function here() { return players.filter(function (p) { return p.here; }); }
 
     function renderPlay() {
-      var h = here(), n = h.length;
-      var s = '<div class="card"><h3>이번 라운드<span class="n">' + round + 'R</span></h3>' +
-        '<div class="row" style="margin-bottom:11px">' +
-        '<span class="chip" style="cursor:default">참석 <b>' + n + '명</b></span>' +
-        '<span class="chip" style="cursor:default">경기당 대기 <b>' + Math.max(0, n - COURT) + '명</b></span>' +
+      var h = here(), n = h.length, szs = sizes();
+      var lo = n - szs[szs.length - 1] * 2, hi = n - szs[0] * 2;
+      var benchTxt = (lo === hi) ? Math.max(0, hi) + '명' :
+        Math.max(0, lo) + '~' + Math.max(0, hi) + '명';
+
+      var s = '<div class="card"><h3>설정</h3>' +
+        '<div class="seg" id="mode">' +
+        '<button type="button" data-m="abc" aria-pressed="' + (mode === 'abc') + '">A · B · C 고정<small>차출로 채우기</small></button>' +
+        '<button type="button" data-m="free" aria-pressed="' + (mode === 'free') + '">자유 편성<small>매 경기 새로</small></button>' +
+        '</div>' +
+        '<p class="muted" style="margin:11px 0 7px"><b>팀 구성</b> (여러 개 고르면 그중에서 골라 씁니다)</p>' +
+        '<div class="tpl" id="tpl">' + TEMPLATES.map(function (t) {
+          return '<button type="button" data-id="' + t.id + '" aria-pressed="' + (allowed.indexOf(t.id) >= 0) + '">' +
+            t.label + '<small>' + t.size + '인 · ' + t.desc + '</small></button>';
+        }).join('') + '</div>' +
+        '<div class="row" style="margin-top:11px">' +
         '<label class="chip" style="cursor:default">경기 수 <select id="ng" style="border:0;padding:0 2px;font-size:12.5px;font-weight:700">' +
-        [1, 2, 3, 4].map(function (k) {
+        [1, 2, 3, 4, 5, 6].map(function (k) {
           return '<option value="' + k + '"' + (k === nGames ? ' selected' : '') + '>' + k + '</option>';
-        }).join('') + '</select></label></div>' +
+        }).join('') + '</select></label>' +
+        '<span class="chip" style="cursor:default">참석 <b>' + n + '명</b></span>' +
+        '<span class="chip" style="cursor:default">경기당 대기 <b>' + benchTxt + '</b></span>' +
+        '</div></div>';
+
+      s += '<div class="card"><h3>이번 라운드<span class="n">' + round + 'R</span></h3>' +
         '<button class="btn pri" id="go">🎲 ' + round + 'R 배치 뽑기</button>' +
         '<p class="muted" style="margin:10px 0 0">명단 탭에서 <b>온 사람만 체크</b>하고 뽑으세요. ' +
         '마음에 안 들면 다시 뽑으면 됩니다.</p></div>';
 
-      if (n < COURT) {
-        s += '<div class="msg err">' + diagnose(h) + '</div>';
-      }
+      if (quickInfeasible(h)) s += '<div class="msg err">' + diagnose(h) + '</div>';
+
       if (current) {
-        s += '<div class="msg ok">✓ ' + current.round + 'R 배치를 뽑았습니다 — ' +
-          '모든 자리가 가능 포지션 안이고, 팀마다 세터 1명 · 대각 배치를 만족합니다.</div>';
+        var m = current.mode === 'abc'
+          ? 'A · B · C 코어를 정하고 안 뛰는 팀에서 차출해 채웠습니다. <b>차출</b> 표시가 붙은 사람은 원래 다른 팀입니다.'
+          : '매 경기 두 팀을 새로 짰습니다.';
+        s += '<div class="msg ok">✓ ' + current.round + 'R 배치 완료 — ' + m +
+          ' 모든 자리가 가능 포지션 안이고, 팀마다 세터 1명 · 대각 배치를 만족합니다.</div>';
+        if (current.mode === 'abc' && current.games[0].cores) {
+          s += '<div class="msg info"><b>이번 라운드 코어</b><br>' + current.games[0].cores.map(function (c, i) {
+            return TEAM_NAME[i] + ' — ' + c.join(' · ');
+          }).join('<br>') + '</div>';
+        }
         s += current.games.map(gameHTML).join('');
         s += '<div class="card"><div class="row">' +
           '<button class="btn ghost" id="again" style="flex:1">🎲 다시 뽑기</button>' +
@@ -874,8 +1188,18 @@
       }
       document.getElementById('p0').innerHTML = s;
 
-      var ng = document.getElementById('ng');
-      if (ng) ng.onchange = function () { nGames = +this.value; save('gvt.ngames.v1', nGames); };
+      document.getElementById('ng').onchange = function () { nGames = +this.value; persist(); renderPlay(); };
+      document.getElementById('mode').onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        mode = b.getAttribute('data-m'); current = null; persist(); renderPlay();
+      };
+      document.getElementById('tpl').onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        var id = b.getAttribute('data-id'), k = allowed.indexOf(id);
+        if (k >= 0) { if (allowed.length === 1) return; allowed.splice(k, 1); }
+        else allowed.push(id);
+        current = null; persist(); renderPlay();
+      };
       document.getElementById('go').onclick = draw;
       if (document.getElementById('again')) document.getElementById('again').onclick = draw;
       if (document.getElementById('fix')) document.getElementById('fix').onclick = commit;
@@ -884,18 +1208,18 @@
 
     function draw() {
       var h = here();
-      if (h.length < COURT) { renderPlay(); return; }
-      var btn = document.getElementById('go'); if (btn) { btn.disabled = true; btn.textContent = '뽑는 중…'; }
+      var btn = document.getElementById('go');
+      if (btn) { btn.disabled = true; btn.textContent = '뽑는 중…'; }
       setTimeout(function () {
-        var games = solveRound(h, nGames);
+        var games = quickInfeasible(h) ? null : solveRound(h, nGames);
         if (!games) {
           current = null;
           renderPlay();
           document.getElementById('p0').insertAdjacentHTML('beforeend',
-            '<div class="msg err"><b>이 인원으로는 6:6 배치를 만들 수 없습니다.</b><br>' + diagnose(h) + '</div>');
+            '<div class="msg err"><b>이 인원 · 설정으로는 배치를 만들 수 없습니다.</b><br>' + diagnose(h) + '</div>');
           return;
         }
-        current = { round: round, games: games, names: h.map(function (p) { return p.name; }) };
+        current = { round: round, games: games, mode: mode };
         renderPlay();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 10);
@@ -904,14 +1228,10 @@
     function commit() {
       if (!current) return;
       current.games.forEach(function (g) {
-        g.teams.forEach(function (T) {
-          T.forEach(function (x) { var s = st(x.n); s.play++; s.pos[x.p]++; });
-        });
+        g.teams.forEach(function (t) { t.forEach(function (x) { var s = st(x.n); s.play++; s.pos[x.p]++; }); });
         g.bench.forEach(function (n) { st(n).bench++; });
       });
-      round++;
-      current = null;
-      persist();
+      round++; current = null; persist();
       renderPlay(); renderStat();
     }
 
@@ -919,7 +1239,6 @@
        화면 2 — 명단
        ============================================================ */
     var newPos = [];
-
     function renderRoster() {
       var rows = players.map(function (p, i) {
         return '<div class="prow' + (p.here ? '' : ' off') + '">' +
@@ -942,7 +1261,7 @@
           return '<button type="button" data-act="npos" data-p="' + P + '" aria-pressed="' +
             (newPos.indexOf(P) >= 0 ? 'true' : 'false') + '">' + P + ' ' + POS_KO[P] + '</button>';
         }).join('') + '</div>' +
-        '<p class="muted" style="margin:10px 0 0">가능 포지션을 고르고 추가하세요. 포지션을 안 고르면 전 포지션으로 등록됩니다.</p></div>' +
+        '<p class="muted" style="margin:10px 0 0">가능 포지션을 고르고 추가하세요. 안 고르면 전 포지션으로 등록됩니다.</p></div>' +
         '<div class="card"><h3>일괄</h3><div class="row">' +
         '<button class="btn ghost" id="allon">전원 참석</button>' +
         '<button class="btn ghost" id="alloff">전원 해제</button>' +
@@ -954,21 +1273,21 @@
         if (!v) return;
         if (players.some(function (p) { return p.name === v; })) { alert('같은 이름이 이미 있습니다.'); return; }
         players.push({ name: v, pos: newPos.length ? newPos.slice() : POS.slice(), here: true });
-        newPos = []; persist(); renderRoster(); renderPlay();
+        newPos = []; current = null; persist(); renderRoster(); renderPlay();
       };
       document.getElementById('nn').onkeydown = function (e) {
         if (e.key === 'Enter') document.getElementById('add').click();
       };
       document.getElementById('allon').onclick = function () {
-        players.forEach(function (p) { p.here = true; }); persist(); renderRoster(); renderPlay();
+        players.forEach(function (p) { p.here = true; }); current = null; persist(); renderRoster(); renderPlay();
       };
       document.getElementById('alloff').onclick = function () {
-        players.forEach(function (p) { p.here = false; }); persist(); renderRoster(); renderPlay();
+        players.forEach(function (p) { p.here = false; }); current = null; persist(); renderRoster(); renderPlay();
       };
       document.getElementById('reset').onclick = function () {
         if (!confirm('명단을 기본 14명으로 되돌립니다. 계속할까요?')) return;
         players = DEFAULT_PLAYERS.map(function (d) { return { name: d[0], pos: d[1], here: true }; });
-        persist(); renderRoster(); renderPlay();
+        current = null; persist(); renderRoster(); renderPlay();
       };
       applyHL();
     }
@@ -976,7 +1295,7 @@
     document.getElementById('p1').addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]'); if (!b) return;
       var act = b.getAttribute('data-act'), i = +b.getAttribute('data-i'), P = b.getAttribute('data-p');
-      if (act === 'here') { players[i].here = !players[i].here; }
+      if (act === 'here') players[i].here = !players[i].here;
       else if (act === 'pos') {
         var k = players[i].pos.indexOf(P);
         if (k >= 0) { if (players[i].pos.length === 1) return; players[i].pos.splice(k, 1); }
@@ -993,15 +1312,14 @@
         return;
       }
       else return;
-      persist(); renderRoster(); renderPlay();
+      current = null; persist(); renderRoster(); renderPlay();
     });
 
     /* ============================================================
        화면 3 — 기록
        ============================================================ */
     function renderStat() {
-      var names = players.map(function (p) { return p.name; })
-        .filter(function (n) { return stat[n]; });
+      var names = players.map(function (p) { return p.name; }).filter(function (n) { return stat[n]; });
       var body = names.map(function (n) {
         var s = st(n);
         return '<tr data-p="' + n + '"><td class="nm">' + n + '</td><td>' + s.play + '</td><td>' + s.bench + '</td>' +
@@ -1023,8 +1341,7 @@
 
       document.getElementById('rst').onclick = function () {
         if (!confirm('누적 기록을 지우고 1R부터 다시 시작합니다.')) return;
-        stat = {}; round = 1; current = null; persist();
-        renderStat(); renderPlay();
+        stat = {}; round = 1; current = null; persist(); renderStat(); renderPlay();
       };
       applyHL();
     }
