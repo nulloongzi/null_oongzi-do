@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GVT 배치 도구</title>
+  <meta name="description" content="명단과 포지션만 넣으면 라운드별 6:6 배치를 즉석에서 뽑는 도구">
+  <meta name="robots" content="noindex">
+  <style>
+    :root {
+      --white: #fff;
+      --nurungji-yellow: #fac710;
+      --nurungji-brown: #8d6e63;
+      --nurungji-dark: #4e342e;
+      --nurungji-bg: #fff8e1;
+      --nurungji-light: #fffde7;
+      --urgent-color: #ff7043;
+      --shadow: 0 8px 32px rgba(93, 64, 55, .15);
+      --shadow-sm: 0 4px 12px rgba(93, 64, 55, .12);
+      --line: rgba(141, 110, 99, .22);
+      --pos-s: #fac710;
+      --pos-s-fg: #4e342e;
+      --pos-op: #ff7043;
+      --pos-oh: #8d6e63;
+      --pos-mb: #4e342e;
+      --pos-li: #00897b;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto,
+        "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--nurungji-bg);
+      color: var(--nurungji-dark);
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .wrap {
+      max-width: 940px;
+      margin: 0 auto;
+      padding: 18px 14px 70px;
+    }
+
+    header.hero {
+      background: linear-gradient(135deg, #fffdf3, var(--nurungji-light));
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 18px 18px 16px;
+    }
+
+    .kicker {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: var(--nurungji-brown);
+    }
+
+    h1 {
+      margin: 6px 0 4px;
+      font-size: 23px;
+      letter-spacing: -.02em;
+    }
+
+    .sub {
+      font-size: 13.5px;
+      color: var(--nurungji-brown);
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    /* tabs */
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 5px;
+      margin: 16px 0 14px;
+      padding: 7px;
+      background: rgba(255, 248, 225, .93);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tab {
+      flex: 1;
+      border: 0;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 10px 6px;
+      background: transparent;
+      color: var(--nurungji-brown);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .tab[aria-selected="true"] {
+      background: var(--nurungji-yellow);
+      color: var(--nurungji-dark);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow-sm);
+      padding: 15px 15px 13px;
+      margin-bottom: 13px;
+    }
+
+    .card h3 {
+      margin: 0 0 11px;
+      font-size: 14.5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card h3 span.n {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--nurungji-brown);
+    }
+
+    button.btn {
+      border: 0;
+      cursor: pointer;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14.5px;
+      font-weight: 800;
+      background: var(--nurungji-dark);
+      color: var(--white);
+      box-shadow: var(--shadow-sm);
+    }
+
+    button.btn.pri {
+      background: var(--nurungji-yellow);
+      color: var(--nurungji-dark);
+      width: 100%;
+      padding: 15px;
+      font-size: 16px;
+    }
+
+    button.btn.ghost {
+      background: var(--white);
+      color: var(--nurungji-dark);
+      border: 1px solid var(--line);
+    }
+
+    button.btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    input[type=text],
+    select {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 11px 12px;
+      font-size: 15px;
+      background: var(--white);
+      color: var(--nurungji-dark);
+      outline: none;
+      min-width: 0;
+    }
+
+    input[type=text]:focus,
+    select:focus {
+      border-color: var(--nurungji-yellow);
+    }
+
+    /* 포지션 토글 */
+    .ptoggle {
+      display: inline-flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .ptoggle button {
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--nurungji-brown);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .ptoggle button[aria-pressed="true"] {
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .ptoggle button[aria-pressed="true"][data-p="S"] {
+      background: var(--pos-s);
+      color: var(--pos-s-fg);
+    }
+
+    .ptoggle button[aria-pressed="true"][data-p="OP"] {
+      background: var(--pos-op);
+    }
+
+    .ptoggle button[aria-pressed="true"][data-p="OH"] {
+      background: var(--pos-oh);
+    }
+
+    .ptoggle button[aria-pressed="true"][data-p="MB"] {
+      background: var(--pos-mb);
+    }
+
+    .ptoggle button[aria-pressed="true"][data-p="Li"] {
+      background: var(--pos-li);
+    }
+
+    /* 명단 행 */
+    .prow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .prow:first-of-type {
+      border-top: 0;
+    }
+
+    .prow .who {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 108px;
+      flex: 0 0 auto;
+    }
+
+    .prow .nm {
+      font-weight: 800;
+      font-size: 14.5px;
+    }
+
+    .prow.off {
+      opacity: .42;
+    }
+
+    .chk {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      border: 2px solid var(--line);
+      background: var(--white);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 13px;
+      color: transparent;
+      flex: 0 0 24px;
+      padding: 0;
+    }
+
+    .chk[aria-pressed="true"] {
+      background: var(--nurungji-yellow);
+      border-color: var(--nurungji-yellow);
+      color: var(--nurungji-dark);
+    }
+
+    .del {
+      margin-left: auto;
+      border: 0;
+      background: transparent;
+      color: var(--nurungji-brown);
+      font-size: 16px;
+      cursor: pointer;
+      opacity: .55;
+      padding: 4px 6px;
+    }
+
+    /* 코트 */
+    .game {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow-sm);
+      padding: 15px 13px 13px;
+      margin-bottom: 13px;
+    }
+
+    .game-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14.5px;
+      font-weight: 800;
+      margin-bottom: 11px;
+    }
+
+    .badge-no {
+      background: var(--nurungji-dark);
+      color: var(--nurungji-yellow);
+      border-radius: 8px;
+      font-size: 12px;
+      padding: 3px 8px;
+    }
+
+    .court {
+      display: grid;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .side {
+      border: 2px solid var(--nurungji-brown);
+      background: repeating-linear-gradient(45deg, #fffdf5, #fffdf5 10px, #fffbea 10px, #fffbea 20px);
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .side.top {
+      border-radius: 13px 13px 0 0;
+      border-bottom: 0;
+    }
+
+    .side.bottom {
+      border-radius: 0 0 13px 13px;
+      border-top: 0;
+    }
+
+    .net {
+      height: 15px;
+      background: repeating-linear-gradient(90deg, var(--nurungji-dark) 0 2px, transparent 2px 6px);
+      border-top: 3px solid var(--nurungji-dark);
+      border-bottom: 3px solid var(--nurungji-dark);
+    }
+
+    .team-label {
+      grid-column: 1/-1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--nurungji-brown);
+      padding: 0 2px;
+    }
+
+    .team-label .tname {
+      background: var(--nurungji-dark);
+      color: var(--white);
+      border-radius: 7px;
+      padding: 2px 8px;
+      font-size: 11.5px;
+      letter-spacing: .04em;
+    }
+
+    .cell {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 7px 4px 6px;
+      text-align: center;
+      min-height: 62px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+    }
+
+    .cell .zone {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--nurungji-brown);
+      opacity: .8;
+    }
+
+    .cell .name {
+      font-size: 13.5px;
+      font-weight: 800;
+      word-break: keep-all;
+    }
+
+    .pos {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 1px 7px;
+      color: #fff;
+    }
+
+    .pos.S {
+      background: var(--pos-s);
+      color: var(--pos-s-fg);
+    }
+
+    .pos.OP {
+      background: var(--pos-op);
+    }
+
+    .pos.OH {
+      background: var(--pos-oh);
+    }
+
+    .pos.MB {
+      background: var(--pos-mb);
+    }
+
+    .pos.Li {
+      background: var(--pos-li);
+    }
+
+    .cell.hl {
+      outline: 3px solid var(--nurungji-yellow);
+      outline-offset: 1px;
+      background: #fffbe6;
+    }
+
+    .bench {
+      margin-top: 11px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--nurungji-brown);
+      font-weight: 700;
+    }
+
+    .chip {
+      background: var(--nurungji-bg);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--nurungji-dark);
+      cursor: pointer;
+    }
+
+    .chip.hl {
+      background: var(--nurungji-yellow);
+    }
+
+    .msg {
+      border-radius: 14px;
+      padding: 13px 15px;
+      font-size: 13.5px;
+      line-height: 1.7;
+      margin-bottom: 13px;
+      border: 1px solid;
+    }
+
+    .msg.err {
+      background: #ffebee;
+      border-color: #ef9a9a;
+      color: #8e2020;
+    }
+
+    .msg.ok {
+      background: #e8f5e9;
+      border-color: #a5d6a7;
+      color: #1b5e20;
+    }
+
+    .msg.info {
+      background: var(--nurungji-light);
+      border-color: var(--line);
+      color: var(--nurungji-dark);
+    }
+
+    .msg b {
+      font-weight: 800;
+    }
+
+    .tscroll {
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 420px;
+      font-size: 12.5px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 7px 8px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--nurungji-brown);
+      font-size: 11.5px;
+    }
+
+    td.nm {
+      font-weight: 800;
+    }
+
+    tr.hl td {
+      background: #fffbe6;
+    }
+
+    .muted {
+      color: var(--nurungji-brown);
+      font-size: 12.5px;
+      line-height: 1.7;
+    }
+
+    @media (max-width:420px) {
+      .cell {
+        min-height: 58px;
+      }
+
+      .cell .name {
+        font-size: 12.5px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="kicker">GVT OPEN GYM</div>
+      <h1>배치 도구</h1>
+      <div class="sub">명단과 가능 포지션만 넣으면 라운드 배치를 즉석에서 뽑습니다.<br>
+        온 사람만 체크하고 <b>뽑기</b>를 누르세요.</div>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" type="button" aria-selected="true" data-t="0">배치</button>
+      <button class="tab" type="button" aria-selected="false" data-t="1">명단</button>
+      <button class="tab" type="button" aria-selected="false" data-t="2">기록</button>
+    </div>
+
+    <section id="p0"></section>
+    <section id="p1" style="display:none"></section>
+    <section id="p2" style="display:none"></section>
+  </div>
+
+  <script>
+    /* ============================================================
+       상수
+       ============================================================ */
+    var POS = ['S', 'OP', 'OH', 'MB', 'Li'];
+    var POS_KO = { S: '세터', OP: '라이트', OH: '레프트', MB: '센터', Li: '리베로' };
+    /* 대각 템플릿 — 팀 하나는 이 둘 중 하나여야 한다 */
+    var TEMPLATES = [
+      ['S', 'OP', 'OH', 'OH', 'MB', 'MB'],
+      ['S', 'OP', 'OH', 'OH', 'MB', 'Li']
+    ];
+    var COURT = 12;                 /* 6:6 */
+    var MAX_SLOT = { S: 2, OP: 2, OH: 4, MB: 4, Li: 2 };
+
+    var DEFAULT_PLAYERS = [
+      ['유성원', ['S', 'OP', 'OH', 'MB', 'Li']], ['강홍준', ['S', 'OP', 'OH', 'MB', 'Li']],
+      ['이재영', ['OH', 'OP']], ['김민상', ['OH', 'MB']],
+      ['남석현', ['OP', 'OH', 'MB', 'Li']], ['송승목', ['S', 'OP', 'OH', 'Li']],
+      ['Tim', ['S']], ['우건세', ['OP', 'OH', 'MB']],
+      ['정승호', ['S', 'OP', 'OH', 'Li']], ['김연재', ['S', 'OP']],
+      ['김형준', ['OP']], ['허민혁', ['S']],
+      ['김준우', ['OP', 'MB']], ['Kat', ['Li']]
+    ];
+
+    /* ============================================================
+       저장
+       ============================================================ */
+    var KEY_P = 'gvt.players.v1', KEY_H = 'gvt.stat.v1';
+
+    function load(k, fb) {
+      try {
+        var v = localStorage.getItem(k);
+        return v ? JSON.parse(v) : fb;
+      } catch (e) { return fb; }
+    }
+    function save(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { }
+    }
+
+    var players = load(KEY_P, null) || DEFAULT_PLAYERS.map(function (d) {
+      return { name: d[0], pos: d[1], here: true };
+    });
+    /* stat[name] = {play, bench, pos:{S:0,...}} */
+    var stat = load(KEY_H, null) || {};
+    var round = load('gvt.round.v1', null) || 1;
+
+    function st(n) {
+      if (!stat[n]) stat[n] = { play: 0, bench: 0, pos: { S: 0, OP: 0, OH: 0, MB: 0, Li: 0 } };
+      if (!stat[n].pos) stat[n].pos = { S: 0, OP: 0, OH: 0, MB: 0, Li: 0 };
+      return stat[n];
+    }
+    function persist() {
+      save(KEY_P, players); save(KEY_H, stat); save('gvt.round.v1', round);
+    }
+
+    /* ============================================================
+       배치 엔진
+       ------------------------------------------------------------
+       한 경기 = 12명을 두 팀으로. 각 팀은 대각 템플릿을 만족해야 한다.
+         1S + 1OP + 2OH + 2MB   또는   1S + 1OP + 2OH + 1MB + 1Li
+       남는 인원은 대기.
+
+       탐색: 남은 후보가 가장 적은 자리부터 채우는 백트래킹(MRV).
+       후보 순서는 "공정성 비용 + 난수"로 정렬해 매번 다른 해가 나오게 하고,
+       여러 번 재시도해 그중 비용이 가장 낮은 해를 고른다.
+       ============================================================ */
+
+    /* 이 사람을 이 포지션에 넣는 비용 (낮을수록 좋음)
+       nOpt = 그 사람이 소화 가능한 포지션 수.
+       포지션 반복 벌점은 '고를 수 있는 사람'에게만 매긴다.
+       단일 포지션 인원(세터 전용 등)에게 반복 벌점을 주면
+       그 사람만 계속 대기로 밀려나기 때문. */
+    function slotCost(name, pos, sc, nOpt) {
+      var s = sc[name];
+      var c = s.play * 1.5;                  // 출전 수 균등이 최우선
+      c -= (POS.length - nOpt) * 1.0;        // 자리가 정해진 사람부터 그 자리에 배치
+      if (nOpt > 1) {
+        c += (s.pos[pos] || 0) * 1.2;        // 같은 포지션 반복 억제
+        if (pos === 'MB') c += (s.pos.MB || 0) * 1.2;  // 미들 쏠림 추가 억제
+        if (!s.pos[pos]) c -= 1.5;           // 아직 안 서본 포지션이면 가산점
+      }
+      return c;
+    }
+
+    function benchCost(name, sc, avgPlay) {
+      var s = sc[name];
+      /* 적게 뛴 사람을 쉬게 하면 비용↑, 이미 많이 쉰 사람을 또 쉬게 해도 비용↑ */
+      return (avgPlay - s.play) * 3.5 + s.bench * 4.0;
+    }
+
+    function snapshot(names) {
+      var o = {};
+      names.forEach(function (n) {
+        var s = st(n);
+        o[n] = { play: s.play, bench: s.bench, pos: { S: s.pos.S, OP: s.pos.OP, OH: s.pos.OH, MB: s.pos.MB, Li: s.pos.Li } };
+      });
+      return o;
+    }
+
+    function attempt(present, sc, tplA, tplB, budget) {
+      var slots = [], i;
+      for (i = 0; i < 6; i++) slots.push({ team: 0, pos: tplA[i] });
+      for (i = 0; i < 6; i++) slots.push({ team: 1, pos: tplB[i] });
+
+      var used = {}, assign = new Array(12), nodes = 0, cap = budget || 3000;
+
+      function bt(depth) {
+        if (depth === 12) return true;
+        if (++nodes > cap) return false;
+        /* MRV — 후보가 가장 적은 빈 자리 */
+        var bi = -1, bc = null, k, cand;
+        for (k = 0; k < 12; k++) {
+          if (assign[k]) continue;
+          cand = [];
+          for (i = 0; i < present.length; i++) {
+            var p = present[i];
+            if (!used[p.name] && p.pos.indexOf(slots[k].pos) >= 0) cand.push(p);
+          }
+          if (bc === null || cand.length < bc.length) { bi = k; bc = cand; }
+          if (cand.length === 0) break;
+        }
+        if (bc === null || bc.length === 0) return false;
+        bc = bc.slice().sort(function (a, b) {
+          return (slotCost(a.name, slots[bi].pos, sc, a.pos.length) + Math.random() * 1.6) -
+            (slotCost(b.name, slots[bi].pos, sc, b.pos.length) + Math.random() * 1.6);
+        });
+        for (k = 0; k < bc.length; k++) {
+          used[bc[k].name] = 1;
+          assign[bi] = { n: bc[k].name, p: slots[bi].pos, team: slots[bi].team };
+          if (bt(depth + 1)) return true;
+          used[bc[k].name] = 0;
+          assign[bi] = null;
+        }
+        return false;
+      }
+
+      if (!bt(0)) return null;
+
+      var t = [[], []], cost = 0, capOf = {};
+      present.forEach(function (q) { capOf[q.name] = q.pos.length; });
+      assign.forEach(function (a) {
+        t[a.team].push({ n: a.n, p: a.p });
+        cost += slotCost(a.n, a.p, sc, capOf[a.n]);
+      });
+      var bench = present.filter(function (p) { return !used[p.name]; })
+        .map(function (p) { return p.name; });
+      var avg = 0;
+      present.forEach(function (p) { avg += sc[p.name].play; });
+      avg = avg / present.length;
+      bench.forEach(function (n) { cost += benchCost(n, sc, avg); });
+      return { teams: t, bench: bench, cost: cost };
+    }
+
+    /* 구조적으로 불가능한지 먼저 싸게 판정 — 탐색을 아예 돌리지 않는다 */
+    function quickInfeasible(present) {
+      var n = present.length;
+      if (n < COURT) return true;
+      var bench = n - COURT, i, P, only, able;
+      for (i = 0; i < POS.length; i++) {
+        P = POS[i];
+        only = present.filter(function (q) { return q.pos.length === 1 && q.pos[0] === P; }).length;
+        if (only > MAX_SLOT[P] + bench) return true;
+      }
+      var need = { S: 2, OP: 2, OH: 4, MB: 2 };
+      for (P in need) {
+        able = present.filter(function (q) { return q.pos.indexOf(P) >= 0; }).length;
+        if (able < need[P]) return true;
+      }
+      return false;
+    }
+
+    function solveGame(present, sc, tries) {
+      if (quickInfeasible(present)) return null;
+
+      /* 1단계 — 해가 존재하는지 확인 (템플릿 조합 4가지, 넉넉한 예산) */
+      var combos = [[0, 0], [0, 1], [1, 0], [1, 1]], probe = null, i, r;
+      for (i = 0; i < combos.length && !probe; i++)
+        probe = attempt(present, sc, TEMPLATES[combos[i][0]], TEMPLATES[combos[i][1]], 20000);
+      if (!probe) return null;
+
+      /* 2단계 — 여러 번 다시 뽑아 가장 고른 해를 고른다 */
+      var best = probe;
+      for (i = 0; i < (tries || 60); i++) {
+        r = attempt(present, sc,
+          TEMPLATES[Math.random() < .5 ? 0 : 1],
+          TEMPLATES[Math.random() < .5 ? 0 : 1], 3000);
+        if (r && r.cost < best.cost) best = r;
+      }
+      return best;
+    }
+
+    /* 안 되는 이유 진단 */
+    function diagnose(present) {
+      var n = present.length;
+      if (n < COURT) return '6:6을 하려면 <b>12명</b>이 필요합니다. 지금 ' + n + '명 — <b>' + (COURT - n) + '명 부족</b>합니다.';
+      var bench = n - COURT, i, p, msgs = [];
+      POS.forEach(function (P) {
+        var only = present.filter(function (q) { return q.pos.length === 1 && q.pos[0] === P; });
+        if (only.length > MAX_SLOT[P] + bench) {
+          msgs.push('<b>' + P + '(' + POS_KO[P] + ') 전용이 ' + only.length + '명</b>(' +
+            only.map(function (q) { return q.name; }).join(' · ') + ')인데, 코트에 ' + P + ' 자리는 최대 ' +
+            MAX_SLOT[P] + '개이고 대기는 ' + bench + '명뿐입니다.');
+        }
+      });
+      /* 포지션별 소화 가능 인원이 최소 필요 수에 못 미치는 경우 */
+      var need = { S: 2, OP: 2, OH: 4, MB: 2 };
+      Object.keys(need).forEach(function (P) {
+        var able = present.filter(function (q) { return q.pos.indexOf(P) >= 0; }).length;
+        if (able < need[P]) msgs.push('<b>' + P + '(' + POS_KO[P] + ')</b>를 볼 수 있는 사람이 ' +
+          able + '명뿐입니다. 한 경기에 최소 ' + need[P] + '명이 필요합니다.');
+      });
+      if (!msgs.length) msgs.push('포지션 조합이 맞아떨어지지 않습니다. 가능 포지션을 한 명이라도 늘리거나 인원을 조정해 주세요.');
+      return msgs.join('<br>');
+    }
+
+    /* 라운드 = 경기 여러 개. 경기마다 임시 기록을 갱신해 라운드 안에서도 분산되게 */
+    function solveRound(present, nGames) {
+      var sc = snapshot(present.map(function (p) { return p.name; }));
+      var games = [], g, i;
+      for (i = 0; i < nGames; i++) {
+        g = solveGame(present, sc);
+        if (!g) return null;
+        games.push(g);
+        g.teams.forEach(function (T) {
+          T.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; });
+        });
+        g.bench.forEach(function (n) { sc[n].bench++; });
+      }
+      return games;
+    }
+
+    /* ============================================================
+       코트 렌더 — 세터가 존1(우후위)에서 서브 시작
+       ============================================================ */
+    function toZones(lineup) {
+      var z = {}, ohs = [2, 5], mbs = [3, 6], i, p;
+      for (i = 0; i < lineup.length; i++) {
+        p = lineup[i];
+        if (p.p === 'S') z[1] = p;
+        else if (p.p === 'OP') z[4] = p;
+        else if (p.p === 'OH') z[ohs.shift()] = p;
+        else if (p.p === 'MB') z[mbs.shift()] = p;
+        else if (p.p === 'Li') z[6] = p;
+      }
+      return z;
+    }
+    var TOP_ROWS = [[1, 6, 5], [2, 3, 4]], BOT_ROWS = [[4, 3, 2], [5, 6, 1]];
+
+    function sideHTML(team, lineup, isTop) {
+      var z = toZones(lineup), rows = isTop ? TOP_ROWS : BOT_ROWS, html = '', r, i, zn, pl;
+      var label = '<div class="team-label"><span class="tname">TEAM ' + team + '</span><span>' +
+        lineup.length + '명</span></div>';
+      for (r = 0; r < rows.length; r++) for (i = 0; i < rows[r].length; i++) {
+        zn = rows[r][i]; pl = z[zn];
+        html += '<div class="cell" data-p="' + pl.n + '"><span class="zone">존 ' + zn + '</span>' +
+          '<span class="name">' + pl.n + '</span>' +
+          '<span><span class="pos ' + pl.p + '">' + pl.p + '</span></span></div>';
+      }
+      return '<div class="side ' + (isTop ? 'top' : 'bottom') + '">' +
+        (isTop ? label + html : html + label) + '</div>';
+    }
+
+    function gameHTML(g, idx) {
+      var bench = g.bench.length
+        ? g.bench.map(function (n) { return '<span class="chip" data-p="' + n + '">' + n + '</span>'; }).join('')
+        : '<span class="chip" style="opacity:.6">없음 · 전원 출전</span>';
+      return '<div class="game"><div class="game-title"><span class="badge-no">' + (idx + 1) +
+        '경기</span>A vs B</div><div class="court">' +
+        sideHTML('A', g.teams[0], true) + '<div class="net"></div>' + sideHTML('B', g.teams[1], false) +
+        '</div><div class="bench"><span>대기</span>' + bench + '</div></div>';
+    }
+
+    /* ============================================================
+       화면 1 — 배치
+       ============================================================ */
+    var current = null;      /* 방금 뽑은 라운드 */
+    var nGames = load('gvt.ngames.v1', null) || 3;
+
+    function here() { return players.filter(function (p) { return p.here; }); }
+
+    function renderPlay() {
+      var h = here(), n = h.length;
+      var s = '<div class="card"><h3>이번 라운드<span class="n">' + round + 'R</span></h3>' +
+        '<div class="row" style="margin-bottom:11px">' +
+        '<span class="chip" style="cursor:default">참석 <b>' + n + '명</b></span>' +
+        '<span class="chip" style="cursor:default">경기당 대기 <b>' + Math.max(0, n - COURT) + '명</b></span>' +
+        '<label class="chip" style="cursor:default">경기 수 <select id="ng" style="border:0;padding:0 2px;font-size:12.5px;font-weight:700">' +
+        [1, 2, 3, 4].map(function (k) {
+          return '<option value="' + k + '"' + (k === nGames ? ' selected' : '') + '>' + k + '</option>';
+        }).join('') + '</select></label></div>' +
+        '<button class="btn pri" id="go">🎲 ' + round + 'R 배치 뽑기</button>' +
+        '<p class="muted" style="margin:10px 0 0">명단 탭에서 <b>온 사람만 체크</b>하고 뽑으세요. ' +
+        '마음에 안 들면 다시 뽑으면 됩니다.</p></div>';
+
+      if (n < COURT) {
+        s += '<div class="msg err">' + diagnose(h) + '</div>';
+      }
+      if (current) {
+        s += '<div class="msg ok">✓ ' + current.round + 'R 배치를 뽑았습니다 — ' +
+          '모든 자리가 가능 포지션 안이고, 팀마다 세터 1명 · 대각 배치를 만족합니다.</div>';
+        s += current.games.map(gameHTML).join('');
+        s += '<div class="card"><div class="row">' +
+          '<button class="btn ghost" id="again" style="flex:1">🎲 다시 뽑기</button>' +
+          '<button class="btn" id="fix" style="flex:1">✓ 확정 · 다음 라운드</button>' +
+          '</div><p class="muted" style="margin:10px 0 0">확정하면 기록에 반영돼 다음 라운드에서 ' +
+          '출전 · 대기 · 포지션이 더 고르게 분배됩니다.</p></div>';
+      }
+      document.getElementById('p0').innerHTML = s;
+
+      var ng = document.getElementById('ng');
+      if (ng) ng.onchange = function () { nGames = +this.value; save('gvt.ngames.v1', nGames); };
+      document.getElementById('go').onclick = draw;
+      if (document.getElementById('again')) document.getElementById('again').onclick = draw;
+      if (document.getElementById('fix')) document.getElementById('fix').onclick = commit;
+      applyHL();
+    }
+
+    function draw() {
+      var h = here();
+      if (h.length < COURT) { renderPlay(); return; }
+      var btn = document.getElementById('go'); if (btn) { btn.disabled = true; btn.textContent = '뽑는 중…'; }
+      setTimeout(function () {
+        var games = solveRound(h, nGames);
+        if (!games) {
+          current = null;
+          renderPlay();
+          document.getElementById('p0').insertAdjacentHTML('beforeend',
+            '<div class="msg err"><b>이 인원으로는 6:6 배치를 만들 수 없습니다.</b><br>' + diagnose(h) + '</div>');
+          return;
+        }
+        current = { round: round, games: games, names: h.map(function (p) { return p.name; }) };
+        renderPlay();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 10);
+    }
+
+    function commit() {
+      if (!current) return;
+      current.games.forEach(function (g) {
+        g.teams.forEach(function (T) {
+          T.forEach(function (x) { var s = st(x.n); s.play++; s.pos[x.p]++; });
+        });
+        g.bench.forEach(function (n) { st(n).bench++; });
+      });
+      round++;
+      current = null;
+      persist();
+      renderPlay(); renderStat();
+    }
+
+    /* ============================================================
+       화면 2 — 명단
+       ============================================================ */
+    var newPos = [];
+
+    function renderRoster() {
+      var rows = players.map(function (p, i) {
+        return '<div class="prow' + (p.here ? '' : ' off') + '">' +
+          '<div class="who"><button class="chk" type="button" data-i="' + i + '" data-act="here" aria-pressed="' +
+          (p.here ? 'true' : 'false') + '">✓</button><span class="nm" data-p="' + p.name + '">' + p.name + '</span></div>' +
+          '<div class="ptoggle">' + POS.map(function (P) {
+            return '<button type="button" data-i="' + i + '" data-act="pos" data-p="' + P + '" aria-pressed="' +
+              (p.pos.indexOf(P) >= 0 ? 'true' : 'false') + '">' + P + '</button>';
+          }).join('') + '</div>' +
+          '<button class="del" type="button" data-i="' + i + '" data-act="del">✕</button></div>';
+      }).join('');
+
+      document.getElementById('p1').innerHTML =
+        '<div class="card"><h3>명단<span class="n">참석 ' + here().length + ' / 전체 ' + players.length + '명</span></h3>' +
+        rows + '</div>' +
+        '<div class="card"><h3>사람 추가</h3><div class="row">' +
+        '<input type="text" id="nn" placeholder="이름" style="flex:1;min-width:120px">' +
+        '<button class="btn" id="add">추가</button></div>' +
+        '<div class="ptoggle" style="margin-top:10px">' + POS.map(function (P) {
+          return '<button type="button" data-act="npos" data-p="' + P + '" aria-pressed="' +
+            (newPos.indexOf(P) >= 0 ? 'true' : 'false') + '">' + P + ' ' + POS_KO[P] + '</button>';
+        }).join('') + '</div>' +
+        '<p class="muted" style="margin:10px 0 0">가능 포지션을 고르고 추가하세요. 포지션을 안 고르면 전 포지션으로 등록됩니다.</p></div>' +
+        '<div class="card"><h3>일괄</h3><div class="row">' +
+        '<button class="btn ghost" id="allon">전원 참석</button>' +
+        '<button class="btn ghost" id="alloff">전원 해제</button>' +
+        '<button class="btn ghost" id="reset">기본 명단으로</button>' +
+        '</div></div>';
+
+      document.getElementById('add').onclick = function () {
+        var v = document.getElementById('nn').value.trim();
+        if (!v) return;
+        if (players.some(function (p) { return p.name === v; })) { alert('같은 이름이 이미 있습니다.'); return; }
+        players.push({ name: v, pos: newPos.length ? newPos.slice() : POS.slice(), here: true });
+        newPos = []; persist(); renderRoster(); renderPlay();
+      };
+      document.getElementById('nn').onkeydown = function (e) {
+        if (e.key === 'Enter') document.getElementById('add').click();
+      };
+      document.getElementById('allon').onclick = function () {
+        players.forEach(function (p) { p.here = true; }); persist(); renderRoster(); renderPlay();
+      };
+      document.getElementById('alloff').onclick = function () {
+        players.forEach(function (p) { p.here = false; }); persist(); renderRoster(); renderPlay();
+      };
+      document.getElementById('reset').onclick = function () {
+        if (!confirm('명단을 기본 14명으로 되돌립니다. 계속할까요?')) return;
+        players = DEFAULT_PLAYERS.map(function (d) { return { name: d[0], pos: d[1], here: true }; });
+        persist(); renderRoster(); renderPlay();
+      };
+      applyHL();
+    }
+
+    document.getElementById('p1').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]'); if (!b) return;
+      var act = b.getAttribute('data-act'), i = +b.getAttribute('data-i'), P = b.getAttribute('data-p');
+      if (act === 'here') { players[i].here = !players[i].here; }
+      else if (act === 'pos') {
+        var k = players[i].pos.indexOf(P);
+        if (k >= 0) { if (players[i].pos.length === 1) return; players[i].pos.splice(k, 1); }
+        else players[i].pos.push(P);
+      }
+      else if (act === 'del') {
+        if (!confirm(players[i].name + ' 님을 명단에서 지울까요?')) return;
+        players.splice(i, 1);
+      }
+      else if (act === 'npos') {
+        var j = newPos.indexOf(P);
+        if (j >= 0) newPos.splice(j, 1); else newPos.push(P);
+        b.setAttribute('aria-pressed', j >= 0 ? 'false' : 'true');
+        return;
+      }
+      else return;
+      persist(); renderRoster(); renderPlay();
+    });
+
+    /* ============================================================
+       화면 3 — 기록
+       ============================================================ */
+    function renderStat() {
+      var names = players.map(function (p) { return p.name; })
+        .filter(function (n) { return stat[n]; });
+      var body = names.map(function (n) {
+        var s = st(n);
+        return '<tr data-p="' + n + '"><td class="nm">' + n + '</td><td>' + s.play + '</td><td>' + s.bench + '</td>' +
+          POS.map(function (P) {
+            return '<td>' + (s.pos[P] ? '<span class="pos ' + P + '">' + s.pos[P] + '</span>' : '·') + '</td>';
+          }).join('') + '</tr>';
+      }).join('');
+
+      document.getElementById('p2').innerHTML =
+        '<div class="card"><h3>누적 기록<span class="n">' + (round - 1) + '개 라운드 확정</span></h3>' +
+        (body ? '<div class="tscroll"><table><thead><tr><th>이름</th><th>출전</th><th>대기</th>' +
+          POS.map(function (P) { return '<th>' + P + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + body + '</tbody></table></div>'
+          : '<p class="muted">아직 확정한 라운드가 없습니다. 배치를 뽑고 <b>확정</b>을 누르면 여기에 쌓입니다.</p>') +
+        '<p class="muted" style="margin:10px 0 0">이 기록을 보고 다음 라운드에서 출전 · 대기 · 포지션을 고르게 나눕니다.</p></div>' +
+        '<div class="card"><h3>초기화</h3><div class="row">' +
+        '<button class="btn ghost" id="rst">기록 지우기</button></div>' +
+        '<p class="muted" style="margin:10px 0 0">다음 모임을 시작할 때 눌러주세요. 명단은 남습니다.</p></div>';
+
+      document.getElementById('rst').onclick = function () {
+        if (!confirm('누적 기록을 지우고 1R부터 다시 시작합니다.')) return;
+        stat = {}; round = 1; current = null; persist();
+        renderStat(); renderPlay();
+      };
+      applyHL();
+    }
+
+    /* ============================================================
+       탭 · 이름 강조
+       ============================================================ */
+    var tabs = document.querySelectorAll('.tab');
+    [].forEach.call(tabs, function (b) {
+      b.onclick = function () {
+        var t = +b.getAttribute('data-t');
+        [].forEach.call(tabs, function (x, j) { x.setAttribute('aria-selected', j === t ? 'true' : 'false'); });
+        [0, 1, 2].forEach(function (j) { document.getElementById('p' + j).style.display = j === t ? '' : 'none'; });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+    });
+
+    var picked = null;
+    function applyHL() {
+      [].forEach.call(document.querySelectorAll('[data-p]'), function (el) {
+        if (el.hasAttribute('data-act')) return;
+        el.classList.toggle('hl', !!picked && el.getAttribute('data-p') === picked);
+      });
+    }
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest('[data-p]');
+      if (!el || el.hasAttribute('data-act')) return;
+      var n = el.getAttribute('data-p');
+      picked = (picked === n) ? null : n;
+      applyHL();
+    });
+
+    renderPlay(); renderRoster(); renderStat();
+  </script>
+</body>
+
+</html>
