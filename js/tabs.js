@@ -31,6 +31,7 @@
         // 등록 FAB: 동호회=팀등록 / 픽업=픽업등록 으로 같은 자리를 스왑
         show($('fabClubRegister'), !isPickup);
         show($('fabPickupCreate'), isPickup);
+        show($('fabLineup'), isPickup);
         // 필터(⚙️)는 동호회 전용 → 픽업 모드에서 숨김
         show($('filterBtnIcon'), !isPickup);
 
@@ -54,6 +55,16 @@
         var si = $('topSearchInput');
         if (si) si.setAttribute('placeholder', window.t(isPickup ? 'pk_search_ph' : 'search_ph'));
     }
+
+    // 배치 도구는 지도 SDK를 안 쓰는 독립 페이지다. 오버레이 대신 페이지 이동으로 연다.
+    // 나가기 전에 현재 탭·필터를 URL에 박아둔다. 도구의 뒤로가기가 history.back() 이라
+    // 이 URL 그대로 돌아오고, 착지 복원(app.js openPickupListLink)이 필터를 되살린다.
+    // (안 박아두면 픽업에 들어오자마자 연 경우 URL이 비어 있어 동호회 탭으로 떨어진다)
+    window.openLineupTool = function () {
+        if (window.syncPickupUrl) window.syncPickupUrl();
+        if (window.track) window.track('open_lineup_tool', { tab: window.currentTab });
+        location.href = 'gvt-lineup.html?lang=' + (window.currentLang || 'ko');
+    };
 
     window.switchTab = function (tab) {
         if (tab !== 'clubs' && tab !== 'pickup') return;

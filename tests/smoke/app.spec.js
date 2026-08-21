@@ -6,7 +6,7 @@
 //  · 패리티 DOM: 검색(#fsKeyword)·필터시트·탭·언어토글 등 핵심 UI 존재.
 //  · 인터랙션: 필터시트 열기, KO↔EN 토글이 실제 DOM 텍스트를 바꾸는지.
 'use strict';
-/* global window -- addInitScript 콜백은 브라우저 컨텍스트에서 실행됨 */
+/* global window, history -- addInitScript·evaluate 콜백은 브라우저 컨텍스트에서 실행됨 */
 
 const { test, expect } = require('@playwright/test');
 
@@ -109,6 +109,7 @@ test('픽업 탭: 로그인 전용 FAB 숨김 + 등록 FAB 스왑', async ({ pag
     await expect(page.locator('#fabProfile')).toBeVisible();
     await expect(page.locator('#fabClubRegister')).toBeVisible();
     await expect(page.locator('#fabPickupCreate')).toBeHidden();
+    await expect(page.locator('#fabLineup')).toBeHidden();
 
     await page.locator('#tabPickup').click();
 
@@ -117,6 +118,7 @@ test('픽업 탭: 로그인 전용 FAB 숨김 + 등록 FAB 스왑', async ({ pag
     await expect(page.locator('#fabProfile')).toBeHidden();
     await expect(page.locator('#fabClubRegister')).toBeHidden();
     await expect(page.locator('#fabPickupCreate')).toBeVisible();
+    await expect(page.locator('#fabLineup')).toBeVisible();
     // 지도 조작인 내 위치는 남고, 목록 패널이 뜬다
     await expect(page.locator('#pickupListPanel')).toBeVisible();
     await expect(page.locator('body')).toHaveClass(/pickup-mode/);
@@ -127,7 +129,49 @@ test('픽업 탭: 로그인 전용 FAB 숨김 + 등록 FAB 스왑', async ({ pag
     await expect(page.locator('#fabProfile')).toBeVisible();
     await expect(page.locator('#fabClubRegister')).toBeVisible();
     await expect(page.locator('#fabPickupCreate')).toBeHidden();
+    await expect(page.locator('#fabLineup')).toBeHidden();
     await expect(page.locator('body')).not.toHaveClass(/pickup-mode/);
+});
+
+// 배치 도구는 지도 SDK를 안 쓰는 독립 페이지라 오버레이가 아니라 페이지 이동으로 연다.
+// 필터가 실린 URL 에 착지시켜 두고 왕복하면, 돌아왔을 때 필터가 살아있는지까지 확인된다.
+// 탭은 직접 누른다 — ?tab=pickup 자동 복원은 loadAllClubs().then() 안이라
+// Firebase 가 막힌 환경에서 안 돌고, 여기서 보려는 건 그 복원이 아니라 왕복이다.
+test('배치 도구: 픽업 FAB → 독립 페이지, 돌아오면 필터가 실린 URL 유지', async ({ page }) => {
+    const errors = [];
+    collectPageErrors(page, errors);
+
+    await page.goto('/');
+    await page.locator('#tabPickup').click();
+    // 필터를 켠 상태로 만든다. 클릭 대신 상태를 직접 세우는 이유는 토글 핸들러가
+    // renderPickupMarkers(카카오 SDK)를 먼저 타서 SDK 차단 환경에선 비결정적이기 때문.
+    await page.evaluate(() => { window.pkEnglishOnly = true; });
+    await expect(page.locator('#fabLineup')).toBeVisible();
+
+    await page.locator('#fabLineup').click();
+    await expect.poll(() => page.url()).toContain('gvt-lineup.html');
+    await expect.poll(() => page.url()).toContain('lang='); // 호스트 언어를 물려받는 경로
+
+    // 도구 자체도 페이지 에러 0 (전역 77개짜리 단일 파일이라 회귀가 잘 난다)
+    await expect(page.locator('.hero h1')).toBeVisible();
+    await expect(page.locator('#backBtn')).toBeVisible();
+    await page.waitForTimeout(800);
+    expect(errors, errors.map(String).join('\n')).toEqual([]);
+
+    // 돌아가기 → openLineupTool 이 박아둔 URL 그대로라 탭과 필터가 살아있다
+    await page.locator('#backBtn').click();
+    await expect.poll(() => page.url()).not.toContain('gvt-lineup.html');
+    await expect.poll(() => page.url()).toContain('tab=pickup');
+    await expect.poll(() => page.url()).toContain('english=1');
+});
+
+// 주소창으로 도구를 직접 열면(referrer 없음) 뒤로 갈 곳이 없다 → 픽업 탭 URL 로 폴백.
+test('배치 도구: 직접 진입 시 돌아가기는 픽업 탭으로 폴백', async ({ page }) => {
+    await page.goto('/gvt-lineup.html');
+    await expect(page.locator('#backBtn')).toBeVisible();
+    await page.locator('#backBtn').click();
+    await expect.poll(() => page.url()).toContain('tab=pickup');
+    await expect(page.locator('#tabPickup')).toBeVisible();
 });
 
 // 헤더 과밀 회귀 방지: 필터 3종은 한 줄(.pl-filters), 등록 버튼은 헤더에 없어야 한다.
