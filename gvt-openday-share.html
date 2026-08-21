@@ -757,8 +757,10 @@
     function noticeHTML() {
       return '<div class="round-head"><h2>공지</h2><span class="meta">시작 전에 한 번만 읽어주세요</span></div>' +
 
-        '<div class="card"><h3><span class="ic">🕐</span>타임테이블</h3><dl class="tl">' +
-        '<dt>13:00</dt><dd>집합 · 네트 설치 · 자유 연습</dd>' +
+        '<div class="card"><h3><span class="ic">🕐</span>진행 순서</h3><dl class="tl">' +
+        '<dt>13:00</dt><dd>개별 몸풀기 + 맨투맨</dd>' +
+        '<dt>13:40</dt><dd>공격 연습</dd>' +
+        '<dt>13:50</dt><dd>서브 연습</dd>' +
         '<dt>14:00</dt><dd><b>1R</b> · 14명</dd>' +
         '<dt>14:50</dt><dd><b>2R</b> · 14명</dd>' +
         '<dt>15:40</dt><dd><b>3R</b> · 13명</dd>' +
@@ -766,35 +768,49 @@
         '<dt>17:00</dt><dd>정리 · 퇴장</dd>' +
         '</dl></div>' +
 
+        '<div class="card"><h3><span class="ic">📍</span>장소 · 주차</h3>' +
+        '<p style="font-weight:800;font-size:14.5px;line-height:1.5">서울 광진구 아차산로70길 35<br>' +
+        '<span style="font-weight:700;color:var(--nurungji-brown)">광남초등학교</span></p>' +
+        '<p style="margin-top:8px">정문으로 들어와 <b>정면에 보이는 건물 3층</b>입니다.</p>' +
+        '<ul style="margin-top:8px"><li>주차 — 학교 옆 도로를 따라 주차하시면 됩니다</li></ul>' +
+        '<button type="button" id="copyAddr" class="chip" style="margin-top:10px;padding:7px 14px">📋 주소 복사</button>' +
+        '</div>' +
+
         '<div class="card"><h3><span class="ic">🏐</span>게임 방식</h3><ul>' +
         '<li><b>6:6 정규 게임</b>, 세트당 <b>18점</b> · 한 게임 = 1세트 단판</li>' +
-        '<li>한 라운드 = 3게임 — <b>A vs B → B vs C → C vs A</b></li>' +
-        '<li>라운드가 끝나면 10분 쉬고 팀을 새로 짭니다</li>' +
+        '<li>세 팀(A · B · C)으로 운영합니다 — <b>A vs B → B vs C → C vs A</b> 세 경기를 모두 치른 뒤 10분 휴식</li>' +
+        '<li>휴식 후 팀을 새로 짜서 다음 라운드를 시작합니다</li>' +
         '</ul></div>' +
 
         '<div class="card warn"><h3><span class="ic">📍</span>내 자리 확인</h3><ul>' +
         '<li><b>팀과 포지션은 경기마다 바뀝니다.</b> 매 경기 전에 해당 라운드 탭에서 본인 이름을 확인해 주세요.</li>' +
-        '<li>이름을 누르면 모든 라운드의 내 자리가 노란색으로 표시됩니다.</li>' +
-        '<li>대기 칸에 이름이 있으면 그 경기는 쉽니다.</li>' +
-        '</ul></div>' +
-
-        '<div class="card"><h3><span class="ic">🧭</span>코트 자리</h3><ul>' +
-        '<li>대각 배치 — <b>S↔OP</b>(존1·4), <b>OH↔OH</b>(존2·5), <b>MB↔Li</b>(존3·6)</li>' +
-        '<li><b>세터가 존1(우후위)에서 서브</b>로 시작합니다</li>' +
-        '<li>센터는 전위(존3), 리베로는 후위(존6)로 고정 교대</li>' +
+        '<li>이름을 누르면 모든 라운드의 내 자리가 노란색으로 표시됩니다. 대기 칸에 있으면 그 경기는 쉽니다.</li>' +
+        '<li>대각 배치 — <b>S↔OP</b>(존1·4), <b>OH↔OH</b>(존2·5), <b>MB↔Li</b>(존3·6). ' +
+        '세터가 존1(우후위)에서 서브로 시작하고, 센터는 전위(존3) · 리베로는 후위(존6)로 고정 교대합니다.</li>' +
         '</ul></div>' +
 
         '<div class="card"><h3><span class="ic">🚪</span>인원 변동</h3><ul>' +
         '<li><b>우건세</b> 15:30 이탈 — 2R까지 뜁니다</li>' +
         '<li><b>Kat</b> 16:00 이탈 — 3R 2경기까지 뛰고 3경기는 대기입니다</li>' +
         '<li>그래서 3R은 13명, <b>4R은 12명으로 대기 없이 전원 출전</b>합니다</li>' +
+        '<li>이 배치표는 <b>확정 14명 기준</b>입니다. 인원이 바뀌면 새로 짜서 다시 올립니다.</li>' +
+        '</ul></div>' +
+
+        '<div class="card"><h3><span class="ic">🎒</span>준비물 · 참가비</h3><ul>' +
+        '<li><b>실내화 꼭 챙겨오세요</b> (학교 체육관입니다)</li>' +
+        '<li>참가비 <b>5,000원</b> — 대관비 분배</li>' +
+        '</ul></div>' +
+
+        '<div class="card"><h3><span class="ic">🍙</span>음식물 · 쓰레기</h3><ul>' +
+        '<li>음료와 간식은 준비되어 있습니다</li>' +
+        '<li>개인 음식물은 간단한 정도로만, <b>냄새가 강한 음식은 자제</b> 부탁드립니다</li>' +
+        '<li>쓰레기는 <b>체육관 한곳에 모아만</b> 주세요. 운영자가 정리합니다</li>' +
         '</ul></div>' +
 
         '<div class="card warn"><h3><span class="ic">🙏</span>부탁드립니다</h3><ul>' +
         '<li><b>지각 · 불참은 미리 알려주세요.</b> 한 명만 바뀌어도 4개 라운드 배치를 전부 다시 짜야 합니다.</li>' +
         '<li>중간에 먼저 가셔야 하면 시간을 미리 말씀해 주세요. 마지막 게임 대기로 빼드립니다.</li>' +
-        '<li>실내화 착용 · 별관 3층입니다</li>' +
-        '<li>마지막 라운드 끝나면 네트 · 공 · 쓰레기 같이 정리해요</li>' +
+        '<li>17:00에 정리하고 나가야 하니 마지막 라운드 후 네트 · 공 정리 함께 부탁드려요</li>' +
         '</ul></div>';
     }
 
@@ -837,7 +853,17 @@
         el.classList.toggle('hl', !!picked && el.getAttribute('data-p') === picked);
       });
     }
+    var ADDR = '서울 광진구 아차산로70길 35 광남초등학교';
     document.addEventListener('click', function (e) {
+      var btn = e.target.closest('#copyAddr');
+      if (btn) {
+        var done = function () { btn.textContent = '✅ 복사됨'; setTimeout(function () { btn.textContent = '📋 주소 복사'; }, 1500); };
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ADDR).then(done, function () { btn.textContent = ADDR; });
+          else btn.textContent = ADDR;
+        } catch (err) { btn.textContent = ADDR; }
+        return;
+      }
       var el = e.target.closest('[data-p]'); if (!el) return;
       var n = el.getAttribute('data-p');
       picked = (picked === n) ? null : n;
