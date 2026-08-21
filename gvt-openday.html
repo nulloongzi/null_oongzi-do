@@ -359,43 +359,6 @@
       background: var(--nurungji-yellow);
     }
 
-    /* ---------- option switch ---------- */
-    .opt-switch {
-      display: flex;
-      gap: 6px;
-      background: var(--white);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 6px;
-      margin-bottom: 14px;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .opt-switch button {
-      flex: 1;
-      border: 0;
-      background: transparent;
-      border-radius: 10px;
-      padding: 9px 6px;
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--nurungji-brown);
-      cursor: pointer;
-      line-height: 1.4;
-    }
-
-    .opt-switch button small {
-      display: block;
-      font-size: 11px;
-      font-weight: 600;
-      opacity: .8;
-    }
-
-    .opt-switch button[aria-selected="true"] {
-      background: var(--nurungji-dark);
-      color: var(--white);
-    }
-
     /* ---------- tables ---------- */
     details.sheet {
       background: var(--white);
@@ -556,7 +519,7 @@
         </table>
       </div>
       <p style="font-size:12.5px;line-height:1.7;color:var(--nurungji-brown)">
-        <b>단일 포지션 주의</b> — Tim · 허민혁 · 김연재(S 전용), 김형준(OP 전용), Kat(Li 전용)은
+        <b>단일 포지션 주의</b> — Tim · 허민혁(S 전용), 김형준(OP 전용), Kat(Li 전용)은
         해당 자리가 비어 있을 때만 그 팀에 들어갈 수 있습니다. 다른 포지션으로 채우지 마세요.
       </p>
     </details>
@@ -584,7 +547,7 @@
       'Tim': ['S'],
       '우건세': ['OP', 'OH', 'MB'],
       '정승호': ['S', 'OP', 'OH', 'Li'],
-      '김연재': ['S'],
+      '김연재': ['S', 'OP'],
       '김형준': ['OP'],
       '허민혁': ['S'],
       '김준우': ['OP', 'MB'],
@@ -593,7 +556,7 @@
     var NOTE = {
       '유성원': '회원 · Flex', '강홍준': '회원 · Flex', '이재영': '회원', '김민상': '',
       '남석현': 'S만 불가', '송승목': 'Kat 이탈 후 리베로 인계', 'Tim': 'S 전용',
-      '우건세': '15:30 이탈', '정승호': 'MB만 불가', '김연재': 'S 전용',
+      '우건세': '15:30 이탈', '정승호': 'MB만 불가', '김연재': '4R 6:6의 열쇠',
       '김형준': 'OP 전용', '허민혁': 'S 전용', '김준우': '', 'Kat': 'Li 전용 · 16:00 이탈'
     };
     var ALL14 = Object.keys(CAP);
@@ -624,19 +587,18 @@
     var C3g2 = t('김연재', 'S', '김형준', 'OP', '김민상', 'OH', '남석현', 'OH', '강홍준', 'MB', '송승목', 'Li');
     var C3g3 = t('김연재', 'S', '유성원', 'OP', '이재영', 'OH', '정승호', 'OH', '김준우', 'MB', 'Kat', 'Li');
 
-    /* ---------- 4R 안1 (5:5) ---------- */
-    var A4 = t('Tim', 'S', '이재영', 'OP', '송승목', 'OH', '남석현', 'OH', '유성원', 'MB');
-    var B4 = t('허민혁', 'S', '김형준', 'OP', '정승호', 'OH', '김민상', 'OH', '김준우', 'MB');
-    var C4g2 = t('김연재', 'S', '이재영', 'OP', '송승목', 'OH', '강홍준', 'OH', '남석현', 'MB');
-    var C4g3 = t('김연재', 'S', '정승호', 'OP', '김민상', 'OH', '강홍준', 'OH', '김준우', 'MB');
-
-    /* ---------- 4R 안2 (6:6 · 세터 1명이 Li 커버) ---------- */
-    var X1 = t('Tim', 'S', '김형준', 'OP', '이재영', 'OH', '송승목', 'OH', '김민상', 'MB', '김연재', 'Li');
-    var Y1 = t('허민혁', 'S', '김준우', 'OP', '정승호', 'OH', '남석현', 'OH', '유성원', 'MB', '강홍준', 'MB');
-    var X2 = t('김연재', 'S', '이재영', 'OP', '김민상', 'OH', '강홍준', 'OH', '남석현', 'MB', '허민혁', 'Li');
-    var Y2 = t('Tim', 'S', '김형준', 'OP', '송승목', 'OH', '정승호', 'OH', '김준우', 'MB', '유성원', 'MB');
-    var X3 = t('허민혁', 'S', '김형준', 'OP', '남석현', 'OH', '송승목', 'OH', '김준우', 'MB', 'Tim', 'Li');
-    var Y3 = t('김연재', 'S', '이재영', 'OP', '정승호', 'OH', '강홍준', 'OH', '김민상', 'MB', '유성원', 'MB');
+    /* ---------- 4R (12명 · 6:6 전원 출전) ----------
+       코어 A: Tim · 김형준 · 이재영 · 김민상
+       코어 B: 허민혁 · 송승목 · 유성원 · 김준우
+       코어 C: 김연재 · 정승호 · 남석현 · 강홍준
+       매 게임 안 뛰는 팀의 4명이 2명씩 양쪽으로 갈려 6:6을 완성한다.
+       S 전용 Tim · 허민혁이 매 게임 양 팀 세터를 맡고, S · OP 겸업인 김연재가 OP로 들어간다. */
+    var A4g1 = t('Tim', 'S', '김형준', 'OP', '이재영', 'OH', '강홍준', 'OH', '김민상', 'MB', '정승호', 'Li');
+    var B4g1 = t('허민혁', 'S', '김연재', 'OP', '유성원', 'OH', '남석현', 'OH', '김준우', 'MB', '송승목', 'Li');
+    var B4g2 = t('허민혁', 'S', '김형준', 'OP', '송승목', 'OH', '이재영', 'OH', '김준우', 'MB', '유성원', 'MB');
+    var C4g2 = t('Tim', 'S', '김연재', 'OP', '정승호', 'OH', '김민상', 'OH', '남석현', 'MB', '강홍준', 'MB');
+    var C4g3 = t('허민혁', 'S', '김연재', 'OP', '정승호', 'OH', '강홍준', 'OH', '남석현', 'MB', '송승목', 'Li');
+    var A4g3 = t('Tim', 'S', '김형준', 'OP', '이재영', 'OH', '김민상', 'OH', '김준우', 'MB', '유성원', 'MB');
 
     var ROUNDS = [
       {
@@ -667,17 +629,16 @@
         ]
       },
       {
-        id: '4R', time: '16:30', roster: R4, size: 5, alt: true,
-        note: 'Kat 이탈로 12명. 아래 경고 참고 — 규칙 그대로는 6:6이 성립하지 않습니다.',
+        id: '4R', time: '16:30', roster: R4, key: true,
+        note: 'Kat 이탈로 12명 — <b>대기 0명, 전원이 3게임 모두 출전</b>하는 유일한 라운드입니다. ' +
+          'S 전용은 Tim · 허민혁 둘뿐이라 두 사람이 매 게임 양 팀 세터를 맡고, ' +
+          'S · OP 겸업인 <b>김연재가 OP로 들어가면서 12명이 6:6에 정확히 맞아떨어집니다.</b> ' +
+          '구조는 앞 라운드와 동일하게 A · B · C 코어 4명씩 + 안 뛰는 팀이 2명씩 양쪽으로 갈려 6명을 완성합니다. ' +
+          '(코어 A Tim · 김형준 · 이재영 · 김민상 / B 허민혁 · 송승목 · 유성원 · 김준우 / C 김연재 · 정승호 · 남석현 · 강홍준)',
         games: [
-          { label: 'A vs B', home: { t: 'A', l: A4 }, away: { t: 'B', l: B4 }, bench: ['김연재', '강홍준'] },
-          { label: 'B vs C', home: { t: 'B', l: B4 }, away: { t: 'C', l: C4g2 }, bench: ['Tim', '유성원'] },
-          { label: 'C vs A', home: { t: 'C', l: C4g3 }, away: { t: 'A', l: A4 }, bench: ['허민혁', '김형준'] }
-        ],
-        altGames: [
-          { label: '1경기', home: { t: 'X', l: X1 }, away: { t: 'Y', l: Y1 }, bench: [] },
-          { label: '2경기', home: { t: 'X', l: X2 }, away: { t: 'Y', l: Y2 }, bench: [] },
-          { label: '3경기', home: { t: 'X', l: X3 }, away: { t: 'Y', l: Y3 }, bench: [] }
+          { label: 'A vs B', home: { t: 'A', l: A4g1 }, away: { t: 'B', l: B4g1 }, bench: [] },
+          { label: 'B vs C', home: { t: 'B', l: B4g2 }, away: { t: 'C', l: C4g2 }, bench: [] },
+          { label: 'C vs A', home: { t: 'C', l: C4g3 }, away: { t: 'A', l: A4g3 }, bench: [] }
         ]
       }
     ];
@@ -703,8 +664,7 @@
     var BOT_ROWS = [[4, 3, 2], [5, 6, 1]];   // 우리편(앞→뒤)
 
     function cellHTML(pl, zone) {
-      if (!pl) return '<div class="cell empty"><span class="zone">존 ' + zone + '</span>' +
-        '<span class="name" style="font-weight:600">비움</span></div>';
+      if (!pl) return '<div class="cell empty"><span class="zone">존 ' + zone + '</span></div>';
       return '<div class="cell" data-p="' + pl.n + '">' +
         '<span class="zone">존 ' + zone + '</span>' +
         '<span class="name">' + pl.n + '</span>' +
@@ -759,17 +719,6 @@
         '<table><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div></details>';
     }
 
-    var FOUR_NOTICE =
-      '<div class="notice"><b>4R는 규칙 그대로 6:6이 불가능합니다.</b><br>' +
-      '16:30 로스터 12명 = 6:6이면 코트에 전원이 서야 하는데, S 전용이 Tim · 허민혁 · 김연재 3명입니다. ' +
-      '팀당 세터는 1명뿐이므로 셋 중 하나는 반드시 세터가 아닌 자리에 서야 합니다. ' +
-      '(비 S 전용 인원은 9명, 6:6에 필요한 비세터 자리는 10개 — 한 명 부족. 12명을 6+6으로 나누는 924가지 조합 전수 확인 결과 성립 조합 0건)' +
-      '<ul><li><b>안 1 · 5:5 (기본)</b> — 앞 라운드와 같은 A · B + C 차출 구조. 코트 10명, 게임마다 2명 대기. ' +
-      '팀 구성은 S · OP · OH · OH · MB, 대각(S↔OP, OH↔OH)은 그대로 유지됩니다.</li>' +
-      '<li><b>안 2 · 6:6</b> — 12명 전원 출전. 매 게임 세터 한 명이 리베로(존 6, 후위 수비)를 맡고 세 명이 돌아가며 한 번씩 소화합니다. ' +
-      '<u>세터 본인들의 동의가 필요</u>합니다.</li>' +
-      '<li><b>가장 깔끔한 해결</b> — 16:30에 <b>단 1명만 더</b> 있으면(13명) 3R 구조를 그대로 재사용해 6:6이 성립합니다.</li></ul></div>';
-
     /* ============================================================
        렌더
        ============================================================ */
@@ -786,29 +735,19 @@
       p.id = 'panel-' + ri;
       p.style.display = ri === 0 ? '' : 'none';
       panels.appendChild(p);
-      renderPanel(p, R, 0);
+      renderPanel(p, R);
     });
 
-    function renderPanel(p, R, optIdx) {
-      var games = (R.alt && optIdx === 1) ? R.altGames : R.games;
+    function renderPanel(p, R) {
       var html = '<div class="round-head"><h2>' + R.id + ' 라운드</h2>' +
-        '<span class="meta">' + R.time + " 시작 · " + R.roster.length + '명 · 3게임 · 세트당 18점 단판</span></div>';
-      if (R.alt) html += FOUR_NOTICE +
-        '<div class="opt-switch" data-r="' + R.id + '">' +
-        '<button type="button" aria-selected="' + (optIdx === 0) + '" data-o="0">안 1 · 5:5<small>게임당 2명 대기 · 기본</small></button>' +
-        '<button type="button" aria-selected="' + (optIdx === 1) + '" data-o="1">안 2 · 6:6<small>전원 출전 · 세터 1명이 Li</small></button>' +
-        '</div>';
-      else html += '<div class="notice" style="background:var(--nurungji-light);border-color:var(--line);border-left-color:var(--nurungji-yellow)">' + R.note + '</div>';
-      html += games.map(gameHTML).join('');
-      html += sheetHTML(R.roster, games);
+        '<span class="meta">' + R.time + ' 시작 · ' + R.roster.length + '명 · 3게임 · 세트당 18점 단판</span></div>';
+      html += '<div class="notice"' +
+        (R.key ? '' : ' style="background:var(--nurungji-light);border-color:var(--line);border-left-color:var(--nurungji-yellow)"') +
+        '>' + R.note + '</div>';
+      html += R.games.map(gameHTML).join('');
+      html += sheetHTML(R.roster, R.games);
       p.innerHTML = html;
-
-      var sw = p.querySelector('.opt-switch');
-      if (sw) sw.addEventListener('click', function (e) {
-        var btn = e.target.closest('button'); if (!btn) return;
-        renderPanel(p, R, +btn.getAttribute('data-o'));
-      });
-      bindHighlight(p);
+      applyHighlight();
     }
 
     function select(i) {
@@ -831,7 +770,6 @@
       picked = (picked === n) ? null : n;
       applyHighlight();
     });
-    function bindHighlight() { applyHighlight(); }
 
     /* ---------- 로스터 표 ---------- */
     document.querySelector('#rosterTable tbody').innerHTML = ALL14.map(function (n) {
@@ -839,49 +777,44 @@
         CAP[n].map(function (p) { return '<span class="pos ' + p + '">' + p + '</span>'; }).join(' ') +
         '</td><td class="rest">' + (NOTE[n] || '') + '</td></tr>';
     }).join('');
-    bindHighlight(document.getElementById('rosterTable'));
+    applyHighlight();
 
     /* ============================================================
        자체 검증 — capability / 대각 템플릿 / coverage / 세터 비중복
        ============================================================ */
     (function () {
       var errs = [], checks = 0;
-      var TPL6 = ['MB2', 'MBLi'], REL = { 'Tim': 1, '허민혁': 1, '김연재': 1 };
 
       function sig(l) {
         var c = { S: 0, OP: 0, OH: 0, MB: 0, Li: 0 };
         l.forEach(function (p) { c[p.p]++; });
         return c;
       }
-      function tplOK(c, size) {
-        if (size === 5) return c.S === 1 && c.OP === 1 && c.OH === 2 && c.MB === 1 && c.Li === 0;
-        return c.S === 1 && c.OP === 1 && c.OH === 2 && ((c.MB === 2 && c.Li === 0) || (c.MB === 1 && c.Li === 1));
+      function tplOK(c) {
+        return c.S === 1 && c.OP === 1 && c.OH === 2 &&
+          ((c.MB === 2 && c.Li === 0) || (c.MB === 1 && c.Li === 1));
       }
       ROUNDS.forEach(function (R) {
-        var sets = [{ g: R.games, size: R.size, relax: false, tag: R.id }];
-        if (R.altGames) sets.push({ g: R.altGames, size: 6, relax: true, tag: R.id + ' 안2' });
-        sets.forEach(function (S) {
-          S.g.forEach(function (g, gi) {
-            var names = [];
-            [g.home, g.away].forEach(function (T) {
-              T.l.forEach(function (pl) {
-                checks++;
-                var ok = CAP[pl.n].indexOf(pl.p) >= 0 || (S.relax && pl.p === 'Li' && REL[pl.n]);
-                if (!ok) errs.push(S.tag + ' ' + g.label + ' ' + T.t + ': ' + pl.n + '는 ' + pl.p + ' 불가');
-              });
-              var c = sig(T.l); checks += 2;
-              if (!tplOK(c, S.size)) errs.push(S.tag + ' ' + g.label + ' ' + T.t + ': 대각 템플릿 위반');
-              if (c.S !== 1) errs.push(S.tag + ' ' + g.label + ' ' + T.t + ': 팀 내 세터 ' + c.S + '명');
-              names = names.concat(T.l.map(function (p) { return p.n; }));
+        R.games.forEach(function (g) {
+          var names = [];
+          [g.home, g.away].forEach(function (T) {
+            T.l.forEach(function (pl) {
+              checks++;
+              if (CAP[pl.n].indexOf(pl.p) < 0)
+                errs.push(R.id + ' ' + g.label + ' ' + T.t + ': ' + pl.n + '는 ' + pl.p + ' 불가');
             });
-            checks++;
-            var dup = names.filter(function (n, i) { return names.indexOf(n) !== i; });
-            if (dup.length) errs.push(S.tag + ' ' + g.label + ': 양 팀 동시 출전 ' + dup.join(','));
-            checks++;
-            var full = names.concat(g.bench).slice().sort().join('|');
-            if (full !== R.roster.slice().sort().join('|'))
-              errs.push(S.tag + ' ' + g.label + ': coverage 불일치');
+            var c = sig(T.l); checks += 2;
+            if (!tplOK(c)) errs.push(R.id + ' ' + g.label + ' ' + T.t + ': 대각 템플릿 위반');
+            if (c.S !== 1) errs.push(R.id + ' ' + g.label + ' ' + T.t + ': 팀 내 세터 ' + c.S + '명');
+            names = names.concat(T.l.map(function (p) { return p.n; }));
           });
+          checks++;
+          var dup = names.filter(function (n, i) { return names.indexOf(n) !== i; });
+          if (dup.length) errs.push(R.id + ' ' + g.label + ': 양 팀 동시 출전 ' + dup.join(','));
+          checks++;
+          var full = names.concat(g.bench).slice().sort().join('|');
+          if (full !== R.roster.slice().sort().join('|'))
+            errs.push(R.id + ' ' + g.label + ': coverage 불일치');
         });
       });
       document.getElementById('verify').innerHTML = errs.length
