@@ -879,10 +879,11 @@
     var PAIRS = [[0, 1, 2], [1, 2, 0], [2, 0, 1]];   /* A vs B(C 차출), B vs C(A), C vs A(B) */
     var TEAM_NAME = ['A', 'B', 'C'];
 
+    /* A · B를 팀 인원만큼 꽉 채우고, 남는 인원이 C 코어가 된다.
+       14명 · 6인 팀이면 6 · 6 · 2, 12명이면 6 · 6 · 0. */
     function coreSizes(n, T) {
       if (n < 2 * T || n > 3 * T) return null;
-      var base = Math.floor(n / 3), rem = n % 3;
-      return [base + (rem > 0 ? 1 : 0), base + (rem > 1 ? 1 : 0), base];
+      return [T, T, n - 2 * T];
     }
 
     /* 코어 인원이 한 팀 안에 전부 들어갈 수 있는지 (서로 다른 자리로 매칭되는지).
@@ -908,7 +909,9 @@
       return false;
     }
 
-    /* 포지션 선택지가 적은 사람부터 세 코어에 고루 뿌린다 */
+    /* 포지션 선택지가 적은 사람부터, 아직 자리가 많이 남은 코어로 보낸다.
+       A · B가 먼저 차고 남는 인원이 C로 간다. 단일 포지션 인원이 한 팀에
+       몰리지 않도록 제약이 센 사람부터 배분한다. */
     function makeCores(present, szs) {
       var byFlex = present.slice().sort(function (a, b) {
         return (a.pos.length - b.pos.length) || (Math.random() - .5);
@@ -917,7 +920,7 @@
       for (i = 0; i < byFlex.length; i++) {
         order = [0, 1, 2].filter(function (c) { return cores[c].length < szs[c]; });
         order.sort(function (a, b) {
-          return (cores[a].length - cores[b].length) || (Math.random() - .5);
+          return ((szs[b] - cores[b].length) - (szs[a] - cores[a].length)) || (Math.random() - .5);
         });
         if (!order.length) return null;
         k = order[0];
@@ -1175,9 +1178,14 @@
         s += '<div class="msg ok">✓ ' + current.round + 'R 배치 완료 — ' + m +
           ' 모든 자리가 가능 포지션 안이고, 팀마다 세터 1명 · 대각 배치를 만족합니다.</div>';
         if (current.mode === 'abc' && current.games[0].cores) {
-          s += '<div class="msg info"><b>이번 라운드 코어</b><br>' + current.games[0].cores.map(function (c, i) {
-            return TEAM_NAME[i] + ' — ' + c.join(' · ');
+          var cc = current.games[0].cores;
+          s += '<div class="msg info"><b>이번 라운드 코어</b><br>' + cc.map(function (c, i) {
+            return TEAM_NAME[i] + ' — ' + (c.length ? c.join(' · ') : '<span style="opacity:.6">없음 (전원 차출)</span>');
           }).join('<br>') + '</div>';
+          if (!cc[2].length) s += '<div class="msg info" style="border-color:rgba(255,112,67,.4)">' +
+            '참석 인원이 팀 인원의 정확히 2배라 <b>C 코어가 없습니다.</b> ' +
+            'C는 안 뛰는 팀에서 전원 차출되므로 세 경기 모두 같은 두 팀이 붙습니다. ' +
+            '경기마다 상대를 섞으려면 <b>자유 편성</b>으로 바꿔주세요.</div>';
         }
         s += current.games.map(gameHTML).join('');
         s += '<div class="card"><div class="row">' +
