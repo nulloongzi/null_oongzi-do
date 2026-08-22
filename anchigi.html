@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>배치 도구 · 누룽지도</title>
-  <meta name="description" content="명단과 포지션만 넣으면 라운드별 6:6 배치를 즉석에서 뽑는 도구">
+  <title>안치기 · 누룽지도</title>
+  <meta name="description" content="온 사람을 솥에 안치듯 넣으면 라운드별 팀을 즉석에서 뽑아주는 도구">
   <meta name="robots" content="noindex">
   <style>
     :root {
@@ -812,7 +812,7 @@
     <header class="hero">
       <button class="back-btn" type="button" id="backBtn" data-i18n="back">← 누룽지도</button>
       <button class="lang-toggle" type="button" id="langBtn">EN</button>
-      <h1>배치 도구</h1>
+      <h1>안치기</h1>
       <div class="sub">명단과 가능 포지션만 넣으면 라운드 배치를 즉석에서 뽑습니다.<br>
         온 사람만 체크하고 <b>뽑기</b>를 누르세요.</div>
     </header>
@@ -837,23 +837,38 @@
     var POS = ['S', 'OP', 'OH', 'MB', 'Li'];
     var POS_KO = { S: '세터', OP: '라이트', OH: '레프트', MB: '센터', Li: '리베로' };
 
+    /* ===== 저장 키 =====
+       도구 이름이 gvt-lineup → 안치기로 바뀌면서 키 접두사도 옮긴다.
+       예전 키가 있으면 한 번만 복사해 오므로 쓰던 명단·기록이 그대로 이어진다. */
+    function K(n) { return 'anchigi.' + n + '.v1'; }
+    (function migrateKeys() {
+      var names = ['players', 'stat', 'round', 'past', 'ngames', 'mode', 'priority', 'tpl', 'schedule', 'lang'];
+      try {
+        for (var i = 0; i < names.length; i++) {
+          if (localStorage.getItem(K(names[i])) !== null) continue;
+          var old = localStorage.getItem('gvt.' + names[i] + '.v1');
+          if (old !== null) localStorage.setItem(K(names[i]), old);
+        }
+      } catch (e) { /* 저장소 접근 불가면 새로 시작한다 */ }
+    })();
+
     /* ===== i18n ===== */
     /* ?lang= 가 있으면 그걸 우선한다. 누룽지도에서 넘어올 때 호스트 언어를 물려받는 경로. */
     var lang = (function () {
       var q = new URLSearchParams(location.search).get('lang');
       if (q === 'ko' || q === 'en') {
-        try { localStorage.setItem('gvt.lang.v1', q); } catch (e) { }
+        try { localStorage.setItem(K('lang'), q); } catch (e) { }
         return q;
       }
-      try { return localStorage.getItem('gvt.lang.v1') || 'ko'; } catch (e) { return 'ko'; }
+      try { return localStorage.getItem(K('lang')) || 'ko'; } catch (e) { return 'ko'; }
     })();
     var I18N = {
       ko: {
         back: '← 누룽지도',
         roster_empty: '아직 명단이 없습니다. 아래에서 사람을 추가하세요.',
         clear_confirm: '명단을 전부 비웁니다. 계속할까요?',
-        hero_title: '배치 도구',
-        hero_sub: '명단과 가능 포지션만 넣으면 라운드 배치를 즉석에서 뽑습니다.<br>온 사람만 체크하고 <b>뽑기</b>를 누르세요.',
+        hero_title: '안치기',
+        hero_sub: '온 사람을 솥에 안치듯 넣으면 라운드 배치가 나옵니다.<br>참석 체크하고 <b>뽑기</b>를 누르세요.',
         tab_lineup: '배치', tab_roster: '명단', tab_record: '기록', tab_help: '설명',
         card_time: '시간 설정',
         lb_start: '운동 시작', lb_gamestart: '게임 시작', lb_end: '운동 종료',
@@ -913,7 +928,7 @@
         back: '← Nulloongzi-do',
         roster_empty: 'No players yet. Add someone below.',
         clear_confirm: 'This clears the whole roster. Continue?',
-        hero_title: 'Lineup Tool',
+        hero_title: 'Lineup',
         hero_sub: 'Add players and their positions, and it draws round-by-round lineups on the spot.<br>Check who showed up and hit <b>Draw</b>.',
         tab_lineup: 'Lineup', tab_roster: 'Roster', tab_record: 'Record', tab_help: 'Help',
         card_time: 'Schedule',
@@ -1035,13 +1050,13 @@
     function tplById(id) { for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].id === id) return TEMPLATES[i]; return null; }
 
     /* 픽업(공개 기능)에서 열리는 범용 도구라 기본 명단은 비어 있다.
-       기존 사용자의 gvt.players.v1 은 아래 load() 가 우선하므로 그대로 유지된다. */
+       예전에 쓰던 명단은 위 migrateKeys 가 옮겨오고 아래 load() 가 우선하므로 유지된다. */
     var DEFAULT_PLAYERS = [];
 
     /* ============================================================
        저장
        ============================================================ */
-    var KEY_P = 'gvt.players.v1', KEY_H = 'gvt.stat.v1';
+    var KEY_P = K('players'), KEY_H = K('stat');
     function load(k, fb) {
       try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch (e) { return fb; }
     }
@@ -1051,13 +1066,13 @@
       return { name: d[0], pos: d[1], here: true, leave: d[2] || null };
     });
     var stat = load(KEY_H, null) || {};
-    var round = load('gvt.round.v1', null) || 1;
-    var pastRounds = load('gvt.past.v1', null) || [];
-    var nGames = load('gvt.ngames.v1', null) || 3;
-    var mode = load('gvt.mode.v1', null) || 'abc';           /* 'abc' | 'free' */
-    var priority = load('gvt.priority.v1', null) || 'balance'; /* 'balance' | 'variety' */
-    var allowed = load('gvt.tpl.v1', null) || ['mb2', 'mb1li', 'mb2li'];
-    var schedule = load('gvt.schedule.v1', null) || { start: '13:00', warmup: '14:00', end: '17:00', perGame: 15, rest: 10 };
+    var round = load(K('round'), null) || 1;
+    var pastRounds = load(K('past'), null) || [];
+    var nGames = load(K('ngames'), null) || 3;
+    var mode = load(K('mode'), null) || 'abc';           /* 'abc' | 'free' */
+    var priority = load(K('priority'), null) || 'balance'; /* 'balance' | 'variety' */
+    var allowed = load(K('tpl'), null) || ['mb2', 'mb1li', 'mb2li'];
+    var schedule = load(K('schedule'), null) || { start: '13:00', warmup: '14:00', end: '17:00', perGame: 15, rest: 10 };
     if (schedule.rest == null) schedule.rest = 10;
 
     function st(n) {
@@ -1066,11 +1081,11 @@
       return stat[n];
     }
     function persist() {
-      save(KEY_P, players); save(KEY_H, stat); save('gvt.round.v1', round);
-      save('gvt.ngames.v1', nGames); save('gvt.mode.v1', mode); save('gvt.tpl.v1', allowed);
-      save('gvt.priority.v1', priority);
-      save('gvt.schedule.v1', schedule);
-      save('gvt.past.v1', pastRounds);
+      save(KEY_P, players); save(KEY_H, stat); save(K('round'), round);
+      save(K('ngames'), nGames); save(K('mode'), mode); save(K('tpl'), allowed);
+      save(K('priority'), priority);
+      save(K('schedule'), schedule);
+      save(K('past'), pastRounds);
     }
     function tpls() {
       var a = TEMPLATES.filter(function (t) { return allowed.indexOf(t.id) >= 0; });
@@ -1914,7 +1929,7 @@
     var langBtn = document.getElementById('langBtn');
     if (langBtn) langBtn.onclick = function () {
       lang = (lang === 'en') ? 'ko' : 'en';
-      try { localStorage.setItem('gvt.lang.v1', lang); } catch (e) { }
+      try { localStorage.setItem(K('lang'), lang); } catch (e) { }
       applyLang();
     };
 
