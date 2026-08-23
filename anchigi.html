@@ -252,9 +252,54 @@
       cursor: pointer;
     }
 
+    .ptoggle button i {
+      font-style: normal;
+      font-size: 9.5px;
+      font-weight: 700;
+      margin-left: 4px;
+      opacity: .85;
+    }
+
+    /* 주 = 꽉 찬 색, 가능 = 테두리만, 도전 = 점선 */
     .ptoggle button[aria-pressed="true"] {
       color: #fff;
       border-color: transparent;
+    }
+
+    .ptoggle button[data-tier="sub"] {
+      background: var(--white) !important;
+      border: 1.5px solid currentColor;
+    }
+
+    .ptoggle button[data-tier="want"] {
+      background: var(--white) !important;
+      border: 1.5px dashed currentColor;
+      opacity: .8;
+    }
+
+    .ptoggle button[data-tier="sub"][data-p="S"],
+    .ptoggle button[data-tier="want"][data-p="S"] {
+      color: #a67c00;
+    }
+
+    .ptoggle button[data-tier="sub"][data-p="OP"],
+    .ptoggle button[data-tier="want"][data-p="OP"] {
+      color: var(--pos-op);
+    }
+
+    .ptoggle button[data-tier="sub"][data-p="OH"],
+    .ptoggle button[data-tier="want"][data-p="OH"] {
+      color: var(--pos-oh);
+    }
+
+    .ptoggle button[data-tier="sub"][data-p="MB"],
+    .ptoggle button[data-tier="want"][data-p="MB"] {
+      color: var(--pos-mb);
+    }
+
+    .ptoggle button[data-tier="sub"][data-p="Li"],
+    .ptoggle button[data-tier="want"][data-p="Li"] {
+      color: var(--pos-li);
     }
 
     .ptoggle button[aria-pressed="true"][data-p="S"] {
@@ -610,6 +655,16 @@
       opacity: .8;
     }
 
+    /* 4단계는 375px 에서 한 줄에 안 들어가 2×2 로 접는다 */
+    .seg.four {
+      flex-wrap: wrap;
+    }
+
+    .seg.four button {
+      flex: 1 1 calc(50% - 4px);
+      min-width: calc(50% - 4px);
+    }
+
     .seg button[aria-pressed="true"] {
       background: var(--nurungji-dark);
       color: var(--white);
@@ -865,6 +920,17 @@
     var I18N = {
       ko: {
         back: '← 누룽지도',
+        feel_title: '게임 성격',
+        feel_comp: '경쟁', feel_comp_sub: '주 포지션만',
+        feel_real: '실전', feel_real_sub: '팀당 실험 1자리',
+        feel_mix: '고루', feel_mix_sub: '팀당 실험 2자리',
+        feel_exp: '경험', feel_exp_sub: '자리 제한 없음',
+        feel_hint: '실험 자리 = 주 포지션이 아닌 사람이 서는 자리. 이 수만큼만 열립니다.',
+        tier_main: '주', tier_sub: '가능', tier_want: '도전',
+        tier_hint: '칩을 누를 때마다 주 → 가능 → 도전 → 해제로 바뀝니다. 경쟁 게임은 <b>주</b>만 씁니다.',
+        relaxed: '주 포지션만으로는 팀이 안 짜여서 실험 자리를 <b>팀당 {n}개</b>까지 열었습니다.',
+        fitgap_even: '두 팀 자리 적합도가 고릅니다.',
+        fitgap_off: '한쪽 팀이 낯선 자리를 더 맡았습니다.',
         roster_empty: '아직 명단이 없습니다. 아래에서 사람을 추가하세요.',
         clear_confirm: '명단을 전부 비웁니다. 계속할까요?',
         hero_title: '안치기',
@@ -902,7 +968,7 @@
         borrowed: '차출', team_swap: '후위 센터와 교대', team_word: 'TEAM',
         roster: '명단', roster_attend: '참석', roster_total: '전체',
         add_person: '사람 추가', name_ph: '이름', add_btn: '추가',
-        add_hint: '가능 포지션을 고르고 추가하세요. 안 고르면 전 포지션으로 등록됩니다.',
+        add_hint: '주 포지션을 고르고 추가하세요. 안 고르면 전 포지션이 주가 됩니다. 가능·도전은 추가 후 칩을 눌러 바꾸세요.',
         bulk: '일괄', all_on: '전원 참석', all_off: '전원 해제', to_default: '명단 비우기',
         del_confirm_suf: ' 님을 명단에서 지울까요?', leave_title: '퇴장 시간',
         record_title: '누적 기록', th_name: '이름', th_play: '출전', th_bench: '대기',
@@ -926,6 +992,17 @@
       },
       en: {
         back: '← Nulloongzi-do',
+        feel_title: 'Game feel',
+        feel_comp: 'Competitive', feel_comp_sub: 'Main positions only',
+        feel_real: 'Real', feel_real_sub: '1 open slot per team',
+        feel_mix: 'Mixed', feel_mix_sub: '2 open slots per team',
+        feel_exp: 'Try it', feel_exp_sub: 'No restriction',
+        feel_hint: 'An open slot is one filled by someone off their main position. Only this many are allowed.',
+        tier_main: 'Main', tier_sub: 'Can', tier_want: 'Want',
+        tier_hint: 'Tap a chip to cycle Main → Can → Want → off. Competitive games use <b>Main</b> only.',
+        relaxed: 'Main positions alone could not fill the teams, so up to <b>{n}</b> open slot(s) per team were allowed.',
+        fitgap_even: 'Both teams sit at similar position fit.',
+        fitgap_off: 'One team took more unfamiliar slots.',
         roster_empty: 'No players yet. Add someone below.',
         clear_confirm: 'This clears the whole roster. Continue?',
         hero_title: 'Lineup',
@@ -1054,6 +1131,53 @@
     var DEFAULT_PLAYERS = [];
 
     /* ============================================================
+       포지션 역량 3단계
+       ------------------------------------------------------------
+       main 주 — 내 자리. 경쟁 게임은 여기만 쓴다
+       sub  가능 — 필요하면 선다
+       want 도전 — 해보고 싶은 자리
+       셋 다 '뛸 수는 있다'(하드 제약 통과)이고, 적합도 점수만 다르다.
+       사람에게 실력 등급을 매기는 게 아니라 본인이 자리를 고르는 것이라
+       docs/PHILOSOPHY.md 의 랭킹 금지와 충돌하지 않는다. */
+    var TIERS = ['main', 'sub', 'want'];
+    var FIT = { main: 2, sub: 1, want: 0 };
+    function tierOf(p, pos) { return (p.tier && p.tier[pos]) || null; }
+    function fitOf(p, pos) { var t = tierOf(p, pos); return t ? FIT[t] : 0; }
+
+    /* 예전 형식(pos 배열)을 3단계로 올린다. 뭐가 주고 뭐가 보조인지 알 수 없으니
+       전부 '주'로 둔다 — 오늘까지의 동작을 그대로 재현하는 쪽이 안전하다. */
+    function normalizePlayer(p) {
+      if (!p.tier) {
+        p.tier = {};
+        (p.pos || []).forEach(function (P) { p.tier[P] = 'main'; });
+      }
+      p.pos = POS.filter(function (P) { return !!p.tier[P]; });   /* 뛸 수 있는 자리 전체 */
+      if (!p.pos.length) { p.tier[POS[0]] = 'main'; p.pos = [POS[0]]; }
+      return p;
+    }
+    function mainCount(p) {
+      return POS.filter(function (P) { return p.tier[P] === 'main'; }).length;
+    }
+
+    /* ============================================================
+       게임 성격 — 경쟁 ↔ 경험
+       ------------------------------------------------------------
+       budget = 한 팀이 쓸 수 있는 '비(非)주 포지션' 자리 수 (하드 제약).
+       0이면 전원 주 포지션, 크면 아무나 아무 자리. 이 한 숫자가 중간을 만든다.
+       ============================================================ */
+    var FEELS = ['comp', 'real', 'mix', 'exp'];
+    var FEEL = {
+      comp: { budget: 0, fitW: 3.0, varietyW: 0.8, newBonus: 0.0, playW: 1.5, balanceW: 8.0 },
+      real: { budget: 1, fitW: 2.0, varietyW: 1.2, newBonus: 1.5, playW: 1.5, balanceW: 5.0 },
+      mix: { budget: 2, fitW: 0.8, varietyW: 2.5, newBonus: 4.0, playW: 1.0, balanceW: 2.5 },
+      exp: { budget: 99, fitW: 0.0, varietyW: 4.0, newBonus: 6.0, playW: 0.6, balanceW: 1.0 }
+    };
+    function F() { return FEEL[feel] || FEEL.real; }
+    function budStart() { return Math.min(F().budget, 7); }
+    /* 예산은 완화될 수 있다(주 포지션만으론 팀이 안 짜이는 경우). 그때 실제 쓴 값. */
+    var usedBudget = 0;
+
+    /* ============================================================
        저장
        ============================================================ */
     var KEY_P = K('players'), KEY_H = K('stat');
@@ -1062,15 +1186,17 @@
     }
     function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
 
-    var players = load(KEY_P, null) || DEFAULT_PLAYERS.map(function (d) {
+    var players = (load(KEY_P, null) || DEFAULT_PLAYERS.map(function (d) {
       return { name: d[0], pos: d[1], here: true, leave: d[2] || null };
-    });
+    })).map(normalizePlayer);
     var stat = load(KEY_H, null) || {};
     var round = load(K('round'), null) || 1;
     var pastRounds = load(K('past'), null) || [];
     var nGames = load(K('ngames'), null) || 3;
     var mode = load(K('mode'), null) || 'abc';           /* 'abc' | 'free' */
-    var priority = load(K('priority'), null) || 'balance'; /* 'balance' | 'variety' */
+    /* 예전 priority(balance|variety)를 게임 성격 4단계로 옮긴다 */
+    var feel = load(K('feel'), null) ||
+      ({ balance: 'real', variety: 'exp' }[load(K('priority'), null)] || 'real');
     var allowed = load(K('tpl'), null) || ['mb2', 'mb1li', 'mb2li'];
     var schedule = load(K('schedule'), null) || { start: '13:00', warmup: '14:00', end: '17:00', perGame: 15, rest: 10 };
     if (schedule.rest == null) schedule.rest = 10;
@@ -1083,7 +1209,7 @@
     function persist() {
       save(KEY_P, players); save(KEY_H, stat); save(K('round'), round);
       save(K('ngames'), nGames); save(K('mode'), mode); save(K('tpl'), allowed);
-      save(K('priority'), priority);
+      save(K('feel'), feel);
       save(K('schedule'), schedule);
       save(K('past'), pastRounds);
     }
@@ -1141,10 +1267,11 @@
     var SETTER_OVERUSE_N = 2;   // 세터가 팀 평균보다 이만큼(게임) 더 뛰면 세터 자리를 Flex에 개방
     function slotCost(name, pos, sc, nOpt) {
       var s = sc[name];
-      var varietyW = (priority === 'variety') ? 4.0 : 1.2;  // repeat penalty per prior game in this pos
-      var newBonus = (priority === 'variety') ? 6.0 : 1.5;  // reward for a never-played position
-      var playW = (priority === 'variety') ? 0.6 : 1.5;     // variety mode cares less about play-count evenness
+      var f = F();
+      var varietyW = f.varietyW, newBonus = f.newBonus, playW = f.playW;
       var c = s.play * playW;
+      /* 적합도: 주 자리에 앉히면 0, 가능이면 fitW, 도전이면 2×fitW */
+      c += (2 - (s.fit[pos] || 0)) * f.fitW;
       c -= (POS.length - nOpt) * 1.0;
       if (s.early) c -= EARLY_SLOT_BONUS;
       if (nOpt > 1) {
@@ -1178,7 +1305,9 @@
       avg = present.length ? avg / present.length : 0;
       present.forEach(function (p) {
         var s = st(p.name);
-        o[p.name] = { play: s.play, bench: s.bench, early: isEarly(p),
+        var fit = {};
+        POS.forEach(function (P) { fit[P] = fitOf(p, P); });
+        o[p.name] = { play: s.play, bench: s.bench, early: isEarly(p), fit: fit,
           pos: { S: s.pos.S, OP: s.pos.OP, OH: s.pos.OH, MB: s.pos.MB, Li: s.pos.Li } };
       });
       o.__avgPlay = avg;
@@ -1197,7 +1326,21 @@
       present.forEach(function (q) { avg += sc[q.name].play; });
       avg /= present.length;
       bench.forEach(function (n) { cost += benchCost(n, sc, avg); });
-      return { teams: t, names: teamNames, bench: bench, cost: cost };
+
+      /* 팀 간 균형: 자리 적합도 평균의 차이에 비용을 건다.
+         한 팀만 전원 제자리이고 다른 팀은 전부 낯선 자리인 배치를 막는다.
+         (사람에게 매긴 실력 점수가 아니라 '이 자리가 그 사람 자리인가' 의 합) */
+      var fitSum = [0, 0], nOn = [0, 0], nonMain = [0, 0];
+      assign.forEach(function (a) {
+        var fv = sc[a.n].fit[a.p] || 0;
+        fitSum[a.team] += fv; nOn[a.team]++;
+        if (fv < 2) nonMain[a.team]++;
+      });
+      var gap = Math.abs((fitSum[0] / (nOn[0] || 1)) - (fitSum[1] / (nOn[1] || 1)));
+      cost += gap * F().balanceW * 6;
+
+      return { teams: t, names: teamNames, bench: bench, cost: cost,
+        fitGap: gap, nonMain: nonMain };
     }
 
     /* ============================================================
@@ -1205,9 +1348,11 @@
          slots[i] = {team, pos, allow}   allow=null 이면 누구나
          must[team] = 반드시 그 팀에 들어가야 하는 이름 집합 (A·B·C 모드)
        ============================================================ */
-    function search(present, sc, slots, must, budget) {
-      var N = slots.length, used = {}, assign = new Array(N), nodes = 0, cap = budget || 3000;
+    function search(present, sc, slots, must, nodeCap, slotBudget) {
+      var N = slots.length, used = {}, assign = new Array(N), nodes = 0, cap = nodeCap || 3000;
       var left = [0, 0], need = [0, 0], i;
+      /* 팀별로 이미 쓴 '비(非)주 포지션' 자리 수. slotBudget 을 넘길 수 없다. */
+      var nm = [0, 0], maxNM = (slotBudget == null) ? 99 : slotBudget;
       for (i = 0; i < N; i++) left[slots[i].team]++;
       if (must) for (i = 0; i < present.length; i++) {
         if (must[0][present[i].name]) need[0]++;
@@ -1219,6 +1364,8 @@
         if (p.pos.indexOf(sl.pos) < 0) return false;
         if (sl.allow && sl.allow.indexOf(p.core) < 0) return false;
         if (must && must[1 - sl.team][p.name]) return false;
+        /* 주 포지션이 아니면 그 팀의 실험 자리 예산을 쓴다 */
+        if (tierOf(p, sl.pos) !== 'main' && nm[sl.team] >= maxNM) return false;
         return true;
       }
 
@@ -1245,10 +1392,13 @@
         var tm = slots[bi].team;
         for (k = 0; k < bc.length; k++) {
           var p = bc[k];
+          var isNM = tierOf(p, slots[bi].pos) !== 'main';
           used[p.name] = 1; assign[bi] = { n: p.name, p: slots[bi].pos, team: tm };
           left[tm]--; if (must && must[tm][p.name]) need[tm]--;
+          if (isNM) nm[tm]++;
           if (bt(depth + 1)) return true;
           left[tm]++; if (must && must[tm][p.name]) need[tm]++;
+          if (isNM) nm[tm]--;
           used[p.name] = 0; assign[bi] = null;
         }
         return false;
@@ -1267,21 +1417,25 @@
        자유 편성 — 매 경기 참석자 전원 중에서 두 팀을 새로 짠다
        ============================================================ */
     function solveGameFree(present, sc, tries) {
-      var T = tpls(), best = null, i, a, b, as, probe = null;
-      /* 해가 존재하는지 먼저 확인 */
-      for (i = 0; i < T.length && !probe; i++) {
-        for (var j = 0; j < T.length && !probe; j++) {
-          if (T[i].size + T[j].size > present.length) continue;
-          as = search(present, sc, mkSlots(T[i], T[j]), null, 20000);
-          if (as) probe = finish(present, sc, as, null, ['A', 'B']);
+      var T = tpls(), best = null, i, j, a, b, as, probe = null, bud;
+      /* 설정한 예산부터 시작해, 팀이 안 짜이면 한 칸씩 열어 준다.
+         (주 포지션만으로는 6명이 안 나오는 인원 구성이 흔하다) */
+      for (bud = budStart(); bud <= 7 && !probe; bud++) {
+        for (i = 0; i < T.length && !probe; i++) {
+          for (j = 0; j < T.length && !probe; j++) {
+            if (T[i].size + T[j].size > present.length) continue;
+            as = search(present, sc, mkSlots(T[i], T[j]), null, 20000, bud);
+            if (as) { probe = finish(present, sc, as, null, ['A', 'B']); usedBudget = bud; }
+          }
         }
       }
       if (!probe) return null;
+      bud = usedBudget;
       best = probe;
       for (i = 0; i < (tries || 60); i++) {
         a = T[(Math.random() * T.length) | 0]; b = T[(Math.random() * T.length) | 0];
         if (a.size + b.size > present.length) continue;
-        as = search(present, sc, mkSlots(a, b), null, 3000);
+        as = search(present, sc, mkSlots(a, b), null, 3000, bud);
         if (!as) continue;
         var r = finish(present, sc, as, null, ['A', 'B']);
         if (r.cost < best.cost) best = r;
@@ -1364,24 +1518,25 @@
       return cores;
     }
 
-    function solveGameABC(present, sc, T, gi, tries) {
+    function solveGameABC(present, sc, T, gi, tries, bud) {
       var pr = PAIRS[gi % 3], X = pr[0], Y = pr[1], Z = pr[2];
       var must = [{}, {}];
       present.forEach(function (p) {
         if (p.core === X) must[0][p.name] = 1;
         if (p.core === Y) must[1][p.name] = 1;
       });
-      var opts = tplsOfSize(T), best = null, i, as, r;
+      var opts = tplsOfSize(T), best = null, i, j, as, r;
+      /* 예산은 라운드가 정해서 내려준다. 여기서 임의로 풀면 코어를 바꿔볼 기회가 사라진다. */
       for (i = 0; i < opts.length && !best; i++) {
-        for (var j = 0; j < opts.length && !best; j++) {
-          as = search(present, sc, mkSlots(opts[i], opts[j], [X, Z], [Y, Z]), must, 6000);
+        for (j = 0; j < opts.length && !best; j++) {
+          as = search(present, sc, mkSlots(opts[i], opts[j], [X, Z], [Y, Z]), must, 6000, bud);
           if (as) best = finish(present, sc, as, null, [TEAM_NAME[X], TEAM_NAME[Y]]);
         }
       }
       if (!best) return null;
       for (i = 0; i < (tries || 40); i++) {
         var a = opts[(Math.random() * opts.length) | 0], b = opts[(Math.random() * opts.length) | 0];
-        as = search(present, sc, mkSlots(a, b, [X, Z], [Y, Z]), must, 3000);
+        as = search(present, sc, mkSlots(a, b, [X, Z], [Y, Z]), must, 3000, bud);
         if (!as) continue;
         r = finish(present, sc, as, null, [TEAM_NAME[X], TEAM_NAME[Y]]);
         if (r.cost < best.cost) best = r;
@@ -1389,7 +1544,7 @@
       return best;
     }
 
-    function runRoundABC(present, nG, T, quality) {
+    function runRoundABC(present, nG, T, quality, bud) {
       var szs = coreSizes(present.length, T);
       if (!szs) return null;
       var cs = makeCores(present, szs, T);
@@ -1398,7 +1553,7 @@
       var sc = snapshot(present), games = [], i, g;
       for (i = 0; i < nG; i++) {
         var avail = availForGame(present, round, i);
-        g = solveGameABC(avail, sc, T, i, quality ? 20 : 0);
+        g = solveGameABC(avail, sc, T, i, quality ? 20 : 0, bud);
         if (!g) return null;
         g.left = present.filter(function (p) { return avail.indexOf(p) < 0; }).map(function (p) { return p.name; });
         g.cores = [0, 1, 2].map(function (c) {
@@ -1417,16 +1572,20 @@
     function solveRoundABC(present, nG) {
       var szList = sizes().filter(function (T) { return coreSizes(present.length, T); });
       if (!szList.length) return null;
-      var found = null, T, i;
-      for (i = 0; i < 80 && !found; i++) {
-        T = szList[(Math.random() * szList.length) | 0];
-        found = runRoundABC(present, nG, T, false);
-        if (found) found.T = T;
+      /* 예산을 먼저 지키고, 코어 분할을 80번까지 바꿔 본다.
+         그래도 안 되면 그때 예산을 한 칸 연다 — 완화가 최후 수단이 되게. */
+      var found = null, T, i, bud;
+      for (bud = budStart(); bud <= 7 && !found; bud++) {
+        for (i = 0; i < 80 && !found; i++) {
+          T = szList[(Math.random() * szList.length) | 0];
+          found = runRoundABC(present, nG, T, false, bud);
+          if (found) { found.T = T; found.bud = bud; usedBudget = bud; }
+        }
       }
       if (!found) return null;
-      var bestT = found.T, best = found, bestCost = cost(found), k, r;
+      var bestT = found.T, bestBud = found.bud, best = found, bestCost = cost(found), k, r;
       for (k = 0; k < 6; k++) {
-        r = runRoundABC(present, nG, bestT, true);
+        r = runRoundABC(present, nG, bestT, true, bestBud);
         if (r && cost(r) < bestCost) { best = r; bestCost = cost(r); }
       }
       return best;
@@ -1434,16 +1593,18 @@
     }
 
     function solveRoundFree(present, nG) {
-      var sc = snapshot(present), games = [], g, i;
+      var sc = snapshot(present), games = [], g, i, maxBud = budStart();
       for (i = 0; i < nG; i++) {
         var avail = availForGame(present, round, i);
         g = solveGameFree(avail, sc);
         if (!g) return null;
+        if (usedBudget > maxBud) maxBud = usedBudget;
         g.left = present.filter(function (p) { return avail.indexOf(p) < 0; }).map(function (p) { return p.name; });
         games.push(g);
         g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; }); });
         g.bench.forEach(function (n) { sc[n].bench++; });
       }
+      usedBudget = maxBud;
       return games;
     }
 
@@ -1614,11 +1775,12 @@
         '<button type="button" data-m="abc" aria-pressed="' + (mode === 'abc') + '">' + L('mode_abc') + '<small>' + L('mode_abc_sub') + '</small></button>' +
         '<button type="button" data-m="free" aria-pressed="' + (mode === 'free') + '">' + L('mode_free') + '<small>' + L('mode_free_sub') + '</small></button>' +
         '</div>' +
-        '<p class="muted" style="margin:11px 0 7px"><b>' + L('prio_title') + '</b></p>' +
-        '<div class="seg" id="prio">' +
-        '<button type="button" data-pr="balance" aria-pressed="' + (priority === 'balance') + '">' + L('prio_balance') + '<small>' + L('prio_balance_sub') + '</small></button>' +
-        '<button type="button" data-pr="variety" aria-pressed="' + (priority === 'variety') + '">' + L('prio_variety') + '<small>' + L('prio_variety_sub') + '</small></button>' +
-        '</div>' +
+        '<p class="muted" style="margin:11px 0 7px"><b>' + L('feel_title') + '</b></p>' +
+        '<div class="seg four" id="feel">' + FEELS.map(function (f) {
+          return '<button type="button" data-f="' + f + '" aria-pressed="' + (feel === f) + '">' +
+            L('feel_' + f) + '<small>' + L('feel_' + f + '_sub') + '</small></button>';
+        }).join('') + '</div>' +
+        '<p class="muted" style="margin:7px 0 0;font-size:12px">' + L('feel_hint') + '</p>' +
         '<p class="muted" style="margin:11px 0 7px"><b>' + L('tpl_title') + '</b> ' + L('tpl_hint') + '</p>' +
         '<div class="tpl" id="tpl">' + TEMPLATES.map(function (t) {
           return '<button type="button" data-id="' + t.id + '" aria-pressed="' + (allowed.indexOf(t.id) >= 0) + '">' +
@@ -1643,6 +1805,11 @@
         var m = current.mode === 'abc' ? L('ok_abc') : L('ok_free');
         s += '<div class="msg ok">' + L('ok_done_pre') + current.round + L('ok_done_mid') + m +
           L('ok_done_suf') + '</div>';
+        /* 예산이 완화됐으면 알려준다 — 왜 낯선 자리가 늘었는지 설명이 된다 */
+        if (current.budget > FEEL[current.feel].budget) {
+          s += '<div class="msg info" style="border-color:rgba(255,112,67,.4)">' +
+            L('relaxed').replace('{n}', current.budget) + '</div>';
+        }
         if (current.mode === 'abc' && current.games[0].cores) {
           var cc = current.games[0].cores;
           s += '<div class="msg info"><b>' + L('core_title') + '</b><br>' + cc.map(function (c, i) {
@@ -1706,10 +1873,10 @@
         var b = e.target.closest('button'); if (!b) return;
         mode = b.getAttribute('data-m'); current = null; persist(); renderPlay();
       };
-      var prioEl = document.getElementById('prio');
+      var prioEl = document.getElementById('feel');
       if (prioEl) prioEl.onclick = function (e) {
         var b = e.target.closest('button'); if (!b) return;
-        priority = b.getAttribute('data-pr'); current = null; persist(); renderPlay();
+        feel = b.getAttribute('data-f'); current = null; persist(); renderPlay();
       };
       document.getElementById('tpl').onclick = function (e) {
         var b = e.target.closest('button'); if (!b) return;
@@ -1752,7 +1919,7 @@
             '<div class="msg err"><b>이 인원 · 설정으로는 배치를 만들 수 없습니다.</b><br>' + diagnose(h) + '</div>');
           return;
         }
-        current = { round: round, games: games, mode: mode };
+        current = { round: round, games: games, mode: mode, feel: feel, budget: usedBudget };
         renderPlay();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 10);
@@ -1779,8 +1946,11 @@
           '<div class="who"><button class="chk" type="button" data-i="' + i + '" data-act="here" aria-pressed="' +
           (p.here ? 'true' : 'false') + '">✓</button><span class="nm" data-p="' + p.name + '">' + p.name + '</span></div>' +
           '<div class="ptoggle">' + POS.map(function (P) {
-            return '<button type="button" data-i="' + i + '" data-act="pos" data-p="' + P + '" aria-pressed="' +
-              (p.pos.indexOf(P) >= 0 ? 'true' : 'false') + '">' + P + '</button>';
+            var t = tierOf(p, P);
+            return '<button type="button" data-i="' + i + '" data-act="pos" data-p="' + P +
+              '" data-tier="' + (t || '') + '" aria-pressed="' + (t ? 'true' : 'false') +
+              '" title="' + (t ? L('tier_' + t) : '') + '">' + P +
+              (t ? '<i>' + L('tier_' + t) + '</i>' : '') + '</button>';
           }).join('') + '</div>' +
           '<input type="time" class="leave-input" data-i="' + i + '" value="' + (p.leave || '') + '" title="' + L('leave_title') + '">' +
           '<button class="del" type="button" data-i="' + i + '" data-act="del">✕</button></div>';
@@ -1797,6 +1967,7 @@
             (newPos.indexOf(P) >= 0 ? 'true' : 'false') + '">' + P + (lang === 'en' ? '' : ' ' + POS_KO[P]) + '</button>';
         }).join('') + '</div>' +
         '<p class="muted" style="margin:10px 0 0">' + L('add_hint') + '</p></div>' +
+        '<div class="card"><p class="muted" style="margin:0">' + L('tier_hint') + '</p></div>' +
         '<div class="card"><h3>' + L('bulk') + '</h3><div class="row">' +
         '<button class="btn ghost" id="allon">' + L('all_on') + '</button>' +
         '<button class="btn ghost" id="alloff">' + L('all_off') + '</button>' +
@@ -1807,7 +1978,7 @@
         var v = document.getElementById('nn').value.trim();
         if (!v) return;
         if (players.some(function (p) { return p.name === v; })) { alert(L('dup_name')); return; }
-        players.push({ name: v, pos: newPos.length ? newPos.slice() : POS.slice(), here: true });
+        players.push(normalizePlayer({ name: v, pos: newPos.length ? newPos.slice() : POS.slice(), here: true }));
         newPos = []; current = null; persist(); renderRoster(); renderPlay();
       };
       document.getElementById('nn').onkeydown = function (e) {
@@ -1840,9 +2011,14 @@
       var act = b.getAttribute('data-act'), i = +b.getAttribute('data-i'), P = b.getAttribute('data-p');
       if (act === 'here') players[i].here = !players[i].here;
       else if (act === 'pos') {
-        var k = players[i].pos.indexOf(P);
-        if (k >= 0) { if (players[i].pos.length === 1) return; players[i].pos.splice(k, 1); }
-        else players[i].pos.push(P);
+        /* 없음 → 주 → 가능 → 도전 → 없음 */
+        var pl = players[i], cur = tierOf(pl, P);
+        var next = cur === null ? 'main' : (cur === 'main' ? 'sub' : (cur === 'sub' ? 'want' : null));
+        if (next === null) {
+          if (pl.pos.length === 1) return;      // 마지막 한 자리는 못 뺀다
+          delete pl.tier[P];
+        } else pl.tier[P] = next;
+        normalizePlayer(pl);
       }
       else if (act === 'del') {
         if (!confirm(players[i].name + L('del_confirm_suf'))) return;
