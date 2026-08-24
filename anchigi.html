@@ -964,6 +964,7 @@
         past_hint: '지난 라운드 배치입니다. 제목을 눌러 펼치거나 접습니다.',
         past_round_suf: 'R 배치',
         infeasible: '이 인원 · 설정으로는 배치를 만들 수 없습니다.',
+        drawing: '뽑는 중…',
         court_zone: '존', bench_label: '대기',
         borrowed: '차출', team_swap: '후위 센터와 교대', team_word: 'TEAM',
         roster: '명단', roster_attend: '참석', roster_total: '전체',
@@ -975,7 +976,7 @@
         reset_title: '초기화', reset_btn: '기록 지우기',
         reset_hint: '다음 모임을 시작할 때 눌러주세요. 명단은 남습니다.',
         reset_confirm: '누적 기록을 지우고 1R부터 다시 시작합니다.',
-        dup_name: '같은 이름이 이미 있습니다.',
+        dup_name: '같은 이름이 이미 있습니다. 다른 사람으로 추가할까요?',
         rounds_confirmed_suf: '개 라운드 확정',
         stat_empty: '아직 확정한 라운드가 없습니다. 배치를 뽑고 <b>확정</b>을 누르면 여기에 쌓입니다.',
         stat_hint: '이 기록을 보고 다음 라운드에서 출전 · 대기 · 포지션을 고르게 나눕니다.',
@@ -1036,6 +1037,7 @@
         past_hint: 'Past round lineups. Tap a title to expand or collapse.',
         past_round_suf: ' lineup',
         infeasible: 'Can\'t build a lineup with these players and settings.',
+        drawing: 'Drawing…',
         court_zone: 'Zone', bench_label: 'Bench',
         borrowed: 'borrowed', team_swap: 'swaps with back-row center', team_word: 'TEAM',
         roster: 'Roster', roster_attend: 'Present', roster_total: 'total',
@@ -1047,7 +1049,7 @@
         reset_title: 'Reset', reset_btn: 'Clear record',
         reset_hint: 'Hit this when starting the next meetup. The roster stays.',
         reset_confirm: 'Clear the cumulative record and restart from R1.',
-        dup_name: 'That name already exists.',
+        dup_name: 'That name already exists. Add as a different person?',
         rounds_confirmed_suf: ' rounds confirmed',
         stat_empty: 'No rounds confirmed yet. Draw a lineup and hit <b>Confirm</b> to log it here.',
         stat_hint: 'This record spreads play, bench, and positions evenly across next rounds.',
@@ -1144,9 +1146,19 @@
     function tierOf(p, pos) { return (p.tier && p.tier[pos]) || null; }
     function fitOf(p, pos) { var t = tierOf(p, pos); return t ? FIT[t] : 0; }
 
+    /* 사람 식별자 — 이름이 아니라 이 id 로 통계·솔버 키를 잡는다.
+       동명이인(픽업은 초면 모임이라 흔하다)을 구분하고, 지운 뒤 같은 이름을
+       다시 넣어도 옛 기록이 붙지 않게 한다. 이름은 표시 전용. */
+    var _idSeq = 0;
+    function genId() {
+      _idSeq++;
+      return 'p' + _idSeq.toString(36) + '-' + Math.round(Math.random() * 1e9).toString(36);
+    }
+
     /* 예전 형식(pos 배열)을 3단계로 올린다. 뭐가 주고 뭐가 보조인지 알 수 없으니
        전부 '주'로 둔다 — 오늘까지의 동작을 그대로 재현하는 쪽이 안전하다. */
     function normalizePlayer(p) {
+      if (!p.id) p.id = genId();
       if (!p.tier) {
         p.tier = {};
         (p.pos || []).forEach(function (P) { p.tier[P] = 'main'; });
@@ -1190,8 +1202,29 @@
       return { name: d[0], pos: d[1], here: true, leave: d[2] || null };
     })).map(normalizePlayer);
     var stat = load(KEY_H, null) || {};
+    /* 예전 저장본은 stat 이 이름 키였다. id 를 새로 받은 사람은 옛 기록을 id 로 옮긴다.
+       (예전엔 동명이인을 막았으므로 이름→id 는 1:1, 충돌 없음) */
+    (function migrateStatToId() {
+      var moved = false;
+      players.forEach(function (p) {
+        if (stat[p.name] && !stat[p.id]) { stat[p.id] = stat[p.name]; delete stat[p.name]; moved = true; }
+      });
+      if (moved) { try { save(KEY_H, stat); save(KEY_P, players); } catch (e) { } }
+    })();
     var round = load(K('round'), null) || 1;
     var pastRounds = load(K('past'), null) || [];
+    /* 예전 저장본의 지난 라운드 기록은 팀 멤버가 이름 문자열(id 없음)이라 새 렌더러와
+       안 맞는다. 확정 라운드 로그(표시 전용)일 뿐 stat 집계와 무관하므로, 구형이면 비운다. */
+    (function dropLegacyPast() {
+      var legacy = pastRounds.some(function (R) {
+        return (R.games || []).some(function (g) {
+          return (g.teams || []).some(function (t) {
+            return t.some(function (x) { return !x || x.id == null; });
+          });
+        });
+      });
+      if (legacy) { pastRounds = []; try { save(K('past'), pastRounds); } catch (e) { } }
+    })();
     var nGames = load(K('ngames'), null) || 3;
     var mode = load(K('mode'), null) || 'abc';           /* 'abc' | 'free' */
     /* 예전 priority(balance|variety)를 게임 성격 4단계로 옮긴다 */
@@ -1304,13 +1337,13 @@
     function snapshot(present) {
       var o = {};
       var avg = 0;
-      present.forEach(function (p) { avg += st(p.name).play; });
+      present.forEach(function (p) { avg += st(p.id).play; });
       avg = present.length ? avg / present.length : 0;
       present.forEach(function (p) {
-        var s = st(p.name);
+        var s = st(p.id);
         var fit = {};
         POS.forEach(function (P) { fit[P] = fitOf(p, P); });
-        o[p.name] = { play: s.play, bench: s.bench, early: isEarly(p), fit: fit,
+        o[p.id] = { play: s.play, bench: s.bench, early: isEarly(p), fit: fit,
           pos: { S: s.pos.S, OP: s.pos.OP, OH: s.pos.OH, MB: s.pos.MB, Li: s.pos.Li } };
       });
       o.__avgPlay = avg;
@@ -1327,24 +1360,24 @@
 
     function finish(present, sc, assign, slots, teamNames) {
       var t = [[], []], cost = 0, used = {}, capOf = {};
-      present.forEach(function (q) { capOf[q.name] = q.pos.length; });
+      present.forEach(function (q) { capOf[q.id] = q.pos.length; });
       assign.forEach(function (a) {
-        t[a.team].push({ n: a.n, p: a.p });
-        used[a.n] = 1;
-        cost += slotCost(a.n, a.p, sc, capOf[a.n]);
+        t[a.team].push({ id: a.id, n: a.n, p: a.p });
+        used[a.id] = 1;
+        cost += slotCost(a.id, a.p, sc, capOf[a.id]);
       });
-      var bench = present.filter(function (q) { return !used[q.name]; }).map(function (q) { return q.name; });
+      var bench = present.filter(function (q) { return !used[q.id]; }).map(function (q) { return { id: q.id, n: q.name }; });
       var avg = 0;
-      present.forEach(function (q) { avg += sc[q.name].play; });
+      present.forEach(function (q) { avg += sc[q.id].play; });
       avg /= present.length;
-      bench.forEach(function (n) { cost += benchCost(n, sc, avg); });
+      bench.forEach(function (b) { cost += benchCost(b.id, sc, avg); });
 
       /* 팀 간 균형: 자리 적합도 평균의 차이에 비용을 건다.
          한 팀만 전원 제자리이고 다른 팀은 전부 낯선 자리인 배치를 막는다.
          (사람에게 매긴 실력 점수가 아니라 '이 자리가 그 사람 자리인가' 의 합) */
       var fitSum = [0, 0], nOn = [0, 0], nonMain = [0, 0];
       assign.forEach(function (a) {
-        var fv = sc[a.n].fit[a.p] || 0;
+        var fv = sc[a.id].fit[a.p] || 0;
         fitSum[a.team] += fv; nOn[a.team]++;
         if (fv < 2) nonMain[a.team]++;
       });
@@ -1367,15 +1400,15 @@
       var nm = [0, 0], maxNM = (slotBudget == null) ? 99 : slotBudget;
       for (i = 0; i < N; i++) left[slots[i].team]++;
       if (must) for (i = 0; i < present.length; i++) {
-        if (must[0][present[i].name]) need[0]++;
-        else if (must[1][present[i].name]) need[1]++;
+        if (must[0][present[i].id]) need[0]++;
+        else if (must[1][present[i].id]) need[1]++;
       }
 
       function ok(p, sl) {
-        if (used[p.name]) return false;
+        if (used[p.id]) return false;
         if (p.pos.indexOf(sl.pos) < 0) return false;
         if (sl.allow && sl.allow.indexOf(p.core) < 0) return false;
-        if (must && must[1 - sl.team][p.name]) return false;
+        if (must && must[1 - sl.team][p.id]) return false;
         /* 주 포지션이 아니면 그 팀의 실험 자리 예산을 쓴다 */
         if (tierOf(p, sl.pos) !== 'main' && nm[sl.team] >= maxNM) return false;
         return true;
@@ -1398,20 +1431,20 @@
         }
         if (bc === null || bc.length === 0) return false;
         bc = bc.slice().sort(function (a, b) {
-          return (slotCost(a.name, slots[bi].pos, sc, a.pos.length) + Math.random() * 1.6) -
-            (slotCost(b.name, slots[bi].pos, sc, b.pos.length) + Math.random() * 1.6);
+          return (slotCost(a.id, slots[bi].pos, sc, a.pos.length) + Math.random() * 1.6) -
+            (slotCost(b.id, slots[bi].pos, sc, b.pos.length) + Math.random() * 1.6);
         });
         var tm = slots[bi].team;
         for (k = 0; k < bc.length; k++) {
           var p = bc[k];
           var isNM = tierOf(p, slots[bi].pos) !== 'main';
-          used[p.name] = 1; assign[bi] = { n: p.name, p: slots[bi].pos, team: tm };
-          left[tm]--; if (must && must[tm][p.name]) need[tm]--;
+          used[p.id] = 1; assign[bi] = { id: p.id, n: p.name, p: slots[bi].pos, team: tm };
+          left[tm]--; if (must && must[tm][p.id]) need[tm]--;
           if (isNM) nm[tm]++;
           if (bt(depth + 1)) return true;
-          left[tm]++; if (must && must[tm][p.name]) need[tm]++;
+          left[tm]++; if (must && must[tm][p.id]) need[tm]++;
           if (isNM) nm[tm]--;
-          used[p.name] = 0; assign[bi] = null;
+          used[p.id] = 0; assign[bi] = null;
         }
         return false;
       }
@@ -1500,12 +1533,12 @@
        몰리지 않도록 제약이 센 사람부터 배분한다. */
     function makeCores(present, szs, T) {
       var avgP = 0;
-      present.forEach(function (p) { avgP += st(p.name).play; });
+      present.forEach(function (p) { avgP += st(p.id).play; });
       avgP = present.length ? avgP / present.length : 0;
       /* 과출전 세터 판정: 세터 전용(pos===['S'])이고 평균보다 N게임 이상 많이 뛴 사람.
          이런 사람은 코어 배정에서 뒤로 밀어 이번 라운드 쉬게 하고, 세터 자리를 Flex가 잇게 한다. */
       function overusedSetter(p) {
-        return p.pos.length === 1 && p.pos[0] === 'S' && st(p.name).play >= avgP + SETTER_OVERUSE_N;
+        return p.pos.length === 1 && p.pos[0] === 'S' && st(p.id).play >= avgP + SETTER_OVERUSE_N;
       }
       var byFlex = present.slice().sort(function (a, b) {
         var ao = overusedSetter(a) ? 1 : 0, bo = overusedSetter(b) ? 1 : 0;
@@ -1534,8 +1567,8 @@
       var pr = PAIRS[gi % 3], X = pr[0], Y = pr[1], Z = pr[2];
       var must = [{}, {}];
       present.forEach(function (p) {
-        if (p.core === X) must[0][p.name] = 1;
-        if (p.core === Y) must[1][p.name] = 1;
+        if (p.core === X) must[0][p.id] = 1;
+        if (p.core === Y) must[1][p.id] = 1;
       });
       var opts = tplsOfSize(T), best = null, i, j, as, r;
       /* 예산은 라운드가 정해서 내려준다. 여기서 임의로 풀면 코어를 바꿔볼 기회가 사라진다. */
@@ -1567,13 +1600,13 @@
         var avail = availForGame(present, round, i);
         g = solveGameABC(avail, sc, T, i, quality ? 20 : 0, bud);
         if (!g) return null;
-        g.left = present.filter(function (p) { return avail.indexOf(p) < 0; }).map(function (p) { return p.name; });
+        g.left = present.filter(function (p) { return avail.indexOf(p) < 0; }).map(function (p) { return { id: p.id, n: p.name }; });
         g.cores = [0, 1, 2].map(function (c) {
-          return present.filter(function (p) { return p.core === c; }).map(function (p) { return p.name; });
+          return present.filter(function (p) { return p.core === c; }).map(function (p) { return { id: p.id, n: p.name }; });
         });
         games.push(g);
-        g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; }); });
-        g.bench.forEach(function (n) { sc[n].bench++; });
+        g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.id].play++; sc[x.id].pos[x.p]++; }); });
+        g.bench.forEach(function (b) { sc[b.id].bench++; });
         refreshAvg(sc);
       }
       return games;
@@ -1609,10 +1642,10 @@
         g = solveGameFree(avail, sc);
         if (!g) return null;
         if (usedBudget > maxBud) maxBud = usedBudget;
-        g.left = present.filter(function (p) { return avail.indexOf(p) < 0; }).map(function (p) { return p.name; });
+        g.left = present.filter(function (p) { return avail.indexOf(p) < 0; }).map(function (p) { return { id: p.id, n: p.name }; });
         games.push(g);
-        g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; }); });
-        g.bench.forEach(function (n) { sc[n].bench++; });
+        g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.id].play++; sc[x.id].pos[x.p]++; }); });
+        g.bench.forEach(function (b) { sc[b.id].bench++; });
         refreshAvg(sc);
       }
       usedBudget = maxBud;
@@ -1707,20 +1740,24 @@
     }
     var TOP_ROWS = [[1, 6, 5], [2, 3, 4]], BOT_ROWS = [[4, 3, 2], [5, 6, 1]];
 
+    /* coreList = 이 팀 코어 [{id,n}] (차출 표시용). id 로 대조한다 — 동명이인 구분. */
+    function isBorrowed(coreList, pl) {
+      return coreList && !coreList.some(function (x) { return x.id === pl.id; });
+    }
     function sideHTML(team, lineup, isTop, coreNames) {
       var r = toZones(lineup), rows = isTop ? TOP_ROWS : BOT_ROWS, html = '', i, k, zn, pl;
       var label = '<div class="team-label"><span class="tname">' + L('team_word') + ' ' + team + '</span><span>' +
         lineup.length + L('people') + '</span></div>';
       for (i = 0; i < rows.length; i++) for (k = 0; k < rows[i].length; k++) {
         zn = rows[i][k]; pl = r.z[zn];
-        html += '<div class="cell" data-p="' + pl.n + '"><span class="zone">' + L('court_zone') + ' ' + zn + '</span>' +
-          '<span class="name">' + pl.n + (coreNames && coreNames.indexOf(pl.n) < 0 ? '<span class="core">' + L('borrowed') + '</span>' : '') +
+        html += '<div class="cell" data-p="' + pl.id + '"><span class="zone">' + L('court_zone') + ' ' + zn + '</span>' +
+          '<span class="name">' + pl.n + (isBorrowed(coreNames, pl) ? '<span class="core">' + L('borrowed') + '</span>' : '') +
           '</span><span><span class="pos ' + pl.p + '">' + pl.p + '</span></span></div>';
       }
       if (r.libero) {
-        html += '<div class="libero" data-p="' + r.libero.n + '"><span class="pos Li">Li</span>' +
+        html += '<div class="libero" data-p="' + r.libero.id + '"><span class="pos Li">Li</span>' +
           '<span class="nm">' + r.libero.n +
-          (coreNames && coreNames.indexOf(r.libero.n) < 0 ? '<span class="core">' + L('borrowed') + '</span>' : '') + '</span>' +
+          (isBorrowed(coreNames, r.libero) ? '<span class="core">' + L('borrowed') + '</span>' : '') + '</span>' +
           '<span>' + L('team_swap') + '</span></div>';
       }
       return '<div class="side ' + (isTop ? 'top' : 'bottom') + '">' +
@@ -1731,13 +1768,13 @@
       var timeStr = rnd ? '<span style="font-size:12px;font-weight:700;color:var(--nurungji-brown)">' +
         formatTime(gameStartMin(rnd, idx)) + '-' + formatTime(gameEndMin(rnd, idx)) + '</span>' : '';
       var bench = g.bench.length
-        ? g.bench.map(function (n) { return '<span class="chip" data-p="' + n + '">' + n + '</span>'; }).join('')
+        ? g.bench.map(function (b) { return '<span class="chip" data-p="' + b.id + '">' + b.n + '</span>'; }).join('')
         : '<span class="chip" style="opacity:.6">' + L('bench_none') + '</span>';
       var leftHtml = '';
       if (g.left && g.left.length) {
         leftHtml = '<div class="bench"><span style="color:var(--urgent-color)">' + L('leave_word') + '</span>' +
-          g.left.map(function (n) {
-            return '<span class="chip" data-p="' + n + '" style="background:rgba(255,112,67,.1);border-color:rgba(255,112,67,.3);color:var(--urgent-color)">' + n + '</span>';
+          g.left.map(function (x) {
+            return '<span class="chip" data-p="' + x.id + '" style="background:rgba(255,112,67,.1);border-color:rgba(255,112,67,.3);color:var(--urgent-color)">' + x.n + '</span>';
           }).join('') + '</div>';
       }
       var cores = null;
@@ -1824,7 +1861,7 @@
         if (current.mode === 'abc' && current.games[0].cores) {
           var cc = current.games[0].cores;
           s += '<div class="msg info"><b>' + L('core_title') + '</b><br>' + cc.map(function (c, i) {
-            return TEAM_NAME[i] + ' — ' + (c.length ? c.join(' · ') : '<span style="opacity:.6">' + L('core_none') + '</span>');
+            return TEAM_NAME[i] + ' — ' + (c.length ? c.map(function (x) { return x.n; }).join(' · ') : '<span style="opacity:.6">' + L('core_none') + '</span>');
           }).join('<br>') + '</div>';
           if (!cc[2].length) s += '<div class="msg info" style="border-color:rgba(255,112,67,.4)">' +
             L('no_c_core') + '</div>';
@@ -1837,7 +1874,7 @@
           var ll = (cg.left || []);
           s += '<div class="tl-item"><span class="tl-time">' + gs + ' - ' + ge + '</span>' +
             L('game_word') + ' ' + (gi + 1) + ' ' + cg.names[0] + ' vs ' + cg.names[1] +
-            (ll.length ? '<span class="tl-leave"> ⚠ ' + ll.join(' · ') + ' ' + L('leave_word') + '</span>' : '') + '</div>';
+            (ll.length ? '<span class="tl-leave"> ⚠ ' + ll.map(function (x) { return x.n; }).join(' · ') + ' ' + L('leave_word') + '</span>' : '') + '</div>';
         });
         if (schedule.rest > 0 && current.round < maxRounds()) {
           var rs = formatTime(gameEndMin(current.round, nGames - 1));
@@ -1868,7 +1905,7 @@
             var ll = (cg.left || []);
             s += '<div class="tl-item"><span class="tl-time">' + gs + ' - ' + ge + '</span>' +
               L('game_word') + ' ' + (gi + 1) + ' ' + cg.names[0] + ' vs ' + cg.names[1] +
-              (ll.length ? '<span class="tl-leave"> ⚠ ' + ll.join(' · ') + ' ' + L('leave_word') + '</span>' : '') + '</div>';
+              (ll.length ? '<span class="tl-leave"> ⚠ ' + ll.map(function (x) { return x.n; }).join(' · ') + ' ' + L('leave_word') + '</span>' : '') + '</div>';
           });
           s += '</div>';
           s += R.games.map(function (g, idx) { return gameHTML(g, idx, R.round); }).join('');
@@ -1920,14 +1957,14 @@
     function draw() {
       var h = here();
       var btn = document.getElementById('go');
-      if (btn) { btn.disabled = true; btn.textContent = '뽑는 중…'; }
+      if (btn) { btn.disabled = true; btn.textContent = L('drawing'); }
       setTimeout(function () {
         var games = quickInfeasible(h) ? null : solveRound(h, nGames);
         if (!games) {
           current = null;
           renderPlay();
           document.getElementById('p0').insertAdjacentHTML('beforeend',
-            '<div class="msg err"><b>이 인원 · 설정으로는 배치를 만들 수 없습니다.</b><br>' + diagnose(h) + '</div>');
+            '<div class="msg err"><b>' + L('infeasible') + '</b><br>' + diagnose(h) + '</div>');
           return;
         }
         current = { round: round, games: games, mode: mode, feel: feel, budget: usedBudget };
@@ -1939,8 +1976,8 @@
     function commit() {
       if (!current) return;
       current.games.forEach(function (g) {
-        g.teams.forEach(function (t) { t.forEach(function (x) { var s = st(x.n); s.play++; s.pos[x.p]++; }); });
-        g.bench.forEach(function (n) { st(n).bench++; });
+        g.teams.forEach(function (t) { t.forEach(function (x) { var s = st(x.id); s.play++; s.pos[x.p]++; }); });
+        g.bench.forEach(function (b) { st(b.id).bench++; });
       });
       pastRounds.push({ round: current.round, games: current.games, mode: current.mode });
       round++; current = null; persist();
@@ -1955,7 +1992,7 @@
       var rows = players.length ? players.map(function (p, i) {
         return '<div class="prow' + (p.here ? '' : ' off') + '">' +
           '<div class="who"><button class="chk" type="button" data-i="' + i + '" data-act="here" aria-pressed="' +
-          (p.here ? 'true' : 'false') + '">✓</button><span class="nm" data-p="' + p.name + '">' + p.name + '</span></div>' +
+          (p.here ? 'true' : 'false') + '">✓</button><span class="nm" data-p="' + p.id + '">' + p.name + '</span></div>' +
           '<div class="ptoggle">' + POS.map(function (P) {
             var t = tierOf(p, P);
             return '<button type="button" data-i="' + i + '" data-act="pos" data-p="' + P +
@@ -1988,7 +2025,8 @@
       document.getElementById('add').onclick = function () {
         var v = document.getElementById('nn').value.trim();
         if (!v) return;
-        if (players.some(function (p) { return p.name === v; })) { alert(L('dup_name')); return; }
+        /* 동명이인 허용(픽업은 초면 모임) — 실수로 두 번 넣는 것만 막게 확인 한 번 */
+        if (players.some(function (p) { return p.name === v; }) && !confirm(L('dup_name'))) return;
         players.push(normalizePlayer({ name: v, pos: newPos.length ? newPos.slice() : POS.slice(), here: true }));
         newPos = []; current = null; persist(); renderRoster(); renderPlay();
       };
@@ -2033,6 +2071,7 @@
       }
       else if (act === 'del') {
         if (!confirm(players[i].name + L('del_confirm_suf'))) return;
+        delete stat[players[i].id];   /* 지운 사람 기록도 같이 정리 — 이름 재사용해도 안 붙게 */
         players.splice(i, 1);
       }
       else if (act === 'npos') {
@@ -2049,10 +2088,10 @@
        화면 3 — 기록
        ============================================================ */
     function renderStat() {
-      var names = players.map(function (p) { return p.name; }).filter(function (n) { return stat[n]; });
-      var body = names.map(function (n) {
-        var s = st(n);
-        return '<tr data-p="' + n + '"><td class="nm">' + n + '</td><td>' + s.play + '</td><td>' + s.bench + '</td>' +
+      var rec = players.filter(function (p) { return stat[p.id]; });
+      var body = rec.map(function (p) {
+        var s = st(p.id);
+        return '<tr data-p="' + p.id + '"><td class="nm">' + p.name + '</td><td>' + s.play + '</td><td>' + s.bench + '</td>' +
           POS.map(function (P) {
             return '<td>' + (s.pos[P] ? '<span class="pos ' + P + '">' + s.pos[P] + '</span>' : '·') + '</td>';
           }).join('') + '</tr>';
