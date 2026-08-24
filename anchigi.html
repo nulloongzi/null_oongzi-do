@@ -260,6 +260,19 @@
       opacity: .85;
     }
 
+    /* ☆ = 이 자리를 주로 승격 / ★ = 현재 주 표시 */
+    .ptoggle .star {
+      margin-left: 5px;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .ptoggle .star.ismain {
+      color: #ffd54a;
+      cursor: default;
+    }
+
     /* 주 = 꽉 찬 색, 가능 = 테두리만, 도전 = 점선 */
     .ptoggle button[aria-pressed="true"] {
       color: #fff;
@@ -927,7 +940,8 @@
         feel_exp: '경험', feel_exp_sub: '자리 제한 없음',
         feel_hint: '실험 자리 = 주 포지션이 아닌 사람이 서는 자리. 이 수만큼만 열립니다.',
         tier_main: '주', tier_sub: '가능', tier_want: '도전',
-        tier_hint: '칩을 누를 때마다 주 → 가능 → 도전 → 해제로 바뀝니다. 경쟁 게임은 <b>주</b>만 씁니다.',
+        set_main: '주 포지션으로',
+        tier_hint: '처음 고른 자리가 <b>주</b> 포지션이에요. 더 누르면 가능 → 도전 → 해제로 바뀌고, ☆를 누르면 주 포지션을 바꿉니다. 경쟁 게임은 주만 씁니다.',
         relaxed: '주 포지션만으로는 팀이 안 짜여서 실험 자리를 <b>팀당 {n}개</b>까지 열었습니다.',
         fitgap_even: '두 팀 자리 적합도가 고릅니다.',
         fitgap_off: '한쪽 팀이 낯선 자리를 더 맡았습니다.',
@@ -1000,7 +1014,8 @@
         feel_exp: 'Try it', feel_exp_sub: 'No restriction',
         feel_hint: 'An open slot is one filled by someone off their main position. Only this many are allowed.',
         tier_main: 'Main', tier_sub: 'Can', tier_want: 'Want',
-        tier_hint: 'Tap a chip to cycle Main → Can → Want → off. Competitive games use <b>Main</b> only.',
+        set_main: 'Set as main',
+        tier_hint: 'Your first pick is your <b>Main</b>. Tap again for Can → Want → off; tap ☆ to change your main. Competitive games use Main only.',
         relaxed: 'Main positions alone could not fill the teams, so up to <b>{n}</b> open slot(s) per team were allowed.',
         fitgap_even: 'Both teams sit at similar position fit.',
         fitgap_off: 'One team took more unfamiliar slots.',
@@ -1987,7 +2002,7 @@
     /* ============================================================
        화면 2 — 명단
        ============================================================ */
-    var newPos = [];
+    var newPos = {};   /* 추가 폼: {포지션: 'main'|'sub'|'want'} — 로스터와 같은 티어 모델 */
     function renderRoster() {
       var rows = players.length ? players.map(function (p, i) {
         return '<div class="prow' + (p.here ? '' : ' off') + '">' +
@@ -1995,10 +2010,12 @@
           (p.here ? 'true' : 'false') + '">✓</button><span class="nm" data-p="' + p.id + '">' + p.name + '</span></div>' +
           '<div class="ptoggle">' + POS.map(function (P) {
             var t = tierOf(p, P);
+            var star = t === 'main' ? '<span class="star ismain" aria-hidden="true">★</span>'
+              : (t ? '<span class="star" data-i="' + i + '" data-act="promote" data-p="' + P + '" title="' + L('set_main') + '">☆</span>' : '');
             return '<button type="button" data-i="' + i + '" data-act="pos" data-p="' + P +
               '" data-tier="' + (t || '') + '" aria-pressed="' + (t ? 'true' : 'false') +
               '" title="' + (t ? L('tier_' + t) : '') + '">' + P +
-              (t ? '<i>' + L('tier_' + t) + '</i>' : '') + '</button>';
+              (t ? '<i>' + L('tier_' + t) + '</i>' : '') + star + '</button>';
           }).join('') + '</div>' +
           '<input type="time" class="leave-input" data-i="' + i + '" value="' + (p.leave || '') + '" title="' + L('leave_title') + '">' +
           '<button class="del" type="button" data-i="' + i + '" data-act="del">✕</button></div>';
@@ -2011,8 +2028,12 @@
         '<input type="text" id="nn" placeholder="' + L('name_ph') + '" style="flex:1;min-width:120px">' +
         '<button class="btn" id="add">' + L('add_btn') + '</button></div>' +
         '<div class="ptoggle" style="margin-top:10px">' + POS.map(function (P) {
-          return '<button type="button" data-act="npos" data-p="' + P + '" aria-pressed="' +
-            (newPos.indexOf(P) >= 0 ? 'true' : 'false') + '">' + P + (lang === 'en' ? '' : ' ' + POS_KO[P]) + '</button>';
+          var t = newPos[P] || null;
+          var star = t === 'main' ? '<span class="star ismain" aria-hidden="true">★</span>'
+            : (t ? '<span class="star" data-act="npromote" data-p="' + P + '" title="' + L('set_main') + '">☆</span>' : '');
+          return '<button type="button" data-act="npos" data-p="' + P +
+            '" data-tier="' + (t || '') + '" aria-pressed="' + (t ? 'true' : 'false') + '">' +
+            P + (lang === 'en' ? '' : ' ' + POS_KO[P]) + (t ? '<i>' + L('tier_' + t) + '</i>' : '') + star + '</button>';
         }).join('') + '</div>' +
         '<p class="muted" style="margin:10px 0 0">' + L('add_hint') + '</p></div>' +
         '<div class="card"><p class="muted" style="margin:0">' + L('tier_hint') + '</p></div>' +
@@ -2027,8 +2048,8 @@
         if (!v) return;
         /* 동명이인 허용(픽업은 초면 모임) — 실수로 두 번 넣는 것만 막게 확인 한 번 */
         if (players.some(function (p) { return p.name === v; }) && !confirm(L('dup_name'))) return;
-        players.push(normalizePlayer({ name: v, pos: newPos.length ? newPos.slice() : POS.slice(), here: true }));
-        newPos = []; current = null; persist(); renderRoster(); renderPlay();
+        players.push(normalizePlayer({ name: v, tier: Object.assign({}, newPos), here: true }));
+        newPos = {}; current = null; persist(); renderRoster(); renderPlay();
       };
       document.getElementById('nn').onkeydown = function (e) {
         if (e.key === 'Enter') document.getElementById('add').click();
@@ -2060,24 +2081,57 @@
       var act = b.getAttribute('data-act'), i = +b.getAttribute('data-i'), P = b.getAttribute('data-p');
       if (act === 'here') players[i].here = !players[i].here;
       else if (act === 'pos') {
-        /* 없음 → 주 → 가능 → 도전 → 없음 */
+        /* 첫 자리 = 주, 이후 = 가능. 켠 뒤엔 가능 → 도전 → 해제로 순환.
+           주 변경은 ☆(promote). 주를 끄면 남은 자리 중 하나가 자동으로 주가 된다. */
         var pl = players[i], cur = tierOf(pl, P);
-        var next = cur === null ? 'main' : (cur === 'main' ? 'sub' : (cur === 'sub' ? 'want' : null));
-        if (next === null) {
+        if (cur === null) {
+          pl.tier[P] = mainCount(pl) ? 'sub' : 'main';
+        } else if (cur === 'main') {
           if (pl.pos.length === 1) return;      // 마지막 한 자리는 못 뺀다
           delete pl.tier[P];
-        } else pl.tier[P] = next;
+          var nx = POS.filter(function (Q) { return pl.tier[Q]; })[0];
+          if (nx) pl.tier[nx] = 'main';         // 주는 항상 하나 유지
+        } else if (cur === 'sub') {
+          pl.tier[P] = 'want';
+        } else {                                // want → 해제
+          if (pl.pos.length === 1) return;
+          delete pl.tier[P];
+        }
         normalizePlayer(pl);
+      }
+      else if (act === 'promote') {
+        /* ☆ 탭 — 이 자리를 주로 올리고 기존 주는 가능으로 내린다 */
+        var plp = players[i];
+        POS.forEach(function (Q) { if (plp.tier[Q] === 'main') plp.tier[Q] = 'sub'; });
+        plp.tier[P] = 'main';
+        normalizePlayer(plp);
       }
       else if (act === 'del') {
         if (!confirm(players[i].name + L('del_confirm_suf'))) return;
         delete stat[players[i].id];   /* 지운 사람 기록도 같이 정리 — 이름 재사용해도 안 붙게 */
         players.splice(i, 1);
       }
-      else if (act === 'npos') {
-        var j = newPos.indexOf(P);
-        if (j >= 0) newPos.splice(j, 1); else newPos.push(P);
-        b.setAttribute('aria-pressed', j >= 0 ? 'false' : 'true');
+      else if (act === 'npos' || act === 'npromote') {
+        /* 추가 폼도 로스터와 같은 티어 규칙. 재렌더로 ☆/★를 반영하되,
+           입력 중이던 이름은 지워지지 않게 보존한다. */
+        var nmv = (document.getElementById('nn') || {}).value || '';
+        if (act === 'npromote') {
+          POS.forEach(function (Q) { if (newPos[Q] === 'main') newPos[Q] = 'sub'; });
+          newPos[P] = 'main';
+        } else {
+          var ct = newPos[P] || null;
+          if (ct === null) {
+            newPos[P] = POS.some(function (Q) { return newPos[Q] === 'main'; }) ? 'sub' : 'main';
+          } else if (ct === 'main') {
+            delete newPos[P];
+            var nk = POS.filter(function (Q) { return newPos[Q]; })[0];
+            if (nk) newPos[nk] = 'main';
+          } else if (ct === 'sub') {
+            newPos[P] = 'want';
+          } else { delete newPos[P]; }
+        }
+        renderRoster();
+        var nn2 = document.getElementById('nn'); if (nn2) nn2.value = nmv;
         return;
       }
       else return;
