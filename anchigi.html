@@ -1264,7 +1264,10 @@
        ============================================================ */
     /* 일찍 가는 사람은 뒤 경기를 어차피 못 뛰므로, 있는 동안은 우선 출전시킨다 */
     var EARLY_SLOT_BONUS = 5.0, EARLY_BENCH_PENALTY = 10.0;
-    var SETTER_OVERUSE_N = 2;   // 세터가 팀 평균보다 이만큼(게임) 더 뛰면 세터 자리를 Flex에 개방
+    /* 세터가 평균보다 이만큼(게임) 더 뛰면 세터 자리를 Flex 에 개방한다.
+       평균을 경기마다 다시 재게 되면서(refreshAvg) 모두가 같이 올라가 +2 에는 잘 안 닿는다.
+       측정해 보니 1 쪽이 세터 최다출전과 출전 편차 모두 낮았다. */
+    var SETTER_OVERUSE_N = 1;
     function slotCost(name, pos, sc, nOpt) {
       var s = sc[name];
       var f = F();
@@ -1313,6 +1316,15 @@
       o.__avgPlay = avg;
       return o;
     }
+    /* 경기가 끝날 때마다 평균 출전을 다시 잰다.
+       세터 과다 출전 개방(slotCost)이 이 값을 기준으로 걸리므로,
+       라운드 안에서도 최신이어야 한 라운드 세 경기 동안 세터가 몰리지 않는다. */
+    function refreshAvg(sc) {
+      var tot = 0, cnt = 0, n;
+      for (n in sc) { if (n.slice(0, 2) === '__') continue; tot += sc[n].play; cnt++; }
+      sc.__avgPlay = cnt ? tot / cnt : 0;
+    }
+
     function finish(present, sc, assign, slots, teamNames) {
       var t = [[], []], cost = 0, used = {}, capOf = {};
       present.forEach(function (q) { capOf[q.name] = q.pos.length; });
@@ -1562,9 +1574,7 @@
         games.push(g);
         g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; }); });
         g.bench.forEach(function (n) { sc[n].bench++; });
-        var _tot = 0, _cnt = 0;
-        for (var _nm in sc) { if (_nm.slice(0, 2) === '__') continue; _tot += sc[_nm].play; _cnt++; }
-        sc.__avgPlay = _cnt ? _tot / _cnt : 0;
+        refreshAvg(sc);
       }
       return games;
     }
@@ -1603,6 +1613,7 @@
         games.push(g);
         g.teams.forEach(function (t) { t.forEach(function (x) { sc[x.n].play++; sc[x.n].pos[x.p]++; }); });
         g.bench.forEach(function (n) { sc[n].bench++; });
+        refreshAvg(sc);
       }
       usedBudget = maxBud;
       return games;
