@@ -226,6 +226,97 @@
             box-shadow: 0 6px 20px rgba(255, 112, 67, 0.4);
         }
 
+        /* 앱 설치 유도 배너 (웹→앱 유입 깔때기) */
+        .app-install-banner {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 90; /* 지도/FAB(20) 위, 바텀시트(9999+) 아래 → 시트 열리면 자연히 가려짐 */
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 -6px 24px rgba(93, 64, 55, 0.15);
+            transform: translateY(110%);
+            transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+        }
+
+        .app-install-banner.show {
+            transform: translateY(0);
+        }
+
+        .aib-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            flex: 0 0 auto;
+            object-fit: cover;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .aib-text {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .aib-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--nurungji-dark);
+            line-height: 1.25;
+        }
+
+        .aib-sub {
+            font-size: 12px;
+            color: var(--nurungji-brown);
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .aib-cta {
+            flex: 0 0 auto;
+            padding: 9px 16px;
+            border: none;
+            border-radius: 14px;
+            background: var(--nurungji-yellow);
+            color: var(--nurungji-dark);
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .aib-cta:active {
+            transform: scale(0.94);
+        }
+
+        .aib-close {
+            flex: 0 0 auto;
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: transparent;
+            color: var(--nurungji-brown);
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        /* 배너가 뜨면 하단 FAB들을 위로 밀어 겹침 방지(:active transform 충돌 없이 bottom 조정) */
+        body.app-banner-on .fab-profile { bottom: 94px; }
+        body.app-banner-on .fab-lunchbox { bottom: 159px; }
+        body.app-banner-on .fab-group { bottom: 94px; }
+
         .fab-profile {
             position: absolute;
             bottom: 30px;

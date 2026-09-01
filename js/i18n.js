@@ -16,6 +16,13 @@
         // 브랜드명 (영어는 로마자 표기)
         brand: { ko: '누룽지도', en: 'Nulloongzi-do' },
 
+        // 앱 설치 유도 배너 (웹→앱 유입 깔때기)
+        app_banner_title: { ko: '앱에서 더 부드럽게 🏐', en: 'Smoother in the app 🏐' },
+        app_banner_sub: { ko: '누룽지도 앱으로 더 빠르게 배구 팀 찾기', en: 'Find volleyball teams faster in the app' },
+        app_banner_sub_deeplink: { ko: '이 팀을 앱에서 열어보세요', en: 'Open this in the app' },
+        app_banner_cta: { ko: '앱 받기', en: 'Get app' },
+        app_banner_dismiss: { ko: '배너 닫기', en: 'Dismiss banner' },
+
         // 검색
         search_ph: { ko: '팀명, 지역으로 검색...', en: 'Search by team or area...' },
 
