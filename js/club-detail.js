@@ -266,7 +266,12 @@ window.openClubDetail = function (id, opts) {
         instaLink.rel = 'noopener noreferrer';
         instaLink.className = 'insta-link';
         instaLink.innerHTML = window.instaCssIcon; // 정적 마크업, 사용자 입력 없음
-        instaLink.onclick = function () { if (window.track) window.track('club_contact', { type: 'insta', club_id: club.id }); };
+        instaLink.onclick = function () {
+            if (window.track) {
+                window.track('club_contact', { type: 'insta', club_id: club.id }); // 기존 대시보드 연속성 유지
+                window.track('contact_click', { channel: 'instagram', club_id: club.id, source: 'club' }); // North Star Metric 보조 지표
+            }
+        };
         sheetTitleEl.appendChild(document.createTextNode(' '));
         sheetTitleEl.appendChild(instaLink);
     }
@@ -299,7 +304,12 @@ window.openClubDetail = function (id, opts) {
     }
     var btnWayEl = document.getElementById('btnWay');
     btnWayEl.href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
-    btnWayEl.onclick = function () { if (window.track) window.track('club_contact', { type: 'directions', club_id: club.id }); };
+    btnWayEl.onclick = function () {
+        if (window.track) {
+            window.track('club_contact', { type: 'directions', club_id: club.id }); // 기존 대시보드 연속성 유지
+            window.track('get_directions', { club_id: club.id, source: 'club' }); // North Star Metric: 주당 길찾기 클릭 수
+        }
+    };
 
     // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
     if (window.renderInstaEmbeds) window.renderInstaEmbeds(document.getElementById('clubReelEmbed'),

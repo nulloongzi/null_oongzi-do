@@ -107,7 +107,12 @@
             igLink.target = '_blank';
             igLink.rel = 'noopener noreferrer';
             // 물꼬 계측: 인스타 클릭도 픽업의 first-contact (Q2 지표)
-            igLink.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, type: 'insta', sport: spot.sport }); };
+            igLink.onclick = function () {
+                if (window.track) {
+                    window.track('pickup_contact', { id: spot.id, type: 'insta', sport: spot.sport }); // 기존 대시보드 연속성 유지
+                    window.track('contact_click', { channel: 'instagram', id: spot.id, source: 'pickup' }); // North Star Metric 보조 지표
+                }
+            };
             c.appendChild(infoRow('📷', igLink));
         }
 

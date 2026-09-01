@@ -211,7 +211,10 @@
             ig.textContent = '📷 @' + g.insta;
             ig.addEventListener('click', function (ev) {
                 ev.stopPropagation(); // 카드 클릭(상세 열기)과 분리
-                if (window.track) window.track('pickup_contact', { id: g.id, type: 'insta', sport: g.sport });
+                if (window.track) {
+                    window.track('pickup_contact', { id: g.id, type: 'insta', sport: g.sport }); // 기존 대시보드 연속성 유지
+                    window.track('contact_click', { channel: 'instagram', id: g.id, source: 'pickup' }); // North Star Metric 보조 지표
+                }
             });
             item.appendChild(ig);
         }
