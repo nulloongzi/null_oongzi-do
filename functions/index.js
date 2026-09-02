@@ -895,6 +895,8 @@ function formatReverseAddress(r) {
     }
     var num = land.number1 || "";
     if (num && land.number2) num += "-" + land.number2;
+    // 지번(addr)에서 land.type '2'는 산 지번 — '산 12-3'처럼 접두 (카카오 표기와 동일)
+    if (num && r.name !== "roadaddr" && land.type === "2") num = "산 " + num;
     parts.push(num);
     return parts.filter(Boolean).join(" ");
 }

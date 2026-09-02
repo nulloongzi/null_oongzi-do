@@ -298,7 +298,13 @@ window.openClubDetail = function (id, opts) {
         linkSpan.className = 'tag';
         linkSpan.style.background = '#eee';
         linkSpan.textContent = window.t('home_tag');
-        linkA.onclick = function () { if (window.track) window.track('club_contact', { type: 'link', club_id: club.id }); };
+        linkA.onclick = function () {
+            if (window.track) {
+                window.track('club_contact', { type: 'link', club_id: club.id });
+                // NSM 전용 이벤트 — 홈페이지 링크도 연락 전환으로 집계
+                window.track('contact_click', { channel: 'link', club_id: club.id, source: 'club' });
+            }
+        };
         linkA.appendChild(linkSpan);
         sheetTagsEl.appendChild(linkA);
     }

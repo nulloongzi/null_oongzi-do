@@ -316,6 +316,8 @@
         body.app-banner-on .fab-profile { bottom: 94px; }
         body.app-banner-on .fab-lunchbox { bottom: 159px; }
         body.app-banner-on .fab-group { bottom: 94px; }
+        /* 픽업 목록 패널(z 15)은 배너(z 90) 아래 깔리므로 배너 높이만큼 올린다 */
+        body.app-banner-on .pickup-list-panel { bottom: 64px; }
 
         .fab-profile {
             position: absolute;
