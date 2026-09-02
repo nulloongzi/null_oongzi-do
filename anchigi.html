@@ -177,6 +177,45 @@
       color: var(--nurungji-brown);
     }
 
+    /* 접이식 카드 — 뽑은 뒤엔 스케줄·설정을 접어 결과를 위로 올린다 */
+    details.fold > summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0;
+      font-size: 14.5px;
+      font-weight: 800;
+      color: var(--nurungji-brown);
+    }
+    details.fold[open] > summary { margin-bottom: 11px; }
+    details.fold > summary::-webkit-details-marker { display: none; }
+    details.fold > summary .sumval {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--nurungji-brown);
+      opacity: .72;
+      /* 영어는 값이 길어질 수 있다("A · B · C fixed · Real") — 밀어내지 말고 줄여서 표시 */
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    details.fold > summary::after {
+      content: "▾";
+      margin-left: 6px;
+      opacity: .5;
+      font-size: 12px;
+      transition: transform .15s;
+    }
+    details.fold:not([open]) > summary::after { transform: rotate(-90deg); }
+
+    /* 첫 진입 안내(명단 비었을 때) */
+    .intro .steps { margin: 6px 0 14px; padding-left: 20px; }
+    .intro .steps li { margin: 7px 0; line-height: 1.55; font-size: 13px; color: var(--nurungji-brown); }
+
     button.btn {
       border: 0;
       cursor: pointer;
@@ -946,6 +985,11 @@
         fitgap_even: '두 팀 자리 적합도가 고릅니다.',
         fitgap_off: '한쪽 팀이 낯선 자리를 더 맡았습니다.',
         roster_empty: '아직 명단이 없습니다. 아래에서 사람을 추가하세요.',
+        intro_title: '이렇게 써요',
+        intro_s1: '<b>명단</b> 탭에서 온 사람을 추가하고, 자리를 골라요(처음 고른 게 주 포지션).',
+        intro_s2: '참석 체크 후 인원·시간·게임 성격을 정해요.',
+        intro_s3: '<b>뽑기</b>를 누르면 라운드 팀이 나와요. 확정하면 다음 라운드로.',
+        intro_cta: '명단 추가하러 가기 →',
         clear_confirm: '명단을 전부 비웁니다. 계속할까요?',
         hero_title: '안치기',
         hero_sub: '온 사람을 솥에 안치듯 넣으면 라운드 배치가 나옵니다.<br>참석 체크하고 <b>뽑기</b>를 누르세요.',
@@ -1020,6 +1064,11 @@
         fitgap_even: 'Both teams sit at similar position fit.',
         fitgap_off: 'One team took more unfamiliar slots.',
         roster_empty: 'No players yet. Add someone below.',
+        intro_title: 'How it works',
+        intro_s1: 'Add players in the <b>Roster</b> tab and pick positions (first pick is the main).',
+        intro_s2: 'Check who is here, then set count, time and game feel.',
+        intro_s3: 'Hit <b>Draw</b> for round teams. Confirm to move to the next round.',
+        intro_cta: 'Go add players →',
         clear_confirm: 'This clears the whole roster. Continue?',
         hero_title: 'Lineup',
         hero_sub: 'Add players and their positions, and it draws round-by-round lineups on the spot.<br>Check who showed up and hit <b>Draw</b>.',
@@ -1817,7 +1866,25 @@
       var mr = maxRounds();
       var lastEnd = mr > 0 && mr < 99 ? formatTime(gameEndMin(mr, nGames - 1)) : '--:--';
 
-      var s = '<div class="card"><h3>' + L('card_time') + '</h3>' +
+      /* 명단이 비면 설정을 보여주기보다 '뭘 하는 곳인지'부터 안내한다 */
+      if (n === 0) {
+        document.getElementById('p0').innerHTML =
+          '<div class="card intro"><h3>' + L('intro_title') + '</h3>' +
+          '<ol class="steps"><li>' + L('intro_s1') + '</li><li>' + L('intro_s2') + '</li><li>' + L('intro_s3') + '</li></ol>' +
+          '<button class="btn pri" id="goRoster">' + L('intro_cta') + '</button></div>';
+        var gr = document.getElementById('goRoster');
+        if (gr) gr.onclick = function () { var t = document.querySelectorAll('.tab[data-t]')[1]; if (t) t.click(); };
+        applyHL();
+        return;
+      }
+
+      /* 첫 진입에만 스케줄·설정을 펼친다. 한 번이라도 뽑거나 확정한 뒤엔 접어서
+         결과와 뽑기 버튼이 화면 위로 오게 한다(확정 후 current가 비어도 유지). */
+      var foldOpen = (current || pastRounds.length) ? '' : ' open';
+      var schedSum = (schedule.warmup || '--:--') + '–' + lastEnd + ' · ' + (mr < 99 ? mr : '?') + L('round_unit');
+
+      var s = '<details class="card fold"' + foldOpen + '><summary>' + L('card_time') +
+        '<span class="sumval">' + schedSum + '</span></summary>' +
         '<div class="time-grid">' +
         '<label>' + L('lb_start') + '<input type="time" id="ts" value="' + schedule.start + '"></label>' +
         '<label>' + L('lb_gamestart') + '<input type="time" id="tw" value="' + schedule.warmup + '"></label>' +
@@ -1831,9 +1898,11 @@
         '</div>' +
         '<div class="tl-preview">' + L('est') + ' <b>' + (mr < 99 ? mr : '?') + L('round_unit') + '</b> · ' + L('round1') + ' ' +
         (nGames * schedule.perGame) + L('min') + ' + ' + L('rest_word') + ' ' + schedule.rest + L('min') + ' · ' + lastEnd + ' ' + L('ends') + '</div>' +
-        '</div>';
+        '</details>';
 
-      s += '<div class="card"><h3>' + L('card_settings') + '</h3>' +
+      var setSum = (mode === 'abc' ? L('mode_abc') : L('mode_free')) + ' · ' + L('feel_' + feel);
+      s += '<details class="card fold"' + foldOpen + '><summary>' + L('card_settings') +
+        '<span class="sumval">' + setSum + '</span></summary>' +
         '<div class="seg" id="mode">' +
         '<button type="button" data-m="abc" aria-pressed="' + (mode === 'abc') + '">' + L('mode_abc') + '<small>' + L('mode_abc_sub') + '</small></button>' +
         '<button type="button" data-m="free" aria-pressed="' + (mode === 'free') + '">' + L('mode_free') + '<small>' + L('mode_free_sub') + '</small></button>' +
@@ -1856,7 +1925,7 @@
         }).join('') + '</select></label>' +
         '<span class="chip" style="cursor:default">' + L('attend') + ' <b>' + n + L('people') + '</b></span>' +
         '<span class="chip" style="cursor:default">' + L('bench_per') + ' <b>' + benchTxt + '</b></span>' +
-        '</div></div>';
+        '</div></details>';
 
       s += '<div class="card"><h3>' + L('this_round') + '<span class="n">' + round + 'R</span></h3>' +
         '<button class="btn pri" id="go">🎲 ' + round + 'R ' + L('draw_btn') + '</button>' +
@@ -1982,9 +2051,23 @@
             '<div class="msg err"><b>' + L('infeasible') + '</b><br>' + diagnose(h) + '</div>');
           return;
         }
+        var hadResult = !!current;
         current = { round: round, games: games, mode: mode, feel: feel, budget: usedBudget };
         renderPlay();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        /* 첫 뽑기에만 결과 머리로 내려준다. '다시'로 여러 번 굴릴 땐 화면을 붙잡아
+           둬야 같은 자리에서 팀만 바뀌는 게 보인다 — 매번 위로 튀는 게 불편했다. */
+        if (!hadResult) {
+          var anchor = document.querySelector('#p0 .msg.ok');
+          if (anchor) {
+            /* .tabs 가 sticky(top:0)라 그냥 scrollIntoView 하면 결과 머리가 가린다 */
+            var tabs = document.querySelector('.tabs');
+            var off = (tabs ? tabs.getBoundingClientRect().height : 0) + 10;
+            window.scrollTo({
+              top: Math.max(0, anchor.getBoundingClientRect().top + window.scrollY - off),
+              behavior: 'smooth'
+            });
+          }
+        }
       }, 10);
     }
 
