@@ -125,7 +125,13 @@
             var cta = el('a', 'ps-join-btn', t('pk_contact_cta'));
             cta.href = safeContact; cta.target = '_blank'; cta.rel = 'noopener noreferrer';
             // 물꼬 계측: 단톡 들어가기 = 픽업의 first-contact 순간 (Q2 지표)
-            cta.onclick = function () { if (window.track) window.track('pickup_contact', { id: spot.id, type: 'link', sport: spot.sport }); };
+            cta.onclick = function () {
+                if (window.track) {
+                    window.track('pickup_contact', { id: spot.id, type: 'link', sport: spot.sport });
+                    // NSM 전용 이벤트 — 단톡 링크도 연락 전환이므로 channel:'link'로 집계
+                    window.track('contact_click', { channel: 'link', id: spot.id, source: 'pickup' });
+                }
+            };
             var wrap = el('div', 'ps-rsvp');
             wrap.appendChild(cta);
             c.appendChild(wrap);

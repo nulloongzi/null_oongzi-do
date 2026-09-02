@@ -68,7 +68,7 @@
     }
 
     function spotPayload(data, ownerUid) {
-        return {
+        var payload = {
             owner_uid: ownerUid,
             title: data.title,
             sport: data.sport || '6s',
@@ -92,6 +92,10 @@
             notes: data.notes || '',
             expire_at: data.expire_at || null          // 유효기간(B): 지나면 자동 숨김 + Firestore TTL 하드삭제
         };
+        // source('curated' = 관리자 '대신 등록' 시딩 표시)는 명시됐을 때만 저장.
+        // create 경로에서 이 키가 빠져 curated 고지·삭제요청 링크가 시딩분에 안 뜨던 버그 수정 (update 경로와 동일하게).
+        if (data.source !== undefined) payload.source = data.source;
+        return payload;
     }
 
     // ── 등록 (누구나 · 무로그인=익명) ──
