@@ -113,7 +113,13 @@
         window.syncPkLevelDesc();
         var bc = document.getElementById('pkBeginnerChip'); if (bc) bc.classList.toggle('selected', !!spot.beginner_friendly);
         var ec = document.getElementById('pkEnglishChip'); if (ec) ec.classList.toggle('selected', !!spot.english_ok);
-        window.selectedCoords = null;
+        // 기존 좌표 프리필(앱과 동일): 주소를 안 고치면 재지오코딩 없이 지도 피커 좌표를 보존한다.
+        // 지도로만 등록한(주소 없는) 스팟을 재저장할 때 핀이 사라지던 문제 수정.
+        // 주소 입력을 직접 수정하면 pkAddress의 oninput이 selectedCoords를 리셋해 새 주소로 재지오코딩된다.
+        window.selectedCoords =
+            (spot.coordinates && spot.coordinates.lat != null && spot.coordinates.lng != null)
+                ? { lat: spot.coordinates.lat, lng: spot.coordinates.lng }
+                : null;
 
         // 구조화 일정 복원: 같은 (시작~종료) 시간대끼리 묶어 한 블록에 여러 요일 칩으로 (동호회 편집과 동일)
         var sc = document.getElementById('pkScheduleContainer');

@@ -189,7 +189,12 @@ window.openEditModal = function (club) {
 
         // 편집 대상 id 설정
         window.editingClubId = club.id;
-        window.selectedCoords = null;
+        // 기존 좌표 프리필(앱과 동일): 주소를 안 고치면 재지오코딩 없이 피커로 찍은 핀을 보존한다.
+        // 주소 입력을 직접 수정하면 regAddress의 oninput이 selectedCoords를 리셋해 새 주소로 재지오코딩된다.
+        window.selectedCoords =
+            (club.coordinates && club.coordinates.lat != null && club.coordinates.lng != null)
+                ? { lat: club.coordinates.lat, lng: club.coordinates.lng }
+                : null;
 
         // 기본 필드 채우기
         document.getElementById('regName').value = club.name || '';
