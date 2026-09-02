@@ -880,6 +880,80 @@ exports.geocodeAddress = onCall(
     }
 );
 
+// 네이버 리버스 지오코딩 result 하나를 한 줄 주소 문자열로.
+// roadaddr(도로명)엔 법정동을 넣지 않는다(읍·면만 유지). addr(지번)은 동·리까지.
+function formatReverseAddress(r) {
+    var region = r.region || {};
+    var land = r.land || {};
+    function areaName(k) { return (region[k] && region[k].name) || ""; }
+    var parts = [areaName("area1"), areaName("area2")];
+    if (r.name === "roadaddr") {
+        if (/[읍면]$/.test(areaName("area3"))) parts.push(areaName("area3"));
+        parts.push(land.name || "");
+    } else {
+        parts.push(areaName("area3"), areaName("area4"));
+    }
+    var num = land.number1 || "";
+    if (num && land.number2) num += "-" + land.number2;
+    parts.push(num);
+    return parts.filter(Boolean).join(" ");
+}
+
+// ══════════════════════════════════════════════════════════
+// 좌표 → 주소 (네이버 클라우드 리버스 지오코딩). 앱 지도 피커 확정 시 주소칸 자동 채움.
+// 웹 등록 폼의 kakao coord2Address 대응. 결과 없거나 오류면 {address:null} → 앱은 직접 입력 유지.
+// ══════════════════════════════════════════════════════════
+exports.reverseGeocode = onCall(
+    { secrets: [NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET] },
+    async function (request) {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+        }
+        var lat = request.data && request.data.lat;
+        var lng = request.data && request.data.lng;
+        if (typeof lat !== "number" || typeof lng !== "number"
+            || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw new HttpsError("invalid-argument", "좌표가 필요합니다.");
+        }
+
+        var keyId = providerHttp.secretValue(NAVER_MAP_CLIENT_ID);
+        var key = providerHttp.secretValue(NAVER_MAP_CLIENT_SECRET);
+        if (!keyId || !key) {
+            throw new HttpsError("failed-precondition", "지오코딩 키가 설정되지 않았습니다.");
+        }
+
+        // geocodeAddress와 동일하게 구/신 게이트웨이 호스트 순서대로 시도
+        var hosts = ["maps.apigw.ntruss.com", "naveropenapi.apigw.ntruss.com"];
+        var headers = {
+            "x-ncp-apigw-api-key-id": keyId,
+            "x-ncp-apigw-api-key": key
+        };
+        var lastErr = "";
+        for (var i = 0; i < hosts.length; i++) {
+            try {
+                var path = "/map-reversegeocode/v2/gc?coords="
+                    + encodeURIComponent(lng + "," + lat)
+                    + "&orders=roadaddr,addr&output=json";
+                var res = await providerHttp.get(hosts[i], path, headers);
+                if (!providerHttp.isOk(res.status)) { lastErr = "HTTP " + res.status; continue; }
+                var data = providerHttp.parseJson(res.body);
+                var results = (data && data.results) || [];
+                // roadaddr 우선(도로명), 없으면 addr(지번) — 웹 coord2Address와 같은 우선순위
+                var best = null;
+                for (var j = 0; j < results.length; j++) {
+                    if (results[j].name === "roadaddr") { best = results[j]; break; }
+                    if (!best) best = results[j];
+                }
+                if (!best) return { address: null };
+                return { address: formatReverseAddress(best) || null };
+            } catch (e) {
+                lastErr = (e && e.message) || String(e);
+            }
+        }
+        throw new HttpsError("unavailable", "리버스 지오코딩 실패: " + lastErr);
+    }
+);
+
 // ══════════════════════════════════════════════════════════
 // 좌표 → 가까운 지하철역 (카카오 로컬 SW8). 스토리 카드 enrich용.
 // 기존 KAKAO_REST_API_KEY 재사용 (앱의 카카오맵 'Local' API 활성화 필요).
