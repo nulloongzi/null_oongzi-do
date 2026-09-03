@@ -144,3 +144,37 @@ test('픽업 목록 헤더: 필터 한 줄 + 등록 버튼은 헤더 밖', async
     // 등록은 FAB으로 빠졌으므로 헤더 안에 버튼이 남아 있으면 안 된다
     await expect(page.locator('.pl-header .pl-host-btn')).toHaveCount(0);
 });
+
+// 상세는 별도 시트가 아니라 목록 패널의 모드(.detail)여야 한다 — 크기·모서리가 다른
+// 두 장(목록 46vh + 상세 시트 82vh)이 겹쳐 보이던 회귀 방지.
+test('픽업 상세: 목록 패널이 그대로 정보창이 된다 (별도 시트 없음)', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#tabPickup').click();
+    const panel = page.locator('#pickupListPanel');
+    await expect(panel).toBeVisible();
+    await expect(page.locator('#pickupSheet')).toHaveCount(0); // 옛 상세 시트는 없어야 한다
+
+    // 네트워크 데이터에 기대지 않도록 메모리 캐시에 가짜 스팟을 넣고 바로 연다
+    await page.evaluate(() => {
+        window.pickupGames.push({
+            id: 'smoke-spot', title: '스모크 크루', sport: '6s', level: 'any',
+            region: '서울', address: '서울 광진구', insta: 'smoke_crew'
+        });
+        window.openPickupDetail('smoke-spot');
+    });
+
+    // 상세 모드: 같은 패널이 커지고 목록 헤더 대신 뒤로가기 + 상세 내용
+    await expect(panel).toHaveClass(/detail/);
+    await expect(page.locator('body')).toHaveClass(/pickup-detail/);
+    await expect(page.locator('#plBackBtn')).toBeVisible();
+    await expect(page.locator('#pickupSheetContent .ps-title')).toHaveText('스모크 크루');
+    await expect(panel.locator('.pl-header')).toBeHidden();
+    await expect(page.locator('.fab-group')).toBeHidden(); // 72vh 위로 못 올리므로 숨김
+
+    // 뒤로가기: 목록 모드 복귀
+    await page.locator('#plBackBtn').click();
+    await expect(panel).not.toHaveClass(/detail/);
+    await expect(panel.locator('.pl-header')).toBeVisible();
+    await expect(page.locator('#pickupSheetContent')).toBeHidden();
+    await expect(page.locator('.fab-group')).toBeVisible();
+});

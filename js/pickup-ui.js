@@ -77,11 +77,19 @@
     var PIN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="53" viewBox="0 0 40 53">' +
         '<path d="M20 0C9 0 0 9 0 20c0 14 20 33 20 33s20-19 20-33C40 9 31 0 20 0z" fill="#13a89e"/>' +
         '<circle cx="20" cy="20" r="8.5" fill="#fff"/></svg>';
-    var pickupImage = new kakao.maps.MarkerImage(
-        'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(PIN_SVG),
-        new kakao.maps.Size(40, 53),
-        { offset: new kakao.maps.Point(20, 53) }
-    );
+    // 마커 이미지는 첫 사용 때 만든다 — 모듈 로드 시점에 kakao SDK가 없어도(차단·장애·헤드리스)
+    // 라벨 헬퍼와 목록 렌더까지 함께 죽지 않도록.
+    var pickupImage = null;
+    function getPickupImage() {
+        if (!pickupImage && window.kakao && kakao.maps) {
+            pickupImage = new kakao.maps.MarkerImage(
+                'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(PIN_SVG),
+                new kakao.maps.Size(40, 53),
+                { offset: new kakao.maps.Point(20, 53) }
+            );
+        }
+        return pickupImage;
+    }
 
     window.pkSportLabel = function (s) {
         if (s === '6s') return window.t('pk_sport_6s');
@@ -119,7 +127,7 @@
         window.visiblePickupSpots().forEach(function (g) {
             if (!g.lat || !g.lng) return;
             var latlng = new kakao.maps.LatLng(g.lat, g.lng);
-            var marker = new kakao.maps.Marker({ position: latlng, image: pickupImage });
+            var marker = new kakao.maps.Marker({ position: latlng, image: getPickupImage() });
             var overlay = new kakao.maps.CustomOverlay({
                 position: latlng, content: buildPickupLabel(g), xAnchor: 0.5, yAnchor: 1, zIndex: 9999
             });

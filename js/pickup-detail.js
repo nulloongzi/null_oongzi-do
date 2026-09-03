@@ -18,10 +18,23 @@
     }
     function chip(text, cls) { return el('span', 'pl-chip' + (cls ? ' ' + cls : ''), text); }
 
-    function openSheet() { var s = document.getElementById('pickupSheet'); if (s) s.classList.add('open'); }
+    // 상세는 별도 시트가 아니라 목록 패널의 모드다(.detail) — 크기가 다른 두 장이 겹치지 않게.
+    // 패널 높이는 CSS(.pickup-list-panel.detail = 72vh)와 맞춰 지도 이동 오프셋 계산에 쓴다.
+    var DETAIL_PANEL_VH = 0.72;
+    function panel() { return document.getElementById('pickupListPanel'); }
+    function isDetailOpen() { var p = panel(); return !!(p && p.classList.contains('detail')); }
+    function openSheet() {
+        var p = panel();
+        if (!p) return;
+        p.classList.add('detail');
+        document.body.classList.add('pickup-detail');
+        var c = document.getElementById('pickupSheetContent');
+        if (c) c.scrollTop = 0;
+    }
     window.closePickupSheet = function () {
-        var s = document.getElementById('pickupSheet');
-        if (s) s.classList.remove('open');
+        var p = panel();
+        if (p) p.classList.remove('detail');
+        document.body.classList.remove('pickup-detail');
         window.currentPickupId = null;
     };
 
@@ -39,7 +52,9 @@
                     var ll = new kakao.maps.LatLng(spot.lat, spot.lng);
                     var proj = window.map.getProjection();
                     var pt = proj.pointFromCoords(ll);
-                    var np = new kakao.maps.Point(pt.x, pt.y + Math.min(window.innerHeight * 0.2, 220));
+                    // 패널이 아래 72vh를 덮으므로 핀이 남은 위쪽 영역 중앙(위에서 14vh)에 오게 민다
+                    var shift = window.innerHeight * (0.5 - (1 - DETAIL_PANEL_VH) / 2);
+                    var np = new kakao.maps.Point(pt.x, pt.y + shift);
                     window.map.panTo(proj.coordsFromPoint(np));
                 }
             } catch (e) { /* 지도 이동 실패해도 상세는 표시 */ }
@@ -201,8 +216,7 @@
 
     // 언어 전환 시 열린 상세 재렌더
     document.addEventListener('nurungji:langchange', function () {
-        var s = document.getElementById('pickupSheet');
-        if (window.currentPickupId && s && s.classList.contains('open')) {
+        if (window.currentPickupId && isDetailOpen()) {
             window.openPickupDetail(window.currentPickupId, { silent: true });
         }
     });
