@@ -2194,6 +2194,27 @@
         }
 
         /* 영어 모드 전용 안내 (한국어 모드에선 숨김) */
+        /* 필터 시트 하단 정책 링크 — 약관·운영기준·개인정보를 앱에서 도달 가능하게 */
+        .fs-policy {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            justify-content: center;
+            padding: 18px 14px 4px;
+            border-top: 1px solid #0000000d;
+            margin-top: 8px;
+        }
+
+        .fs-policy a {
+            color: #9e9e9e;
+            font-size: 12px;
+            text-decoration: none;
+        }
+
+        .fs-policy a:active {
+            color: var(--nurungji-dark);
+        }
+
         .fs-en-hint {
             display: none;
             margin-top: 10px;

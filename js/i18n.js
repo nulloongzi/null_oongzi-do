@@ -295,6 +295,9 @@
             en: 'I request an edit or removal for the crew below. (We will action it as soon as we verify.)'
         },
         pk_list_share: { ko: '🔗 공유', en: '🔗 Share' },
+        policy_terms: { ko: '이용약관', en: 'Terms' },
+        policy_guidelines: { ko: '운영 기준', en: 'Guidelines' },
+        policy_privacy: { ko: '개인정보처리방침', en: 'Privacy' },
         pk_back_to_list: { ko: '← 목록으로', en: '← Back to list' },
         pk_list_link_copied: { ko: '이 목록 링크를 복사했어요. 그대로 보내면 같은 목록이 열려요!', en: 'List link copied — send it and they see the same list!' },
         pk_search_ph: { ko: '픽업, 장소로 검색...', en: 'Search pickups or venues...' },
