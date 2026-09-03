@@ -6,7 +6,7 @@
 //  · 패리티 DOM: 검색(#fsKeyword)·필터시트·탭·언어토글 등 핵심 UI 존재.
 //  · 인터랙션: 필터시트 열기, KO↔EN 토글이 실제 DOM 텍스트를 바꾸는지.
 'use strict';
-/* global window -- addInitScript 콜백은 브라우저 컨텍스트에서 실행됨 */
+/* global window, document -- addInitScript·page.evaluate 콜백은 브라우저 컨텍스트에서 실행됨 */
 
 const { test, expect } = require('@playwright/test');
 
@@ -177,4 +177,42 @@ test('픽업 상세: 목록 패널이 그대로 정보창이 된다 (별도 시�
     await expect(panel.locator('.pl-header')).toBeVisible();
     await expect(page.locator('#pickupSheetContent')).toBeHidden();
     await expect(page.locator('.fab-group')).toBeVisible();
+});
+
+// guidelines.html 이 '7일 내 확인'과 '6개월 점검'을 약속했는데 화면에 창구·표시가 없으면
+// 문서만 있는 약속이 된다. 상세에 신고 링크와 최종 확인일이 실제로 뜨는지 지킨다.
+test('데이터 신뢰도: 상세에 최종 확인일 + 신고 링크', async ({ page }) => {
+    await page.goto('/');
+
+    // 정책 4종이 필터 시트에서 도달 가능한지 (그전엔 직접 URL로만 열렸다)
+    await page.locator('#filterBtnIcon').click();
+    const policy = page.locator('.fs-policy');
+    await expect(policy).toBeVisible();
+    await expect(policy.locator('a[href="terms.html"]')).toBeVisible();
+    await expect(policy.locator('a[href="guidelines.html"]')).toBeVisible();
+    await expect(policy.locator('a[href="privacy.html"]')).toBeVisible();
+
+    // 상세 신뢰도 블록: 오래된 항목이면 '확인 필요'가 함께 뜬다
+    const trust = await page.evaluate(() => {
+        const host = document.getElementById('clubDataTrust');
+        const old = new Date();
+        old.setFullYear(old.getFullYear() - 2);
+        window.renderDataTrust(host, {
+            id: 'smoke-club', name: '스모크 클럽',
+            metadata: { updated_at: old }
+        }, 'club');
+        const a = host.querySelector('.dt-report');
+        return {
+            line: host.querySelector('.dt-line').textContent,
+            stale: !!host.querySelector('.dt-line.dt-stale'),
+            mailto: a ? a.getAttribute('href').slice(0, 7) : null,
+            hasId: a ? decodeURIComponent(a.getAttribute('href')).includes('smoke-club') : false
+        };
+    });
+    expect(trust.mailto).toBe('mailto:');
+    expect(trust.hasId).toBe(true);      // 신고 메일에 항목 id가 프리필돼야 확인이 빠르다
+    expect(trust.stale).toBe(true);      // 2년 전 = 6개월 기준 초과
+    // 문구는 KO/EN 로케일에 따라 달라지므로 언어 무관한 부분으로 검증한다
+    expect(trust.line).toContain('⚠️');
+    expect(trust.line).toMatch(/\d{4}\.\d{1,2}\.\d{1,2}/);
 });

@@ -22,7 +22,11 @@ service cloud.firestore {
                 && (!('insta' in d.contact) || (d.contact.insta is string && d.contact.insta.size() <= 60))
                 && (!('link' in d.contact) || (d.contact.link is string && d.contact.link.size() <= 500))))
           && (!('coordinates' in d) || (d.coordinates is map
-                && d.coordinates.lat is number && d.coordinates.lng is number));
+                && d.coordinates.lat is number && d.coordinates.lng is number))
+          // 데이터 신뢰도(guidelines.html 2-3): 최종 확인일 + 상태.
+          // 소유자 수정은 곧 '지금도 맞다'는 확인이므로 폼 저장 때마다 갱신된다.
+          && (!('last_verified_at' in d) || d.last_verified_at is timestamp)
+          && (!('data_status' in d) || d.data_status in ['active', 'needs_check', 'dormant']);
     }
 
     // 픽업 스팟 필드 타입·길이 검증 (존재 필드만 검사 → 부분 update도 통과)
