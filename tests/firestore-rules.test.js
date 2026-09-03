@@ -81,6 +81,35 @@ describe('Phase 1-1: clubs update (PIN 제거 → canModifyClub) 룰 강제', ()
         }));
     });
 
+    // 데이터 신뢰도 필드(guidelines.html 2-3): 소유자 수정 = 최종 확인 갱신.
+    // 값 타입과 enum을 규칙에서 막지 못하면 잘못된 상태가 지도에 그대로 노출된다.
+    test('owner는 last_verified_at(timestamp) 갱신 통과', async () => {
+        const ctx = testEnv.authenticatedContext('owner-uid');
+        const db = ctx.firestore();
+        await assertSucceeds(db.collection('clubs').doc('club-1').update({
+            last_verified_at: new Date()
+        }));
+    });
+
+    test('last_verified_at 이 timestamp 가 아니면 거부', async () => {
+        const ctx = testEnv.authenticatedContext('owner-uid');
+        const db = ctx.firestore();
+        await assertFails(db.collection('clubs').doc('club-1').update({
+            last_verified_at: '2026-09-03'
+        }));
+    });
+
+    test('data_status 는 허용된 값만 통과', async () => {
+        const ctx = testEnv.authenticatedContext('owner-uid');
+        const db = ctx.firestore();
+        await assertSucceeds(db.collection('clubs').doc('club-1').update({
+            data_status: 'needs_check'
+        }));
+        await assertFails(db.collection('clubs').doc('club-1').update({
+            data_status: 'deleted'
+        }));
+    });
+
     test('admin은 모든 팀 업데이트 통과 (is_verified 포함)', async () => {
         const ctx = testEnv.authenticatedContext('admin-uid');
         const db = ctx.firestore();

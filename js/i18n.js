@@ -295,6 +295,13 @@
             en: 'I request an edit or removal for the crew below. (We will action it as soon as we verify.)'
         },
         pk_list_share: { ko: '🔗 공유', en: '🔗 Share' },
+        dt_last_verified: { ko: '최종 확인', en: 'Last checked' },
+        dt_needs_check: { ko: '확인 필요', en: 'needs check' },
+        dt_unknown: { ko: '최종 확인일 정보 없음', en: 'Last checked: unknown' },
+        dt_report: { ko: '정보가 틀렸어요', en: 'Report incorrect info' },
+        report_subject: { ko: '[누룽지도] 정보 정정 요청', en: '[Nulloongzi-do] Correction request' },
+        report_body: { ko: '아래 항목의 정보가 사실과 다릅니다. 확인 부탁드립니다.', en: 'The information below is inaccurate. Please review.' },
+        report_what: { ko: '어느 부분이 틀렸는지: ', en: 'What is wrong: ' },
         policy_terms: { ko: '이용약관', en: 'Terms' },
         policy_guidelines: { ko: '운영 기준', en: 'Guidelines' },
         policy_privacy: { ko: '개인정보처리방침', en: 'Privacy' },

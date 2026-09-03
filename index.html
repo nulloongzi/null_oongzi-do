@@ -271,6 +271,9 @@
                 <button class="btn" id="btnShareClub" data-i18n="btn_share">🔗 공유</button>
             </div>
             <div id="clubReelEmbed" class="insta-embed-box" style="display:none;"></div>
+            <!-- 데이터 신선도 + 신고 통로. guidelines.html이 약속한 '6개월 점검·7일 내 확인'을
+                 화면에서 잇는 자리다. 내용은 club-detail.js 가 채운다. -->
+            <div class="data-trust" id="clubDataTrust"></div>
             <div class="expand-hint" id="expandHint" data-i18n="expand_hint">▴ 위로 올려서 상세 정보 보기</div>
             <input type="hidden" id="sheetAddressVal">
         </div>
@@ -501,6 +504,7 @@
     <script src="js/share.js?v=20"></script>
     <script src="js/insta-embed.js?v=20"></script>
     <script src="js/map-core.js?v=20"></script>
+    <script src="js/data-trust.js?v=20"></script>
     <script src="js/club-detail.js?v=20"></script>
     <script src="js/filters.js?v=20"></script>
     <script src="js/registration.js?v=20"></script>
