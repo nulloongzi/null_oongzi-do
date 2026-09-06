@@ -22,7 +22,11 @@ service cloud.firestore {
                 && (!('insta' in d.contact) || (d.contact.insta is string && d.contact.insta.size() <= 60))
                 && (!('link' in d.contact) || (d.contact.link is string && d.contact.link.size() <= 500))))
           && (!('coordinates' in d) || (d.coordinates is map
-                && d.coordinates.lat is number && d.coordinates.lng is number));
+                && d.coordinates.lat is number && d.coordinates.lng is number))
+          // 데이터 신뢰도(guidelines.html 2-3): 최종 확인일 + 상태.
+          // 소유자 수정은 곧 '지금도 맞다'는 확인이므로 폼 저장 때마다 갱신된다.
+          && (!('last_verified_at' in d) || d.last_verified_at is timestamp)
+          && (!('data_status' in d) || d.data_status in ['active', 'needs_check', 'dormant']);
     }
 
     // 픽업 스팟 필드 타입·길이 검증 (존재 필드만 검사 → 부분 update도 통과)
@@ -116,6 +120,42 @@ service cloud.firestore {
                     && request.resource.data.status == "pending";
 
       // update/delete: Cloud Functions(admin SDK)만 가능
+      allow update, delete: if false;
+    }
+
+    // reports: 잘못된 정보 신고 (guidelines.html 3-1). 인증 배지 심사와 같은 파이프를
+    // 타서 Cloud Function이 운영자 카톡으로 알린다.
+    //
+    // 무로그인 허용이 핵심이다 — 제3자는 신고하려고 로그인까지 하지 않는다.
+    // 그래서 익명 인증(uid만 확보)으로 쓸 수 있게 열되, 스팸 문은 두 겹으로 좁힌다:
+    //   1) hasOnly() 필드 화이트리스트 — 임의 필드로 문서를 불릴 수 없다
+    //   2) 길이 제한 + 사유 enum — 본문이 저장소가 되지 않는다
+    // 신고 내용은 제3자가 쓴 미검증 주장이라 공개 읽기는 막는다(명예훼손·역추적 방지).
+    // 신고자가 자기 신고를 닫을 수 없도록 update/delete는 Functions(admin SDK) 전용.
+    function reportFieldsValid() {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+               'kind', 'target_id', 'target_name', 'reason', 'detail',
+               'reporter_uid', 'status', 'created_at'
+             ])
+          && d.kind in ['club', 'pickup']
+          && d.target_id is string && d.target_id.size() > 0 && d.target_id.size() <= 200
+          && (!('target_name' in d) || (d.target_name is string && d.target_name.size() <= 120))
+          && d.reason in ['wrong_info', 'closed', 'duplicate', 'inappropriate', 'other']
+          && (!('detail' in d) || (d.detail is string && d.detail.size() <= 500))
+          && d.created_at is timestamp;
+    }
+
+    match /reports/{reportId} {
+      // 조회는 관리자만 — 목록이 열리면 '누가 어느 팀을 신고했나'가 공개된다.
+      allow read: if isAdmin();
+
+      allow create: if request.auth != null
+                    && request.resource.data.reporter_uid == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && reportFieldsValid();
+
+      // 처리(status 변경)·삭제는 Cloud Functions(admin SDK)만.
       allow update, delete: if false;
     }
 

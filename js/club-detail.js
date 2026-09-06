@@ -341,6 +341,11 @@ window.openClubDetail = function (id, opts) {
     if (existingManageBtn) existingManageBtn.remove();
 
     // 인증된 팀의 owner/admin만 급구 토글 노출 (Firestore rule이 동일 조건으로 write 차단)
+    // 데이터 신선도 + 신고 통로 (guidelines.html 2-3 · 3-1)
+    if (window.renderDataTrust) {
+        window.renderDataTrust(document.getElementById('clubDataTrust'), club, 'club');
+    }
+
     if (club.is_verified && window.canModifyClub && window.canModifyClub(club)) {
         var manageBtn = document.createElement('button');
         manageBtn.id = 'btnManageUrgent';

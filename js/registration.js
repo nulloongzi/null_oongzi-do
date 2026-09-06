@@ -452,7 +452,10 @@ window.submitRegistration = async function () {
                 contact: { insta: insta, link: link },
                 insta_reel: reel,
                 insta_reels: reels,
-                "metadata.updated_at": window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date()
+                "metadata.updated_at": window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
+                // 소유자가 폼을 저장한 것 = 정보가 지금도 맞다고 확인한 것.
+                // guidelines.html 2-3 의 '최종 확인일'이 이 값이다.
+                last_verified_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date()
             };
 
             // 관리자 전용: 소유자 지정. users.email이 비공개 서브컬렉션으로
@@ -519,6 +522,8 @@ window.submitRegistration = async function () {
                 insta_reels: reels,
                 is_urgent: is_urgent,
                 urgent_msg: urgent_msg,
+                last_verified_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
+                data_status: "active", // active | needs_check | dormant (관리자가 조정)
                 metadata: {
                     created_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
                     updated_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),

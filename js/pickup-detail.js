@@ -189,6 +189,15 @@
             window.renderInstaEmbeds(reelBox, reelUrls, spot.insta_reel_covers);
         }
 
+        // 데이터 신선도 + 신고 통로 (guidelines.html 2-3 · 3-1).
+        // 시딩(curated) 크루는 위에 전용 takedown 링크가 이미 있으므로 신고 줄만 중복되지 않게
+        // 같은 블록을 쓰되, 문구가 달라 서로 대체하지 않는다(저쪽은 '우리 팀이에요').
+        if (window.renderDataTrust) {
+            var trust = el('div', 'data-trust');
+            window.renderDataTrust(trust, spot, 'pickup');
+            c.appendChild(trust);
+        }
+
         // 소유자: 수정/삭제
         if (host) {
             var hc = el('div', 'ps-host-controls');

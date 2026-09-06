@@ -6,7 +6,7 @@
 //  · 패리티 DOM: 검색(#fsKeyword)·필터시트·탭·언어토글 등 핵심 UI 존재.
 //  · 인터랙션: 필터시트 열기, KO↔EN 토글이 실제 DOM 텍스트를 바꾸는지.
 'use strict';
-/* global window -- addInitScript 콜백은 브라우저 컨텍스트에서 실행됨 */
+/* global window, document -- addInitScript·page.evaluate 콜백은 브라우저 컨텍스트에서 실행됨 */
 
 const { test, expect } = require('@playwright/test');
 
@@ -177,4 +177,72 @@ test('픽업 상세: 목록 패널이 그대로 정보창이 된다 (별도 시�
     await expect(panel.locator('.pl-header')).toBeVisible();
     await expect(page.locator('#pickupSheetContent')).toBeHidden();
     await expect(page.locator('.fab-group')).toBeVisible();
+});
+
+// guidelines.html 이 '7일 내 확인'과 '6개월 점검'을 약속했는데 화면에 창구·표시가 없으면
+// 문서만 있는 약속이 된다. 상세에 신고 링크와 최종 확인일이 실제로 뜨는지 지킨다.
+test('데이터 신뢰도: 상세에 최종 확인일 + 신고 버튼', async ({ page }) => {
+    await page.goto('/');
+
+    // 정책 4종이 필터 시트에서 도달 가능한지 (그전엔 직접 URL로만 열렸다)
+    await page.locator('#filterBtnIcon').click();
+    const policy = page.locator('.fs-policy');
+    await expect(policy).toBeVisible();
+    await expect(policy.locator('a[href="terms.html"]')).toBeVisible();
+    await expect(policy.locator('a[href="guidelines.html"]')).toBeVisible();
+    await expect(policy.locator('a[href="privacy.html"]')).toBeVisible();
+
+    // 상세 신뢰도 블록: 오래된 항목이면 '확인 필요'가 함께 뜬다
+    const trust = await page.evaluate(() => {
+        const host = document.getElementById('clubDataTrust');
+        const old = new Date();
+        old.setFullYear(old.getFullYear() - 2);
+        window.renderDataTrust(host, {
+            id: 'smoke-club', name: '스모크 클럽',
+            metadata: { updated_at: old }
+        }, 'club');
+        return {
+            line: host.querySelector('.dt-line').textContent,
+            stale: !!host.querySelector('.dt-line.dt-stale'),
+            // 링크가 아니라 버튼이어야 한다 — 메일앱으로 이탈하지 않고 인앱 접수
+            isButton: host.querySelector('.dt-report').tagName
+        };
+    });
+    expect(trust.stale).toBe(true);      // 2년 전 = 6개월 기준 초과
+    expect(trust.isButton).toBe('BUTTON');
+    // 문구는 KO/EN 로케일에 따라 달라지므로 언어 무관한 부분으로 검증한다
+    expect(trust.line).toContain('⚠️');
+    expect(trust.line).toMatch(/\d{4}\.\d{1,2}\.\d{1,2}/);
+});
+
+// 신고는 mailto가 아니라 인앱 모달이어야 한다(모바일 메일앱 전환 = 이탈).
+// 사유 없이 제출하면 막히는지까지 — 사유 enum 은 firestore.rules 가 강제하므로
+// 클라이언트가 빈 값을 올려보내면 규칙에서 조용히 거부된다.
+test('신고: 인앱 모달이 열리고 사유 없이 보내면 막는다', async ({ page }) => {
+    await page.goto('/');
+
+    await page.evaluate(() => {
+        window.renderDataTrust(
+            document.getElementById('clubDataTrust'),
+            { id: 'smoke-club', name: '스모크 클럽', metadata: { updated_at: new Date() } },
+            'club'
+        );
+        document.querySelector('#clubDataTrust .dt-report').click();
+    });
+
+    const overlay = page.locator('#reportModalOverlay');
+    await expect(overlay).toBeVisible();
+    await expect(page.locator('#reportTarget')).toHaveText('스모크 클럽'); // 대상이 프리필돼야 확인이 빠르다
+
+    // 사유 미선택 제출 → 에러 안내, 모달 유지
+    await page.locator('#reportSubmitBtn').click();
+    await expect(page.locator('#reportError')).toBeVisible();
+    await expect(overlay).toBeVisible();
+
+    // 사유 선택하면 에러가 사라진다
+    await page.locator('#reportReasonChips .rp-reason-chip[data-val="wrong_info"]').click();
+    await expect(page.locator('#reportError')).toBeHidden();
+
+    await page.locator('.report-modal .reg-modal-close').click();
+    await expect(overlay).toBeHidden();
 });
