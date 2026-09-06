@@ -1,6 +1,6 @@
 var { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 var { onDocumentCreated } = require("firebase-functions/v2/firestore");
-var { defineSecret } = require("firebase-functions/params");
+var { defineSecret, defineString } = require("firebase-functions/params");
 var admin = require("firebase-admin");
 var pure = require("./lib/pure");
 // 카카오 호출은 전역 fetch 금지 — 이유는 lib/provider-http.js 상단 주석 참고(406/KOE001).
@@ -662,6 +662,247 @@ exports.chatbotTeamDelete = onRequest({ cors: true, invoker: "public" }, async f
         res.json({
             version: "2.0",
             template: { outputs: [{ simpleText: { text: "삭제 처리 중 오류가 발생했습니다." } }] }
+        });
+    }
+});
+
+// ══════════════════════════════════════════════════════════
+// 잘못된 정보 신고 (guidelines.html 3-1)
+//
+// 인증 배지 심사와 같은 파이프를 그대로 탄다: Firestore 문서 생성 → 운영자 카톡
+// 알림 → 챗봇에서 확인·처리. mailto와 달리 신고 이력이 데이터로 남아서 "정정 요청이
+// 몇 건 들어왔고 며칠 만에 처리됐나"를 나중에 셀 수 있다.
+//
+// 신고자는 익명 인증(무로그인)일 수 있다 — 제3자는 신고하려고 로그인하지 않는다.
+// 스팸 방어는 firestore.rules 의 reportFieldsValid()가 맡는다.
+// ══════════════════════════════════════════════════════════
+
+// 챗봇 블록 ID는 카카오 챗봇 콘솔에서 스킬을 만들 때 정해진다. 아직 안 만들었으면
+// 빈 값 → 버튼 없이 텍스트 목록만 내려서 배포 즉시 동작한다(설정은 나중에 추가).
+//   firebase functions:config 대신 파라미터로:  REPORT_DONE_BLOCK_ID
+var REPORT_DONE_BLOCK_ID = defineString("REPORT_DONE_BLOCK_ID", { default: "" });
+
+var REPORT_REASON_LABELS = {
+    wrong_info: "정보가 틀림",
+    closed: "운영 종료/해체",
+    duplicate: "중복 등록",
+    inappropriate: "부적절한 내용",
+    other: "기타"
+};
+
+function reportReasonLabel(reason) {
+    return REPORT_REASON_LABELS[reason] || reason || "사유 없음";
+}
+
+// 신고 접수 즉시 운영자에게 알린다. guidelines.html 이 약속한 "영업일 7일 이내 확인"은
+// 알림이 실시간으로 도착해야 지킬 수 있는 값이다.
+exports.onReportCreated = onDocumentCreated(
+    {
+        document: "reports/{reportId}",
+        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
+    },
+    async function (event) {
+        var snap = event.data;
+        if (!snap) {
+            console.warn("onReportCreated: snapshot 없음");
+            return;
+        }
+        var d = snap.data() || {};
+        if (d.status !== "open") {
+            console.log("onReportCreated: status가 open이 아님 - 알림 생략", d.status);
+            return;
+        }
+
+        var kakaoToken = null;
+        try {
+            kakaoToken = await getKakaoAccessToken();
+        } catch (tokenErr) {
+            // 알림이 실패해도 신고 문서는 남는다 — 챗봇 '신고관리'로 따라잡을 수 있다.
+            console.error("카카오 토큰 획득 실패(신고 알림):", tokenErr);
+            return;
+        }
+        if (!kakaoToken) {
+            console.warn("KAKAO_ACCESS_TOKEN 미설정 - 신고 알림 생략");
+            return;
+        }
+
+        var kindLabel = d.kind === "pickup" ? "픽업" : "동호회";
+        var lines = [
+            "[신고 접수] " + kindLabel + " · " + (d.target_name || d.target_id || ""),
+            "",
+            "사유: " + reportReasonLabel(d.reason)
+        ];
+        if (d.detail) lines.push("내용: " + String(d.detail).slice(0, 200));
+        lines.push("", "카카오톡 챗봇에서 '신고관리'를 입력해 확인·처리해주세요.");
+
+        try {
+            var templateObject = {
+                object_type: "text",
+                text: lines.join("\n"),
+                link: {
+                    web_url: "https://do.nulloongzi.com",
+                    mobile_web_url: "https://do.nulloongzi.com"
+                }
+            };
+            var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
+            var kakaoRes = await providerHttp.postForm(
+                providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send", body, kakaoToken);
+            console.log("신고 알림 전송 결과:", kakaoRes.status, kakaoRes.body);
+        } catch (kakaoErr) {
+            console.error("신고 알림 전송 실패:", kakaoErr);
+        }
+    }
+);
+
+// ── 스킬 8: 미처리 신고 목록 (발화: 신고관리) ──
+exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try {
+        var auth = await isAllowedKakaoUser(req);
+        if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
+
+        // orderBy + where 조합은 복합 인덱스를 요구하므로 status만 걸고 메모리에서 정렬한다.
+        // (신고는 미처리분만 보므로 건수가 작다)
+        var snap = await db.collection("reports").where("status", "==", "open").limit(30).get();
+
+        if (snap.empty) {
+            res.json({
+                version: "2.0",
+                template: { outputs: [{ simpleText: { text: "미처리 신고가 없습니다. ✅" } }] }
+            });
+            return;
+        }
+
+        var items = [];
+        snap.forEach(function (doc) {
+            var d = doc.data();
+            d._id = doc.id;
+            d._ms = d.created_at && d.created_at.toMillis ? d.created_at.toMillis() : 0;
+            items.push(d);
+        });
+        items.sort(function (a, b) { return b._ms - a._ms; });
+        var top = items.slice(0, 10);
+
+        var doneBlockId = (REPORT_DONE_BLOCK_ID.value() || "").trim();
+
+        // 블록 ID가 아직 없으면 버튼 대신 텍스트로 — 콘솔 설정 전에도 목록은 보여야 한다.
+        if (!doneBlockId) {
+            var text = top.map(function (d, i) {
+                var kindLabel = d.kind === "pickup" ? "픽업" : "동호회";
+                var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
+                return (i + 1) + ". [" + kindLabel + "] " + (d.target_name || d.target_id)
+                    + "\n   " + reportReasonLabel(d.reason) + " · " + dateStr
+                    + (d.detail ? "\n   \"" + String(d.detail).slice(0, 60) + "\"" : "")
+                    + "\n   id: " + d._id;
+            }).join("\n\n");
+            res.json({
+                version: "2.0",
+                template: {
+                    outputs: [{
+                        simpleText: {
+                            text: "미처리 신고 " + snap.size + "건\n\n" + text
+                                + "\n\n※ '처리완료' 버튼을 쓰려면 챗봇 콘솔에서 신고처리 블록을 만들고"
+                                + " REPORT_DONE_BLOCK_ID 파라미터에 넣어주세요."
+                        }
+                    }]
+                }
+            });
+            return;
+        }
+
+        var DEFAULT_THUMB = "https://do.nulloongzi.com/app_ui/nulloongzido%20logo_512px.png";
+        var cards = top.map(function (d) {
+            var kindLabel = d.kind === "pickup" ? "픽업" : "동호회";
+            var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
+            var desc = kindLabel + " · " + reportReasonLabel(d.reason) + "\n" + dateStr;
+            if (d.detail) desc += "\n" + String(d.detail).slice(0, 60);
+            return {
+                title: d.target_name || d.target_id || "대상 없음",
+                description: desc,
+                thumbnail: { imageUrl: DEFAULT_THUMB },
+                buttons: [{
+                    label: "✅ 처리완료",
+                    action: "block",
+                    blockId: doneBlockId,
+                    extra: { report_id: d._id, target_name: d.target_name || "" }
+                }]
+            };
+        });
+
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ carousel: { type: "basicCard", items: cards } }] }
+        });
+    } catch (error) {
+        console.error("chatbotReports 오류:", error);
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ simpleText: { text: "신고 목록 조회 중 오류가 발생했습니다." } }] }
+        });
+    }
+});
+
+// ── 스킬 9: 신고 처리 완료 ──
+// 신고 문서는 지우지 않고 status만 바꾼다 — 처리 이력이 남아야 "며칠 만에 확인했나"를
+// 나중에 셀 수 있다(guidelines.html 3-2 의 7일 약속을 검증하는 유일한 근거).
+exports.chatbotReportDone = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try {
+        var auth = await isAllowedKakaoUser(req);
+        if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
+
+        var clientExtra = (req.body.action && req.body.action.clientExtra) || {};
+        var params = (req.body.action && req.body.action.params) || {};
+        // 버튼(clientExtra)이 없으면 발화 파라미터로도 받는다 — 블록 미설정 상태의 폴백.
+        var reportId = clientExtra.report_id || params.report_id;
+
+        if (!reportId) {
+            res.json({
+                version: "2.0",
+                template: { outputs: [{ simpleText: { text: "처리할 신고 id가 없습니다. '신고관리'로 다시 시도해주세요." } }] }
+            });
+            return;
+        }
+
+        var ref = db.collection("reports").doc(String(reportId));
+        var doc = await ref.get();
+        if (!doc.exists) {
+            res.json({
+                version: "2.0",
+                template: { outputs: [{ simpleText: { text: "해당 신고를 찾을 수 없습니다." } }] }
+            });
+            return;
+        }
+        var d = doc.data() || {};
+        if (d.status !== "open") {
+            res.json({
+                version: "2.0",
+                template: { outputs: [{ simpleText: { text: "이미 처리된 신고입니다." } }] }
+            });
+            return;
+        }
+
+        await ref.update({
+            status: "resolved",
+            resolved_at: admin.firestore.FieldValue.serverTimestamp(),
+            resolved_by: auth.userId || "unknown"
+        });
+
+        console.log("신고 처리 완료 - report_id:", reportId);
+
+        res.json({
+            version: "2.0",
+            template: {
+                outputs: [{
+                    simpleText: {
+                        text: "✅ 처리 완료로 표시했습니다.\n대상: " + (d.target_name || d.target_id || "")
+                    }
+                }]
+            }
+        });
+    } catch (error) {
+        console.error("chatbotReportDone 오류:", error);
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ simpleText: { text: "신고 처리 중 오류가 발생했습니다." } }] }
         });
     }
 });

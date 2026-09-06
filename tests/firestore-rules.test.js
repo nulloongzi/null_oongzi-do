@@ -495,3 +495,92 @@ describe('pickup_games 룰 (B: expire_at 검증 + 누구나/익명 등록 + 모�
             .set(validSpot('pk-owner', { region: '가'.repeat(21) })));
     });
 });
+
+// reports: 무로그인(익명) 신고를 열되 스팸 문은 좁힌다. 열어둔 만큼 검증이 촘촘해야
+// 하므로 화이트리스트·enum·길이·읽기차단을 전부 지킨다.
+describe('reports 룰 (제3자 신고: 익명 허용 + 스팸 방어 + 읽기 차단)', () => {
+    const validReport = (uid, over = {}) => Object.assign({
+        kind: 'club',
+        target_id: 'club-1',
+        target_name: 'Test Club',
+        reason: 'wrong_info',
+        detail: '연습 요일이 바뀌었어요',
+        reporter_uid: uid,
+        status: 'open',
+        created_at: new Date()
+    }, over);
+
+    test('익명 인증 사용자의 신고 통과 (로그인 벽 없음이 핵심)', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertSucceeds(db.collection('reports').doc('r-anon').set(validReport('anon-reporter')));
+    });
+
+    test('픽업 대상 신고도 통과', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertSucceeds(db.collection('reports').doc('r-pickup')
+            .set(validReport('anon-reporter', { kind: 'pickup', target_id: 'pk-1' })));
+    });
+
+    test('비로그인(uid 없음) 신고는 거부 — 익명 인증조차 없으면 막는다', async () => {
+        const db = testEnv.unauthenticatedContext().firestore();
+        await assertFails(db.collection('reports').doc('r-noauth').set(validReport('nobody')));
+    });
+
+    test('reporter_uid 위조 거부', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-forge')
+            .set(validReport('someone-else')));
+    });
+
+    test("status='resolved' 로 생성 거부 (처리완료 스푸핑)", async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-spoof')
+            .set(validReport('anon-reporter', { status: 'resolved' })));
+    });
+
+    test('사유 enum 밖의 값 거부', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-reason')
+            .set(validReport('anon-reporter', { reason: 'whatever' })));
+    });
+
+    test('kind enum 밖의 값 거부', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-kind')
+            .set(validReport('anon-reporter', { kind: 'user' })));
+    });
+
+    test('detail 500자 초과 거부 (본문이 저장소가 되지 않게)', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-long')
+            .set(validReport('anon-reporter', { detail: '가'.repeat(501) })));
+    });
+
+    test('화이트리스트 밖 필드 거부 (문서 비대화 차단)', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-extra')
+            .set(validReport('anon-reporter', { payload: 'x'.repeat(400) })));
+    });
+
+    test('target_id 빈 문자열 거부', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-empty')
+            .set(validReport('anon-reporter', { target_id: '' })));
+    });
+
+    test('신고자 본인도 읽을 수 없다 (누가 누구를 신고했는지 비공개)', async () => {
+        const db = testEnv.authenticatedContext('anon-reporter').firestore();
+        await assertFails(db.collection('reports').doc('r-anon').get());
+    });
+
+    test('관리자는 읽을 수 있다', async () => {
+        const db = testEnv.authenticatedContext('admin-uid').firestore();
+        await assertSucceeds(db.collection('reports').doc('r-anon').get());
+    });
+
+    test('클라이언트 update/delete 거부 (처리는 Cloud Function만)', async () => {
+        const db = testEnv.authenticatedContext('admin-uid').firestore();
+        await assertFails(db.collection('reports').doc('r-anon').update({ status: 'resolved' }));
+        await assertFails(db.collection('reports').doc('r-anon').delete());
+    });
+});

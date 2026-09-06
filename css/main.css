@@ -2217,11 +2217,51 @@
             font-weight: 700;
         }
 
+        /* 링크가 아니라 버튼 — 인앱 모달을 열지 페이지를 떠나지 않는다 */
         .dt-report {
             font-size: 12px;
             color: #8d6e63;
             text-decoration: underline;
             white-space: nowrap;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        /* 신고 모달 — 등록 모달(.reg-modal-*) 골격을 그대로 쓰고 차이나는 부분만 */
+        .report-modal {
+            max-width: 420px;
+        }
+
+        .rp-target {
+            font-weight: 700;
+            font-size: 15px;
+            color: #4e342e;
+            margin-bottom: 6px;
+            word-break: break-all;
+        }
+
+        .rp-intro {
+            font-size: 12px;
+            color: #8d6e63;
+            line-height: 1.5;
+            background: #fff8e1;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+        }
+
+        .rp-reason-chip {
+            padding: 7px 13px;
+            font-size: 13px;
+        }
+
+        #reportSubmitBtn:disabled {
+            opacity: .6;
+            cursor: default;
+            transform: none;
         }
 
         .fs-policy {
