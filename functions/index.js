@@ -1,6 +1,6 @@
 var { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 var { onDocumentCreated } = require("firebase-functions/v2/firestore");
-var { defineSecret, defineString } = require("firebase-functions/params");
+var { defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin");
 var pure = require("./lib/pure");
 // 카카오 호출은 전역 fetch 금지 — 이유는 lib/provider-http.js 상단 주석 참고(406/KOE001).
@@ -679,8 +679,16 @@ exports.chatbotTeamDelete = onRequest({ cors: true, invoker: "public" }, async f
 
 // 챗봇 블록 ID는 카카오 챗봇 콘솔에서 스킬을 만들 때 정해진다. 아직 안 만들었으면
 // 빈 값 → 버튼 없이 텍스트 목록만 내려서 배포 즉시 동작한다(설정은 나중에 추가).
-//   firebase functions:config 대신 파라미터로:  REPORT_DONE_BLOCK_ID
-var REPORT_DONE_BLOCK_ID = defineString("REPORT_DONE_BLOCK_ID", { default: "" });
+//
+// defineString 이 아니라 process.env 로 읽는다. 선언된 파라미터는 값이 없으면
+// 비대화형 배포(CI)에서 "have no value for ... REPORT_DONE_BLOCK_ID" 로 멈춘다 —
+// 빈 기본값도 미설정으로 취급된다(KAKAO_APP_ID 는 .env 에 실제 값이 있어 통과했던 것).
+// 이 값은 없어도 되는 선택 설정이라 배포를 막으면 안 된다.
+// 나중에 functions/.env.nulloongzi-do 에 REPORT_DONE_BLOCK_ID=<블록ID> 를 넣으면
+// 코드 변경 없이 버튼 모드로 바뀐다.
+function reportDoneBlockId() {
+    return (process.env.REPORT_DONE_BLOCK_ID || "").trim();
+}
 
 var REPORT_REASON_LABELS = {
     wrong_info: "정보가 틀림",
@@ -782,7 +790,7 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
         items.sort(function (a, b) { return b._ms - a._ms; });
         var top = items.slice(0, 10);
 
-        var doneBlockId = (REPORT_DONE_BLOCK_ID.value() || "").trim();
+        var doneBlockId = reportDoneBlockId();
 
         // 블록 ID가 아직 없으면 버튼 대신 텍스트로 — 콘솔 설정 전에도 목록은 보여야 한다.
         if (!doneBlockId) {
