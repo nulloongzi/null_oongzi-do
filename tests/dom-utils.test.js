@@ -62,7 +62,7 @@ describe('sanitizeUrl', () => {
     });
 
     test('passes http URL through', () => {
-        assert.strictEqual(sanitizeUrl('http://nulloongzido.com'), 'http://nulloongzido.com');
+        assert.strictEqual(sanitizeUrl('http://example.com'), 'http://example.com');
     });
 
     test('passes mailto scheme', () => {

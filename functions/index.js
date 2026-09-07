@@ -142,8 +142,8 @@ exports.onVerificationCreated = onDocumentCreated(
                 object_type: "text",
                 text: "[인증 신청] " + data.club_name + "\n\n새로운 팀 인증 신청이 도착했습니다.\n\n카카오톡 챗봇에서 '인증관리'를 입력하여 사진 확인 및 승인/거절을 진행해주세요.",
                 link: {
-                    web_url: "https://nulloongzido.com",
-                    mobile_web_url: "https://nulloongzido.com"
+                    web_url: "https://do.nulloongzi.com",
+                    mobile_web_url: "https://do.nulloongzi.com"
                 }
             };
             var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
@@ -457,7 +457,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
                 var templateObject = {
                     object_type: "text",
                     text: "[인증 거절 완료]\n\n팀: " + clubName + "\n사유: " + reason,
-                    link: { web_url: "https://nulloongzido.com", mobile_web_url: "https://nulloongzido.com" }
+                    link: { web_url: "https://do.nulloongzi.com", mobile_web_url: "https://do.nulloongzi.com" }
                 };
                 await providerHttp.postForm(providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
                     "template_object=" + encodeURIComponent(JSON.stringify(templateObject)),
