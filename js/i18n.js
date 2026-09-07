@@ -321,6 +321,7 @@
         // '국을 담아주세요🥘' 는 받아 보는 사람에게 하는 말처럼 읽힌다.
         mc_lunchbox: { ko: '도시락', en: 'Lunchbox' },
         mc_timetable: { ko: '식단표', en: 'Schedule' },
+        mc_no_sched: { ko: '찜한 팀의 일정이 없어요', en: 'No schedule for saved teams' },
         mc_rice: { ko: '밥 🍚', en: 'Rice 🍚' },
         mc_soup: { ko: '국 🥘', en: 'Soup 🥘' },
         mc_side1: { ko: '반찬1 🍳', en: 'Side 1 🍳' },

@@ -383,13 +383,23 @@
         ctx.fillText((window.t('mc_timetable') || '식단표') + ' 🗓', ix, cy);
         cy += 42;
 
-        // 표시 구간은 실제 일정에 맞춘다(없으면 18~23시)
+        // 일정이 하나도 없으면 빈 격자만 크게 남아 '왜 비었는지'를 말해주지 않는다.
+        // 앱과 같이 이유를 적는다.
+        if (!d.events.length) {
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = fnt(24, 500); ctx.fillStyle = SUB;
+            ctx.fillText(window.t('mc_no_sched') || '찜한 팀의 일정이 없어요',
+                r.x + r.w / 2, r.y + r.h / 2);
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            return;
+        }
+
+        // 표시 구간은 실제 일정에 맞춘다
         var minH = 24, maxH = 0;
         for (var i = 0; i < d.events.length; i++) {
             if (d.events[i].start < minH) minH = d.events[i].start;
             if (d.events[i].end > maxH) maxH = d.events[i].end;
         }
-        if (!d.events.length) { minH = 18; maxH = 23; }
         var H0 = Math.max(6, Math.floor(minH) - 1);
         var H1 = Math.min(24, Math.ceil(maxH) + 1);
         if (H1 - H0 < 3) H1 = Math.min(24, H0 + 3);
