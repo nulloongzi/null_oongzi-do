@@ -317,6 +317,18 @@
         rp_sending: { ko: '보내는 중…', en: 'Sending…' },
         rp_need_reason: { ko: '사유를 선택해주세요.', en: 'Please choose a reason.' },
         rp_done: { ko: '신고가 접수됐습니다. 확인 후 반영할게요. 감사합니다!', en: 'Report received. Thanks — we\'ll review it.' },
+        // 포장하기(공유 카드). 빈 칸 라벨은 화면 UI의 안내문구에서 명령형만 뺀 형태 —
+        // '국을 담아주세요🥘' 는 받아 보는 사람에게 하는 말처럼 읽힌다.
+        mc_lunchbox: { ko: '도시락', en: 'Lunchbox' },
+        mc_timetable: { ko: '식단표', en: 'Schedule' },
+        mc_no_sched: { ko: '찜한 팀의 일정이 없어요', en: 'No schedule for saved teams' },
+        mc_rice: { ko: '밥 🍚', en: 'Rice 🍚' },
+        mc_soup: { ko: '국 🥘', en: 'Soup 🥘' },
+        mc_side1: { ko: '반찬1 🍳', en: 'Side 1 🍳' },
+        mc_side2: { ko: '반찬2 🥗', en: 'Side 2 🥗' },
+        mc_side3: { ko: '반찬3 🥢', en: 'Side 3 🥢' },
+        mc_cta: { ko: '내 밥이름 만들러 가기', en: 'Get your own rice-name' },
+        deleted_team: { ko: '삭제된 팀', en: 'Deleted team' },
         rp_fail_mail: { ko: '전송에 실패했어요. 메일로 보내주시면 확인하겠습니다.', en: 'Sending failed. Please email us instead.' },
         policy_terms: { ko: '이용약관', en: 'Terms' },
         policy_guidelines: { ko: '운영 기준', en: 'Guidelines' },

@@ -6,7 +6,7 @@
 //  · 패리티 DOM: 검색(#fsKeyword)·필터시트·탭·언어토글 등 핵심 UI 존재.
 //  · 인터랙션: 필터시트 열기, KO↔EN 토글이 실제 DOM 텍스트를 바꾸는지.
 'use strict';
-/* global window, document -- addInitScript·page.evaluate 콜백은 브라우저 컨텍스트에서 실행됨 */
+/* global window, document, Image -- addInitScript·page.evaluate 콜백은 브라우저 컨텍스트에서 실행됨 */
 
 const { test, expect } = require('@playwright/test');
 
@@ -245,4 +245,65 @@ test('신고: 인앱 모달이 열리고 사유 없이 보내면 막는다', asy
 
     await page.locator('.report-modal .reg-modal-close').click();
     await expect(overlay).toBeHidden();
+});
+
+// 포장하기 — html2canvas(DOM 복제 + transform:scale) 경로를 canvas 직접 렌더로 갈아탔다.
+// 회귀 지점 셋: 규격이 정확한가, 화면과 같은 도시락 그리드를 쓰는가,
+// 빈 칸에 입력 유도 문구("담아주세요")가 새어 나가지 않는가.
+test('포장하기: 두 규격이 정확한 크기로 렌더된다', async ({ page }) => {
+    await page.goto('/');
+
+    const out = await page.evaluate(async () => {
+        window.currentProfileData = {
+            full_nickname: '현미밥-a3z', nickname: '현미밥',
+            created_at: new Date('2026-01-19'),
+            bookmarks: ['t0', null, 't2', null, null]
+        };
+        const clubs = {
+            t0: { id: 't0', name: 'GVT 배구클럽', schedule: '화 19:00-21:00' },
+            t2: { id: 't2', name: '월요 리시브반', schedule: '월 20:00-22:00' }
+        };
+        window.findClub = (id) => clubs[id] || null;
+
+        const d = window.buildMyCardData();
+        const sizeOf = (url) => new Promise((res) => {
+            const i = new Image();
+            i.onload = () => res([i.naturalWidth, i.naturalHeight]);
+            i.src = url;
+        });
+        const story = await sizeOf(await window.renderMyCard(d, false));
+        const feed = await sizeOf(await window.renderMyCard(d, true));
+        return { story, feed, slots: d.slots, events: d.events.length, bg: d.bgColor };
+    });
+
+    expect(out.story).toEqual([1080, 1920]);            // 9:16
+    expect(out.feed).toEqual([1080, 1350]);             // 4:5 — 인스타 피드 최대 세로
+    // 슬롯 순서는 화면 UI와 같다: 0=밥 1=국 2~4=반찬
+    expect(out.slots[0]).toBe('GVT 배구클럽');
+    expect(out.slots[2]).toBe('월요 리시브반');
+    expect(out.slots[1]).toBeNull();
+    expect(out.events).toBe(2);                          // 두 팀의 일정이 잡힌다
+    expect(out.bg).toBe('#FFF9C4');                      // 화면 네임카드와 같은 밥 색
+});
+
+test('포장하기: 빈 칸 라벨에 입력 유도 문구가 없다', async ({ page }) => {
+    await page.goto('/');
+    const labels = await page.evaluate(() =>
+        ['mc_rice', 'mc_soup', 'mc_side1', 'mc_side2', 'mc_side3'].map((k) => window.t(k))
+    );
+    // 화면 UI 의 "밥을 담아주세요🍚" 같은 명령형은 공유물에 나가면 안 된다.
+    for (const l of labels) {
+        expect(l).not.toContain('담아');
+        expect(l).not.toMatch(/Add /);
+    }
+    // 도시락통다움을 주는 키워드·이모지는 남아 있어야 한다
+    expect(labels.join(' ')).toMatch(/🍚/);
+    expect(labels.join(' ')).toMatch(/🥘/);
+});
+
+// html2canvas 를 완전히 걷어냈다. 다시 스며들면 DOM 복제 경로가 부활한 것이다.
+test('포장하기: html2canvas 의존이 없다', async ({ page }) => {
+    await page.goto('/');
+    const has = await page.evaluate(() => typeof window.html2canvas !== 'undefined');
+    expect(has).toBe(false);
 });

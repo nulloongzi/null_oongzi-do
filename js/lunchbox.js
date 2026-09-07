@@ -481,6 +481,14 @@ function renderCombinedSchedule() {
 }
 window.renderCombinedSchedule = renderCombinedSchedule;
 
+// 공유(포장하기)가 화면과 '같은' 도시락을 그리도록 슬롯을 노출한다.
+// 편집 중이면 tempSlots, 아니면 저장된 북마크 — 화면 렌더와 같은 기준.
+window.getShareSlots = function () {
+    var t = getTempSlots();
+    var hasTemp = t && t.some(function (v) { return v != null; });
+    return (hasTemp ? t : getEffectiveBookmarks()) || [null, null, null, null, null];
+};
+
 function handleSlotClick(index) {
     var tempSlots = getTempSlots();
     if (selectedSlotIndex === null) {

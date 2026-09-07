@@ -111,6 +111,12 @@ function renderProviderMark() {
     card.classList.add('has-provider-mark');
 }
 
+// 밥 종류 → 카드 배경색. 화면 네임카드와 공유 이미지가 같은 색을 써야 한다.
+window.riceColorOf = function (riceName) {
+    var found = riceData.find(function (r) { return r.name === riceName; });
+    return found ? found.color : "#fff9c4";
+};
+
 window.renderProfileCard = function () {
     if (!window.currentProfileData) return;
 
@@ -132,8 +138,7 @@ window.renderProfileCard = function () {
         riceName = window.currentProfileData.full_nickname.split('-')[0];
     }
 
-    var foundRice = riceData.find(function (r) { return r.name === riceName; });
-    var bgColor = foundRice ? foundRice.color : "#fff9c4";
+    var bgColor = window.riceColorOf(riceName);
     card.style.backgroundColor = bgColor;
     riceWatermark.innerText = riceName;
     renderProviderMark();
