@@ -9,7 +9,7 @@
 
 - **점검 주기**: 6개월 (`guidelines.html` 2-3 의 팀 데이터 점검과 같은 날에 함께)
 - **다음 점검 예정**: 2027-03
-- **마지막 점검**: 2026-09-07 (링크트리·SNS 정리 완료, Play Console 잔여)
+- **마지막 점검**: 2026-09-07 (표의 1~6번 전부 확인 완료)
 
 ---
 
@@ -34,8 +34,8 @@
 | # | 표면 | 가리켜야 할 곳 | 상태 (2026-09-07) |
 |---|---|---|---|
 | 1 | **링크트리** | 인앱 등록 폼 · Play Store | ✅ 정리 완료 |
-| 2 | Play Console — 개인정보처리방침 URL | `https://do.nulloongzi.com/privacy.html` | ⚠️ **미완 — 남은 항목** |
-| 3 | Play Console — 연락처 이메일 | `paulyoo999@gmail.com` | 2번과 함께 확인 |
+| 2 | Play Console — 개인정보처리방침 URL | `https://do.nulloongzi.com/privacy.html` | ✅ 이미 새 주소로 저장돼 있었음 (2026-09-07 확인) |
+| 3 | Play Console — 연락처 이메일 | `paulyoo999@gmail.com` | 확인 필요 |
 | 4 | Play Console — 스토어 등록정보 | `docs/play-store-listing.md` 의 텍스트/스샷 | 릴리즈마다 출시 노트만 갱신 |
 | 5 | 인스타그램 바이오 링크 | 링크트리 또는 `do.nulloongzi.com` | ✅ 확인 완료 |
 | 6 | 유튜브 채널 소개란 | 〃 | ✅ 확인 완료 |
@@ -43,14 +43,17 @@
 | 8 | 네이버 개발자센터 — 콜백 URL | 〃 | 도메인 전환 시 등록 완료 |
 | 9 | Firebase 콘솔 — 승인된 도메인 | 〃 | 도메인 전환 시 등록 완료 |
 
-## 3. 지금 열려 있는 문제
+## 3. 점검 기록
 
-### 3-1. Play Console 개인정보처리방침 URL &mdash; **남은 항목**
+### 3-1. Play Console 개인정보처리방침 URL &mdash; 이미 맞았다
 
-`docs/play-store-listing.md` 는 오랫동안 `nulloongzi.github.io/null_oongzi-do/privacy.html`
-을 적어뒀다(2026-09-06 정정). Play Console 값도 같이 바꿔야 한다. 옛 주소는 Pages
-리다이렉트로 아직 열리므로 심사에서 걸리지는 않지만, 리다이렉트가 언제까지 살아 있을지는
-우리가 보장하는 값이 아니다.
+`docs/play-store-listing.md` 가 오랫동안 `nulloongzi.github.io/...` 를 적어뒀길래
+(2026-09-06 정정) 콘솔 값도 낡았을 거라 추정했는데, **실제로 열어보니 이미
+`https://do.nulloongzi.com/privacy.html` 로 저장돼 있었다.**
+
+> 문서가 낡았다고 해서 실물도 낡은 건 아니다. 이 표의 상태 칸은 **추정이 아니라 확인한
+> 값만** 적는다 &mdash; 안 본 것을 "아마 문제 있음"으로 적으면 이 문서가 또 하나의
+> 낡은 문서가 된다.
 
 함께 공개된 정책 문서 — 필요하면 스토어 설명이나 링크트리에서 참조:
 
@@ -59,7 +62,7 @@
 - `/privacy.html` — 개인정보처리방침
 - `/data-deletion.html` — 데이터 삭제
 
-### 3-2. 정리된 것 (2026-09-07)
+### 3-2. 링크트리 (2026-09-07 정리 완료)
 
 링크트리가 폐기된 Google Forms 2개(팀 등록·십시일반)와 구버전 APK 를 가리키고 있었다.
 이건 "낡은 링크"가 아니라 **유입 경로가 두 개**라는 뜻이었다 &mdash; 누가 Forms 를 채우면
