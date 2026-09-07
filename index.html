@@ -28,7 +28,7 @@
     <link rel="apple-touch-icon" href="app_ui/nulloongzido%20logo_512px.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
     <!-- ?v=N: JS/CSS 수정 후 배포할 때마다 버전을 올려 캐시 무효화 (returning user 혼합버전 방지) -->
-    <link rel="stylesheet" href="css/main.css?v=22">
+    <link rel="stylesheet" href="css/main.css?v=24">
 
     <!-- Firebase compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -38,13 +38,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
-    <script src="js/firebase-init.js?v=22"></script>
-    <script src="js/dom-utils.js?v=22"></script>
+    <script src="js/firebase-init.js?v=24"></script>
+    <script src="js/dom-utils.js?v=24"></script>
     <!-- 소셜 로그인 진행 오버레이 — 첫 페인트 전에 상태를 잡아야 해서 head에서 로드 -->
-    <script src="js/auth-loading.js?v=22"></script>
+    <script src="js/auth-loading.js?v=24"></script>
 
-    <!-- html2canvas (공유 기능) -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <!-- QR 코드 (인스타 스토리 카드의 ?spot= 딥링크) — 폰트와 동일 CDN(jsDelivr) 핀.
          미로드/차단 시 share.js가 QR 없이 카드를 그려 폴백한다(window.qrcode 가드). -->
@@ -280,8 +278,6 @@
     </div>
 
     <!-- 픽업 게임 상세 바텀시트 -->
-    <!-- 캡처/프리뷰 -->
-    <div id="captureStage"></div>
     <div id="previewOverlay" class="preview-overlay">
         <div class="preview-img-box" id="previewImgBox"></div>
         <div class="preview-btns">
@@ -527,27 +523,28 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
-    <script src="js/i18n.js?v=22"></script>
-    <script src="js/data.js?v=22"></script>
-    <script src="js/pickup-filter.js?v=22"></script>
-    <script src="js/pickup-data.js?v=22"></script>
-    <script src="js/profile.js?v=22"></script>
-    <script src="js/auth.js?v=22"></script>
-    <script src="js/social-auth.js?v=22"></script>
-    <script src="js/lunchbox.js?v=22"></script>
-    <script src="js/share.js?v=22"></script>
-    <script src="js/insta-embed.js?v=22"></script>
-    <script src="js/map-core.js?v=22"></script>
-    <script src="js/data-trust.js?v=22"></script>
-    <script src="js/club-detail.js?v=22"></script>
-    <script src="js/filters.js?v=22"></script>
-    <script src="js/registration.js?v=22"></script>
-    <script src="js/verification.js?v=22"></script>
-    <script src="js/pickup-ui.js?v=22"></script>
-    <script src="js/tabs.js?v=22"></script>
-    <script src="js/pickup-host.js?v=22"></script>
-    <script src="js/pickup-detail.js?v=22"></script>
-    <script src="js/app.js?v=22"></script>
-    <script src="js/app-banner.js?v=22"></script>
+    <script src="js/i18n.js?v=24"></script>
+    <script src="js/data.js?v=24"></script>
+    <script src="js/pickup-filter.js?v=24"></script>
+    <script src="js/pickup-data.js?v=24"></script>
+    <script src="js/profile.js?v=24"></script>
+    <script src="js/auth.js?v=24"></script>
+    <script src="js/social-auth.js?v=24"></script>
+    <script src="js/lunchbox.js?v=24"></script>
+    <script src="js/share.js?v=24"></script>
+    <script src="js/my-card.js?v=24"></script>
+    <script src="js/insta-embed.js?v=24"></script>
+    <script src="js/map-core.js?v=24"></script>
+    <script src="js/data-trust.js?v=24"></script>
+    <script src="js/club-detail.js?v=24"></script>
+    <script src="js/filters.js?v=24"></script>
+    <script src="js/registration.js?v=24"></script>
+    <script src="js/verification.js?v=24"></script>
+    <script src="js/pickup-ui.js?v=24"></script>
+    <script src="js/tabs.js?v=24"></script>
+    <script src="js/pickup-host.js?v=24"></script>
+    <script src="js/pickup-detail.js?v=24"></script>
+    <script src="js/app.js?v=24"></script>
+    <script src="js/app-banner.js?v=24"></script>
 </body>
 </html>
