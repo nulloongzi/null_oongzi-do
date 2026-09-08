@@ -101,3 +101,55 @@ describe('unauthorizedResponse', () => {
         assert.match(r.template.outputs[0].simpleText.text, /권한이 없습니다/);
     });
 });
+
+// 2026-09-08 KOE322 장애의 재발 방지선.
+// 카카오 refresh token 은 60일 만료이고, 갱신 응답에 새 토큰이 실려오는 건
+// 만료 1개월 미만일 때뿐이다. 예전 코드는 그 토큰을 로그로만 남기고 버려서
+// 사람이 손으로 시크릿을 갈아끼우지 않으면 알림이 통째로 끊겼다.
+// 이제 회전분을 Firestore 에 쌓고 시크릿은 seed 로만 쓰는데, "저장분과 seed 중
+// 무엇을 쓰나"를 틀리면 같은 장애가 조용히 반복된다. 그 판단만 여기서 고정한다.
+describe('chooseRefreshToken', () => {
+    const SEED = 'seed-refresh-token';
+    const fp = pure.refreshTokenFingerprint(SEED);
+
+    test('저장분이 없으면 시크릿 seed 를 쓴다 (배포 직후)', () => {
+        const r = pure.chooseRefreshToken({}, SEED);
+        assert.strictEqual(r.token, SEED);
+        assert.strictEqual(r.usingStored, false);
+        assert.strictEqual(r.seedFp, fp);
+    });
+
+    test('같은 seed 에서 회전된 저장분이 있으면 그걸 쓴다 (수동 교체 불필요)', () => {
+        const r = pure.chooseRefreshToken(
+            { refresh_token: 'rotated-1', refresh_token_seed_fp: fp }, SEED);
+        assert.strictEqual(r.token, 'rotated-1');
+        assert.strictEqual(r.usingStored, true);
+    });
+
+    // 이게 핵심이다. 운영자가 장애 복구로 시크릿을 새로 넣었는데 코드가 낡은
+    // 저장분을 계속 쓰면, 사람이 고쳐도 안 고쳐지는 상태가 된다.
+    test('시크릿이 교체되면 저장분을 버린다 — 수동 복구가 항상 이긴다', () => {
+        const r = pure.chooseRefreshToken(
+            { refresh_token: 'rotated-from-old-seed', refresh_token_seed_fp: fp },
+            'brand-new-seed');
+        assert.strictEqual(r.token, 'brand-new-seed');
+        assert.strictEqual(r.usingStored, false);
+    });
+
+    test('지문 없는 레거시 저장분은 신뢰하지 않는다', () => {
+        const r = pure.chooseRefreshToken({ refresh_token: 'no-fp' }, SEED);
+        assert.strictEqual(r.token, SEED);
+        assert.strictEqual(r.usingStored, false);
+    });
+
+    test('cached 가 null/undefined 여도 죽지 않는다', () => {
+        assert.strictEqual(pure.chooseRefreshToken(null, SEED).token, SEED);
+        assert.strictEqual(pure.chooseRefreshToken(undefined, SEED).token, SEED);
+    });
+
+    test('지문은 토큰 원문을 드러내지 않는다 (16자 hex)', () => {
+        assert.match(fp, /^[0-9a-f]{16}$/);
+        assert.notStrictEqual(fp, SEED);
+        assert.notStrictEqual(fp, pure.refreshTokenFingerprint('other'));
+    });
+});
