@@ -47,55 +47,124 @@ async function isAllowedKakaoUser(req) {
 var unauthorizedResponse = pure.unauthorizedResponse;
 var generateToken = pure.generateToken;
 
-// 카카오 액세스 토큰 획득 (Firestore 캐시 + refresh token 자동 갱신)
-// 만료 1분 전에 미리 갱신. refresh token이 새로 내려오면 경고 로그 (secret 수동 교체 필요)
-async function getKakaoAccessToken() {
-    var tokenRef = db.collection("system").doc("kakao_token");
-    var tokenSnap = await tokenRef.get();
-    var now = Date.now();
-
-    if (tokenSnap.exists) {
-        var cached = tokenSnap.data();
-        if (cached.access_token && cached.expires_at && cached.expires_at > now + 60000) {
-            return cached.access_token;
-        }
-    }
-
-    var refreshToken = providerHttp.secretValue(KAKAO_REFRESH_TOKEN);
-    var restApiKey = providerHttp.secretValue(KAKAO_REST_API_KEY);
-    var clientSecret = providerHttp.secretValue(KAKAO_CLIENT_SECRET);
-    if (!refreshToken || !restApiKey) {
-        console.warn("KAKAO_REFRESH_TOKEN 또는 KAKAO_REST_API_KEY 미설정 - seed access token 사용");
-        return providerHttp.secretValue(KAKAO_TOKEN);
-    }
-
+// 카카오 refresh token 회전분을 Firestore에 보관한다.
+//
+// 카카오는 refresh token 유효기간이 60일이고, 갱신 응답에 새 refresh_token을
+// 실어주는 건 "남은 유효기간이 1개월 미만"일 때뿐이다. 예전 코드는 그 새 토큰을
+// 로그로만 남기고 버려서, 60일마다 사람이 손으로 secret을 갈아끼우지 않으면
+// 알림이 통째로 끊겼다(2026-09-08 KOE322 장애).
+//
+// 그렇다고 함수가 Secret Manager에 새 버전을 써도 소용이 없다 — 배포된 함수는
+// 배포 시점의 시크릿 버전에 고정되므로 재배포 전까지 새 버전을 읽지 못한다.
+// (같은 장애에서 secret만 갈고 재배포를 건너뛰었다가 그대로 실패했다.)
+// 그래서 회전된 토큰은 admin SDK만 접근 가능한 system/kakao_token에 둔다
+// (firestore.rules: system/{docId} 는 read, write 모두 false).
+//
+// 시크릿은 "seed" 역할만 한다. 운영자가 secret을 새 값으로 교체하면
+// 지문(fp)이 달라지므로 저장분을 버리고 새 seed를 쓴다 — 수동 복구가 항상 이긴다.
+// 그 선택 규칙 자체는 pure.chooseRefreshToken 에 있다(tests/functions-pure.test.js).
+async function requestKakaoToken(refreshToken, restApiKey, clientSecret) {
     var body = "grant_type=refresh_token" +
         "&client_id=" + encodeURIComponent(restApiKey) +
         "&refresh_token=" + encodeURIComponent(refreshToken);
     if (clientSecret) {
         body += "&client_secret=" + encodeURIComponent(clientSecret);
     }
+    var res = await providerHttp.postForm(providerHttp.KAUTH_HOST, "/oauth/token", body);
+    return { status: res.status, raw: res.body, json: providerHttp.parseJson(res.body) };
+}
 
-    var refreshRes = await providerHttp.postForm(providerHttp.KAUTH_HOST, "/oauth/token", body);
-    var result = providerHttp.parseJson(refreshRes.body);
+// 카카오 액세스 토큰 획득 (Firestore 캐시 + refresh token 자동 갱신/회전 저장)
+// 만료 1분 전에 미리 갱신한다.
+async function getKakaoAccessToken() {
+    var tokenRef = db.collection("system").doc("kakao_token");
+    var tokenSnap = await tokenRef.get();
+    var now = Date.now();
+    var cached = tokenSnap.exists ? (tokenSnap.data() || {}) : {};
+
+    if (cached.access_token && cached.expires_at && cached.expires_at > now + 60000) {
+        return cached.access_token;
+    }
+
+    var seedRefresh = providerHttp.secretValue(KAKAO_REFRESH_TOKEN);
+    var restApiKey = providerHttp.secretValue(KAKAO_REST_API_KEY);
+    var clientSecret = providerHttp.secretValue(KAKAO_CLIENT_SECRET);
+    if (!seedRefresh || !restApiKey) {
+        console.warn("KAKAO_REFRESH_TOKEN 또는 KAKAO_REST_API_KEY 미설정 - seed access token 사용");
+        return providerHttp.secretValue(KAKAO_TOKEN);
+    }
+
+    var choice = pure.chooseRefreshToken(cached, seedRefresh);
+    var seedFp = choice.seedFp;
+    var usingStored = choice.usingStored;
+
+    var attempt = await requestKakaoToken(choice.token, restApiKey, clientSecret);
+
+    // 저장분이 죽었으면 seed로 한 번 더 — 저장분 손상이 secret 복구를 막아선 안 된다.
+    if (!attempt.json.access_token && usingStored) {
+        console.warn("저장된 refresh token 갱신 실패 - secret seed로 재시도:", attempt.status);
+        usingStored = false;
+        attempt = await requestKakaoToken(seedRefresh, restApiKey, clientSecret);
+    }
+
+    var result = attempt.json;
 
     if (!result.access_token) {
-        console.error("카카오 토큰 갱신 실패:", refreshRes.status, refreshRes.body);
-        throw new Error("카카오 토큰 갱신 실패: " + refreshRes.status + " " + refreshRes.body);
+        // 실패 사유를 한 곳에 남긴다. 로그만 보면 아무도 안 본다.
+        try {
+            await tokenRef.set({
+                last_refresh_error: String(attempt.status) + " " + String(attempt.raw || "").slice(0, 300),
+                last_refresh_error_at: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        } catch (e) {
+            console.error("토큰 갱신 실패 기록 실패:", e && e.message);
+        }
+        console.error("카카오 토큰 갱신 실패:", attempt.status, attempt.raw);
+        throw new Error("카카오 토큰 갱신 실패: " + attempt.status + " " + attempt.raw);
     }
 
     var expiresAt = now + (result.expires_in * 1000);
-    await tokenRef.set({
+    var update = {
         access_token: result.access_token,
         expires_at: expiresAt,
-        refreshed_at: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+        refreshed_at: admin.firestore.FieldValue.serverTimestamp(),
+        last_refresh_error: admin.firestore.FieldValue.delete(),
+        last_refresh_error_at: admin.firestore.FieldValue.delete()
+    };
 
+    // 회전된 refresh token은 값 자체를 로그에 찍지 않는다 — Cloud Logging은 장기 보관된다.
     if (result.refresh_token) {
-        console.warn("⚠️ 새 refresh_token 발급됨 - KAKAO_REFRESH_TOKEN secret 교체 필요:", result.refresh_token);
+        update.refresh_token = result.refresh_token;
+        update.refresh_token_seed_fp = seedFp;
+        update.refresh_token_rotated_at = admin.firestore.FieldValue.serverTimestamp();
+        console.log("카카오 refresh token 회전 - Firestore에 저장함(secret 교체 불필요)");
     }
 
+    await tokenRef.set(update, { merge: true });
     return result.access_token;
+}
+
+// 알림 실패를 문서에 남긴다. 조용히 실패하면 운영자는 신고가 들어온 사실조차 모른다.
+// admin SDK 라 firestore.rules 의 필드 화이트리스트/update 금지를 우회한다.
+async function markNotifyResult(ref, ok, message) {
+    try {
+        if (ok) {
+            await ref.set({
+                notify_failed: false,
+                notify_error: admin.firestore.FieldValue.delete(),
+                notify_failed_at: admin.firestore.FieldValue.delete(),
+                notified_at: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        } else {
+            await ref.set({
+                notify_failed: true,
+                notify_error: String(message || "").slice(0, 300),
+                notify_failed_at: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+    } catch (e) {
+        console.error("알림 상태 기록 실패:", e && e.message);
+    }
 }
 
 // ── 트리거 1: 인증 신청 생성 시 카카오톡 알림 ──
@@ -130,10 +199,12 @@ exports.onVerificationCreated = onDocumentCreated(
             kakaoToken = await getKakaoAccessToken();
         } catch (tokenErr) {
             console.error("카카오 토큰 획득 실패:", tokenErr);
+            await markNotifyResult(snap.ref, false, "토큰 획득 실패: " + (tokenErr && tokenErr.message));
             return;
         }
         if (!kakaoToken) {
             console.warn("KAKAO_ACCESS_TOKEN 미설정 - 카카오톡 알림 생략");
+            await markNotifyResult(snap.ref, false, "KAKAO_ACCESS_TOKEN 미설정");
             return;
         }
 
@@ -150,8 +221,11 @@ exports.onVerificationCreated = onDocumentCreated(
             var kakaoRes = await providerHttp.postForm(
                 providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send", body, kakaoToken);
             console.log("카카오톡 메시지 전송 결과:", kakaoRes.status, kakaoRes.body);
+            await markNotifyResult(snap.ref, providerHttp.isOk(kakaoRes.status),
+                "전송 응답 " + kakaoRes.status + " " + String(kakaoRes.body || ""));
         } catch (kakaoErr) {
             console.error("카카오톡 메시지 전송 실패:", kakaoErr);
+            await markNotifyResult(snap.ref, false, "전송 예외: " + (kakaoErr && kakaoErr.message));
         }
     }
 );
@@ -726,11 +800,14 @@ exports.onReportCreated = onDocumentCreated(
             kakaoToken = await getKakaoAccessToken();
         } catch (tokenErr) {
             // 알림이 실패해도 신고 문서는 남는다 — 챗봇 '신고관리'로 따라잡을 수 있다.
+            // 다만 실패했다는 사실을 문서에 남겨야 '신고관리'에서 눈에 띈다.
             console.error("카카오 토큰 획득 실패(신고 알림):", tokenErr);
+            await markNotifyResult(snap.ref, false, "토큰 획득 실패: " + (tokenErr && tokenErr.message));
             return;
         }
         if (!kakaoToken) {
             console.warn("KAKAO_ACCESS_TOKEN 미설정 - 신고 알림 생략");
+            await markNotifyResult(snap.ref, false, "KAKAO_ACCESS_TOKEN 미설정");
             return;
         }
 
@@ -756,8 +833,11 @@ exports.onReportCreated = onDocumentCreated(
             var kakaoRes = await providerHttp.postForm(
                 providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send", body, kakaoToken);
             console.log("신고 알림 전송 결과:", kakaoRes.status, kakaoRes.body);
+            await markNotifyResult(snap.ref, providerHttp.isOk(kakaoRes.status),
+                "전송 응답 " + kakaoRes.status + " " + String(kakaoRes.body || ""));
         } catch (kakaoErr) {
             console.error("신고 알림 전송 실패:", kakaoErr);
+            await markNotifyResult(snap.ref, false, "전송 예외: " + (kakaoErr && kakaoErr.message));
         }
     }
 );
@@ -790,6 +870,13 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
         items.sort(function (a, b) { return b._ms - a._ms; });
         var top = items.slice(0, 10);
 
+        // 알림이 안 나간 신고는 "운영자가 카톡을 못 받았다"는 뜻이다.
+        // 목록에서 먼저 눈에 띄지 않으면 조용한 실패가 그대로 방치된다.
+        var failedCount = items.filter(function (d) { return d.notify_failed === true; }).length;
+        var failedNotice = failedCount
+            ? "\n⚠️ 알림 미발송 " + failedCount + "건 — 카카오 토큰 상태를 확인해주세요.\n"
+            : "";
+
         var doneBlockId = reportDoneBlockId();
 
         // 블록 ID가 아직 없으면 버튼 대신 텍스트로 — 콘솔 설정 전에도 목록은 보여야 한다.
@@ -797,7 +884,7 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
             var text = top.map(function (d, i) {
                 var kindLabel = d.kind === "pickup" ? "픽업" : "동호회";
                 var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
-                return (i + 1) + ". [" + kindLabel + "] " + (d.target_name || d.target_id)
+                return (i + 1) + ". " + (d.notify_failed ? "⚠️ " : "") + "[" + kindLabel + "] " + (d.target_name || d.target_id)
                     + "\n   " + reportReasonLabel(d.reason) + " · " + dateStr
                     + (d.detail ? "\n   \"" + String(d.detail).slice(0, 60) + "\"" : "")
                     + "\n   id: " + d._id;
@@ -807,7 +894,7 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
                 template: {
                     outputs: [{
                         simpleText: {
-                            text: "미처리 신고 " + snap.size + "건\n\n" + text
+                            text: "미처리 신고 " + snap.size + "건\n" + failedNotice + "\n" + text
                                 + "\n\n※ '처리완료' 버튼을 쓰려면 챗봇 콘솔에서 신고처리 블록을 만들고"
                                 + " REPORT_DONE_BLOCK_ID 파라미터에 넣어주세요."
                         }
@@ -823,8 +910,9 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
             var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
             var desc = kindLabel + " · " + reportReasonLabel(d.reason) + "\n" + dateStr;
             if (d.detail) desc += "\n" + String(d.detail).slice(0, 60);
+            if (d.notify_failed) desc += "\n⚠️ 알림 미발송";
             return {
-                title: d.target_name || d.target_id || "대상 없음",
+                title: (d.notify_failed ? "⚠️ " : "") + (d.target_name || d.target_id || "대상 없음"),
                 description: desc,
                 thumbnail: { imageUrl: DEFAULT_THUMB },
                 buttons: [{
@@ -836,10 +924,13 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
             };
         });
 
-        res.json({
-            version: "2.0",
-            template: { outputs: [{ carousel: { type: "basicCard", items: cards } }] }
-        });
+        var outputs = [];
+        if (failedCount) {
+            outputs.push({ simpleText: { text: "⚠️ 알림 미발송 " + failedCount + "건 — 카카오 토큰 상태를 확인해주세요." } });
+        }
+        outputs.push({ carousel: { type: "basicCard", items: cards } });
+
+        res.json({ version: "2.0", template: { outputs: outputs } });
     } catch (error) {
         console.error("chatbotReports 오류:", error);
         res.json({

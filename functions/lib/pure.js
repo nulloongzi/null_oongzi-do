@@ -91,11 +91,37 @@ function renderResultPage(title, message) {
         '<body><div class="card"><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(message) + '</p></div></body></html>';
 }
 
+// ── 카카오 refresh token 선택 ────────────────────────────────────
+// 회전된 토큰은 system/kakao_token 에 쌓이고, 시크릿은 seed 역할만 한다.
+// "저장분과 seed 중 무엇을 쓸 것인가"가 이 기능의 전부이자, 틀리면 60일 뒤
+// 알림이 조용히 끊기는 지점이다(2026-09-08 KOE322 장애). 그래서 I/O 를 뺀
+// 판단만 여기로 꺼내 테스트로 고정한다.
+//
+// 규칙: 저장된 회전분이 있고 그것이 **현재 seed 에서 파생된 것**일 때만 쓴다.
+// 운영자가 시크릿을 새 값으로 갈아끼우면 지문이 달라지므로 저장분을 버린다 —
+// 수동 복구가 항상 자동 회전분을 이겨야 한다.
+function refreshTokenFingerprint(v) {
+    return crypto.createHash("sha256").update(String(v || "")).digest("hex").slice(0, 16);
+}
+
+function chooseRefreshToken(cached, seedRefresh) {
+    var c = cached || {};
+    var fp = refreshTokenFingerprint(seedRefresh);
+    var usingStored = !!(c.refresh_token && c.refresh_token_seed_fp === fp);
+    return {
+        token: usingStored ? c.refresh_token : seedRefresh,
+        usingStored: usingStored,
+        seedFp: fp
+    };
+}
+
 module.exports = {
     escapeHtml: escapeHtml,
     generateToken: generateToken,
     unauthorizedResponse: unauthorizedResponse,
     extractRequestId: extractRequestId,
     extractRejectInfo: extractRejectInfo,
-    renderResultPage: renderResultPage
+    renderResultPage: renderResultPage,
+    refreshTokenFingerprint: refreshTokenFingerprint,
+    chooseRefreshToken: chooseRefreshToken
 };
