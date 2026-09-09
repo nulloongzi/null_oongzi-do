@@ -297,7 +297,13 @@ describe('geocodeAddress / nearestStation (복원된 함수)', () => {
         const out = await indexFns.geocodeAddress.run({
             auth: { uid: 'u1' }, data: { address: '테헤란로 1' }
         });
-        assert.deepStrictEqual(out, { lat: 37.5, lng: 127.02, roadAddress: '서울시 강남구 테헤란로 1' });
+        // source: 주소로 찾았는지 장소 이름으로 찾았는지. 앱은 'place' 일 때만
+        // 주소칸을 도로명으로 덮는다(사용자가 이름을 쳤다는 뜻이므로).
+        assert.deepStrictEqual(out, {
+            lat: 37.5, lng: 127.02,
+            roadAddress: '서울시 강남구 테헤란로 1',
+            source: 'address'
+        });
 
         const r = received[0];
         assert.strictEqual(r.host, 'maps.apigw.ntruss.com');
@@ -319,12 +325,64 @@ describe('geocodeAddress / nearestStation (복원된 함수)', () => {
             ['maps.apigw.ntruss.com', 'naveropenapi.apigw.ntruss.com']);
     });
 
-    test('geocodeAddress: 결과 없으면 null 3종 (앱은 지도 피커로 폴백)', async () => {
-        reset(() => ({ status: 200, body: '{"addresses":[]}' }));
+    // 주소로도 장소로도 못 찾은 경우. 카카오 스텁도 빈 응답이라 폴백이 헛치고
+    // 내려온다. throw 가 아니라 null 이어야 호출부가 지도 피커를 연다.
+    test('geocodeAddress: 결과 없으면 null (앱은 지도 피커로 폴백)', async () => {
+        reset(() => ({ status: 200, body: '{"addresses":[],"documents":[]}' }));
         const out = await indexFns.geocodeAddress.run({
             auth: { uid: 'u1' }, data: { address: '없는주소' }
         });
-        assert.deepStrictEqual(out, { lat: null, lng: null, roadAddress: null });
+        assert.deepStrictEqual(out, {
+            lat: null, lng: null, roadAddress: null, source: null
+        });
+    });
+
+    // 2026-09-09: '석관중' 으로 주소 검색이 안 잡혀 지도에서 핀을 직접 찍어야 했다.
+    // 주소 지오코더는 장소 이름을 모른다 — 그런데 이 폼의 주소칸에는 체육관·학교
+    // 이름이 들어오는 게 자연스럽다. 0건에서 포기하지 말고 장소 검색으로 가야 한다.
+    test('geocodeAddress: 주소 0건이면 장소(키워드) 검색으로 폴백', async () => {
+        reset((req) => (req.headers.host.indexOf('ntruss') !== -1
+            ? { status: 200, body: '{"addresses":[]}' }
+            : {
+                status: 200,
+                body: JSON.stringify({
+                    documents: [{
+                        place_name: '석관중학교',
+                        road_address_name: '서울 성북구 한천로 526',
+                        x: '127.0573', y: '37.6099'
+                    }]
+                })
+            }));
+        const out = await indexFns.geocodeAddress.run({
+            auth: { uid: 'u1' }, data: { address: '석관중' }
+        });
+        assert.strictEqual(out.source, 'place');
+        assert.strictEqual(out.placeName, '석관중학교');
+        assert.strictEqual(out.roadAddress, '서울 성북구 한천로 526');
+        assert.ok(Math.abs(out.lat - 37.6099) < 1e-9);
+
+        // 카카오 호스트로 나갔는지 + 전역 fetch 가 아니라 providerHttp 경유인지
+        const k = received.find((r) => r.host === 'dapi.kakao.com');
+        assert.ok(k, '장소 검색이 카카오로 나가지 않았다');
+        assert.match(k.headers.authorization, /^KakaoAK /);
+        assert.strictEqual(k.headers['accept-language'], undefined,
+            '카카오 호스트인데 undici 헤더가 나감');
+    });
+
+    // 네이버가 통째로 죽어도 장소 검색으로 살아남아야 한다. 전엔 여기서
+    // unavailable 로 throw 해서 사용자는 아무것도 못 하고 막혔다.
+    test('geocodeAddress: 네이버 게이트웨이가 모두 5xx여도 장소 검색으로 산다', async () => {
+        reset((req) => (req.headers.host.indexOf('ntruss') !== -1
+            ? { status: 503, body: 'down' }
+            : {
+                status: 200,
+                body: '{"documents":[{"place_name":"어디체육관","address_name":"서울 어딘가","x":"127","y":"37"}]}'
+            }));
+        const out = await indexFns.geocodeAddress.run({
+            auth: { uid: 'u1' }, data: { address: '어디체육관' }
+        });
+        assert.strictEqual(out.source, 'place');
+        assert.strictEqual(out.roadAddress, '서울 어딘가');
     });
 
     test('geocodeAddress: 비로그인/빈 주소는 거부', async () => {

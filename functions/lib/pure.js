@@ -115,8 +115,29 @@ function chooseRefreshToken(cached, seedRefresh) {
     };
 }
 
+// ── 카카오 장소(키워드) 검색 응답 → 좌표 ──────────────────────────
+// 주소 지오코딩은 '주소'만 안다. 배구 동호회의 주소칸에는 '석관중', '잠실학생체육관'
+// 처럼 **장소 이름**이 들어오는 게 자연스럽고(체육관 이름으로 찾는다), 그때 주소
+// 전용 지오코더는 0건을 돌려준다. 그 폴백으로 쓰는 카카오 키워드 검색의 응답 파싱.
+// 좌표가 숫자로 안 오면 버린다 — NaN 이 그대로 Firestore 에 박히면 지도에서 사라진다.
+function pickKakaoPlace(json) {
+    var docs = json && json.documents;
+    if (!docs || !docs.length) return null;
+    var d = docs[0];
+    var lat = parseFloat(d.y);
+    var lng = parseFloat(d.x);
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    return {
+        lat: lat,
+        lng: lng,
+        roadAddress: d.road_address_name || d.address_name || null,
+        placeName: d.place_name || null
+    };
+}
+
 module.exports = {
     escapeHtml: escapeHtml,
+    pickKakaoPlace: pickKakaoPlace,
     generateToken: generateToken,
     unauthorizedResponse: unauthorizedResponse,
     extractRequestId: extractRequestId,

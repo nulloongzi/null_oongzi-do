@@ -1168,8 +1168,30 @@ exports.cachePickupReelCovers = instaCover.cachePickupReelCovers;
 // 이 두 함수는 원래 main에 머지되지 않은 브랜치에서만 배포돼 있어서, main 기준으로
 // 전체 배포할 때마다 "로컬 소스에 없는 함수"로 삭제됐다. 소스를 여기로 옮겨 고정한다.
 // ══════════════════════════════════════════════════════════
+// 주소 지오코딩이 0건일 때의 폴백 — 카카오 키워드(장소) 검색.
+// nearestStation 이 이미 쓰는 KAKAO_LOCAL_HOST + KAKAO_REST_API_KEY 를 그대로 쓴다.
+async function kakaoPlaceSearch(query) {
+    var restKey = providerHttp.secretValue(KAKAO_REST_API_KEY);
+    if (!restKey) return null;
+    try {
+        var path = "/v2/local/search/keyword.json?size=1&query=" + encodeURIComponent(query);
+        // 카카오 호스트 → 전역 fetch 금지 (406/KOE001). providerHttp 경유.
+        var res = await providerHttp.get(providerHttp.KAKAO_LOCAL_HOST, path, {
+            Authorization: "KakaoAK " + restKey
+        });
+        if (!providerHttp.isOk(res.status)) {
+            console.warn("장소 검색 실패:", res.status, String(res.body || "").slice(0, 200));
+            return null;
+        }
+        return pure.pickKakaoPlace(providerHttp.parseJson(res.body));
+    } catch (e) {
+        console.error("장소 검색 오류:", e && e.message);
+        return null;
+    }
+}
+
 exports.geocodeAddress = onCall(
-    { secrets: [NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET] },
+    { secrets: [NAVER_MAP_CLIENT_ID, NAVER_MAP_CLIENT_SECRET, KAKAO_REST_API_KEY] },
     async function (request) {
         if (!request.auth) {
             throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -1207,16 +1229,36 @@ exports.geocodeAddress = onCall(
                     return {
                         lat: parseFloat(a.y),
                         lng: parseFloat(a.x),
-                        roadAddress: a.roadAddress || a.jibunAddress || address
+                        roadAddress: a.roadAddress || a.jibunAddress || address,
+                        source: "address"
                     };
                 }
-                // 200인데 결과 없음 → 주소 못 찾음 (폴백 불필요)
-                return { lat: null, lng: null, roadAddress: null };
+                // 200인데 결과 0건. 여기서 포기하면 '석관중' 같은 **장소 이름**이
+                // 영영 안 잡힌다 — 체육관 이름으로 찾는 게 이 폼에선 자연스러운
+                // 입력인데도. 장소 검색으로 한 번 더 간다.
+                lastErr = "주소 결과 0건";
+                break;
             } catch (e) {
                 lastErr = (e && e.message) || String(e);
             }
         }
-        throw new HttpsError("unavailable", "지오코딩 실패: " + lastErr);
+
+        // 폴백: 장소(키워드) 검색. 네이버가 죽어 있을 때도 여기로 내려온다.
+        var place = await kakaoPlaceSearch(address);
+        if (place) {
+            return {
+                lat: place.lat,
+                lng: place.lng,
+                roadAddress: place.roadAddress || address,
+                placeName: place.placeName,
+                source: "place"
+            };
+        }
+
+        // 주소로도 장소로도 못 찾음. 예외가 아니라 '못 찾음'으로 돌려준다 —
+        // 호출부(앱·웹)는 이때 지도 피커를 연다.
+        console.log("지오코딩·장소검색 모두 실패:", lastErr);
+        return { lat: null, lng: null, roadAddress: null, source: null };
     }
 );
 

@@ -146,16 +146,12 @@
         window.selectedCoords = null;
     };
 
+    // 주소 → 좌표. registration.js 의 geocodeOrPlace 와 같은 규칙(주소 실패 시 장소명).
+    // 픽업 크루는 "잠실학생체육관 토요 픽업"처럼 **체육관 이름으로** 굴러가서
+    // 주소칸에 장소명이 들어올 확률이 동호회보다 오히려 높다.
     function geocode(address) {
-        return new Promise(function (resolve, reject) {
-            var geocoder = new kakao.maps.services.Geocoder();
-            geocoder.addressSearch(address, function (result, status) {
-                if (status === kakao.maps.services.Status.OK && result[0]) {
-                    resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
-                } else {
-                    reject(new Error(window.t('reg_addr_notfound')));
-                }
-            });
+        return window.geocodeOrPlace(address).catch(function () {
+            throw new Error(window.t('reg_addr_notfound'));
         });
     }
 
