@@ -282,6 +282,34 @@ function generateId() {
     return Math.random().toString(36).substring(2, 14);
 }
 
+// 주소 → 좌표. 주소로 못 찾으면 **장소 이름**으로 한 번 더 찾는다.
+//
+// addressSearch 는 주소만 안다. 그런데 이 폼의 주소칸에는 '석관중', '잠실학생체육관'
+// 처럼 체육관·학교 이름이 들어오는 게 자연스럽다 — 동호회는 "어느 체육관에서
+// 하느냐"로 기억되기 때문이다. 그때 addressSearch 는 0건을 돌려주고, 사용자는
+// 멀쩡한 입력을 해놓고도 지도에서 핀을 직접 찍어야 했다.
+//
+// keywordSearch 는 index.html 이 이미 libraries=services 로 불러오고 있어
+// 추가 로딩이 없다. 주소 문자열도 함께 처리하므로 주소 검색 실패분도 일부 건진다.
+// 실패 시 GEOCODE_FAIL 로 throw — 호출부는 지도 피커로 폴백한다.
+window.geocodeOrPlace = function (address) {
+    return new Promise(function (resolve, reject) {
+        var svc = kakao.maps.services;
+        function ok(r) { return { lat: parseFloat(r.y), lng: parseFloat(r.x) }; }
+        new svc.Geocoder().addressSearch(address, function (result, status) {
+            if (status === svc.Status.OK && result[0]) { resolve(ok(result[0])); return; }
+            new svc.Places().keywordSearch(address, function (places, pStatus) {
+                if (pStatus === svc.Status.OK && places[0]) {
+                    if (window.track) window.track('registration_geocode_place_hit');
+                    resolve(ok(places[0]));
+                } else {
+                    reject(new Error('GEOCODE_FAIL'));
+                }
+            });
+        });
+    });
+};
+
 // ── Map picker ──
 
 // 지도 picker 사용 중에도 편집 모드 상태를 보존하기 위해, 모달 닫기/재열기 대신
@@ -413,16 +441,7 @@ window.submitRegistration = async function () {
             coords = window.selectedCoords;
         } else {
             try {
-                var geocoder = new kakao.maps.services.Geocoder();
-                coords = await new Promise(function (resolve, reject) {
-                    geocoder.addressSearch(address, function (result, status) {
-                        if (status === kakao.maps.services.Status.OK && result[0]) {
-                            resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
-                        } else {
-                            reject(new Error('GEOCODE_FAIL'));
-                        }
-                    });
-                });
+                coords = await window.geocodeOrPlace(address);
             } catch (geoErr) {
                 // 지오코딩 실패 → 하드 블록 대신 지도 피커로 폴백 유도.
                 // 피커에서 위치 확정 시 selectedCoords가 채워지고 주소칸도 갱신되어,

@@ -153,3 +153,45 @@ describe('chooseRefreshToken', () => {
         assert.notStrictEqual(fp, pure.refreshTokenFingerprint('other'));
     });
 });
+
+// 주소 지오코딩이 0건일 때 쓰는 장소(키워드) 검색 응답 파싱.
+// 2026-09-09: '석관중' 으로 검색했더니 안 잡혀 지도에서 핀을 직접 찍어야 했다.
+// 주소 전용 지오코더는 장소 이름을 모른다 — 그런데 이 폼의 주소칸에는 체육관·학교
+// 이름이 들어오는 게 자연스럽다. 그 폴백의 파싱을 고정한다.
+describe('pickKakaoPlace', () => {
+    const doc = (o) => ({ documents: [o] });
+
+    test('첫 결과의 좌표·도로명·장소명을 뽑는다', () => {
+        const r = pure.pickKakaoPlace(doc({
+            place_name: '석관중학교',
+            road_address_name: '서울 성북구 한천로 526',
+            address_name: '서울 성북구 석관동 356',
+            x: '127.0573', y: '37.6099',
+        }));
+        assert.strictEqual(r.placeName, '석관중학교');
+        assert.strictEqual(r.roadAddress, '서울 성북구 한천로 526');
+        assert.ok(Math.abs(r.lat - 37.6099) < 1e-9);
+        assert.ok(Math.abs(r.lng - 127.0573) < 1e-9);
+    });
+
+    test('도로명이 없으면 지번으로 대체한다', () => {
+        const r = pure.pickKakaoPlace(doc({
+            place_name: '어디체육관', road_address_name: '',
+            address_name: '서울 성북구 석관동 356', x: '127', y: '37',
+        }));
+        assert.strictEqual(r.roadAddress, '서울 성북구 석관동 356');
+    });
+
+    test('결과 없음 / 빈 응답 / null 은 모두 null', () => {
+        assert.strictEqual(pure.pickKakaoPlace({ documents: [] }), null);
+        assert.strictEqual(pure.pickKakaoPlace({}), null);
+        assert.strictEqual(pure.pickKakaoPlace(null), null);
+    });
+
+    // NaN 좌표가 그대로 저장되면 그 팀은 지도에서 사라진다. 0건보다 나쁘다.
+    test('좌표가 숫자가 아니면 버린다', () => {
+        assert.strictEqual(pure.pickKakaoPlace(doc({ x: '', y: '' })), null);
+        assert.strictEqual(pure.pickKakaoPlace(doc({ x: 'abc', y: 'def' })), null);
+        assert.strictEqual(pure.pickKakaoPlace(doc({ place_name: '좌표없음' })), null);
+    });
+});
