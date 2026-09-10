@@ -584,3 +584,46 @@ describe('reports 룰 (제3자 신고: 익명 허용 + 스팸 방어 + 읽기 �
         await assertFails(db.collection('reports').doc('r-anon').delete());
     });
 });
+
+// club_claims: 구글시트 접수 때 받은 팀 담당자 메일. clubs 가 allow read: if true 라
+// 거기 두면 전 세계에 공개된다. 별도 컬렉션으로 빼고 통째로 잠갔는지 고정한다 —
+// 여기가 뚫리면 51개 팀 담당자 메일이 그대로 새어나간다.
+describe('club_claims / club_claim_requests 룰 (담당자 메일 비공개 + 승인은 서버만)', () => {
+    test('club_claims: 관리자조차 클라이언트로는 못 읽는다 (Functions 전용)', async () => {
+        for (const uid of ['some-user', 'admin-uid']) {
+            const db = testEnv.authenticatedContext(uid).firestore();
+            await assertFails(db.collection('club_claims').doc('club-1').get());
+        }
+    });
+
+    test('club_claims: 쓰기도 전부 거부', async () => {
+        const db = testEnv.authenticatedContext('admin-uid').firestore();
+        await assertFails(db.collection('club_claims').doc('club-1')
+            .set({ email: 'owner@example.com' }));
+    });
+
+    test('club_claims: 미로그인도 당연히 거부', async () => {
+        const db = testEnv.unauthenticatedContext().firestore();
+        await assertFails(db.collection('club_claims').doc('club-1').get());
+    });
+
+    // 요청 문서엔 가린 메일만 들어가지만, 누가 어느 팀을 노렸는지도 정보다.
+    test('club_claim_requests: 일반 사용자는 못 읽는다', async () => {
+        const db = testEnv.authenticatedContext('some-user').firestore();
+        await assertFails(db.collection('club_claim_requests').doc('req-1').get());
+    });
+
+    test('club_claim_requests: 관리자는 읽을 수 있다 (이력 확인)', async () => {
+        const db = testEnv.authenticatedContext('admin-uid').firestore();
+        await assertSucceeds(db.collection('club_claim_requests').doc('req-1').get());
+    });
+
+    // 여기가 열리면 아무나 자기 앞으로 승인된 요청을 써넣고 팀을 가져갈 수 있다.
+    test('club_claim_requests: 클라이언트 쓰기는 관리자도 거부', async () => {
+        for (const uid of ['some-user', 'admin-uid']) {
+            const db = testEnv.authenticatedContext(uid).firestore();
+            await assertFails(db.collection('club_claim_requests').doc('req-x')
+                .set({ club_id: 'club-1', uid: uid, status: 'approved' }));
+        }
+    });
+});

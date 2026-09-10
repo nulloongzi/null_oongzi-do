@@ -60,8 +60,19 @@ window.registerWithEmail = async function () {
         window.showAuthLoadingDelayed(800, 'auth_signing_in', 'auth_signing_in_desc', 'rice');
     }
     try {
-        await firebase.auth().createUserWithEmailAndPassword(email, pw);
+        var cred = await firebase.auth().createUserWithEmailAndPassword(email, pw);
         if (window.track) window.track('sign_up', { method: 'email' });
+        // 인증 메일. 팀 소유권 클레임(구글시트 접수 메일 매칭)은 **검증된 메일**만
+        // 받는다 — 안 그러면 남의 팀 담당자 메일을 아는 사람이 그 주소로 가입해
+        // 팀을 가져갈 수 있다. 구글 로그인은 이미 검증돼 있고 이 경로만 비어 있었다.
+        // 실패해도 가입 자체는 성공이므로 막지 않는다(나중에 다시 보낼 수 있다).
+        try {
+            if (cred && cred.user && !cred.user.emailVerified) {
+                await cred.user.sendEmailVerification();
+            }
+        } catch (ve) {
+            console.warn('인증 메일 발송 실패:', ve && ve.message);
+        }
     } catch (e) {
         if (window.hideAuthLoading) window.hideAuthLoading();
         alert(e.message);
@@ -244,6 +255,8 @@ window.setupAuthListener = function () {
             if (window.hideAuthLoading) window.hideAuthLoading();
             // 로그인 게이트로 중단됐던 팀 등록이 있으면 이어서 자동 재제출
             if (window.resumePendingRegistration) window.resumePendingRegistration();
+            // 구글시트로 접수했던 팀 담당자 메일과 일치하면 소유권 요청을 넣는다
+            if (window.checkClubClaims) window.checkClubClaims();
         } else {
             window.currentUser = null;
             window.currentProfileData = null;
@@ -261,4 +274,42 @@ window.setupAuthListener = function () {
             if (pm) { pm.innerHTML = ''; pm.className = 'pc-provider-mark'; }
         }
     });
+};
+
+// ── 팀 소유권 클레임 ──
+//
+// 초기 51개 팀은 구글시트로 접수했고(PHILOSOPHY.md) 그때 받은 담당자 메일이 있다.
+// 같은 메일로 가입한 사람이면 그 팀의 소유자로 이어준다. 판단은 전부 서버가 한다 —
+// 여기서는 부르고 결과만 보여준다. 메일 주소는 클라이언트로 내려오지 않는다.
+//
+// 로그인할 때마다 불리므로 조용해야 한다: 매칭이 없으면 아무것도 띄우지 않는다.
+window.checkClubClaims = async function () {
+    var user = window.currentUser;
+    if (!user || user.isAnonymous || !user.email) return;
+    try {
+        var fn = firebase.functions().httpsCallable('claimMyClubs');
+        var res = await fn({});
+        var d = (res && res.data) || {};
+
+        if (d.status === 'requested') {
+            alert(window.t('claim_requested'));
+            if (window.track) window.track('club_claim_requested', { count: (d.matches || []).length });
+            return;
+        }
+        // 메일이 검증되지 않아 매칭을 못 한 경우에만 인증을 권한다. 검증 여부를
+        // 서버가 판단해 돌려주므로, 매칭될 팀이 없는 사람은 이 안내를 안 본다.
+        if (d.status === 'needs_verification') {
+            if (confirm(window.t('claim_needs_verification'))) {
+                try {
+                    await user.sendEmailVerification();
+                    alert(window.t('claim_verify_sent'));
+                } catch (e) {
+                    console.warn('인증 메일 재발송 실패:', e && e.message);
+                }
+            }
+        }
+    } catch (e) {
+        // 클레임은 부가 기능이다. 실패해도 로그인 흐름을 막지 않는다.
+        console.warn('클레임 확인 실패:', e && e.message);
+    }
 };

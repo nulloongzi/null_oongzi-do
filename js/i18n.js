@@ -329,6 +329,20 @@
         mc_side3: { ko: '반찬3 🥢', en: 'Side 3 🥢' },
         mc_cta: { ko: '내 밥이름 만들러 가기', en: 'Get your own rice-name' },
         deleted_team: { ko: '삭제된 팀', en: 'Deleted team' },
+
+        // 팀 소유권 클레임 (구글시트 접수 메일 매칭)
+        claim_requested: {
+            ko: '등록하신 메일과 일치하는 팀을 찾았어요. 운영자 확인 후 수정 권한이 부여됩니다.',
+            en: 'We found a team registered with your email. An admin will review and grant edit access.'
+        },
+        claim_needs_verification: {
+            ko: '메일 인증을 마치면 등록하신 팀을 이어드릴 수 있어요. 받은 메일함을 확인해주세요.',
+            en: 'Verify your email to claim your team. Check your inbox.'
+        },
+        claim_verify_sent: {
+            ko: '인증 메일을 보냈어요. 확인 후 다시 로그인해주세요.',
+            en: 'Verification email sent. Please sign in again after confirming.'
+        },
         rp_fail_mail: { ko: '전송에 실패했어요. 메일로 보내주시면 확인하겠습니다.', en: 'Sending failed. Please email us instead.' },
         policy_terms: { ko: '이용약관', en: 'Terms' },
         policy_guidelines: { ko: '운영 기준', en: 'Guidelines' },
