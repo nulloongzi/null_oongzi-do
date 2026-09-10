@@ -40,7 +40,7 @@ jobs:
       # 배포되는 코드에 해당하는 테스트만 게이팅한다.
       # (전체 test:unit 은 이 변경과 무관한 기존 실패가 있어 여기서 막지 않는다)
       - name: Functions tests
-        run: node --test tests/functions-pure.test.js tests/functions-provider-http.test.js
+        run: node --test tests/functions-pure.test.js tests/functions-provider-http.test.js tests/functions-notify-link.test.js
 
       - name: Auth to Google Cloud
         run: |
