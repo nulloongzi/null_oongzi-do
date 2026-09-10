@@ -195,3 +195,65 @@ describe('pickKakaoPlace', () => {
         assert.strictEqual(pure.pickKakaoPlace(doc({ place_name: '좌표없음' })), null);
     });
 });
+
+// 팀 소유권 클레임 — 초기 51개 팀을 구글시트로 접수하며 받은 담당자 메일과
+// 나중 가입자를 잇는다. 권한을 넘기는 판단이라 경계가 곧 보안선이다.
+describe('normalizeEmail', () => {
+    test('공백·대소문자만 정리한다', () => {
+        assert.strictEqual(pure.normalizeEmail('  Paul.Yoo@GMail.com '), 'paul.yoo@gmail.com');
+    });
+
+    // 시트에는 '없음', '-', 빈칸이 섞여 들어온다. 그게 서로 매칭되면
+    // 관계없는 두 팀이 한 사람에게 붙는다.
+    test('메일 형식이 아니면 빈 문자열 — 쓰레기끼리 매칭되지 않게', () => {
+        ['', '   ', '없음', '-', 'n/a', 'paulyoo999', '@gmail.com', 'a@b', null, undefined]
+            .forEach((v) => assert.strictEqual(pure.normalizeEmail(v), '', JSON.stringify(v)));
+    });
+
+    // gmail 점·+별칭은 일부러 접지 않는다(주석 참고). 다르게 취급됨을 고정한다.
+    test('gmail 점·+별칭은 접지 않는다 (의도)', () => {
+        assert.notStrictEqual(
+            pure.normalizeEmail('paul.yoo@gmail.com'),
+            pure.normalizeEmail('paulyoo@gmail.com'));
+        assert.notStrictEqual(
+            pure.normalizeEmail('a+team@gmail.com'),
+            pure.normalizeEmail('a@gmail.com'));
+    });
+});
+
+describe('maskEmail', () => {
+    test('앞 3자만 남긴다', () => {
+        assert.strictEqual(pure.maskEmail('paulyoo999@gmail.com'), 'pau***@gmail.com');
+    });
+    test('짧은 아이디도 최소 1자는 가린다', () => {
+        assert.strictEqual(pure.maskEmail('ab@x.com'), 'a***@x.com');
+        assert.strictEqual(pure.maskEmail('a@x.com'), 'a***@x.com');
+    });
+    test('형식이 아니면 빈 문자열', () => {
+        assert.strictEqual(pure.maskEmail('없음'), '');
+    });
+    // 카톡·로그에 주소 전문이 남지 않아야 한다.
+    test('원문 아이디가 통째로 드러나지 않는다', () => {
+        const m = pure.maskEmail('paulyoo999@gmail.com');
+        assert.ok(m.indexOf('paulyoo999') === -1, m);
+    });
+});
+
+describe('claimBlockReason', () => {
+    test('주인 없는 팀은 넘길 수 있다', () => {
+        assert.strictEqual(pure.claimBlockReason({ name: 'A' }), null);
+        assert.strictEqual(pure.claimBlockReason({ name: 'A', registered_by: null }), null);
+        assert.strictEqual(pure.claimBlockReason({ name: 'A', registered_by: '' }), null);
+    });
+
+    // 시트의 메일이 낡았거나 담당자가 바뀌었을 수 있다. 메일이 맞다는 이유로
+    // 이미 주인이 있는 팀을 빼앗으면 안 된다.
+    test('이미 주인이 있으면 막는다', () => {
+        assert.strictEqual(pure.claimBlockReason({ registered_by: 'uid-1' }), 'already_owned');
+    });
+
+    test('없는 팀', () => {
+        assert.strictEqual(pure.claimBlockReason(null), 'not_found');
+        assert.strictEqual(pure.claimBlockReason(undefined), 'not_found');
+    });
+});

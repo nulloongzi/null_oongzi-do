@@ -10,6 +10,19 @@
 // 실행: node --test tests/functions-provider-http.test.js
 
 const { test, describe, before, after } = require('node:test');
+
+// 이 파일은 실제 functions 핸들러를 부르므로 index.js 의 console.log/error 가
+// 그대로 자식 프로세스 stdout 으로 나간다. node:test 러너는 같은 stdout 으로
+// v8 직렬화 메시지를 주고받아서, 둘이 섞이면 러너가
+// "Unable to deserialize cloned data" 로 죽는다 — 단언은 다 통과했는데 파일
+// 전체가 실패로 잡히고, 재실행하면 통과하는 유령 실패가 된다(로컬 5회 중 2회).
+// 프로덕션 로그는 그대로 두고, 이 파일에서만 입을 막는다.
+const _quiet = { log: console.log, warn: console.warn, error: console.error, info: console.info };
+before(() => {
+    console.log = () => {}; console.warn = () => {};
+    console.error = () => {}; console.info = () => {};
+});
+after(() => { Object.assign(console, _quiet); });
 const assert = require('node:assert');
 const https = require('node:https');
 const fs = require('node:fs');

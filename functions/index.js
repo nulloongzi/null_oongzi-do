@@ -1011,6 +1011,316 @@ exports.chatbotReportDone = onRequest({ cors: true, invoker: "public" }, async f
 // users.email이 비공개 서브컬렉션으로 옮겨져 클라이언트에서 직접
 // 이메일로 uid를 조회할 수 없으므로 Admin SDK를 통한 onCall로 제공.
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// 팀 소유권 클레임 — 구글시트 접수 메일 ↔ 가입자 매핑
+//
+// 초기 51개 팀은 구글시트로 접수했고(PHILOSOPHY.md), 그때 받은 담당자 메일이
+// 있다. 같은 메일로 가입한 사람이 나타나면 그 팀의 소유자로 이어준다.
+//
+// 자동으로 바로 넘기지 않는다. 두 겹을 둔다:
+//   1) 메일이 **검증된** 사람만 (Firebase 의 emailVerified). 이메일/비번 가입은
+//      기본이 미검증이라, 이게 없으면 남의 팀 담당자 메일을 아는 사람이 그
+//      주소로 가입해 팀을 가져갈 수 있다.
+//   2) 그래도 자동 부여는 안 한다 — 운영자가 챗봇 '클레임관리'에서 승인한다.
+//      시트의 메일이 낡았거나 담당자가 바뀌었을 수 있고, 한 번 넘어간 소유권은
+//      되돌리기가 번거롭다.
+// ══════════════════════════════════════════════════════════
+
+var CLAIM_APPROVE_BLOCK_ID = (process.env.CLAIM_APPROVE_BLOCK_ID || "").trim();
+var CLAIM_REJECT_BLOCK_ID = (process.env.CLAIM_REJECT_BLOCK_ID || "").trim();
+
+// 운영자 전용: 시트의 (팀, 메일) 목록을 club_claims 에 넣는다.
+// clubId 를 모르면 clubName 으로도 지정할 수 있다 — 시트엔 보통 팀 이름만 있다.
+exports.adminSetClubClaimEmails = onCall(async function (request) {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    var adminSnap = await db.collection("admins").doc(request.auth.uid).get();
+    if (!adminSnap.exists) throw new HttpsError("permission-denied", "관리자만 사용할 수 있습니다.");
+
+    var rows = (request.data && request.data.rows) || [];
+    if (!Array.isArray(rows) || rows.length === 0) {
+        throw new HttpsError("invalid-argument", "rows 배열이 필요합니다.");
+    }
+    if (rows.length > 500) throw new HttpsError("invalid-argument", "한 번에 500개까지.");
+
+    var results = [];
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i] || {};
+        var email = pure.normalizeEmail(row.email);
+        if (!email) { results.push({ input: row.clubId || row.clubName, ok: false, reason: "bad_email" }); continue; }
+
+        var clubId = row.clubId;
+        if (!clubId && row.clubName) {
+            var q = await db.collection("clubs").where("name", "==", String(row.clubName)).get();
+            if (q.empty) { results.push({ input: row.clubName, ok: false, reason: "club_not_found" }); continue; }
+            // 이름이 겹치면 사람이 골라야 한다 — 엉뚱한 팀에 메일을 붙이면
+            // 그 팀이 통째로 남에게 넘어간다.
+            if (q.size > 1) { results.push({ input: row.clubName, ok: false, reason: "ambiguous_name" }); continue; }
+            clubId = q.docs[0].id;
+        }
+        if (!clubId) { results.push({ input: "(없음)", ok: false, reason: "no_club_ref" }); continue; }
+
+        await db.collection("club_claims").doc(String(clubId)).set({
+            email: email,
+            updated_at: admin.firestore.FieldValue.serverTimestamp(),
+            updated_by: request.auth.uid
+        }, { merge: true });
+        results.push({ input: clubId, ok: true, email: pure.maskEmail(email) });
+    }
+    return { ok: true, results: results };
+});
+
+// 로그인한 사용자가 부르는 진입점. 자기 메일로 등록된 팀이 있으면 요청을 만든다.
+exports.claimMyClubs = onCall(
+    { secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] },
+    async function (request) {
+        if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+        var uid = request.auth.uid;
+
+        // 메일은 클라이언트가 준 값을 절대 믿지 않는다 — Auth 레코드에서 읽는다.
+        var user;
+        try {
+            user = await admin.auth().getUser(uid);
+        } catch (e) {
+            console.error("claimMyClubs getUser 실패:", e && e.message);
+            throw new HttpsError("internal", "사용자 조회에 실패했습니다.");
+        }
+        var email = pure.normalizeEmail(user.email);
+        if (!email) return { status: "no_email", matches: [] };
+        // 카카오/네이버 커스텀 토큰 로그인은 메일 자체가 없어 여기서 걸린다.
+        if (!user.emailVerified) return { status: "needs_verification", email: pure.maskEmail(email), matches: [] };
+
+        var claimSnap = await db.collection("club_claims").where("email", "==", email).get();
+        if (claimSnap.empty) return { status: "no_match", matches: [] };
+
+        var created = [], skipped = [];
+        for (var i = 0; i < claimSnap.docs.length; i++) {
+            var clubId = claimSnap.docs[i].id;
+            var clubDoc = await db.collection("clubs").doc(clubId).get();
+            var club = clubDoc.exists ? clubDoc.data() : null;
+
+            var blocked = pure.claimBlockReason(club);
+            if (blocked) { skipped.push({ clubId: clubId, reason: blocked }); continue; }
+            if (club.registered_by === uid) { skipped.push({ clubId: clubId, reason: "already_yours" }); continue; }
+
+            // 같은 (팀, 사람) 요청이 이미 떠 있으면 다시 만들지 않는다 —
+            // 로그인할 때마다 부르는 함수라 안 막으면 운영자 목록이 도배된다.
+            var dupSnap = await db.collection("club_claim_requests")
+                .where("club_id", "==", clubId)
+                .where("uid", "==", uid)
+                .where("status", "==", "pending")
+                .limit(1).get();
+            if (!dupSnap.empty) { skipped.push({ clubId: clubId, reason: "already_requested" }); continue; }
+
+            var reqRef = await db.collection("club_claim_requests").add({
+                club_id: clubId,
+                club_name: (club && club.name) || "",
+                uid: uid,
+                email_masked: pure.maskEmail(email),
+                status: "pending",
+                created_at: admin.firestore.FieldValue.serverTimestamp()
+            });
+            created.push({ clubId: clubId, requestId: reqRef.id, clubName: (club && club.name) || "" });
+        }
+
+        if (created.length) await notifyClaimRequests(created, pure.maskEmail(email));
+        return {
+            status: created.length ? "requested" : "no_actionable_match",
+            matches: created, skipped: skipped
+        };
+    }
+);
+
+// 운영자에게 알린다. 실패해도 요청 문서는 남고 '클레임관리'로 따라잡을 수 있다.
+async function notifyClaimRequests(created, emailMasked) {
+    var kakaoToken = null;
+    try {
+        kakaoToken = await getKakaoAccessToken();
+    } catch (e) {
+        console.error("카카오 토큰 획득 실패(클레임 알림):", e && e.message);
+        return;
+    }
+    if (!kakaoToken) return;
+    var names = created.map(function (c) { return c.clubName || c.clubId; }).join(", ");
+    var lines = [
+        "[소유권 클레임] " + created.length + "건",
+        "",
+        "대상: " + names,
+        "신청자 메일: " + emailMasked,
+        "",
+        "카카오톡 챗봇에서 '클레임관리'를 입력해 확인·승인해주세요."
+    ];
+    try {
+        var templateObject = {
+            object_type: "text",
+            text: lines.join("\n"),
+            link: { web_url: "https://do.nulloongzi.com", mobile_web_url: "https://do.nulloongzi.com" }
+        };
+        await providerHttp.postForm(providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
+            "template_object=" + encodeURIComponent(JSON.stringify(templateObject)), kakaoToken);
+    } catch (e) {
+        console.error("클레임 알림 전송 실패:", e && e.message);
+    }
+}
+
+// ── 스킬 10: 대기 중인 소유권 클레임 (발화: 클레임관리) ──
+exports.chatbotClaims = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try {
+        var auth = await isAllowedKakaoUser(req);
+        if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
+
+        var snap = await db.collection("club_claim_requests")
+            .where("status", "==", "pending").limit(30).get();
+        if (snap.empty) {
+            res.json({
+                version: "2.0",
+                template: { outputs: [{ simpleText: { text: "대기 중인 소유권 클레임이 없습니다. ✅" } }] }
+            });
+            return;
+        }
+
+        var items = [];
+        snap.forEach(function (doc) {
+            var d = doc.data(); d._id = doc.id;
+            d._ms = d.created_at && d.created_at.toMillis ? d.created_at.toMillis() : 0;
+            items.push(d);
+        });
+        items.sort(function (a, b) { return b._ms - a._ms; });
+        var top = items.slice(0, 10);
+
+        // 승인/거절 블록이 아직 없으면 목록만 — 콘솔 설정 전에도 확인은 돼야 한다.
+        if (!CLAIM_APPROVE_BLOCK_ID) {
+            var text = top.map(function (d, i) {
+                var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
+                return (i + 1) + ". " + (d.club_name || d.club_id)
+                    + "\n   신청자: " + (d.email_masked || "") + " · " + dateStr
+                    + "\n   id: " + d._id;
+            }).join("\n\n");
+            res.json({
+                version: "2.0",
+                template: {
+                    outputs: [{
+                        simpleText: {
+                            text: "대기 중인 클레임 " + snap.size + "건\n\n" + text
+                                + "\n\n※ 승인 버튼을 쓰려면 챗봇 콘솔에 클레임승인/클레임거절 블록을 만들고"
+                                + " CLAIM_APPROVE_BLOCK_ID · CLAIM_REJECT_BLOCK_ID 에 넣어주세요."
+                        }
+                    }]
+                }
+            });
+            return;
+        }
+
+        var DEFAULT_THUMB = "https://do.nulloongzi.com/app_ui/nulloongzido%20logo_512px.png";
+        var cards = top.map(function (d) {
+            var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
+            var buttons = [{
+                label: "✅ 승인", action: "block", blockId: CLAIM_APPROVE_BLOCK_ID,
+                extra: { claim_id: d._id, club_name: d.club_name || "" }
+            }];
+            if (CLAIM_REJECT_BLOCK_ID) {
+                buttons.push({
+                    label: "❌ 거절", action: "block", blockId: CLAIM_REJECT_BLOCK_ID,
+                    extra: { claim_id: d._id, club_name: d.club_name || "" }
+                });
+            }
+            return {
+                title: d.club_name || d.club_id || "팀 없음",
+                description: "신청자: " + (d.email_masked || "") + "\n" + dateStr,
+                thumbnail: { imageUrl: DEFAULT_THUMB },
+                buttons: buttons
+            };
+        });
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ carousel: { type: "basicCard", items: cards } }] }
+        });
+    } catch (error) {
+        console.error("chatbotClaims 오류:", error);
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ simpleText: { text: "클레임 목록 조회 중 오류가 발생했습니다." } }] }
+        });
+    }
+});
+
+// 승인/거절 공통. 승인일 때만 clubs.registered_by 를 바꾼다.
+async function resolveClaim(req, res, approve) {
+    var auth = await isAllowedKakaoUser(req);
+    if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
+
+    var clientExtra = (req.body.action && req.body.action.clientExtra) || {};
+    var params = (req.body.action && req.body.action.params) || {};
+    var claimId = clientExtra.claim_id || params.claim_id;
+    function say(text) {
+        res.json({
+            version: "2.0",
+            template: {
+                outputs: [{ simpleText: { text: text } }],
+                quickReplies: [{ label: "📋 클레임관리", action: "message", messageText: "클레임관리" }]
+            }
+        });
+    }
+    if (!claimId) { say("처리할 클레임 id가 없습니다. '클레임관리'로 다시 시도해주세요."); return; }
+
+    var ref = db.collection("club_claim_requests").doc(String(claimId));
+    var doc = await ref.get();
+    if (!doc.exists) { say("해당 클레임을 찾을 수 없습니다."); return; }
+    var d = doc.data() || {};
+    if (d.status !== "pending") { say("이미 처리된 클레임입니다."); return; }
+
+    if (!approve) {
+        await ref.update({
+            status: "rejected",
+            resolved_at: admin.firestore.FieldValue.serverTimestamp(),
+            resolved_by: auth.userId || "unknown"
+        });
+        say("❌ 거절했습니다.\n대상: " + (d.club_name || d.club_id || ""));
+        return;
+    }
+
+    // 승인 시점에 소유 상태를 **다시** 본다. 요청이 접수된 뒤 누군가 그 팀을
+    // 가져갔을 수 있고, 그걸 덮으면 소유권을 빼앗는 셈이 된다.
+    var clubRef = db.collection("clubs").doc(String(d.club_id));
+    var clubDoc = await clubRef.get();
+    var blocked = pure.claimBlockReason(clubDoc.exists ? clubDoc.data() : null);
+    if (blocked) {
+        await ref.update({
+            status: "rejected",
+            reject_reason: blocked,
+            resolved_at: admin.firestore.FieldValue.serverTimestamp(),
+            resolved_by: auth.userId || "unknown"
+        });
+        say(blocked === "already_owned"
+            ? "이미 다른 사람이 소유한 팀이라 승인하지 않았습니다.\n대상: " + (d.club_name || "")
+            : "팀 문서를 찾을 수 없어 승인하지 않았습니다.");
+        return;
+    }
+
+    await clubRef.set({ registered_by: d.uid }, { merge: true });
+    await ref.update({
+        status: "approved",
+        resolved_at: admin.firestore.FieldValue.serverTimestamp(),
+        resolved_by: auth.userId || "unknown"
+    });
+    console.log("클레임 승인 - club:", d.club_id, "uid:", d.uid);
+    say("✅ 승인했습니다.\n대상: " + (d.club_name || d.club_id || "") + "\n이제 이 분이 팀 정보를 수정할 수 있습니다.");
+}
+
+// ── 스킬 11·12: 클레임 승인 / 거절 ──
+exports.chatbotClaimApprove = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try { await resolveClaim(req, res, true); } catch (error) {
+        console.error("chatbotClaimApprove 오류:", error);
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] } });
+    }
+});
+
+exports.chatbotClaimReject = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try { await resolveClaim(req, res, false); } catch (error) {
+        console.error("chatbotClaimReject 오류:", error);
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] } });
+    }
+});
+
 exports.adminReassignOwner = onCall(async function (request) {
     var auth = request.auth;
     if (!auth) {
