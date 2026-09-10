@@ -257,3 +257,47 @@ describe('claimBlockReason', () => {
         assert.strictEqual(pure.claimBlockReason(undefined), 'not_found');
     });
 });
+
+describe('deepLinkUrl / kakaoLink (카톡 "자세히 보기" 착지)', () => {
+    test('club 은 ?club=, 픽업은 ?spot= 으로 나간다', () => {
+        assert.strictEqual(pure.deepLinkUrl('club', 'abc123'),
+            'https://do.nulloongzi.com/?club=abc123');
+        assert.strictEqual(pure.deepLinkUrl('pickup', 'spot-9'),
+            'https://do.nulloongzi.com/?spot=spot-9');
+    });
+
+    // reports.kind 는 'pickup' 인데 착지 쿼리는 'spot' 이다. 이 어긋남이
+    // 이 헬퍼를 만든 이유이므로 양쪽 표기를 모두 고정해 둔다.
+    test("'spot' 도 'pickup' 과 같은 링크를 만든다", () => {
+        assert.strictEqual(pure.deepLinkUrl('spot', 'x'), pure.deepLinkUrl('pickup', 'x'));
+    });
+
+    test('대상이 없으면 빈 쿼리 대신 첫 화면으로', () => {
+        // 빈 ?club= 를 달면 착지 쪽(js/app.js)이 없는 팀을 찾느라 헛돈다.
+        [undefined, null, '', '   '].forEach((id) => {
+            assert.strictEqual(pure.deepLinkUrl('club', id), pure.SITE_ORIGIN);
+        });
+    });
+
+    test('모르는 kind 는 첫 화면으로', () => {
+        assert.strictEqual(pure.deepLinkUrl('team', 'abc'), pure.SITE_ORIGIN);
+        assert.strictEqual(pure.deepLinkUrl(undefined, 'abc'), pure.SITE_ORIGIN);
+    });
+
+    test('id 는 URI 인코딩된다', () => {
+        assert.strictEqual(pure.deepLinkUrl('club', 'a b&c=d'),
+            'https://do.nulloongzi.com/?club=a%20b%26c%3Dd');
+    });
+
+    test('앞뒤 공백은 떼고 붙인다', () => {
+        assert.strictEqual(pure.deepLinkUrl('club', '  abc  '),
+            'https://do.nulloongzi.com/?club=abc');
+    });
+
+    test('kakaoLink 는 web/mobile 두 벌을 같은 값으로 준다', () => {
+        const link = pure.kakaoLink('club', 'abc');
+        assert.deepStrictEqual(Object.keys(link).sort(), ['mobile_web_url', 'web_url']);
+        assert.strictEqual(link.web_url, link.mobile_web_url);
+        assert.strictEqual(link.web_url, 'https://do.nulloongzi.com/?club=abc');
+    });
+});
