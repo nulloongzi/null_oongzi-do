@@ -4,41 +4,70 @@
 
 // ── Schedule parsing ──
 
+// 저장 포맷이 두 가지다. registration.js getScheduleData 는 ', ' 로 잇고
+// (`수 19:00~21:30, 일 14:00~18:00`), 예전 데이터는 ' / ' 로 이어져 있다.
+// 그런데 여기서 '/' 로만 나누다 보니 쉼표로 이어진 글이 한 덩어리가 됐고,
+// **첫 시간 하나만 읽어 그 안의 모든 요일에 같은 시간을 붙였다** — 일요일
+// 14:00~18:00 팀이 상세 시간표에 수요일과 같은 19:00~21:30 으로 떴다.
+//
+// 쉼표로도 자르면 될 것 같지만 안 된다. `월, 수, 금 19:00~22:00` 처럼 요일
+// 자체를 쉼표로 나열한 예전 데이터가 세 조각으로 찢어져 앞의 두 요일이
+// 시간을 잃는다.
+//
+// 그래서 구분자를 늘리는 대신 **시간을 기준으로 요일을 귀속**시킨다:
+// 시간 표현이 2개 이상인 덩어리에서는 각 시간 바로 앞의 글자들이 그 시간의
+// 요일이다. 시간이 하나뿐이면 덩어리 전체에서 요일을 찾는다(요일이 시간
+// 뒤에 오는 `19:00~22:00 월수금` 같은 예전 표기를 그대로 살리기 위해서다).
 window.parseScheduleText = function (text) {
     var scheduleMap = {};
     if (!text) return scheduleMap;
-    var segments = text.split(/\s*\/\s*/);
-    segments.forEach(function (segment) {
-        var timeReg = /(\d{1,2}):(\d{2})\s*[~-]\s*(\d{1,2}):(\d{2})/;
-        var match = segment.match(timeReg);
-        if (match) {
-            var startH = parseInt(match[1]);
-            var startM = parseInt(match[2]);
-            var endH = parseInt(match[3]);
-            var endM = parseInt(match[4]);
 
-            function format12(h, m) {
-                var p = h >= 12 ? 'PM' : 'AM';
-                var h12 = h % 12;
-                if (h12 === 0) h12 = 12;
-                var mStr = m < 10 ? '0' + m : m;
-                return p + ' ' + h12 + ':' + mStr;
+    var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+    var TIME_G = /(\d{1,2}):(\d{2})\s*[~-]\s*(\d{1,2}):(\d{2})/g;
+
+    function format12(h, m) {
+        var p = h >= 12 ? 'PM' : 'AM';
+        var h12 = h % 12;
+        if (h12 === 0) h12 = 12;
+        var mStr = m < 10 ? '0' + m : m;
+        return p + ' ' + h12 + ':' + mStr;
+    }
+
+    function assign(daySource, m) {
+        var startH = parseInt(m[1], 10), startM = parseInt(m[2], 10);
+        var endH = parseInt(m[3], 10), endM = parseInt(m[4], 10);
+        var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
+        DAYS.forEach(function (day) {
+            if (daySource.indexOf(day) !== -1) {
+                scheduleMap[day] = {
+                    startH: startH, startM: startM,
+                    endH: endH, endM: endM,
+                    text: displayTime
+                };
             }
+        });
+    }
 
-            var displayTime = format12(startH, startM) + '~' + format12(endH, endM);
-
-            var days = ['월', '화', '수', '목', '금', '토', '일'];
-            days.forEach(function (day) {
-                if (segment.includes(day)) {
-                    scheduleMap[day] = {
-                        startH: startH, startM: startM,
-                        endH: endH, endM: endM,
-                        text: displayTime
-                    };
-                }
-            });
+    text.split(/\s*\/\s*/).forEach(function (segment) {
+        TIME_G.lastIndex = 0;
+        var matches = [], m;
+        while ((m = TIME_G.exec(segment)) !== null) {
+            matches.push({ m: m, start: m.index, end: m.index + m[0].length });
         }
+        if (!matches.length) return;
+
+        if (matches.length === 1) {
+            assign(segment, matches[0].m);
+            return;
+        }
+        // 시간이 여럿이면 '직전 구간'이 그 시간의 요일이다.
+        var prevEnd = 0;
+        matches.forEach(function (hit) {
+            assign(segment.slice(prevEnd, hit.start), hit.m);
+            prevEnd = hit.end;
+        });
     });
+
     return scheduleMap;
 };
 
