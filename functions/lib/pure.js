@@ -170,8 +170,43 @@ function claimBlockReason(club) {
     return null;
 }
 
+// ── 딥링크 URL ──────────────────────────────────────────────────
+// 카카오 알림의 '자세히 보기'는 지금까지 사이트 첫 화면으로만 갔다. 신고를 받고
+// 눌러도 "어느 팀이었지"부터 다시 찾아야 했다는 뜻이다 — 알림에 대상 이름이
+// 적혀 있는데도.
+//
+// 착지 처리는 이미 양쪽에 다 있다(웹 js/app.js 의 ?club=/?spot=, 앱
+// deep_link_service.dart). 링크를 안 만들어 주고 있었을 뿐이라 여기서 붙인다.
+//
+// 픽업의 쿼리 키는 'spot' 인데 reports.kind 는 'pickup' 이다. 이 어긋남을
+// 호출부마다 기억하게 두면 언젠가 틀린다 — 여기서 한 번만 옮긴다.
+var SITE_ORIGIN = "https://do.nulloongzi.com";
+
+var DEEP_LINK_PARAM = {
+    club: "club",
+    pickup: "spot",
+    spot: "spot"
+};
+
+function deepLinkUrl(kind, id) {
+    var key = DEEP_LINK_PARAM[String(kind || "")];
+    var value = String(id == null ? "" : id).trim();
+    // 대상이 없으면 첫 화면으로. 빈 ?club= 를 달면 착지 쪽이 헛돈다.
+    if (!key || !value) return SITE_ORIGIN;
+    return SITE_ORIGIN + "/?" + key + "=" + encodeURIComponent(value);
+}
+
+// 카카오 template_object 의 link 는 web/mobile 두 벌을 같은 값으로 요구한다.
+function kakaoLink(kind, id) {
+    var url = deepLinkUrl(kind, id);
+    return { web_url: url, mobile_web_url: url };
+}
+
 module.exports = {
     escapeHtml: escapeHtml,
+    SITE_ORIGIN: SITE_ORIGIN,
+    deepLinkUrl: deepLinkUrl,
+    kakaoLink: kakaoLink,
     normalizeEmail: normalizeEmail,
     maskEmail: maskEmail,
     claimBlockReason: claimBlockReason,

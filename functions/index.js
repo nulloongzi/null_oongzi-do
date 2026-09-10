@@ -212,10 +212,7 @@ exports.onVerificationCreated = onDocumentCreated(
             var templateObject = {
                 object_type: "text",
                 text: "[인증 신청] " + data.club_name + "\n\n새로운 팀 인증 신청이 도착했습니다.\n\n카카오톡 챗봇에서 '인증관리'를 입력하여 사진 확인 및 승인/거절을 진행해주세요.",
-                link: {
-                    web_url: "https://do.nulloongzi.com",
-                    mobile_web_url: "https://do.nulloongzi.com"
-                }
+                link: pure.kakaoLink("club", data.club_id)
             };
             var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
             var kakaoRes = await providerHttp.postForm(
@@ -531,7 +528,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
                 var templateObject = {
                     object_type: "text",
                     text: "[인증 거절 완료]\n\n팀: " + clubName + "\n사유: " + reason,
-                    link: { web_url: "https://do.nulloongzi.com", mobile_web_url: "https://do.nulloongzi.com" }
+                    link: pure.kakaoLink("club", requestSnap.data().club_id)
                 };
                 await providerHttp.postForm(providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
                     "template_object=" + encodeURIComponent(JSON.stringify(templateObject)),
@@ -824,10 +821,7 @@ exports.onReportCreated = onDocumentCreated(
             var templateObject = {
                 object_type: "text",
                 text: lines.join("\n"),
-                link: {
-                    web_url: "https://do.nulloongzi.com",
-                    mobile_web_url: "https://do.nulloongzi.com"
-                }
+                link: pure.kakaoLink(d.kind, d.target_id)
             };
             var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
             var kakaoRes = await providerHttp.postForm(
@@ -1153,7 +1147,9 @@ async function notifyClaimRequests(created, emailMasked) {
         var templateObject = {
             object_type: "text",
             text: lines.join("\n"),
-            link: { web_url: "https://do.nulloongzi.com", mobile_web_url: "https://do.nulloongzi.com" }
+            // 여러 팀을 한 번에 신청했으면 아무거나 골라 보내면 오히려 헷갈린다.
+            // 하나일 때만 그 팀으로, 아니면 첫 화면 그대로.
+            link: pure.kakaoLink("club", created.length === 1 ? created[0].clubId : null)
         };
         await providerHttp.postForm(providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
             "template_object=" + encodeURIComponent(JSON.stringify(templateObject)), kakaoToken);
