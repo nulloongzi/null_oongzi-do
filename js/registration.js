@@ -123,13 +123,75 @@ window.getRegTargetValue = function () {
 };
 
 // 기존 target 문자열 → 칩 프리셀렉트 (부분일치). 잔여 표현은 메모로 복원 못 하므로 비움.
+// schedule 텍스트 → 폼 블록. schedule_raw 가 없는 문서(구글시트 접수분)용.
+//
+// club-detail.js 의 parseScheduleText 를 그대로 쓴다 — 상세 시간표가 보여주는
+// 것과 폼이 보여주는 것이 어긋나면 안 된다. 같은 (시작~종료)끼리 묶어 한
+// 블록에 여러 요일 칩으로 복원한다(schedule_raw 경로와 같은 모양).
+window.scheduleBlocksFromText = function (text) {
+    if (!text || !window.parseScheduleText) return [];
+    var map = window.parseScheduleText(text) || {};
+    var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+    function hhmm(h, m) {
+        return (h < 10 ? '0' + h : '' + h) + ':' + (m < 10 ? '0' + m : '' + m);
+    }
+    var groups = [], index = {};
+    DAYS.forEach(function (day) {
+        var d = map[day];
+        if (!d) return;
+        var start = hhmm(d.startH, d.startM || 0);
+        var end = hhmm(d.endH, d.endM || 0);
+        var key = start + '|' + end;
+        if (!Object.prototype.hasOwnProperty.call(index, key)) {
+            index[key] = groups.length;
+            groups.push({ start: start, end: end, days: [] });
+        }
+        groups[index[key]].days.push(day);
+    });
+    return groups;
+};
+
+// 저장된 target 문자열을 칩 + 메모로 되돌린다.
+//
+// getRegTargetValue 는 `성인, 대학생 (구력 1년 이상)` 처럼 합쳐서 저장한다.
+// 예전엔 복원할 때 칩만 고르고 메모칸은 무조건 비웠는데, 그러면 수정하러
+// 들어온 사람이 기타란을 다시 쳐야 했고 — 더 나쁘게는 **그대로 저장하면
+// 괄호 안이 소리 없이 사라졌다.**
+//
+// 괄호가 없어도 칩으로 설명되지 않는 글자가 남으면(칩 도입 전 자유입력분,
+// 예: `성인 남녀`) 그걸 메모로 살린다. 버리는 것보다 낫다.
+window.parseTargetValue = function (targetStr, knownValues) {
+    var s = String(targetStr == null ? '' : targetStr).trim();
+    var known = knownValues || [];
+    var note = '';
+    var base = s;
+
+    var m = s.match(/^([\s\S]*?)\s*\(([^()]*)\)\s*$/);
+    if (m) { base = m[1]; note = m[2].trim(); }
+
+    var chips = known.filter(function (v) { return base.indexOf(v) !== -1; });
+
+    if (!m) {
+        // 괄호가 없을 때만 잔여 검사 — 괄호가 있으면 메모는 이미 그 안에 있다.
+        var leftover = base;
+        chips.forEach(function (v) { leftover = leftover.split(v).join(' '); });
+        leftover = leftover.replace(/[,·/]+/g, ' ').trim();
+        if (leftover) note = leftover;
+    }
+    return { chips: chips, note: note };
+};
+
 window.setRegTargetValue = function (targetStr) {
-    targetStr = targetStr || '';
-    document.querySelectorAll('#regTargetChips .reg-target-chip').forEach(function (c) {
-        c.classList.toggle('selected', targetStr.indexOf(c.getAttribute('data-val')) !== -1);
+    var chipEls = document.querySelectorAll('#regTargetChips .reg-target-chip');
+    var known = Array.prototype.map.call(chipEls, function (c) {
+        return c.getAttribute('data-val');
+    });
+    var parsed = window.parseTargetValue(targetStr, known);
+    Array.prototype.forEach.call(chipEls, function (c) {
+        c.classList.toggle('selected', parsed.chips.indexOf(c.getAttribute('data-val')) !== -1);
     });
     var noteEl = document.getElementById('regTargetNote');
-    if (noteEl) noteEl.value = '';
+    if (noteEl) noteEl.value = parsed.note;
 };
 
 window.openRegistrationModal = function (isUrgent) {
@@ -258,7 +320,17 @@ window.openEditModal = function (club) {
                 });
             }
         } else {
-            window.addScheduleBlock();
+            // schedule_raw 가 없는 문서 — 구글시트로 접수된 초기 팀들이 그렇다.
+            // 예전엔 여기서 빈 블록만 띄워서, 수정하러 온 사람이 멀쩡히 저장돼
+            // 있던 운동 시간을 처음부터 다시 입력해야 했다(화면엔 시간표가
+            // 보이는데 폼만 비어 있으니 더 헷갈린다). 텍스트를 파싱해 되살린다.
+            var restored = window.scheduleBlocksFromText
+                ? window.scheduleBlocksFromText(club.schedule) : [];
+            if (restored.length) {
+                restored.forEach(function (g) { window.addScheduleBlock(g); });
+            } else {
+                window.addScheduleBlock();
+            }
         }
 
         document.getElementById('regModalOverlay').style.display = 'flex';
