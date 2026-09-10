@@ -40,7 +40,7 @@ const sandbox = {
     },
     kakao: undefined,
     console,
-    setTimeout, clearTimeout, setInterval, clearInterval,
+
 };
 sandbox.window.document = sandbox.document;
 vm.createContext(sandbox);
