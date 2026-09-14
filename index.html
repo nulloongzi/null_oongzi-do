@@ -28,7 +28,7 @@
     <link rel="apple-touch-icon" href="app_ui/nulloongzido%20logo_512px.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
     <!-- ?v=N: JS/CSS 수정 후 배포할 때마다 버전을 올려 캐시 무효화 (returning user 혼합버전 방지) -->
-    <link rel="stylesheet" href="css/main.css?v=32">
+    <link rel="stylesheet" href="css/main.css?v=33">
 
     <!-- Firebase compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -38,10 +38,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
-    <script src="js/firebase-init.js?v=32"></script>
-    <script src="js/dom-utils.js?v=32"></script>
+    <script src="js/firebase-init.js?v=33"></script>
+    <script src="js/dom-utils.js?v=33"></script>
     <!-- 소셜 로그인 진행 오버레이 — 첫 페인트 전에 상태를 잡아야 해서 head에서 로드 -->
-    <script src="js/auth-loading.js?v=32"></script>
+    <script src="js/auth-loading.js?v=33"></script>
 
 
     <!-- QR 코드 (인스타 스토리 카드의 ?spot= 딥링크) — 폰트와 동일 CDN(jsDelivr) 핀.
@@ -521,8 +521,15 @@
     <!-- Map Picker -->
     <div id="mapPickerOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; pointer-events: none;">
         <img src="./assets/marker_yellow.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); width: 40px; opacity: 0.6; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));">
+        <!-- 찾은 위치 확인 패널. 등록/수정에서 주소를 새로 지오코딩했을 때만 뜬다.
+             예전엔 조용히 저장해서, 엉뚱한 곳에 찍혀도 아무도 몰랐다. -->
+        <div id="mpConfirmPanel" style="display:none;position:absolute;top:0;left:0;right:0;background:rgba(255,248,225,0.97);padding:14px 18px;box-shadow:0 2px 12px rgba(0,0,0,0.15);pointer-events:auto;">
+            <div style="font-weight:800;color:var(--nurungji-dark);font-size:16px;" data-i18n="mp_confirm_title">여기가 맞나요?</div>
+            <div id="mpMatched" style="font-size:13px;color:#6d4c41;margin-top:4px;line-height:1.5;"></div>
+            <div style="font-size:12px;color:#8d6e63;margin-top:4px;" data-i18n="mp_adjust_hint">지도를 움직여 정확한 위치로 맞출 수 있어요.</div>
+        </div>
         <div style="position: absolute; bottom: 40px; left: 0; right: 0; display: flex; justify-content: center; gap: 15px; pointer-events: auto;">
-            <button onclick="confirmMapPicker()" style="padding: 15px 30px; background: var(--nurungji-brown); color: white; border: none; border-radius: 30px; font-weight: 800; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 16px; cursor: pointer;" data-i18n="mp_confirm">이 위치로 주소 설정</button>
+            <button onclick="confirmMapPicker()" style="padding: 15px 30px; background: var(--nurungji-brown); color: white; border: none; border-radius: 30px; font-weight: 800; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 16px; cursor: pointer;" id="mpConfirmBtn" data-i18n="mp_confirm">이 위치로 주소 설정</button>
             <button onclick="cancelMapPicker()" style="padding: 15px 25px; background: #fff; color: #555; border: none; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 15px; cursor: pointer;" data-i18n="mp_cancel">취소</button>
         </div>
     </div>
@@ -534,28 +541,28 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
-    <script src="js/i18n.js?v=32"></script>
-    <script src="js/data.js?v=32"></script>
-    <script src="js/pickup-filter.js?v=32"></script>
-    <script src="js/pickup-data.js?v=32"></script>
-    <script src="js/profile.js?v=32"></script>
-    <script src="js/auth.js?v=32"></script>
-    <script src="js/social-auth.js?v=32"></script>
-    <script src="js/lunchbox.js?v=32"></script>
-    <script src="js/share.js?v=32"></script>
-    <script src="js/my-card.js?v=32"></script>
-    <script src="js/insta-embed.js?v=32"></script>
-    <script src="js/map-core.js?v=32"></script>
-    <script src="js/data-trust.js?v=32"></script>
-    <script src="js/club-detail.js?v=32"></script>
-    <script src="js/filters.js?v=32"></script>
-    <script src="js/registration.js?v=32"></script>
-    <script src="js/verification.js?v=32"></script>
-    <script src="js/pickup-ui.js?v=32"></script>
-    <script src="js/tabs.js?v=32"></script>
-    <script src="js/pickup-host.js?v=32"></script>
-    <script src="js/pickup-detail.js?v=32"></script>
-    <script src="js/app.js?v=32"></script>
-    <script src="js/app-banner.js?v=32"></script>
+    <script src="js/i18n.js?v=33"></script>
+    <script src="js/data.js?v=33"></script>
+    <script src="js/pickup-filter.js?v=33"></script>
+    <script src="js/pickup-data.js?v=33"></script>
+    <script src="js/profile.js?v=33"></script>
+    <script src="js/auth.js?v=33"></script>
+    <script src="js/social-auth.js?v=33"></script>
+    <script src="js/lunchbox.js?v=33"></script>
+    <script src="js/share.js?v=33"></script>
+    <script src="js/my-card.js?v=33"></script>
+    <script src="js/insta-embed.js?v=33"></script>
+    <script src="js/map-core.js?v=33"></script>
+    <script src="js/data-trust.js?v=33"></script>
+    <script src="js/club-detail.js?v=33"></script>
+    <script src="js/filters.js?v=33"></script>
+    <script src="js/registration.js?v=33"></script>
+    <script src="js/verification.js?v=33"></script>
+    <script src="js/pickup-ui.js?v=33"></script>
+    <script src="js/tabs.js?v=33"></script>
+    <script src="js/pickup-host.js?v=33"></script>
+    <script src="js/pickup-detail.js?v=33"></script>
+    <script src="js/app.js?v=33"></script>
+    <script src="js/app-banner.js?v=33"></script>
 </body>
 </html>
