@@ -264,6 +264,7 @@
         reg_area_label_fail: { ko: '이 주소로는 동네 범위를 만들 수 없습니다. 지도에서 위치를 찍어주세요.', en: 'Could not derive an area from this address. Please pick the location on the map.' },
         cd_area_only: { ko: '대략 위치', en: 'Approximate' },
         cd_area_only_note: { ko: '이 팀은 대략적인 위치만 공개합니다. 정확한 장소는 팀에 문의해주세요.', en: 'This team shares only an approximate location. Please contact them for the exact venue.' },
+<<<<<<< HEAD
         // 위치 확인 단계. 등록 버튼을 누르면 조용히 지오코딩하고 저장해서,
         // 엉뚱한 곳에 찍혀도 아무도 몰랐다(나중에 신고로 돌아온다).
         mp_confirm_title: { ko: '여기가 맞나요?', en: 'Is this the right spot?' },
@@ -271,6 +272,8 @@
         mp_confirm_here: { ko: '네, 여기예요', en: 'Yes, this is it' },
         mp_matched_place: { ko: '\'{name}\'(으)로 찾았어요', en: 'Matched \'{name}\'' },
         mp_matched_addr: { ko: '주소: {addr}', en: 'Address: {addr}' },
+=======
+>>>>>>> origin/claude/branch-review-z5we2r
         vf_title: { ko: '인증 신청', en: 'Request verification' },
         vf_desc: { ko: '이 팀이 실제로 운영 중인지 확인하는 용도예요.<br>팀 단체사진이나 대회 참가 사진이면 됩니다 — 인스타에 올렸던 사진도 괜찮아요.<br>확인되면 팀 이름 옆에 인증 배지가 붙습니다.', en: 'This confirms the team is actually active.<br>A team group photo or a tournament photo works — one you already posted on Instagram is fine.<br>Once confirmed, a badge appears next to the team name.' },
         vf_photo_label: { ko: '인증 사진 (필수)', en: 'Verification photo (required)' },
