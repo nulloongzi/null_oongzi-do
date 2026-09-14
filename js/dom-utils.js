@@ -124,3 +124,43 @@ window.areaLabel = function (address) {
 window.isAreaOnly = function (club) {
     return !!club && club.location_precision === 'area';
 };
+
+// ── 장소 검색 질의 변형 ─────────────────────────────────────────
+// 주소 검색이 0건일 때 카카오 키워드 검색에 던질 질의들. 좁은 것부터 넓은 것 순.
+// functions/lib/pure.js 의 placeQueryVariants 와 **같은 규칙**이어야 한다
+// (tests/club-admins.test.js 가 대조한다).
+//
+// 뒤에서 떼는 말은 정해진 목록으로만 한정한다 — 아무 토큰이나 떼면
+// "서울 강남구 삼성로135길 42" 에서 번지가 날아가 엉뚱한 곳을 찍는다.
+window.placeQueryVariants = function (raw) {
+    var FACILITY_TAIL = [
+        '국민체육센터', '다목적체육관', '실내체육관', '체육센터', '체육관',
+        '다목적', '실내', '강당', '경기장', '운동장', '코트', '센터', '관'
+    ];
+    var base = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
+    if (!base) return [];
+
+    var out = [];
+    function push(v) {
+        var t = String(v || '').trim().replace(/\s+/g, ' ');
+        if (t && out.indexOf(t) === -1) out.push(t);
+    }
+
+    push(base);
+    push(base.replace(/\s+/g, ''));
+
+    var parts = base.split(' ');
+    var changed = false;
+    while (parts.length > 1) {
+        if (FACILITY_TAIL.indexOf(parts[parts.length - 1]) === -1) break;
+        parts.pop();
+        changed = true;
+    }
+    if (changed) {
+        push(parts.join(' '));
+        push(parts.join(''));
+    }
+
+    // 질의 한 번이 곧 API 호출 한 번이다. 네 번에서 끊는다.
+    return out.slice(0, 4);
+};

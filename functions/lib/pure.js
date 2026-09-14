@@ -341,8 +341,60 @@ function isAreaOnly(club) {
     return locationPrecision(club) === "area";
 }
 
+// ── 장소 검색 질의 변형 ──────────────────────────────────────────
+// 주소 검색이 0건이면 카카오 키워드(장소) 검색으로 넘어간다. 그런데 지금까지는
+// 입력 문자열을 **통째로 한 번만** 던지고, 0건이면 그대로 포기했다.
+//
+// 사람이 쓰는 표기는 "광남초등학교 체육관", "오산 죽미 다목적 체육관" 처럼
+// 시설 종류가 뒤에 붙는다. 카카오에 '광남초등학교' 라는 장소는 있어도
+// '광남초등학교 체육관' 이라는 이름의 장소는 없을 수 있고, 그러면 실패한다 —
+// 사용자는 지도에서 핀을 직접 찍어야 한다.
+//
+// 그래서 좁은 질의부터 넓은 질의까지 차례로 시도한다.
+//   "광남초등학교 체육관" → 원문 → 붙여쓰기 → 시설어 제거
+// 붙여쓰기 변형을 넣는 이유는 POI 이름이 띄어쓰기 없이 등록된 경우가 많아서다.
+//
+// 뒤에서 떼는 말은 **정해진 목록**으로만 한정한다. 아무 토큰이나 떼면
+// "서울 강남구 삼성로135길 42" 에서 번지가 날아가 엉뚱한 곳을 찍는다.
+var FACILITY_TAIL = [
+    "국민체육센터", "다목적체육관", "실내체육관", "체육센터", "체육관",
+    "다목적", "실내", "강당", "경기장", "운동장", "코트", "센터", "관"
+];
+
+function placeQueryVariants(raw) {
+    var base = String(raw == null ? "" : raw).trim().replace(/\s+/g, " ");
+    if (!base) return [];
+
+    var out = [];
+    function push(v) {
+        var t = String(v || "").trim().replace(/\s+/g, " ");
+        if (t && out.indexOf(t) === -1) out.push(t);
+    }
+
+    push(base);
+    push(base.replace(/\s+/g, ""));
+
+    // 뒤쪽 시설어를 떼어 낸 형태. 토큰이 하나만 남을 때까지만.
+    var parts = base.split(" ");
+    var changed = false;
+    while (parts.length > 1) {
+        var last = parts[parts.length - 1];
+        if (FACILITY_TAIL.indexOf(last) === -1) break;
+        parts.pop();
+        changed = true;
+    }
+    if (changed) {
+        push(parts.join(" "));
+        push(parts.join(""));
+    }
+
+    // 질의 한 번이 곧 API 호출 한 번이다. 넓게 퍼뜨리기보다 네 번에서 끊는다.
+    return out.slice(0, 4);
+}
+
 module.exports = {
     escapeHtml: escapeHtml,
+    placeQueryVariants: placeQueryVariants,
     AREA_GRID_DIVISOR: AREA_GRID_DIVISOR,
     roundToAreaGrid: roundToAreaGrid,
     isAreaGridAligned: isAreaGridAligned,

@@ -1744,9 +1744,7 @@ exports.cachePickupReelCovers = instaCover.cachePickupReelCovers;
 // ══════════════════════════════════════════════════════════
 // 주소 지오코딩이 0건일 때의 폴백 — 카카오 키워드(장소) 검색.
 // nearestStation 이 이미 쓰는 KAKAO_LOCAL_HOST + KAKAO_REST_API_KEY 를 그대로 쓴다.
-async function kakaoPlaceSearch(query) {
-    var restKey = providerHttp.secretValue(KAKAO_REST_API_KEY);
-    if (!restKey) return null;
+async function kakaoPlaceSearchOnce(query, restKey) {
     try {
         var path = "/v2/local/search/keyword.json?size=1&query=" + encodeURIComponent(query);
         // 카카오 호스트 → 전역 fetch 금지 (406/KOE001). providerHttp 경유.
@@ -1762,6 +1760,23 @@ async function kakaoPlaceSearch(query) {
         console.error("장소 검색 오류:", e && e.message);
         return null;
     }
+}
+
+// 좁은 질의부터 넓은 질의까지 차례로 — 첫 히트에서 멈춘다.
+// 예전엔 입력을 통째로 한 번만 던지고 0건이면 포기해서, "광남초등학교 체육관"
+// 처럼 시설 종류가 뒤에 붙은 흔한 표기가 그대로 실패했다.
+async function kakaoPlaceSearch(query) {
+    var restKey = providerHttp.secretValue(KAKAO_REST_API_KEY);
+    if (!restKey) return null;
+    var variants = pure.placeQueryVariants(query);
+    for (var i = 0; i < variants.length; i++) {
+        var hit = await kakaoPlaceSearchOnce(variants[i], restKey);
+        if (hit) {
+            if (i > 0) console.log("장소 검색 폴백 적중 - 변형", i, ":", variants[i]);
+            return hit;
+        }
+    }
+    return null;
 }
 
 exports.geocodeAddress = onCall(

@@ -125,3 +125,22 @@ describe('위치 공개 수준 — 웹과 서버가 같은 답을 낸다', () =>
         });
     });
 });
+
+describe('장소 검색 질의 변형 — 웹과 서버가 같은 답을 낸다', () => {
+    const QUERIES = [
+        '광남초등학교 체육관',
+        '오산 죽미 다목적 체육관',
+        '석관중',
+        '서울 강남구 삼성로135길 42',
+        '하남종합운동장국민체육센터',
+        '구리 여자중학교 체육관',
+        '체육관',
+        '  공백   많은   입력  ',
+        ''
+    ];
+    QUERIES.forEach((q) => {
+        test(JSON.stringify(q), () => {
+            assert.deepStrictEqual(plain(web.placeQueryVariants(q)), pure.placeQueryVariants(q));
+        });
+    });
+});

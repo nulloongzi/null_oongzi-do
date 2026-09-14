@@ -489,3 +489,58 @@ describe('위치 공개 수준 — 기본값', () => {
         assert.strictEqual(pure.isAreaOnly({ location_precision: 'rough' }), false);
     });
 });
+
+describe('placeQueryVariants (시설명 검색 재시도)', () => {
+    // "광남초등학교 체육관" 처럼 시설 종류가 뒤에 붙는 표기가 흔하다. 통째로
+    // 한 번만 던지면 카카오에 그 이름의 장소가 없어 0건이 나오고, 사용자는
+    // 지도에서 핀을 직접 찍어야 했다.
+    test('시설어를 떼어 낸 변형이 뒤에 붙는다', () => {
+        assert.deepStrictEqual(pure.placeQueryVariants('광남초등학교 체육관'),
+            ['광남초등학교 체육관', '광남초등학교체육관', '광남초등학교']);
+    });
+
+    test('시설어가 겹치면 계속 떼어 낸다', () => {
+        assert.deepStrictEqual(pure.placeQueryVariants('오산 죽미 다목적 체육관'),
+            ['오산 죽미 다목적 체육관', '오산죽미다목적체육관', '오산 죽미', '오산죽미']);
+    });
+
+    // 여기가 이 함수의 위험한 지점이다. 아무 토큰이나 떼면 번지가 날아가
+    // 엉뚱한 곳을 찍는다 — 잘못된 좌표는 아예 못 찾는 것보다 나쁘다.
+    test('주소는 건드리지 않는다 — 번지가 날아가면 안 된다', () => {
+        assert.deepStrictEqual(pure.placeQueryVariants('서울 강남구 삼성로135길 42'),
+            ['서울 강남구 삼성로135길 42', '서울강남구삼성로135길42']);
+    });
+
+    test('붙여쓰기 변형을 함께 준다 — POI 이름은 띄어쓰기 없이 등록된 게 많다', () => {
+        assert.ok(pure.placeQueryVariants('구리 여자중학교 체육관').includes('구리여자중학교'));
+    });
+
+    test('띄어쓰기가 없으면 변형이 하나뿐', () => {
+        assert.deepStrictEqual(pure.placeQueryVariants('하남종합운동장국민체육센터'),
+            ['하남종합운동장국민체육센터']);
+        assert.deepStrictEqual(pure.placeQueryVariants('석관중'), ['석관중']);
+    });
+
+    // 다 떼면 빈 질의가 되어 아무거나 찍힌다.
+    test('시설어 하나만 있으면 그대로 둔다', () => {
+        assert.deepStrictEqual(pure.placeQueryVariants('체육관'), ['체육관']);
+    });
+
+    test('빈 입력은 빈 목록 — 호출 자체를 하지 않는다', () => {
+        assert.deepStrictEqual(pure.placeQueryVariants(''), []);
+        assert.deepStrictEqual(pure.placeQueryVariants('   '), []);
+        assert.deepStrictEqual(pure.placeQueryVariants(null), []);
+    });
+
+    // 변형 하나가 API 호출 하나다. 넓게 퍼뜨리면 응답이 느려지고 쿼터를 먹는다.
+    test('변형은 최대 4개', () => {
+        ['가 나 다 라 체육관 센터 강당', '아주 긴 이름 의 다목적 실내 체육관'].forEach((q) => {
+            assert.ok(pure.placeQueryVariants(q).length <= 4, q);
+        });
+    });
+
+    test('중복은 제거된다', () => {
+        const v = pure.placeQueryVariants('광남초등학교체육관');
+        assert.strictEqual(new Set(v).size, v.length);
+    });
+});

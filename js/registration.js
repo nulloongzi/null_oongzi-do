@@ -372,16 +372,28 @@ window.geocodeOrPlace = function (address) {
     return new Promise(function (resolve, reject) {
         var svc = kakao.maps.services;
         function ok(r) { return { lat: parseFloat(r.y), lng: parseFloat(r.x) }; }
-        new svc.Geocoder().addressSearch(address, function (result, status) {
-            if (status === svc.Status.OK && result[0]) { resolve(ok(result[0])); return; }
-            new svc.Places().keywordSearch(address, function (places, pStatus) {
+
+        // 장소 검색은 좁은 질의부터 넓은 질의까지 차례로 시도한다. 예전엔 입력을
+        // 통째로 한 번만 던지고 0건이면 포기해서, "광남초등학교 체육관" 처럼
+        // 시설 종류가 뒤에 붙은 흔한 표기가 그대로 실패했다(지도에서 핀을 직접 찍어야 했다).
+        var variants = window.placeQueryVariants(address);
+        function tryPlace(i) {
+            if (i >= variants.length) { reject(new Error('GEOCODE_FAIL')); return; }
+            new svc.Places().keywordSearch(variants[i], function (places, pStatus) {
                 if (pStatus === svc.Status.OK && places[0]) {
-                    if (window.track) window.track('registration_geocode_place_hit');
+                    if (window.track) {
+                        window.track('registration_geocode_place_hit', { variant: i });
+                    }
                     resolve(ok(places[0]));
                 } else {
-                    reject(new Error('GEOCODE_FAIL'));
+                    tryPlace(i + 1);
                 }
             });
+        }
+
+        new svc.Geocoder().addressSearch(address, function (result, status) {
+            if (status === svc.Status.OK && result[0]) { resolve(ok(result[0])); return; }
+            tryPlace(0);
         });
     });
 };
