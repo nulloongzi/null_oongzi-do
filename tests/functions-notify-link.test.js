@@ -30,7 +30,9 @@ function makeRef(p) {
     return {
         path: p,
         get: async () => ({ exists: Object.hasOwn(docs, p), id: p.split('/').pop(), data: () => docs[p] }),
-        set: async () => {}, update: async () => {}, delete: async () => {}
+        set: async (data) => { docs[p] = Object.assign({}, docs[p], data); },
+        update: async (data) => { docs[p] = Object.assign({}, docs[p], data); },
+        delete: async () => { delete docs[p]; }
     };
 }
 // 컬렉션별로 쿼리 결과를 심을 수 있게 한다(기본은 빈 결과).
@@ -57,10 +59,24 @@ function makeCollection(name) {
 }
 
 const FieldValue = { serverTimestamp: () => '<ts>', delete: () => '<del>' };
+
+// 트랜잭션은 grantClubAdmin 이 정원을 다시 세는 자리다 — 스텁이 이걸 흉내내지
+// 못하면 이 기능의 급소가 테스트 밖으로 빠진다. 읽기는 docs 를, 쓰기는 docs 에
+// 그대로 반영해 승인 뒤 admins 가 어떻게 됐는지 볼 수 있게 한다.
+function makeTx() {
+    return {
+        get: async (ref) => ref.get(),
+        update: (ref, data) => { docs[ref.path] = Object.assign({}, docs[ref.path], data); },
+        set: (ref, data) => { docs[ref.path] = Object.assign({}, docs[ref.path], data); }
+    };
+}
 const adminStub = {
     initializeApp() {},
-    firestore: Object.assign(() => ({ collection: makeCollection, batch: () => ({ delete() {}, commit: async () => {} }) }),
-        { FieldValue, Timestamp: { now: () => '<now>' } }),
+    firestore: Object.assign(() => ({
+        collection: makeCollection,
+        batch: () => ({ delete() {}, commit: async () => {} }),
+        runTransaction: async (fn) => fn(makeTx())
+    }), { FieldValue, Timestamp: { now: () => '<now>' } }),
     auth: () => ({ getUser: async () => ({ email: 'x@example.com', emailVerified: true }) })
 };
 
@@ -85,6 +101,11 @@ const fnStubs = {
         defineString: (n, o) => ({ value: () => (o && o.default) || '', name: n })
     }
 };
+
+// 블록 ID 가 있어야 카드 모드로 응답한다. index.js 가 로드 시점에 읽으므로
+// require 전에 심는다.
+process.env.ADMIN_APPROVE_BLOCK_ID = 'blk-approve';
+process.env.ADMIN_REJECT_BLOCK_ID = 'blk-reject';
 
 const origLoad = Module._load;
 Module._load = function (req) {
@@ -222,5 +243,123 @@ describe('인증관리 카드 — 사진을 실제로 확인할 수 있나 (chat
         const blocks = item.buttons.filter((b) => b.action === 'block');
         assert.strictEqual(blocks.length, 2);
         blocks.forEach((b) => assert.strictEqual(b.extra.request_id, 'req-1'));
+    });
+});
+
+describe('관리자 권한 신청 (club_admin_requests)', () => {
+    const PHOTO = 'https://firebasestorage.example/v0/b/x/o/kakao.png?alt=media&token=z';
+
+    function capture() {
+        let out = null;
+        return { res: { json: (v) => { out = v; }, status() { return this; }, send() {} }, get: () => out };
+    }
+    const adminReq = () => ({ body: { userRequest: { user: { id: 'kakao-1' } }, action: {} } });
+    function seedAdminCall(extra) {
+        docs['admin_kakao_ids/kakao-1'] = { ok: true };
+        const req = adminReq();
+        req.body.action.clientExtra = extra;
+        return req;
+    }
+
+    test('신청이 접수되면 그 팀으로 가는 알림이 나간다', async () => {
+        await fns.onClubAdminRequestCreated._handler({
+            data: {
+                ref: makeRef('club_admin_requests/a1'),
+                data: () => ({ status: 'pending', club_id: 'club-7', club_name: '테스트팀', photo_url: PHOTO })
+            }
+        });
+        assert.strictEqual(sent.length, 1);
+        const body = JSON.parse(decodeURIComponent(sent[0].body.replace(/^template_object=/, '')));
+        assert.strictEqual(body.link.web_url, 'https://do.nulloongzi.com/?club=club-7');
+        assert.match(body.text, /관리자관리/);
+    });
+
+    test('목록 카드에 사진 원본 버튼이 있고 썸네일이 안 잘린다', async () => {
+        docs['admin_kakao_ids/kakao-1'] = { ok: true };
+        queryDocs['club_admin_requests'] = [
+            { id: 'r1', data: { status: 'pending', club_id: 'c1', club_name: '테스트팀', photo_url: PHOTO } }
+        ];
+        const c = capture();
+        await fns.chatbotAdminRequests(adminReq(), c.res);
+        const item = c.get().template.outputs[0].carousel.items[0];
+        assert.strictEqual(item.thumbnail.fixedRatio, true);
+        assert.strictEqual(item.buttons.find((b) => b.action === 'webLink').webLinkUrl, PHOTO);
+        assert.ok(item.buttons.length <= 3, '카카오 basicCard 버튼 상한 초과');
+    });
+
+    test('비관리자는 목록을 볼 수 없다', async () => {
+        delete docs['admin_kakao_ids/kakao-1'];
+        const c = capture();
+        await fns.chatbotAdminRequests(adminReq(), c.res);
+        assert.match(c.get().template.outputs[0].simpleText.text, /권한이 없습니다/);
+    });
+
+    test('승인하면 admins 에 추가된다', async () => {
+        docs['club_admin_requests/r1'] = { status: 'pending', club_id: 'c1', club_name: '팀', requested_by: 'u-new' };
+        docs['clubs/c1'] = { name: '팀', admins: ['u-old'] };
+        const c = capture();
+        await fns.chatbotAdminApprove(seedAdminCall({ request_id: 'r1' }), c.res);
+        assert.deepStrictEqual(docs['clubs/c1'].admins, ['u-old', 'u-new']);
+        assert.strictEqual(docs['club_admin_requests/r1'].status, 'approved');
+        assert.match(c.get().template.outputs[0].simpleText.text, /2\/3명/);
+    });
+
+    // 급소: 신청이 접수된 뒤 정원이 찼을 수 있다. 승인 시점에 다시 세지 않으면
+    // 4명째가 들어가 정원이 무너진다.
+    test('정원 3명이 찼으면 승인해도 넣지 않고 거절로 남긴다', async () => {
+        docs['club_admin_requests/r2'] = { status: 'pending', club_id: 'c2', club_name: '팀', requested_by: 'u-4' };
+        docs['clubs/c2'] = { name: '팀', admins: ['a', 'b', 'c'] };
+        const c = capture();
+        await fns.chatbotAdminApprove(seedAdminCall({ request_id: 'r2' }), c.res);
+        assert.deepStrictEqual(docs['clubs/c2'].admins, ['a', 'b', 'c'], '정원을 넘겨 들어갔다');
+        assert.strictEqual(docs['club_admin_requests/r2'].status, 'rejected');
+        assert.strictEqual(docs['club_admin_requests/r2'].reject_reason, 'full');
+    });
+
+    test('이미 관리자면 중복으로 들어가지 않는다', async () => {
+        docs['club_admin_requests/r3'] = { status: 'pending', club_id: 'c3', club_name: '팀', requested_by: 'a' };
+        docs['clubs/c3'] = { name: '팀', admins: ['a'] };
+        const c = capture();
+        await fns.chatbotAdminApprove(seedAdminCall({ request_id: 'r3' }), c.res);
+        assert.deepStrictEqual(docs['clubs/c3'].admins, ['a']);
+    });
+
+    test('거절하면 명단은 그대로', async () => {
+        docs['club_admin_requests/r4'] = { status: 'pending', club_id: 'c4', club_name: '팀', requested_by: 'u-x' };
+        docs['clubs/c4'] = { name: '팀', admins: ['a'] };
+        const c = capture();
+        await fns.chatbotAdminReject(seedAdminCall({ request_id: 'r4' }), c.res);
+        assert.deepStrictEqual(docs['clubs/c4'].admins, ['a']);
+        assert.strictEqual(docs['club_admin_requests/r4'].status, 'rejected');
+    });
+
+    // 비관리자가 승인 엔드포인트를 직접 때려도 권한이 넘어가면 안 된다.
+    test('비관리자의 승인 호출은 아무것도 바꾸지 않는다', async () => {
+        docs['club_admin_requests/r5'] = { status: 'pending', club_id: 'c5', club_name: '팀', requested_by: 'attacker' };
+        docs['clubs/c5'] = { name: '팀', admins: ['a'] };
+        delete docs['admin_kakao_ids/kakao-1'];
+        const c = capture();
+        const req = adminReq(); req.body.action.clientExtra = { request_id: 'r5' };
+        await fns.chatbotAdminApprove(req, c.res);
+        assert.deepStrictEqual(docs['clubs/c5'].admins, ['a']);
+        assert.strictEqual(docs['club_admin_requests/r5'].status, 'pending');
+    });
+});
+
+describe('인증 승인이 신청자를 관리자로 올린다', () => {
+    // 배지만 주고 수정 권한을 안 주면, 정작 정보를 고칠 사람이 없는 팀이
+    // 인증만 받은 채 남는다.
+    test('chatbotApprove 가 requested_by 를 admins 에 넣는다', async () => {
+        docs['admin_kakao_ids/kakao-1'] = { ok: true };
+        docs['verification_requests/v1'] = {
+            status: 'pending', club_id: 'cv1', club_name: '팀', requested_by: 'u-req'
+        };
+        docs['clubs/cv1'] = { name: '팀' };
+        let out = null;
+        const res = { json: (v) => { out = v; }, status() { return this; }, send() {} };
+        const req = { body: { userRequest: { user: { id: 'kakao-1' } }, action: { clientExtra: { request_id: 'v1' } } } };
+        await fns.chatbotApprove(req, res);
+        assert.strictEqual(docs['clubs/cv1'].is_verified, true);
+        assert.deepStrictEqual(docs['clubs/cv1'].admins, ['u-req']);
     });
 });

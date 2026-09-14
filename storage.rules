@@ -30,6 +30,26 @@ service firebase.storage {
                     && fileName.size() <= 100;
     }
 
+    // ── 관리자 권한 신청 사진 ──
+    // 인증 사진과 같은 규칙. 읽기를 열어두는 이유도 같다 — 카카오 챗봇 카드가
+    // 썸네일을 불러오려면 공개 URL 이 필요하다.
+    //
+    // 다만 이쪽은 단톡방 캡처처럼 **남의 이름이 찍힐 수 있는** 사진이 온다.
+    // 경로에 uid 와 타임스탬프가 들어가 사실상 추측이 불가능하지만, 링크를
+    // 아는 사람은 볼 수 있다. 그래서 신청 화면이 "다른 분 이름·연락처는
+    // 가리고 올려주세요" 라고 먼저 안내한다. 더 조이려면 서명 URL(짧은 만료)로
+    // 바꿔야 하는데, 그러려면 서비스 계정에 signBlob 권한이 필요하다.
+    match /admin_request_photos/{allPaths=**} {
+      allow read: if true;
+    }
+    match /admin_request_photos/{userId}/{fileName} {
+      allow write: if request.auth != null
+                    && request.auth.uid == userId
+                    && isSafeImageType()
+                    && isSafeSize()
+                    && fileName.size() <= 100;
+    }
+
     // ── 팀 사진 ──
     match /club_photos/{allPaths=**} {
       allow read: if true;
