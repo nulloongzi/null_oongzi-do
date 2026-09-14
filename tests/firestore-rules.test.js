@@ -627,3 +627,132 @@ describe('club_claims / club_claim_requests 룰 (담당자 메일 비공개 + �
         }
     });
 });
+
+describe('팀 관리자(admins) 룰 — 정원 3명 · 명단은 서버만', () => {
+    const CLUB = 'club-admins';        // admins: ['a1','a2']
+    const LEGACY = 'club-legacy';      // registered_by 만 있는 구 문서
+    const FULL = 'club-full';          // admins 3명
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('clubs').doc(CLUB).set({
+                name: '관리자팀', admins: ['a1', 'a2'], registered_by: 'a1', is_verified: true
+            });
+            await db.collection('clubs').doc(LEGACY).set({
+                name: '구문서팀', registered_by: 'owner-uid', is_verified: true
+            });
+            await db.collection('clubs').doc(FULL).set({
+                name: '정원팀', admins: ['a1', 'a2', 'a3'], registered_by: 'a1', is_verified: true
+            });
+            // 미인증 팀 — 배지를 스스로 올릴 수 있는지 보려면 false 에서 출발해야 한다.
+            await db.collection('clubs').doc('club-unverified').set({
+                name: '미인증팀', admins: ['a1'], registered_by: 'a1', is_verified: false
+            });
+        });
+    });
+
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+
+    test('명단에 있으면 내용을 고칠 수 있다', async () => {
+        await assertSucceeds(as('a2').collection('clubs').doc(CLUB).update({ price: '월 3만원' }));
+    });
+
+    test('명단에 없으면 거부', async () => {
+        await assertFails(as('stranger').collection('clubs').doc(CLUB).update({ price: '월 1원' }));
+    });
+
+    // admins 가 없던 시절 문서. 마이그레이션을 안 돌려도 기존 소유자는
+    // 계속 자기 팀을 고칠 수 있어야 한다.
+    test('구 문서는 registered_by 가 그대로 관리자', async () => {
+        await assertSucceeds(as('owner-uid').collection('clubs').doc(LEGACY).update({ price: '월 2만원' }));
+        await assertFails(as('a1').collection('clubs').doc(LEGACY).update({ price: '월 2만원' }));
+    });
+
+    // 여기가 이 기능의 급소다. 클라이언트가 admins 를 쓸 수 있으면 자기 uid 를
+    // 끼워넣어 아무 팀이나 가져갈 수 있고, 승인 절차가 통째로 무의미해진다.
+    test('관리자라도 admins 를 직접 못 바꾼다', async () => {
+        await assertFails(as('a1').collection('clubs').doc(CLUB).update({ admins: ['a1', 'a2', 'intruder'] }));
+    });
+
+    test('남이 admins 에 자기를 끼워넣는 것도 거부', async () => {
+        await assertFails(as('intruder').collection('clubs').doc(CLUB).update({ admins: ['intruder'] }));
+    });
+
+    // 인증 배지는 심사를 거친 값이다. 팀 관리자가 스스로 붙일 수 있으면
+    // 인증 절차 자체가 장식이 된다.
+    test('관리자라도 is_verified 를 스스로 올릴 수 없다', async () => {
+        const club = as('a1').collection('clubs').doc('club-unverified');
+        await assertFails(club.update({ is_verified: true }));
+        await assertSucceeds(club.update({ price: '월 3만원' }));   // 내용 수정은 된다
+    });
+
+    test('운영자는 admins 를 바꿀 수 있다', async () => {
+        await assertSucceeds(as('admin-uid').collection('clubs').doc(CLUB).update({ admins: ['a1', 'a2', 'a3'] }));
+    });
+
+    test('정원 3명을 넘는 배열은 운영자도 못 쓴다', async () => {
+        await assertFails(as('admin-uid').collection('clubs').doc(FULL).update({ admins: ['a1', 'a2', 'a3', 'a4'] }));
+    });
+
+    test('관리자는 팀을 삭제할 수 있고, 남은 거부', async () => {
+        await assertFails(as('stranger').collection('clubs').doc(CLUB).delete());
+        await assertSucceeds(as('a2').collection('clubs').doc(CLUB).delete());
+    });
+
+    test('새 팀은 본인 혼자만 admins 에 넣을 수 있다', async () => {
+        // 문서 id 는 이 파일 안에서 유일해야 한다 — 이미 있는 id 로 set 하면
+        // create 가 아니라 update 로 평가돼 엉뚱한 이유로 거부된다.
+        const ok = as('newbie').collection('clubs').doc('admins-new-ok');
+        await assertSucceeds(ok.set({
+            name: '새팀', registered_by: 'newbie', admins: ['newbie'], is_verified: false
+        }));
+        const bad = as('newbie').collection('clubs').doc('admins-new-bad');
+        await assertFails(bad.set({
+            name: '새팀2', registered_by: 'newbie', admins: ['newbie', 'someone'], is_verified: false
+        }));
+    });
+});
+
+describe('club_admin_requests 룰 (관리자 신청)', () => {
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    const base = (uid) => ({
+        club_id: 'club-1', club_name: '테스트팀',
+        photo_url: 'https://example.com/p.jpg',
+        requested_by: uid, requested_at: new Date(), status: 'pending'
+    });
+
+    test('본인 uid 로 pending 생성은 통과', async () => {
+        await assertSucceeds(as('req-1').collection('club_admin_requests').doc('r1').set(base('req-1')));
+    });
+
+    test('남의 uid 를 신청자로 쓰면 거부', async () => {
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r2').set(base('victim')));
+    });
+
+    // 신청자가 자기 요청을 approved 로 만들 수 있으면 승인 절차가 무의미하다.
+    test('처음부터 approved 로 만들 수 없다', async () => {
+        const d = base('req-1'); d.status = 'approved';
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r3').set(d));
+    });
+
+    test('나중에 status 를 고치는 것도 거부 (승인은 서버만)', async () => {
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r1').update({ status: 'approved' }));
+    });
+
+    test('사진 없이 신청할 수 없다', async () => {
+        const d = base('req-1'); delete d.photo_url;
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r4').set(d));
+    });
+
+    test('화이트리스트 밖 필드는 거부 (문서 비대화 방지)', async () => {
+        const d = base('req-1'); d.note = 'x'.repeat(100);
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r5').set(d));
+    });
+
+    test('신청자 본인과 운영자만 읽는다', async () => {
+        await assertSucceeds(as('req-1').collection('club_admin_requests').doc('r1').get());
+        await assertSucceeds(as('admin-uid').collection('club_admin_requests').doc('r1').get());
+        await assertFails(as('nosy').collection('club_admin_requests').doc('r1').get());
+    });
+});

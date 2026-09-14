@@ -301,3 +301,103 @@ describe('deepLinkUrl / kakaoLink (카톡 "자세히 보기" 착지)', () => {
         assert.strictEqual(link.web_url, 'https://do.nulloongzi.com/?club=abc');
     });
 });
+
+describe('clubAdminUids (팀 관리자 목록)', () => {
+    test('admins 배열이 정본', () => {
+        assert.deepStrictEqual(pure.clubAdminUids({ admins: ['a', 'b'] }), ['a', 'b']);
+    });
+
+    // admins 필드가 생기기 전 문서. 마이그레이션을 안 돌려도 기존 소유자가
+    // 권한을 잃으면 안 된다 — 그 순간 그 사람은 자기 팀을 못 고친다.
+    test('admins 가 없으면 registered_by 한 명을 관리자로 본다', () => {
+        assert.deepStrictEqual(pure.clubAdminUids({ registered_by: 'owner' }), ['owner']);
+    });
+
+    test('admins 가 있으면 registered_by 를 덧붙이지 않는다', () => {
+        // 등록자가 스스로 빠진 뒤 registered_by 만 남은 경우까지 되살리면 안 된다.
+        assert.deepStrictEqual(pure.clubAdminUids({ admins: ['a'], registered_by: 'owner' }), ['a']);
+    });
+
+    test('중복·빈 값·공백을 정리한다', () => {
+        assert.deepStrictEqual(pure.clubAdminUids({ admins: ['a', ' a ', '', null, 'b'] }), ['a', 'b']);
+    });
+
+    test('주인 없는 팀은 빈 목록', () => {
+        assert.deepStrictEqual(pure.clubAdminUids({}), []);
+        assert.deepStrictEqual(pure.clubAdminUids(null), []);
+    });
+});
+
+describe('canManageClub', () => {
+    test('목록에 있으면 true, 없으면 false', () => {
+        assert.strictEqual(pure.canManageClub({ admins: ['a', 'b'] }, 'b'), true);
+        assert.strictEqual(pure.canManageClub({ admins: ['a', 'b'] }, 'c'), false);
+    });
+    test('구 문서의 registered_by 도 통과', () => {
+        assert.strictEqual(pure.canManageClub({ registered_by: 'owner' }, 'owner'), true);
+    });
+    test('uid 가 없으면 false — 비로그인이 통과하면 안 된다', () => {
+        assert.strictEqual(pure.canManageClub({ admins: [''] }, ''), false);
+        assert.strictEqual(pure.canManageClub({ admins: ['a'] }, null), false);
+    });
+});
+
+describe('adminRequestBlockReason / addClubAdmin (정원 3명)', () => {
+    test('빈 팀은 받는다', () => {
+        assert.strictEqual(pure.adminRequestBlockReason({}, 'a'), null);
+    });
+    test('이미 관리자면 already_admin', () => {
+        assert.strictEqual(pure.adminRequestBlockReason({ admins: ['a'] }, 'a'), 'already_admin');
+    });
+    test('3명이면 full', () => {
+        assert.strictEqual(pure.adminRequestBlockReason({ admins: ['a', 'b', 'c'] }, 'd'), 'full');
+    });
+    test('2명까지는 받는다', () => {
+        assert.strictEqual(pure.adminRequestBlockReason({ admins: ['a', 'b'] }, 'c'), null);
+    });
+    test('없는 팀은 not_found', () => {
+        assert.strictEqual(pure.adminRequestBlockReason(null, 'a'), 'not_found');
+    });
+
+    test('addClubAdmin 은 뒤에 붙인다', () => {
+        const r = pure.addClubAdmin({ admins: ['a'] }, 'b');
+        assert.strictEqual(r.added, true);
+        assert.deepStrictEqual(r.admins, ['a', 'b']);
+    });
+
+    // 신청이 접수된 뒤 정원이 찼을 수 있다. 승인 시점에 다시 보지 않으면
+    // 4명째가 들어가고 정원이 무너진다.
+    test('정원이 찼으면 넣지 않고 이유를 돌려준다', () => {
+        const r = pure.addClubAdmin({ admins: ['a', 'b', 'c'] }, 'd');
+        assert.strictEqual(r.added, false);
+        assert.strictEqual(r.reason, 'full');
+        assert.deepStrictEqual(r.admins, ['a', 'b', 'c']);
+    });
+
+    test('구 문서에 한 명을 더해도 registered_by 가 유지된다', () => {
+        const r = pure.addClubAdmin({ registered_by: 'owner' }, 'b');
+        assert.deepStrictEqual(r.admins, ['owner', 'b']);
+    });
+});
+
+describe('removeClubAdmin (스스로 빠지기)', () => {
+    test('본인만 빠지고 나머지는 그대로', () => {
+        const r = pure.removeClubAdmin({ admins: ['a', 'b', 'c'] }, 'b');
+        assert.strictEqual(r.removed, true);
+        assert.deepStrictEqual(r.admins, ['a', 'c']);
+    });
+
+    // 마지막 한 명이 나가면 주인 없는 팀으로 돌아간다. 그래야 팀을 떠난
+    // 사람이 권한을 쥔 채 남지 않고, 다음 사람이 신청할 수 있다.
+    test('마지막 한 명도 빠질 수 있다', () => {
+        const r = pure.removeClubAdmin({ admins: ['a'] }, 'a');
+        assert.strictEqual(r.removed, true);
+        assert.deepStrictEqual(r.admins, []);
+    });
+
+    test('관리자가 아니면 not_admin', () => {
+        const r = pure.removeClubAdmin({ admins: ['a'] }, 'z');
+        assert.strictEqual(r.removed, false);
+        assert.strictEqual(r.reason, 'not_admin');
+    });
+});

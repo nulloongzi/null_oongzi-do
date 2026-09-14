@@ -439,6 +439,82 @@ window.openClubDetail = function (id, opts) {
         });
     }
 
+    // ── 관리자 권한 안내 / 신청 ──
+    // 구글시트로 접수한 팀들은 등록자가 없어 아무도 정보를 못 고친다. 그 팀을
+    // 실제로 운영하는 사람이 여기서 손을 든다.
+    //
+    // 조용히 둔다 — 로그인 때 팝업을 띄우지 않고, 자기 팀 페이지를 연 순간에만
+    // 한 줄로 보인다. 신청할 사람은 어차피 자기 팀을 보러 온다.
+    var existingAdminArea = document.getElementById('clubAdminArea');
+    if (existingAdminArea) existingAdminArea.remove();
+
+    if (window.currentUser && !window.currentUser.isAnonymous && !window.isAdmin) {
+        var adminUids = window.clubAdminUids(club);
+        var iAmAdmin = adminUids.indexOf(window.currentUser.uid) !== -1;
+        var full = adminUids.length >= window.MAX_CLUB_ADMINS;
+
+        if (iAmAdmin || !full) {
+            var adminArea = document.createElement('div');
+            adminArea.id = 'clubAdminArea';
+            adminArea.style = 'margin-top:8px;';
+            var anchorEl = document.getElementById('verifyStatusArea') || actionBtns;
+            anchorEl.parentElement.insertBefore(adminArea, anchorEl.nextSibling);
+
+            if (iAmAdmin) {
+                // 관리자 수를 보여준다 — 3명 제한이 있다는 걸 알아야 동료를 부를지 판단한다.
+                adminArea.innerHTML =
+                    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#666;padding:6px 2px;">' +
+                    '<span id="clubAdminCount"></span>' +
+                    '<button id="btnLeaveAdmin" style="background:none;border:none;color:#d32f2f;font-size:12px;text-decoration:underline;cursor:pointer;padding:0;"></button>' +
+                    '</div>';
+                document.getElementById('clubAdminCount').textContent =
+                    window.tf('ad_count', { n: adminUids.length });
+                var leaveBtn = document.getElementById('btnLeaveAdmin');
+                leaveBtn.textContent = window.t('ad_leave');
+                leaveBtn.onclick = function () { window.leaveClubAdmin(club); };
+            } else {
+                // 이미 낸 신청이 있으면 그 상태를 보여준다 — 없으면 계속 다시 낸다.
+                // requested_by 단일 조건으로만 거른다. club_id 를 함께 걸면 복합
+                // 인덱스가 필요해지고, 없으면 매번 실패한다. 한 사람이 내는 신청은
+                // 많아야 몇 건이라 나머지는 메모리에서 고른다.
+                // (규칙상 남의 신청은 애초에 안 읽힌다.)
+                window.firebaseDB.collection('club_admin_requests')
+                    .where('requested_by', '==', window.currentUser.uid)
+                    .limit(20)
+                    .get().then(function (snap) {
+                        var latest = null;
+                        snap.forEach(function (doc) {
+                            var d = doc.data();
+                            if (String(d.club_id) !== String(club.id)) return;
+                            var ms = d.requested_at && d.requested_at.toMillis ? d.requested_at.toMillis() : 0;
+                            if (!latest || ms > latest._ms) { latest = d; latest._ms = ms; }
+                        });
+                        if (latest && latest.status === 'pending') {
+                            adminArea.innerHTML =
+                                '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:10px 14px;border-radius:4px;font-size:13px;color:#1565c0;">' +
+                                window.t('ad_pending') + '</div>';
+                            return;
+                        }
+                        var label = (latest && latest.status === 'rejected')
+                            ? window.t('ad_reapply') : window.t('ad_apply_btn');
+                        adminArea.innerHTML =
+                            '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
+                        var b = document.getElementById('btnRequestAdmin');
+                        b.textContent = label;
+                        b.onclick = function () { window.openAdminRequestModal(club); };
+                    }).catch(function (err) {
+                        // 조회가 막혀도 신청 자체는 할 수 있어야 한다.
+                        console.warn('관리자 신청 상태 조회 실패:', err && err.message);
+                        adminArea.innerHTML =
+                            '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
+                        var b2 = document.getElementById('btnRequestAdmin');
+                        b2.textContent = window.t('ad_apply_btn');
+                        b2.onclick = function () { window.openAdminRequestModal(club); };
+                    });
+            }
+        }
+    }
+
     // Edit + Delete buttons (owner or admin only)
     var existingEditBtn = document.getElementById('btnEditClub');
     if (existingEditBtn) existingEditBtn.remove();

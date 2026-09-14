@@ -274,6 +274,7 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
             await db.collection("clubs").doc(requestData.club_id).update({
                 is_verified: true
             });
+            await grantClubAdmin(requestData.club_id, requestData.requested_by);
             res.send(renderResultPage("승인 완료 ✅", requestData.club_name + " 팀의 인증이 승인되었습니다."));
         } else {
             await requestRef.update({
@@ -394,15 +395,16 @@ exports.chatbotApprove = onRequest({ cors: true, invoker: "public" }, async func
             return;
         }
 
-        await Promise.all([
-            requestRef.update({
-                status: "approved",
-                reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-            }),
-            db.collection("clubs").doc(requestData.club_id).set({
-                is_verified: true
-            }, { merge: true })
-        ]);
+        await requestRef.update({
+            status: "approved",
+            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await db.collection("clubs").doc(requestData.club_id).set({
+            is_verified: true
+        }, { merge: true });
+        // 인증을 신청한 사람이 곧 그 팀을 돌보는 사람이다. 배지만 주고 수정
+        // 권한을 안 주면, 정작 정보를 고칠 사람이 없는 팀이 인증만 받는다.
+        await grantClubAdmin(requestData.club_id, requestData.requested_by);
 
         res.json({
             version: "2.0",
@@ -1129,6 +1131,266 @@ exports.claimMyClubs = onCall(
         };
     }
 );
+
+// ══════════════════════════════════════════════════════════
+// 팀 관리자 권한
+// ══════════════════════════════════════════════════════════
+// 구글시트로 접수한 팀들은 등록자가 없어서 아무도 정보를 못 고친다. 그 팀의
+// 운영자가 스스로 손을 들고, 운영자(사람)가 사진을 보고 승인하는 통로다.
+//
+// 인증 신청과 같은 모양을 쓴다 — 이미 있는 절차라 신청자도 운영자도 새로
+// 배울 게 없다. 다만 **증명하려는 것이 다르다**: 인증 사진은 "이 팀이 실제로
+// 활동한다"를, 관리자 신청 사진은 "내가 이 팀 사람이다"를 보여야 한다.
+// 공개된 인스타 사진은 앞의 것만 증명하므로 뒤의 용도로는 못 쓴다.
+var ADMIN_APPROVE_BLOCK_ID = (process.env.ADMIN_APPROVE_BLOCK_ID || "").trim();
+var ADMIN_REJECT_BLOCK_ID = (process.env.ADMIN_REJECT_BLOCK_ID || "").trim();
+
+// 팀 문서를 다시 읽어 정원을 확인하고 명단에 넣는다.
+// 읽고-쓰는 사이에 다른 승인이 끼어들면 정원이 넘을 수 있어 트랜잭션으로 묶는다.
+async function grantClubAdmin(clubId, uid) {
+    if (!clubId || !uid) return { added: false, reason: "no_uid" };
+    var clubRef = db.collection("clubs").doc(String(clubId));
+    try {
+        return await db.runTransaction(async function (tx) {
+            var snap = await tx.get(clubRef);
+            if (!snap.exists) return { added: false, reason: "not_found" };
+            var result = pure.addClubAdmin(snap.data(), uid);
+            if (!result.added) return { added: false, reason: result.reason };
+            tx.update(clubRef, { admins: result.admins });
+            return { added: true, reason: null, admins: result.admins };
+        });
+    } catch (e) {
+        console.error("grantClubAdmin 실패 - club:", clubId, e && e.message);
+        return { added: false, reason: "error" };
+    }
+}
+
+// 관리자 신청 접수 → 운영자에게 알린다.
+exports.onClubAdminRequestCreated = onDocumentCreated(
+    {
+        document: "club_admin_requests/{requestId}",
+        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
+    },
+    async function (event) {
+        var snap = event.data;
+        if (!snap) return;
+        var d = snap.data() || {};
+        if (d.status !== "pending") return;
+
+        var kakaoToken = null;
+        try {
+            kakaoToken = await getKakaoAccessToken();
+        } catch (e) {
+            console.error("카카오 토큰 획득 실패(관리자 신청 알림):", e && e.message);
+            await markNotifyResult(snap.ref, false, "토큰 획득 실패: " + (e && e.message));
+            return;
+        }
+        if (!kakaoToken) {
+            await markNotifyResult(snap.ref, false, "KAKAO_ACCESS_TOKEN 미설정");
+            return;
+        }
+
+        var lines = [
+            "[관리자 권한 신청] " + (d.club_name || d.club_id || ""),
+            "",
+            "카카오톡 챗봇에서 '관리자관리'를 입력해 사진을 확인하고 승인해주세요."
+        ];
+        try {
+            var templateObject = {
+                object_type: "text",
+                text: lines.join("\n"),
+                link: pure.kakaoLink("club", d.club_id)
+            };
+            var kakaoRes = await providerHttp.postForm(
+                providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
+                "template_object=" + encodeURIComponent(JSON.stringify(templateObject)), kakaoToken);
+            await markNotifyResult(snap.ref, providerHttp.isOk(kakaoRes.status),
+                "전송 응답 " + kakaoRes.status);
+        } catch (e) {
+            console.error("관리자 신청 알림 전송 실패:", e && e.message);
+            await markNotifyResult(snap.ref, false, "전송 예외: " + (e && e.message));
+        }
+    }
+);
+
+// ── 스킬: 관리자 권한 신청 목록 (발화: 관리자관리) ──
+exports.chatbotAdminRequests = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try {
+        var auth = await isAllowedKakaoUser(req);
+        if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
+
+        var snap = await db.collection("club_admin_requests")
+            .where("status", "==", "pending").limit(30).get();
+
+        if (snap.empty) {
+            res.json({
+                version: "2.0",
+                template: { outputs: [{ simpleText: { text: "대기 중인 관리자 권한 신청이 없습니다. ✅" } }] }
+            });
+            return;
+        }
+
+        var items = [];
+        snap.forEach(function (doc) {
+            var d = doc.data();
+            d._id = doc.id;
+            d._ms = d.requested_at && d.requested_at.toMillis ? d.requested_at.toMillis() : 0;
+            items.push(d);
+        });
+        items.sort(function (a, b) { return b._ms - a._ms; });
+        var top = items.slice(0, 10);
+
+        // 블록 ID 가 아직 없으면 텍스트로 — 콘솔 설정 전에도 목록은 보여야 한다.
+        // (신고·클레임과 같은 규칙. docs/chatbot-blocks.md 참고)
+        if (!ADMIN_APPROVE_BLOCK_ID) {
+            var text = top.map(function (d, i) {
+                var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
+                return (i + 1) + ". " + (d.club_name || d.club_id) + " · " + dateStr
+                    + "\n   사진: " + (d.photo_url || "없음")
+                    + "\n   id: " + d._id;
+            }).join("\n\n");
+            res.json({
+                version: "2.0",
+                template: {
+                    outputs: [{
+                        simpleText: {
+                            text: "관리자 권한 신청 " + snap.size + "건\n\n" + text
+                                + "\n\n※ 승인 버튼을 쓰려면 챗봇 콘솔에서 관리자승인/관리자거절 블록을 만들고"
+                                + " ADMIN_APPROVE_BLOCK_ID · ADMIN_REJECT_BLOCK_ID 에 넣어주세요."
+                        }
+                    }]
+                }
+            });
+            return;
+        }
+
+        var cards = top.map(function (d) {
+            var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
+            var buttons = [
+                // 증빙을 보고 판단하는 순서라 원본 보기가 먼저다. basicCard 상한 3개.
+                { label: "🔍 사진 크게 보기", action: "webLink", webLinkUrl: d.photo_url },
+                {
+                    label: "✅ 승인", action: "block", blockId: ADMIN_APPROVE_BLOCK_ID,
+                    extra: { request_id: d._id, club_name: d.club_name || "" }
+                }
+            ];
+            if (ADMIN_REJECT_BLOCK_ID) {
+                buttons.push({
+                    label: "❌ 거절", action: "block", blockId: ADMIN_REJECT_BLOCK_ID,
+                    extra: { request_id: d._id, club_name: d.club_name || "" }
+                });
+            }
+            return {
+                title: d.club_name || d.club_id || "대상 없음",
+                description: "신청일: " + dateStr,
+                // 단톡방 캡처처럼 세로로 긴 사진이 잘리면 정작 볼 부분이 사라진다.
+                thumbnail: { imageUrl: d.photo_url, fixedRatio: true, link: { web: d.photo_url } },
+                buttons: buttons
+            };
+        });
+
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ carousel: { type: "basicCard", items: cards } }] }
+        });
+    } catch (error) {
+        console.error("chatbotAdminRequests 오류:", error);
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ simpleText: { text: "관리자 신청 목록 조회 중 오류가 발생했습니다." } }] }
+        });
+    }
+});
+
+// 승인/거절 공통.
+async function resolveAdminRequest(req, res, approve) {
+    var auth = await isAllowedKakaoUser(req);
+    if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
+
+    var parsed = pure.extractRequestId(req.body);
+    var requestId = parsed.requestId;
+    function say(text) {
+        res.json({
+            version: "2.0",
+            template: {
+                outputs: [{ simpleText: { text: text } }],
+                quickReplies: [{ label: "📋 관리자관리", action: "message", messageText: "관리자관리" }]
+            }
+        });
+    }
+    if (!requestId) { say("처리할 신청 id가 없습니다. '관리자관리'로 다시 시도해주세요."); return; }
+
+    var ref = db.collection("club_admin_requests").doc(String(requestId));
+    var doc = await ref.get();
+    if (!doc.exists) { say("해당 신청을 찾을 수 없습니다."); return; }
+    var d = doc.data() || {};
+    if (d.status !== "pending") { say("이미 처리된 신청입니다."); return; }
+
+    if (!approve) {
+        await ref.update({
+            status: "rejected",
+            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+        say("❌ 거절했습니다.\n대상: " + (d.club_name || d.club_id || ""));
+        return;
+    }
+
+    // 정원은 승인 시점에 다시 본다 — 신청이 접수된 뒤 3명이 찼을 수 있다.
+    var granted = await grantClubAdmin(d.club_id, d.requested_by);
+    if (!granted.added) {
+        await ref.update({
+            status: "rejected",
+            reject_reason: granted.reason,
+            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+        say(granted.reason === "full"
+            ? "관리자가 이미 3명이라 승인하지 않았습니다.\n대상: " + (d.club_name || "")
+            : granted.reason === "already_admin"
+                ? "이미 이 팀의 관리자입니다.\n대상: " + (d.club_name || "")
+                : "팀 문서를 찾을 수 없어 승인하지 않았습니다.");
+        return;
+    }
+
+    await ref.update({
+        status: "approved",
+        reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    say("✅ 승인했습니다.\n대상: " + (d.club_name || d.club_id || "")
+        + "\n관리자 " + granted.admins.length + "/" + pure.MAX_CLUB_ADMINS + "명");
+}
+
+exports.chatbotAdminApprove = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try { await resolveAdminRequest(req, res, true); } catch (error) {
+        console.error("chatbotAdminApprove 오류:", error);
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] } });
+    }
+});
+
+exports.chatbotAdminReject = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+    try { await resolveAdminRequest(req, res, false); } catch (error) {
+        console.error("chatbotAdminReject 오류:", error);
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] } });
+    }
+});
+
+// 스스로 관리자에서 빠진다. 팀을 그만둔 사람이 수정 권한을 쥔 채 남지 않도록.
+// 남을 빼는 건 못 한다 — 그건 운영자가 한다.
+exports.leaveClubAdmin = onCall(async function (request) {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    var uid = request.auth.uid;
+    var clubId = request.data && request.data.clubId;
+    if (!clubId) throw new HttpsError("invalid-argument", "clubId 가 필요합니다.");
+
+    var clubRef = db.collection("clubs").doc(String(clubId));
+    return await db.runTransaction(async function (tx) {
+        var snap = await tx.get(clubRef);
+        if (!snap.exists) throw new HttpsError("not-found", "팀을 찾을 수 없습니다.");
+        var result = pure.removeClubAdmin(snap.data(), uid);
+        if (!result.removed) return { status: "not_admin", remaining: result.admins.length };
+        tx.update(clubRef, { admins: result.admins });
+        return { status: "left", remaining: result.admins.length };
+    });
+});
 
 // 운영자에게 알린다. 실패해도 요청 문서는 남고 '클레임관리'로 따라잡을 수 있다.
 async function notifyClaimRequests(created, emailMasked) {

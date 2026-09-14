@@ -234,8 +234,30 @@
         auth_close: { ko: '닫기', en: 'Close' },
 
         // 인증 신청(verification)
+        // ── 팀 관리자 권한 ──
+        // 인증 사진과 요구하는 것이 다르다. 인증은 "이 팀이 활동한다"를, 관리자는
+        // "내가 이 팀 사람이다"를 보여야 한다. 공개된 인스타 사진은 앞의 것만
+        // 증명하므로, 여기서 그 예를 들면 남의 팀을 가져갈 수 있는 통로가 된다.
+        ad_title: { ko: '팀 관리자 신청', en: 'Request team admin' },
+        ad_desc: { ko: '관리자가 되면 이 팀 정보를 직접 고칠 수 있어요.<br>본인이 이 팀 사람이라는 걸 알 수 있는 사진을 올려주세요.<br><br>예) 팀 단톡방 화면 · 팀 유니폼 입고 찍은 사진 · 팀 인스타 계정 관리 화면<br>※ 다른 분 이름이나 연락처는 가리고 올려주세요.', en: 'Admins can edit this team\'s information directly.<br>Upload a photo showing that you belong to this team.<br><br>e.g. your team group chat, you in the team uniform, the team\'s Instagram account screen<br>※ Please mask other people\'s names and contact details.' },
+        ad_photo_label: { ko: '증빙 사진 (필수)', en: 'Proof photo (required)' },
+        ad_submit: { ko: '관리자 신청하기', en: 'Submit request' },
+        ad_apply_btn: { ko: '🙋 이 팀 관리자 신청', en: '🙋 Request team admin' },
+        ad_login_required: { ko: '관리자 신청은 로그인 후 가능합니다.', en: 'Please log in to request admin access.' },
+        ad_photo_required: { ko: '증빙 사진을 첨부해주세요.', en: 'Please attach a proof photo.' },
+        ad_done: { ko: '관리자 신청이 접수되었습니다!\n확인 후 권한이 부여됩니다.', en: 'Request submitted!\nAccess is granted after review.' },
+        ad_error: { ko: '관리자 신청 중 오류가 발생했습니다: ', en: 'An error occurred during the request: ' },
+        ad_pending: { ko: '⏳ 관리자 신청을 확인하고 있습니다.', en: '⏳ Your admin request is under review.' },
+        ad_rejected: { ko: '❌ 관리자 신청이 받아들여지지 않았습니다', en: '❌ Admin request was not accepted' },
+        ad_reapply: { ko: '🔄 다시 신청', en: '🔄 Apply again' },
+        ad_full: { ko: '이 팀은 관리자가 이미 3명입니다.', en: 'This team already has 3 admins.' },
+        ad_count: { ko: '관리자 {n}/3명', en: 'Admins {n}/3' },
+        ad_leave: { ko: '관리자에서 빠지기', en: 'Leave as admin' },
+        ad_leave_confirm: { ko: '이 팀의 관리자에서 빠질까요?\n더 이상 팀 정보를 고칠 수 없게 됩니다.', en: 'Leave as an admin of this team?\nYou will no longer be able to edit its information.' },
+        ad_leave_done: { ko: '관리자에서 빠졌습니다.', en: 'You are no longer an admin.' },
+        ad_leave_error: { ko: '처리 중 오류가 발생했습니다.', en: 'Something went wrong.' },
         vf_title: { ko: '인증 신청', en: 'Request verification' },
-        vf_desc: { ko: '팀 단체사진 또는 대회 참가 사진을 첨부해주세요.<br>관리자 확인 후 인증 배지가 부여됩니다.', en: 'Attach a team group photo or a tournament photo.<br>A badge is granted after admin review.' },
+        vf_desc: { ko: '이 팀이 실제로 운영 중인지 확인하는 용도예요.<br>팀 단체사진이나 대회 참가 사진이면 됩니다 — 인스타에 올렸던 사진도 괜찮아요.<br>확인되면 팀 이름 옆에 인증 배지가 붙습니다.', en: 'This confirms the team is actually active.<br>A team group photo or a tournament photo works — one you already posted on Instagram is fine.<br>Once confirmed, a badge appears next to the team name.' },
         vf_photo_label: { ko: '인증 사진 (필수)', en: 'Verification photo (required)' },
         vf_submit: { ko: '인증 신청하기', en: 'Submit request' },
         vf_login_required: { ko: '인증 신청은 로그인 후 가능합니다.', en: 'Please log in to request verification.' },

@@ -202,8 +202,83 @@ function kakaoLink(kind, id) {
     return { web_url: url, mobile_web_url: url };
 }
 
+// ── 팀 관리자 ────────────────────────────────────────────────────
+// 팀 하나를 여러 사람이 관리한다. 동호회 운영은 대개 한 사람이 하지 않고,
+// 담당자가 바뀌어도 팀 정보가 방치되지 않아야 한다.
+//
+// 정원 3명은 운영자가 정한 값이다. 최초 등록자도 이 3명 안에 든다 —
+// "등록자 1 + 관리자 3" 보다 "관리자 3명"이 설명하기 쉽다.
+var MAX_CLUB_ADMINS = 3;
+
+// 이 팀을 관리할 수 있는 uid 목록.
+//
+// admins 배열이 정본이지만, 그 필드가 생기기 전에 만들어진 문서에는 없다.
+// 그때는 registered_by 한 사람을 관리자로 본다 — 마이그레이션을 안 돌려도
+// 기존 소유자가 권한을 잃지 않는다. (firestore.rules 도 같은 폴백을 쓴다.
+// 두 곳의 규칙이 어긋나면 화면엔 버튼이 보이는데 저장은 거부되는 꼴이 된다.)
+function clubAdminUids(club) {
+    var c = club || {};
+    var out = [];
+    var list = Array.isArray(c.admins) ? c.admins : [];
+    for (var i = 0; i < list.length; i++) {
+        var s = String(list[i] == null ? "" : list[i]).trim();
+        if (s && out.indexOf(s) === -1) out.push(s);
+    }
+    if (!out.length && c.registered_by) {
+        var owner = String(c.registered_by).trim();
+        if (owner) out.push(owner);
+    }
+    return out;
+}
+
+function canManageClub(club, uid) {
+    var u = String(uid == null ? "" : uid).trim();
+    if (!u) return false;
+    return clubAdminUids(club).indexOf(u) !== -1;
+}
+
+// 지금 이 사람을 관리자로 받아도 되나. 막는 이유를 문자열로 돌려준다.
+function adminRequestBlockReason(club, uid) {
+    if (!club) return "not_found";
+    var u = String(uid == null ? "" : uid).trim();
+    if (!u) return "no_uid";
+    var admins = clubAdminUids(club);
+    if (admins.indexOf(u) !== -1) return "already_admin";
+    if (admins.length >= MAX_CLUB_ADMINS) return "full";
+    return null;
+}
+
+// 승인 시점에 다시 계산한다. 신청이 접수된 뒤 정원이 찼을 수 있다.
+function addClubAdmin(club, uid) {
+    var blocked = adminRequestBlockReason(club, uid);
+    if (blocked) return { admins: clubAdminUids(club), added: false, reason: blocked };
+    return {
+        admins: clubAdminUids(club).concat([String(uid).trim()]),
+        added: true,
+        reason: null
+    };
+}
+
+// 스스로 빠지기. 마지막 한 명이 나가면 팀은 관리자 없는 상태로 돌아간다 —
+// 그래야 팀을 떠난 사람이 수정 권한을 쥔 채 남지 않고, 다음 사람이 신청할 수
+// 있다. 막아두면 "그만뒀는데 못 빠지는" 쪽이 되어 더 나쁘다.
+function removeClubAdmin(club, uid) {
+    var u = String(uid == null ? "" : uid).trim();
+    var admins = clubAdminUids(club);
+    var at = admins.indexOf(u);
+    if (at === -1) return { admins: admins, removed: false, reason: "not_admin" };
+    var next = admins.slice(0, at).concat(admins.slice(at + 1));
+    return { admins: next, removed: true, reason: null };
+}
+
 module.exports = {
     escapeHtml: escapeHtml,
+    MAX_CLUB_ADMINS: MAX_CLUB_ADMINS,
+    clubAdminUids: clubAdminUids,
+    canManageClub: canManageClub,
+    adminRequestBlockReason: adminRequestBlockReason,
+    addClubAdmin: addClubAdmin,
+    removeClubAdmin: removeClubAdmin,
     SITE_ORIGIN: SITE_ORIGIN,
     deepLinkUrl: deepLinkUrl,
     kakaoLink: kakaoLink,

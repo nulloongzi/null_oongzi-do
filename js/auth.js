@@ -28,10 +28,33 @@ window.checkIsAdmin = async function (user) {
 };
 
 // 특정 팀에 대해 현재 유저가 삭제/수정 권한이 있는지
+// 이 팀을 관리할 수 있는 uid 목록. admins 가 정본이고, 그 필드가 생기기 전
+// 문서는 registered_by 한 사람을 관리자로 본다.
+//
+// firestore.rules 의 clubAdmins() · functions/lib/pure.js 의 clubAdminUids() 와
+// **같은 규칙이어야 한다.** 어긋나면 화면엔 수정 버튼이 보이는데 저장은 거부되는,
+// 사용자가 원인을 알 수 없는 상태가 된다.
+window.clubAdminUids = function (club) {
+    var c = club || {};
+    var out = [];
+    var list = Array.isArray(c.admins) ? c.admins : [];
+    for (var i = 0; i < list.length; i++) {
+        var v = String(list[i] == null ? '' : list[i]).trim();
+        if (v && out.indexOf(v) === -1) out.push(v);
+    }
+    if (!out.length && c.registered_by) {
+        var owner = String(c.registered_by).trim();
+        if (owner) out.push(owner);
+    }
+    return out;
+};
+
+window.MAX_CLUB_ADMINS = 3;
+
 window.canModifyClub = function (club) {
     if (!window.currentUser || !club) return false;
     if (window.isAdmin) return true;
-    return club.registered_by && club.registered_by === window.currentUser.uid;
+    return window.clubAdminUids(club).indexOf(window.currentUser.uid) !== -1;
 };
 
 window.loginWithGoogle = async function () {

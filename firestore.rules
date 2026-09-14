@@ -8,6 +8,31 @@ service cloud.firestore {
              && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // 이 팀을 관리할 수 있는 uid 목록.
+    //
+    // admins 가 정본이지만 그 필드가 생기기 전 문서에는 없다. 그때는
+    // registered_by 한 사람을 관리자로 본다 — 마이그레이션을 안 돌려도 기존
+    // 소유자가 권한을 잃지 않는다. functions/lib/pure.js 의 clubAdminUids 와
+    // 같은 규칙이다. 둘이 어긋나면 화면엔 버튼이 보이는데 저장은 거부된다.
+    function clubAdmins(d) {
+      return ('admins' in d && d.admins is list)
+             ? d.admins
+             : (d.registered_by != null ? [d.registered_by] : []);
+    }
+
+    function isClubManager(d) {
+      return request.auth != null && request.auth.uid in clubAdmins(d);
+    }
+
+    // admins 는 Functions(admin SDK)만 바꾼다. 클라이언트가 직접 고칠 수 있으면
+    // 자기 uid 를 끼워넣어 아무 팀이나 가져갈 수 있다 — 승인 절차가 무의미해진다.
+    // request.resource.data 는 '쓰기 후 문서 전체'라, 건드리지 않은 update 는
+    // 기존 값이 그대로 실려 와 통과한다.
+    function adminsUnchanged() {
+      return (('admins' in request.resource.data) ? request.resource.data.admins : [])
+          == (('admins' in resource.data) ? resource.data.admins : []);
+    }
+
     // 팀 문서 필드 타입·길이 검증 (doc 비대화·잘못된 타입 주입 방지).
     // 존재하는 필드에 대해서만 검사 — 부분 update(merge)도 통과.
     function clubFieldsValid() {
@@ -26,7 +51,9 @@ service cloud.firestore {
           // 데이터 신뢰도(guidelines.html 2-3): 최종 확인일 + 상태.
           // 소유자 수정은 곧 '지금도 맞다'는 확인이므로 폼 저장 때마다 갱신된다.
           && (!('last_verified_at' in d) || d.last_verified_at is timestamp)
-          && (!('data_status' in d) || d.data_status in ['active', 'needs_check', 'dormant']);
+          && (!('data_status' in d) || d.data_status in ['active', 'needs_check', 'dormant'])
+          // 관리자 정원 3명. 넘는 배열이 들어오면 그 자체가 잘못된 쓰기다.
+          && (!('admins' in d) || (d.admins is list && d.admins.size() <= 3));
     }
 
     // 픽업 스팟 필드 타입·길이 검증 (존재 필드만 검사 → 부분 update도 통과)
@@ -62,27 +89,41 @@ service cloud.firestore {
     match /clubs/{clubId} {
       allow read: if true;
 
-      // 새 팀 등록: 인증된 사용자가 자신을 registered_by로 기록, is_verified=false 강제, 필드 검증
+      // 새 팀 등록: 인증된 사용자가 자신을 registered_by 로 기록, is_verified=false 강제.
+      // 등록자가 곧 1번 관리자다. admins 를 함께 쓰더라도
+      // 본인 혼자만 넣을 수 있다 — 만들면서 남을 끼워넣지 못하게.
       allow create: if request.auth != null
                     && request.resource.data.registered_by == request.auth.uid
                     && request.resource.data.is_verified == false
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
+                    && (!('admins' in request.resource.data)
+                        || (request.resource.data.admins is list
+                            && request.resource.data.admins.size() == 1
+                            && request.auth.uid in request.resource.data.admins))
                     && clubFieldsValid();
 
-      // 업데이트: 관리자는 모든 필드(신뢰), 소유자는 is_verified/registered_by 보존 + 필드 검증
-      allow update: if isAdmin()
+      // 업데이트: 운영자는 모든 필드(신뢰), 팀 관리자는 is_verified/registered_by/
+      // admins 를 보존한 채 내용만. 인증 배지와 관리자 명단은 심사를 거친 값이라
+      // 본인이 스스로 올릴 수 없어야 한다.
+      // 정원 검사는 isAdmin() 바깥에 둔다. `isAdmin() || (...)` 구조라 운영자
+      // 경로는 clubFieldsValid() 를 타지 않아, 안에 두면 콘솔에서 4명짜리
+      // 배열이 그대로 들어간다. (Functions 는 admin SDK 라 룰을 통째로
+      // 우회하므로 서버의 정상 경로는 여기 걸리지 않는다.)
+      allow update: if (!('admins' in request.resource.data)
+                        || (request.resource.data.admins is list
+                            && request.resource.data.admins.size() <= 3))
+                    && (isAdmin()
                     || (request.auth != null
-                        && resource.data.registered_by != null
-                        && resource.data.registered_by == request.auth.uid
+                        && isClubManager(resource.data)
                         && request.resource.data.is_verified == resource.data.is_verified
                         && request.resource.data.registered_by == resource.data.registered_by
-                        && clubFieldsValid());
+                        && adminsUnchanged()
+                        && clubFieldsValid()));
 
-      // 삭제: 관리자 또는 소유자
+      // 삭제: 운영자 또는 팀 관리자
       allow delete: if isAdmin()
-                    || (request.auth != null
-                        && resource.data.registered_by == request.auth.uid);
+                    || (request.auth != null && isClubManager(resource.data));
     }
 
     // pickup_games: 픽업 스팟(발견형). 모두 읽기, 누구나 등록(무로그인=익명 인증 포함).
@@ -188,6 +229,41 @@ service cloud.firestore {
     // system: Cloud Functions만 접근 (토큰 캐시 등)
     match /system/{docId} {
       allow read, write: if false;
+    }
+
+    // club_admin_requests: 팀 관리자 권한 신청. 인증 요청과 같은 모양이다 —
+    // 사진을 올리고 운영자가 카톡에서 보고 승인한다.
+    //
+    // 인증 사진은 "이 팀이 실제로 운영 중이다"를 보이지만, 관리자 신청 사진은
+    // "내가 이 팀 사람이다"를 보여야 한다. 공개된 인스타 사진은 앞의 것만
+    // 증명하므로 증빙으로 못 쓴다(안내 문구가 단톡방 캡처 등을 요구한다).
+    //
+    // 승인·거절은 Functions(admin SDK)만 한다. 신청자가 자기 요청을 승인으로
+    // 바꿀 수 있으면 절차 전체가 무의미하다.
+    function adminReqFieldsValid() {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+               'club_id', 'club_name', 'photo_url',
+               'requested_by', 'requested_at', 'status', 'reviewed_at', 'reject_reason'
+             ])
+          && d.club_id is string && d.club_id.size() > 0 && d.club_id.size() <= 200
+          && (!('club_name' in d) || (d.club_name is string && d.club_name.size() <= 120))
+          && d.photo_url is string && d.photo_url.size() > 0 && d.photo_url.size() <= 1000
+          && d.requested_at is timestamp;
+    }
+
+    match /club_admin_requests/{requestId} {
+      // 신청자 본인은 자기 요청 상태를 봐야 한다(심사 중 / 거절 사유).
+      allow read: if isAdmin()
+                  || (request.auth != null
+                      && resource.data.requested_by == request.auth.uid);
+
+      allow create: if request.auth != null
+                    && request.resource.data.requested_by == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && adminReqFieldsValid();
+
+      allow update, delete: if false;
     }
 
     // club_claims: 초기 구글시트 접수 때 받은 팀 담당자 메일. Functions 전용.
