@@ -16,6 +16,9 @@ const vm = require('node:vm');
 
 const pure = require('../functions/lib/pure');
 
+// dom-utils.js 는 IIFE 안에서 window.* 에 붙인다. 통째로 실행해 위치 헬퍼를 얻는다.
+const domSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'dom-utils.js'), 'utf-8');
+
 // auth.js 는 firebase 전역에 의존하므로 필요한 두 함수만 꺼내 쓴다.
 const authSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'auth.js'), 'utf-8');
 const sandbox = { window: {}, console };
@@ -23,6 +26,7 @@ vm.createContext(sandbox);
 [/window\.clubAdminUids = function[\s\S]*?\n\};/, /window\.canModifyClub = function[\s\S]*?\n\};/]
     .forEach((re) => vm.runInContext(authSrc.match(re)[0], sandbox));
 vm.runInContext('window.MAX_CLUB_ADMINS = 3;', sandbox);
+vm.runInContext(domSrc, sandbox);
 const web = sandbox.window;
 
 // vm 안에서 만든 배열은 prototype 이 달라 deepStrictEqual 이 걸린다. 값만 본다.
@@ -75,5 +79,49 @@ describe('웹 canModifyClub 이 서버 canManageClub 과 같은 답을 낸다', 
     // 정원 상수가 세 곳에서 갈라지면 UI 는 신청을 받고 서버는 거절한다.
     test('정원 상수가 서버와 같다', () => {
         assert.strictEqual(web.MAX_CLUB_ADMINS, pure.MAX_CLUB_ADMINS);
+    });
+});
+
+describe('위치 공개 수준 — 웹과 서버가 같은 답을 낸다', () => {
+    // 규칙·서버·웹 세 곳에 같은 계산이 있다. 어긋나면 폼은 통과시키는데 저장이
+    // 거부되거나(사용자는 이유를 모른다), 반대로 흐렸다고 안내하고 정확한 값을
+    // 저장하는 최악이 된다.
+    const ADDRESSES = [
+        '서울 성북구 화랑로13길 144',
+        '경기도 성남시 분당구 양현로 262',
+        '세종특별자치시 다정남로 91',
+        '구리 여자중학교 체육관(경기도 구리시 벌말로 168)',
+        '하남종합운동장국민체육센터',
+        '경기 광명시 가림로 18 하안북초등학교',
+        ''
+    ];
+    ADDRESSES.forEach((addr) => {
+        test('areaLabel: ' + JSON.stringify(addr), () => {
+            assert.strictEqual(web.areaLabel(addr), pure.areaLabel(addr));
+        });
+    });
+
+    const COORDS = [37.6051234, 127.0573891, 35.1, 129.99999, 33.0, 38.5, 126.9];
+    test('roundToAreaGrid 가 서버와 비트 단위로 같다', () => {
+        COORDS.forEach((v) => {
+            assert.strictEqual(web.roundToAreaGrid(v), pure.roundToAreaGrid(v), 'v=' + v);
+        });
+    });
+
+    // 규칙은 v*200 이 정수인지로 판정한다. 웹이 만든 값이 그 판정을 통과해야
+    // 저장이 된다 — 여기가 어긋나면 '대략만'을 고른 팀이 저장을 못 한다.
+    test('웹이 만든 좌표는 규칙의 격자 판정을 통과한다', () => {
+        COORDS.forEach((v) => {
+            const r = web.roundToAreaGrid(v);
+            assert.ok(Math.abs(r * 200 - Math.round(r * 200)) < 0.000001, 'v=' + v + ' → ' + r);
+            assert.strictEqual(pure.isAreaGridAligned(r), true, 'v=' + v);
+        });
+    });
+
+    test('isAreaOnly 기본값이 서버와 같다', () => {
+        [{}, null, { location_precision: 'area' }, { location_precision: 'exact' },
+            { location_precision: 'rough' }].forEach((club) => {
+            assert.strictEqual(web.isAreaOnly(club), pure.isAreaOnly(club), JSON.stringify(club));
+        });
     });
 });

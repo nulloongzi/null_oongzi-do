@@ -401,3 +401,91 @@ describe('removeClubAdmin (스스로 빠지기)', () => {
         assert.strictEqual(r.reason, 'not_admin');
     });
 });
+
+describe('위치 공개 수준 — areaLabel (체육관 이름을 버리고 시군구만)', () => {
+    // 진짜 위험한 건 좌표보다 **체육관 이름**이다. 이름 + 시간표가 같이 보이면
+    // 대관에서 밀린 사람이 누가 쓰는지 특정할 수 있다(2026-09 실제 민원 사례).
+    const CASES = [
+        ['서울 성북구 화랑로13길 144', '서울 성북구'],
+        ['경기도 성남시 분당구 양현로 262', '경기도 성남시 분당구'],
+        ['세종특별자치시 다정남로 91', '세종특별자치시'],
+        ['경남 창원시 마산회원구 팔용로 280', '경남 창원시 마산회원구'],
+        ['부산 북구 덕천2길 10', '부산 북구'],
+        ['경기 광명시 가림로 18 하안북초등학교', '경기 광명시']
+    ];
+    CASES.forEach(([input, want]) => {
+        test(JSON.stringify(input), () => {
+            assert.strictEqual(pure.areaLabel(input), want);
+        });
+    });
+
+    // 실제 접수 표기는 "체육관 이름 + (주소)" 가 흔하다. 앞에서부터 자르면
+    // '구리 여자중학교' 의 '구리' 가 라벨이 되어 엉뚱해진다.
+    test('장소 이름이 앞에 오면 괄호 안 주소를 찾아낸다', () => {
+        assert.strictEqual(
+            pure.areaLabel('구리 여자중학교 체육관(경기도 구리시 벌말로 168)'),
+            '경기도 구리시');
+    });
+
+    // 주소가 아예 없는 입력도 흔하다. 억지로 만들지 않고 빈 값을 돌려주면
+    // 호출부가 좌표를 역지오코딩해 라벨을 만든다.
+    test('행정구역이 없으면 빈 문자열 — 억지로 만들지 않는다', () => {
+        assert.strictEqual(pure.areaLabel('하남종합운동장국민체육센터'), '');
+        assert.strictEqual(pure.areaLabel('오산 죽미 다목적 체육관'), '');
+        assert.strictEqual(pure.areaLabel(''), '');
+        assert.strictEqual(pure.areaLabel(null), '');
+    });
+
+    test('라벨에 번지·건물명이 절대 남지 않는다', () => {
+        CASES.concat([['구리 여자중학교 체육관(경기도 구리시 벌말로 168)', '']])
+            .forEach(([input]) => {
+                const label = pure.areaLabel(input);
+                if (!label) return;
+                assert.ok(!/\d/.test(label), '숫자가 남았다: ' + label);
+                assert.ok(!/(초등학교|중학교|고등학교|체육관|센터)/.test(label),
+                    '시설 이름이 남았다: ' + label);
+            });
+    });
+});
+
+describe('위치 공개 수준 — 격자 반올림', () => {
+    test('0.005° 격자에 맞춘다', () => {
+        assert.strictEqual(pure.roundToAreaGrid(37.6051234), 37.605);
+        assert.strictEqual(pure.roundToAreaGrid(127.0573), 127.055);
+    });
+
+    // 규칙(firestore.rules)이 같은 식으로 검증한다. 반올림 결과를 다시 넣어도
+    // 값이 그대로여야 통과한다 — 부동소수 때문에 어긋나면 저장이 거부된다.
+    test('반올림 결과는 멱등이고 정렬로 판정된다', () => {
+        [37.6051234, 127.0573, 35.1, 129.99999, 33.0, 38.5].forEach((v) => {
+            const r = pure.roundToAreaGrid(v);
+            assert.strictEqual(pure.roundToAreaGrid(r), r, '멱등 아님: ' + v);
+            assert.strictEqual(pure.isAreaGridAligned(r), true, '정렬 판정 실패: ' + v);
+        });
+    });
+
+    test('격자에서 벗어난 값은 정렬이 아니다', () => {
+        assert.strictEqual(pure.isAreaGridAligned(37.6051234), false);
+    });
+
+    test('숫자가 아니면 null / false', () => {
+        assert.strictEqual(pure.roundToAreaGrid('abc'), null);
+        assert.strictEqual(pure.isAreaGridAligned(NaN), false);
+        assert.strictEqual(pure.isAreaGridAligned(undefined), false);
+    });
+});
+
+describe('위치 공개 수준 — 기본값', () => {
+    // 필드가 없는 기존 문서를 조용히 뭉개면, 팀은 모르는 사이에 자기 팀이
+    // 지도에서 옮겨진 것처럼 보인다. 기본은 지금까지와 같은 '정확히'.
+    test('필드가 없으면 exact', () => {
+        assert.strictEqual(pure.locationPrecision({}), 'exact');
+        assert.strictEqual(pure.locationPrecision(null), 'exact');
+        assert.strictEqual(pure.isAreaOnly({}), false);
+    });
+    test("'area' 만 area 로 친다", () => {
+        assert.strictEqual(pure.isAreaOnly({ location_precision: 'area' }), true);
+        assert.strictEqual(pure.isAreaOnly({ location_precision: 'AREA' }), false);
+        assert.strictEqual(pure.isAreaOnly({ location_precision: 'rough' }), false);
+    });
+});

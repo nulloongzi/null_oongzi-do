@@ -307,6 +307,25 @@ window.openClubDetail = function (id, opts) {
     document.getElementById('sheetPrice').innerText = club.price ? window.i18nPrice(club.price) : window.t('no_fee');
     document.getElementById('sheetAddressVal').value = club.address;
 
+    // 대략 위치 팀이면 그렇다고 말해준다. 안 적으면 "성북구 일대"가 주소를
+    // 대충 적은 것처럼 읽혀서, 찾는 사람이 헛걸음하거나 신고를 넣는다.
+    var existingAreaNote = document.getElementById('sheetAreaNote');
+    if (existingAreaNote) existingAreaNote.remove();
+    if (window.isAreaOnly(club)) {
+        var addrEl = document.getElementById('sheetAddressVal');
+        var note = document.createElement('div');
+        note.id = 'sheetAreaNote';
+        note.style = 'font-size:12px;color:#8d6e63;line-height:1.5;margin-top:6px;display:flex;gap:6px;align-items:flex-start;';
+        var badge = document.createElement('span');
+        badge.style = 'flex:none;background:var(--nurungji-yellow);color:var(--nurungji-dark);border-radius:4px;padding:1px 6px;font-weight:600;';
+        badge.textContent = window.t('cd_area_only');
+        var text = document.createElement('span');
+        text.textContent = window.t('cd_area_only_note');
+        note.appendChild(badge);
+        note.appendChild(text);
+        (addrEl.parentElement.parentElement || addrEl.parentElement).appendChild(note);
+    }
+
     window.renderTimetables(club.schedule);
 
     // XSS 방지: target/link를 escape/sanitize 후 DOM 조립

@@ -262,6 +262,10 @@ window.openEditModal = function (club) {
         document.getElementById('regName').value = club.name || '';
         window.setRegTargetValue(club.target || '');
         document.getElementById('regAddress').value = club.address || '';
+        // 이미 '대략만'인 팀은 체크가 켜진 채로 열려야 한다. 꺼진 채로 열리면
+        // 다른 항목만 고쳐 저장해도 정확한 위치로 되돌아간다.
+        var areaEl = document.getElementById('regAreaOnly');
+        if (areaEl) areaEl.checked = window.isAreaOnly(club);
         document.getElementById('regPrice').value = club.price || '';
         // insta/link는 평탄화된 값이 있을 수 있고, contact 중첩 객체에 있을 수도 있음
         var insta = club.insta || (club.contact && club.contact.insta) || '';
@@ -379,6 +383,22 @@ window.geocodeOrPlace = function (address) {
                 }
             });
         });
+    });
+};
+
+// 뭉갠 좌표 → 시군구 라벨. 주소 문자열에서 행정구역을 못 찾았을 때만 쓴다.
+// 이미 격자로 반올림한 좌표를 넘기므로, 이 호출이 정확한 위치를 흘리지 않는다.
+window.reverseAreaLabel = function (coords) {
+    return new Promise(function (resolve) {
+        if (!window.kakao || !kakao.maps || !kakao.maps.services) { resolve(''); return; }
+        try {
+            new kakao.maps.services.Geocoder().coord2Address(
+                coords.lng, coords.lat, function (result, status) {
+                    if (status !== kakao.maps.services.Status.OK || !result[0]) { resolve(''); return; }
+                    var a = result[0].road_address || result[0].address;
+                    resolve(a ? window.areaLabel(a.address_name) : '');
+                });
+        } catch (e) { resolve(''); }
     });
 };
 
@@ -527,6 +547,33 @@ window.submitRegistration = async function () {
             }
         }
 
+        // ── 위치 공개 수준 ──
+        // '대략만'을 골랐으면 **여기서** 값을 뭉갠다. 화면에서만 흐리는 건 소용이
+        // 없다 — clubs 는 allow read: if true 라 Firestore 를 직접 읽으면 정확한
+        // 값이 그대로 나온다. 원본 주소는 브라우저 밖으로 나가지 않는다.
+        var areaOnlyEl = document.getElementById('regAreaOnly');
+        var areaOnly = !!(areaOnlyEl && areaOnlyEl.checked);
+        if (areaOnly) {
+            coords = {
+                lat: window.roundToAreaGrid(coords.lat),
+                lng: window.roundToAreaGrid(coords.lng)
+            };
+            var label = window.areaLabel(address);
+            if (!label) {
+                // "하남종합운동장국민체육센터" 처럼 주소가 아예 없는 입력. 뭉갠
+                // 좌표를 거꾸로 물어 시군구를 얻는다. 그마저 실패하면 저장을
+                // 멈춘다 — 라벨이 없다고 원문을 그대로 두면 흐리려던 게 무의미해진다.
+                label = await window.reverseAreaLabel(coords);
+            }
+            if (!label) {
+                btn.innerText = window.t('reg_submit');
+                btn.disabled = false;
+                window.showRegError(window.t('reg_area_label_fail'));
+                return;
+            }
+            address = label;
+        }
+
         var isEditing = !!__capturedEditingClubId;
         var clubId = isEditing ? __capturedEditingClubId : generateId();
 
@@ -537,6 +584,7 @@ window.submitRegistration = async function () {
                 target: target,
                 address: address,
                 coordinates: coords,
+                location_precision: areaOnly ? 'area' : 'exact',
                 schedule: schedule,
                 schedule_raw: schedule_raw,
                 price: price,
@@ -605,6 +653,7 @@ window.submitRegistration = async function () {
                 registered_by: window.currentUser.uid,
                 address: address,
                 coordinates: coords,
+                location_precision: areaOnly ? 'area' : 'exact',
                 schedule: schedule,
                 schedule_raw: schedule_raw,
                 price: price,

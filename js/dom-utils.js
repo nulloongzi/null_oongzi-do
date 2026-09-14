@@ -79,3 +79,48 @@
         return s || 'photo';
     };
 })();
+
+// ── 위치 공개 수준 ──────────────────────────────────────────────
+// 팀은 대개 학교·구민 체육관을 빌려 쓴다. 장소와 시간표를 같이 공개하면
+// "그 체육관 그 시간에 누가 쓰는지"가 누구에게나 보인다 — 대관에서 밀린 사람이
+// 찾아가 민원을 넣은 일이 실제로 있었다(2026-09).
+//
+// 'area' 를 고른 팀은 **정확한 좌표를 아예 저장하지 않는다.** clubs 는
+// allow read: if true 라서, 화면에서만 흐리면 Firestore 를 직접 읽어 그대로
+// 꺼낼 수 있다. firestore.rules 의 gridAligned() 가 저장 단계에서 강제한다.
+//
+// 이 세 함수는 functions/lib/pure.js 와 **같은 규칙**이어야 한다
+// (tests/club-admins.test.js 가 대조한다).
+window.AREA_GRID_DIVISOR = 200; // 1/0.005° ≈ 위도 550m
+
+window.roundToAreaGrid = function (v) {
+    var n = Number(v);
+    if (!isFinite(n)) return null;
+    return Math.round(n * window.AREA_GRID_DIVISOR) / window.AREA_GRID_DIVISOR;
+};
+
+window.areaLabel = function (address) {
+    var SIDO = /^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|충청|전라|경상)/;
+    var raw = String(address == null ? '' : address)
+        .replace(/[()[\]]/g, ' ')
+        .trim().replace(/\s+/g, ' ');
+    if (!raw) return '';
+    var parts = raw.split(' ');
+    var start = -1;
+    for (var i = 0; i < parts.length; i++) {
+        if (SIDO.test(parts[i])) { start = i; break; }
+    }
+    if (start === -1) return '';
+    var out = [parts[start]];
+    for (var j = start + 1; j < parts.length && out.length < 3; j++) {
+        if (!/[시군구]$/.test(parts[j])) break;
+        out.push(parts[j]);
+    }
+    return out.join(' ');
+};
+
+// 기본은 '정확히'. 필드가 없는 기존 문서를 조용히 뭉개면 팀은 모르는 사이에
+// 자기 팀이 지도에서 옮겨진 것처럼 보게 된다.
+window.isAreaOnly = function (club) {
+    return !!club && club.location_precision === 'area';
+};

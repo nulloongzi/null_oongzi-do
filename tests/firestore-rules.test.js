@@ -756,3 +756,61 @@ describe('club_admin_requests 룰 (관리자 신청)', () => {
         await assertFails(as('nosy').collection('club_admin_requests').doc('r1').get());
     });
 });
+
+describe('위치 공개 수준 — 대략만 고른 팀은 정확한 좌표를 저장할 수 없다', () => {
+    // clubs 는 allow read: if true 다. 화면에서만 흐리면 Firestore 를 직접 읽어
+    // 정확한 값이 그대로 나온다. 그래서 저장 단계에서 막는 게 유일하게 의미 있다.
+    const EXACT = { lat: 37.6051234, lng: 127.0573891 };
+    const COARSE = { lat: Math.round(37.6051234 * 200) / 200, lng: Math.round(127.0573891 * 200) / 200 };
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('clubs').doc('loc-1').set({
+                name: '위치팀', admins: ['loc-owner'], registered_by: 'loc-owner', is_verified: false
+            });
+        });
+    });
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    const club = () => as('loc-owner').collection('clubs').doc('loc-1');
+
+    test('area 인데 정확한 좌표면 거부', async () => {
+        await assertFails(club().update({ location_precision: 'area', coordinates: EXACT }));
+    });
+
+    test('area + 격자에 맞춘 좌표면 통과', async () => {
+        await assertSucceeds(club().update({ location_precision: 'area', coordinates: COARSE }));
+    });
+
+    // 여기가 진짜 급소: 이미 area 인 팀이 좌표만 정확한 값으로 덮어쓰면
+    // 검사를 빠져나갈 수 있다(문서에는 area 가 그대로 남아 있으므로).
+    test('이미 area 인 팀이 좌표만 정확한 값으로 바꾸는 것도 거부', async () => {
+        // 앞 테스트 결과에 기대지 않고 직접 심는다 — 체이닝하면 앞이 깨졌을 때
+        // 이 테스트가 엉뚱한 이유로 통과해버린다.
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('clubs').doc('loc-3').set({
+                name: '이미area', admins: ['loc-owner'], registered_by: 'loc-owner',
+                is_verified: false, location_precision: 'area', coordinates: COARSE
+            });
+        });
+        await assertFails(as('loc-owner').collection('clubs').doc('loc-3').update({ coordinates: EXACT }));
+        await assertSucceeds(as('loc-owner').collection('clubs').doc('loc-3').update({ price: '월 3만원' }));
+    });
+
+    test('exact 는 정확한 좌표 그대로 통과', async () => {
+        await assertSucceeds(club().update({ location_precision: 'exact', coordinates: EXACT }));
+    });
+
+    test('모르는 값은 거부 — 오타가 조용히 exact 로 떨어지면 안 된다', async () => {
+        await assertFails(club().update({ location_precision: 'rough' }));
+    });
+
+    // 운영자 경로(isAdmin)가 clubFieldsValid 를 건너뛰므로 콘솔에서 뚫릴 수 있다.
+    test('운영자도 area 팀에 정확한 좌표를 넣을 수 없다', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('clubs').doc('loc-2').set({
+                name: '위치팀2', admins: ['x'], is_verified: false, location_precision: 'area'
+            });
+        });
+        await assertFails(as('admin-uid').collection('clubs').doc('loc-2').update({ coordinates: EXACT }));
+    });
+});

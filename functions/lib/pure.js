@@ -271,8 +271,84 @@ function removeClubAdmin(club, uid) {
     return { admins: next, removed: true, reason: null };
 }
 
+// ── 위치 공개 수준 ───────────────────────────────────────────────
+// 팀은 대개 학교·구민 체육관을 빌려 쓴다. 장소와 시간표를 함께 공개하면
+// "그 체육관 그 시간에 누가 쓰는지"가 누구에게나 보인다 — 대관에서 밀린
+// 사람이 그걸 보고 찾아가 민원을 넣은 일이 실제로 있었다(2026-09, 교사 동호회).
+//
+// 그래서 팀이 공개 수준을 고른다. 'area' 를 고르면 **화면에서만 흐리는 게
+// 아니라 애초에 정확한 좌표를 저장하지 않는다.** clubs 는 allow read: if true
+// 라서, 정확한 값을 두고 UI 에서만 가리면 Firestore 를 직접 읽어 그대로 꺼낸다.
+//
+// 격자 0.005° ≈ 위도 550m · 경도 440m(위도 37° 기준). 동네를 찾는 데는 충분하고
+// 건물 한 채를 짚기에는 모자란 크기를 노렸다.
+var AREA_GRID_DIVISOR = 200; // 1/0.005
+
+// 저장용 좌표. 규칙(firestore.rules)이 **같은 식**으로 검증하므로 식을 바꾸면
+// 양쪽을 함께 바꿔야 한다 — 부동소수 결과가 비트 단위로 같아야 통과한다.
+function roundToAreaGrid(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return null;
+    return Math.round(n * AREA_GRID_DIVISOR) / AREA_GRID_DIVISOR;
+}
+
+function isAreaGridAligned(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return false;
+    return roundToAreaGrid(n) === n;
+}
+
+// 주소에서 시군구까지만 남긴다. 체육관 이름이 진짜 위험한 부분이라 통째로 버린다.
+//   "서울 성북구 화랑로13길 144"                    → "서울 성북구"
+//   "경기도 성남시 분당구 양현로 262"               → "경기도 성남시 분당구"
+//   "구리 여자중학교 체육관(경기도 구리시 벌말로 168)" → "경기도 구리시"
+//
+// 앞에서부터 자르지 않고 **행정구역 토큰을 찾아서** 시작한다. 실제 입력은
+// "체육관 이름 + (주소)" 처럼 장소 이름이 앞에 오는 경우가 많아, 첫 토큰을
+// 그대로 쓰면 엉뚱한 말("구리 여자중학교" 의 '구리')이 라벨이 된다.
+//
+// 못 찾으면 빈 문자열이다 — "하남종합운동장국민체육센터" 처럼 주소가 아예 없는
+// 입력도 흔하다. 그때는 호출부가 좌표를 역지오코딩해 라벨을 만든다.
+var SIDO_PREFIX = /^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|충청|전라|경상)/;
+
+function areaLabel(address) {
+    var raw = String(address == null ? "" : address)
+        .replace(/[()[\]]/g, " ")
+        .trim().replace(/\s+/g, " ");
+    if (!raw) return "";
+    var parts = raw.split(" ");
+    var start = -1;
+    for (var i = 0; i < parts.length; i++) {
+        if (SIDO_PREFIX.test(parts[i])) { start = i; break; }
+    }
+    if (start === -1) return "";
+    var out = [parts[start]];
+    for (var j = start + 1; j < parts.length && out.length < 3; j++) {
+        if (!/[시군구]$/.test(parts[j])) break;
+        out.push(parts[j]);
+    }
+    return out.join(" ");
+}
+
+// 'exact' 가 기본이다. 필드가 없는 기존 문서는 지금까지처럼 정확히 보인다 —
+// 조용히 뭉개면 팀이 모르는 사이에 지도에서 옮겨진 것처럼 보인다.
+function locationPrecision(club) {
+    var v = club && club.location_precision;
+    return v === "area" ? "area" : "exact";
+}
+
+function isAreaOnly(club) {
+    return locationPrecision(club) === "area";
+}
+
 module.exports = {
     escapeHtml: escapeHtml,
+    AREA_GRID_DIVISOR: AREA_GRID_DIVISOR,
+    roundToAreaGrid: roundToAreaGrid,
+    isAreaGridAligned: isAreaGridAligned,
+    areaLabel: areaLabel,
+    locationPrecision: locationPrecision,
+    isAreaOnly: isAreaOnly,
     MAX_CLUB_ADMINS: MAX_CLUB_ADMINS,
     clubAdminUids: clubAdminUids,
     canManageClub: canManageClub,

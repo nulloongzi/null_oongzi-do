@@ -149,6 +149,18 @@ window.initMarkers = function () {
             marker = new kakao.maps.Marker({ position: latlng, image: defaultMarkerImage });
         }
 
+        // 대략 위치 팀은 반경 원을 함께 그린다. 마커만 두면 '여기'로 읽히는데,
+        // 좌표가 이미 격자로 뭉개져 있어 실제로는 이 원 어딘가라는 뜻이다.
+        var areaCircle = null;
+        if (window.isAreaOnly && window.isAreaOnly(club)) {
+            areaCircle = new kakao.maps.Circle({
+                center: latlng, radius: 550,
+                strokeWeight: 1, strokeColor: '#fac710', strokeOpacity: 0.8, strokeStyle: 'shortdash',
+                fillColor: '#fac710', fillOpacity: 0.18
+            });
+            areaCircle.setMap(window.map);
+        }
+
         var content = buildClubLabelEl(club, true);
         var xAnc = 0.5, yAnc = 1;
         if (club.angle !== undefined) xAnc = 0.5 - (Math.cos(club.angle) * 0.5);
@@ -157,7 +169,9 @@ window.initMarkers = function () {
         if (club.is_urgent) overlay.setMap(window.map);
         kakao.maps.event.addListener(marker, 'click', function () { window.openClubDetail(club.id); });
 
-        window.markers.push({ marker: marker, overlay: overlay, club: club, isVisible: true });
+        // 원도 markers 에 담아야 한다 — 지도에 직접 붙는 객체라, 여기 안 넣으면
+        // teardownMarkers 가 못 지워 픽업 탭으로 옮겨도 그대로 남는다.
+        window.markers.push({ marker: marker, overlay: overlay, circle: areaCircle, club: club, isVisible: true });
     });
 
     // Add non-urgent to clusterer
