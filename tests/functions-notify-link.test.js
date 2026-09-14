@@ -33,14 +33,26 @@ function makeRef(p) {
         set: async () => {}, update: async () => {}, delete: async () => {}
     };
 }
-const emptyQuery = { get: async () => ({ empty: true, size: 0, docs: [], forEach() {} }) };
+// 컬렉션별로 쿼리 결과를 심을 수 있게 한다(기본은 빈 결과).
+let queryDocs = {};
+function resultFor(name) {
+    const docs = (queryDocs[name] || []).map((d) => ({ id: d.id, data: () => d.data }));
+    const snap = {
+        empty: docs.length === 0, size: docs.length, docs,
+        forEach(fn) { docs.forEach(fn); }
+    };
+    const chain = {
+        get: async () => snap,
+        where: () => chain, limit: () => chain, orderBy: () => chain
+    };
+    return chain;
+}
 function makeCollection(name) {
+    const chain = resultFor(name);
     return {
         doc: (id) => makeRef(name + '/' + id),
         add: async () => makeRef(name + '/new'),
-        where: () => ({ ...emptyQuery, where: () => emptyQuery, limit: () => emptyQuery }),
-        limit: () => emptyQuery,
-        get: emptyQuery.get
+        where: chain.where, limit: chain.limit, orderBy: chain.orderBy, get: chain.get
     };
 }
 
@@ -89,6 +101,7 @@ after(() => { Object.assign(console, _quiet); });
 // 토큰 갱신 경로를 타지 않도록 유효한 access token 을 캐시에 심어둔다.
 beforeEach(() => {
     sent = [];
+    queryDocs = {};
     docs = { 'system/kakao_token': { access_token: 'tok', expires_at: Date.now() + 3600e3 } };
 });
 
@@ -154,5 +167,60 @@ describe('인증 신청 알림 링크 (onVerificationCreated)', () => {
             status: 'pending', club_name: '옛날팀'
         }));
         assert.strictEqual(sentLink(0).web_url, 'https://do.nulloongzi.com');
+    });
+});
+
+describe('인증관리 카드 — 사진을 실제로 확인할 수 있나 (chatbotPending)', () => {
+    // 운영자가 카톡에서 신청 사진을 눌러도 원본으로 못 갔다. 썸네일에 링크가 없어서다.
+    // 관리자 권한 신청에도 같은 카드를 쓸 참이라, 증빙을 못 보면 승인 자체가 성립하지 않는다.
+    const PHOTO = 'https://firebasestorage.example/v0/b/x/o/p.jpg?alt=media&token=abc';
+
+    function pendingReq() {
+        queryDocs['admin_kakao_ids'] = [];
+        docs['admin_kakao_ids/kakao-1'] = { ok: true };
+        queryDocs['verification_requests'] = [
+            { id: 'req-1', data: { club_name: '테스트팀', photo_url: PHOTO, status: 'pending' } }
+        ];
+        return { body: { userRequest: { user: { id: 'kakao-1' } } } };
+    }
+    function capture() {
+        let out = null;
+        return { res: { json: (v) => { out = v; }, status() { return this; }, send() {} }, get: () => out };
+    }
+    async function card() {
+        const c = capture();
+        await fns.chatbotPending(pendingReq(), c.res);
+        return c.get().template.outputs[0].carousel.items[0];
+    }
+
+    test('사진 원본으로 가는 버튼이 있다', async () => {
+        const item = await card();
+        const link = item.buttons.find((b) => b.action === 'webLink');
+        assert.ok(link, 'webLink 버튼이 없다 — 운영자가 사진을 크게 볼 방법이 없다');
+        assert.strictEqual(link.webLinkUrl, PHOTO);
+    });
+
+    test('썸네일을 눌러도 사진으로 간다', async () => {
+        const item = await card();
+        assert.strictEqual(item.thumbnail.link.web, PHOTO);
+    });
+
+    // 세로로 긴 단톡방 캡처가 잘리면 정작 봐야 할 부분이 사라진다.
+    test('썸네일이 잘리지 않는다 (fixedRatio)', async () => {
+        const item = await card();
+        assert.strictEqual(item.thumbnail.fixedRatio, true);
+    });
+
+    // basicCard 버튼 상한이 3이라 더 늘리면 카드가 통째로 안 뜬다.
+    test('버튼은 3개를 넘지 않는다', async () => {
+        const item = await card();
+        assert.ok(item.buttons.length <= 3, '버튼 ' + item.buttons.length + '개 — 카카오 상한 초과');
+    });
+
+    test('승인·거절 버튼은 그대로 남아 있다', async () => {
+        const item = await card();
+        const blocks = item.buttons.filter((b) => b.action === 'block');
+        assert.strictEqual(blocks.length, 2);
+        blocks.forEach((b) => assert.strictEqual(b.extra.request_id, 'req-1'));
     });
 });
