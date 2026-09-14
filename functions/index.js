@@ -325,8 +325,14 @@ exports.chatbotPending = onRequest({ cors: true, invoker: "public" }, async func
             items.push({
                 title: d.club_name,
                 description: "신청일: " + dateStr,
-                thumbnail: { imageUrl: d.photo_url },
+                // fixedRatio: 카카오 썸네일은 기본이 '잘라서 채우기'다. 단톡방 캡처처럼
+                // 세로로 긴 사진은 위아래가 날아가 정작 봐야 할 부분이 안 보인다.
+                // link: 썸네일을 눌러도 사진으로 가게 한다(전엔 이미지만 박혀 있었다).
+                thumbnail: { imageUrl: d.photo_url, fixedRatio: true, link: { web: d.photo_url } },
                 buttons: [
+                    // 보고 나서 판단하는 순서라 원본 보기를 맨 앞에 둔다.
+                    // basicCard 버튼은 최대 3개 — 여기가 상한이다.
+                    { label: "🔍 사진 크게 보기", action: "webLink", webLinkUrl: d.photo_url },
                     { label: "✅ 승인", action: "block", blockId: "69dceb1b8b61cd58b1783efd", extra: { request_id: doc.id, club_name: d.club_name } },
                     { label: "❌ 거절", action: "block", blockId: "69dcebea3ef175f7be5c15e2", extra: { request_id: doc.id, club_name: d.club_name } }
                 ]

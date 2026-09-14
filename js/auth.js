@@ -296,8 +296,14 @@ window.checkClubClaims = async function () {
             if (window.track) window.track('club_claim_requested', { count: (d.matches || []).length });
             return;
         }
-        // 메일이 검증되지 않아 매칭을 못 한 경우에만 인증을 권한다. 검증 여부를
-        // 서버가 판단해 돌려주므로, 매칭될 팀이 없는 사람은 이 안내를 안 본다.
+        // 이메일 미검증이라 매칭을 못 돌린 경우.
+        //
+        // 주의: 서버(claimMyClubs)는 club_claims 를 보기 **전에** emailVerified 로
+        // 먼저 끊는다. 그래서 이 상태는 "당신 팀이 있는데 인증만 남았다"가 아니라
+        // "인증이 안 돼서 확인조차 못 했다"는 뜻이다 — 시트에 없는 사람에게도 뜬다.
+        // 순서를 뒤집으면 이 안내가 정확해지는 대신, 미인증 상태에서 "이 메일이
+        // 시트에 있다"를 알 수 있게 된다(이메일 가입은 검증이 없으므로 남의 주소로
+        // 떠볼 수 있다). 지금은 덜 새는 쪽을 택했다.
         if (d.status === 'needs_verification') {
             if (confirm(window.t('claim_needs_verification'))) {
                 try {
