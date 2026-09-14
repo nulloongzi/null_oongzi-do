@@ -256,6 +256,14 @@
         ad_leave_confirm: { ko: '이 팀의 관리자에서 빠질까요?\n더 이상 팀 정보를 고칠 수 없게 됩니다.', en: 'Leave as an admin of this team?\nYou will no longer be able to edit its information.' },
         ad_leave_done: { ko: '관리자에서 빠졌습니다.', en: 'You are no longer an admin.' },
         ad_leave_error: { ko: '처리 중 오류가 발생했습니다.', en: 'Something went wrong.' },
+        // ── 위치 공개 수준 ──
+        // 학교 체육관을 쓰는 팀이 많다. 장소+시간표가 같이 공개되면 대관에서 밀린
+        // 사람이 누가 쓰는지 알 수 있어, 실제로 민원을 받은 팀이 있었다(2026-09).
+        reg_area_only: { ko: '대략적인 위치만 공개', en: 'Show approximate location only' },
+        reg_area_only_desc: { ko: '지도에 정확한 핀 대신 동네 범위로 표시하고, 주소는 시·군·구까지만 보입니다. 체육관 이름과 상세 주소는 저장하지 않습니다. 학교나 공공 체육관을 빌려 쓰는 팀에 권합니다.', en: 'Shows a neighbourhood area instead of an exact pin, and the address only down to the district. The venue name and full address are not stored. Recommended for teams renting school or public gyms.' },
+        reg_area_label_fail: { ko: '이 주소로는 동네 범위를 만들 수 없습니다. 지도에서 위치를 찍어주세요.', en: 'Could not derive an area from this address. Please pick the location on the map.' },
+        cd_area_only: { ko: '대략 위치', en: 'Approximate' },
+        cd_area_only_note: { ko: '이 팀은 대략적인 위치만 공개합니다. 정확한 장소는 팀에 문의해주세요.', en: 'This team shares only an approximate location. Please contact them for the exact venue.' },
         vf_title: { ko: '인증 신청', en: 'Request verification' },
         vf_desc: { ko: '이 팀이 실제로 운영 중인지 확인하는 용도예요.<br>팀 단체사진이나 대회 참가 사진이면 됩니다 — 인스타에 올렸던 사진도 괜찮아요.<br>확인되면 팀 이름 옆에 인증 배지가 붙습니다.', en: 'This confirms the team is actually active.<br>A team group photo or a tournament photo works — one you already posted on Instagram is fine.<br>Once confirmed, a badge appears next to the team name.' },
         vf_photo_label: { ko: '인증 사진 (필수)', en: 'Verification photo (required)' },

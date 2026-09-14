@@ -271,8 +271,136 @@ function removeClubAdmin(club, uid) {
     return { admins: next, removed: true, reason: null };
 }
 
+// ── 위치 공개 수준 ───────────────────────────────────────────────
+// 팀은 대개 학교·구민 체육관을 빌려 쓴다. 장소와 시간표를 함께 공개하면
+// "그 체육관 그 시간에 누가 쓰는지"가 누구에게나 보인다 — 대관에서 밀린
+// 사람이 그걸 보고 찾아가 민원을 넣은 일이 실제로 있었다(2026-09, 교사 동호회).
+//
+// 그래서 팀이 공개 수준을 고른다. 'area' 를 고르면 **화면에서만 흐리는 게
+// 아니라 애초에 정확한 좌표를 저장하지 않는다.** clubs 는 allow read: if true
+// 라서, 정확한 값을 두고 UI 에서만 가리면 Firestore 를 직접 읽어 그대로 꺼낸다.
+//
+// 격자 0.005° ≈ 위도 550m · 경도 440m(위도 37° 기준). 동네를 찾는 데는 충분하고
+// 건물 한 채를 짚기에는 모자란 크기를 노렸다.
+var AREA_GRID_DIVISOR = 200; // 1/0.005
+
+// 저장용 좌표. 규칙(firestore.rules)이 **같은 식**으로 검증하므로 식을 바꾸면
+// 양쪽을 함께 바꿔야 한다 — 부동소수 결과가 비트 단위로 같아야 통과한다.
+function roundToAreaGrid(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return null;
+    return Math.round(n * AREA_GRID_DIVISOR) / AREA_GRID_DIVISOR;
+}
+
+function isAreaGridAligned(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return false;
+    return roundToAreaGrid(n) === n;
+}
+
+// 주소에서 시군구까지만 남긴다. 체육관 이름이 진짜 위험한 부분이라 통째로 버린다.
+//   "서울 성북구 화랑로13길 144"                    → "서울 성북구"
+//   "경기도 성남시 분당구 양현로 262"               → "경기도 성남시 분당구"
+//   "구리 여자중학교 체육관(경기도 구리시 벌말로 168)" → "경기도 구리시"
+//
+// 앞에서부터 자르지 않고 **행정구역 토큰을 찾아서** 시작한다. 실제 입력은
+// "체육관 이름 + (주소)" 처럼 장소 이름이 앞에 오는 경우가 많아, 첫 토큰을
+// 그대로 쓰면 엉뚱한 말("구리 여자중학교" 의 '구리')이 라벨이 된다.
+//
+// 못 찾으면 빈 문자열이다 — "하남종합운동장국민체육센터" 처럼 주소가 아예 없는
+// 입력도 흔하다. 그때는 호출부가 좌표를 역지오코딩해 라벨을 만든다.
+var SIDO_PREFIX = /^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|충청|전라|경상)/;
+
+function areaLabel(address) {
+    var raw = String(address == null ? "" : address)
+        .replace(/[()[\]]/g, " ")
+        .trim().replace(/\s+/g, " ");
+    if (!raw) return "";
+    var parts = raw.split(" ");
+    var start = -1;
+    for (var i = 0; i < parts.length; i++) {
+        if (SIDO_PREFIX.test(parts[i])) { start = i; break; }
+    }
+    if (start === -1) return "";
+    var out = [parts[start]];
+    for (var j = start + 1; j < parts.length && out.length < 3; j++) {
+        if (!/[시군구]$/.test(parts[j])) break;
+        out.push(parts[j]);
+    }
+    return out.join(" ");
+}
+
+// 'exact' 가 기본이다. 필드가 없는 기존 문서는 지금까지처럼 정확히 보인다 —
+// 조용히 뭉개면 팀이 모르는 사이에 지도에서 옮겨진 것처럼 보인다.
+function locationPrecision(club) {
+    var v = club && club.location_precision;
+    return v === "area" ? "area" : "exact";
+}
+
+function isAreaOnly(club) {
+    return locationPrecision(club) === "area";
+}
+
+// ── 장소 검색 질의 변형 ──────────────────────────────────────────
+// 주소 검색이 0건이면 카카오 키워드(장소) 검색으로 넘어간다. 그런데 지금까지는
+// 입력 문자열을 **통째로 한 번만** 던지고, 0건이면 그대로 포기했다.
+//
+// 사람이 쓰는 표기는 "광남초등학교 체육관", "오산 죽미 다목적 체육관" 처럼
+// 시설 종류가 뒤에 붙는다. 카카오에 '광남초등학교' 라는 장소는 있어도
+// '광남초등학교 체육관' 이라는 이름의 장소는 없을 수 있고, 그러면 실패한다 —
+// 사용자는 지도에서 핀을 직접 찍어야 한다.
+//
+// 그래서 좁은 질의부터 넓은 질의까지 차례로 시도한다.
+//   "광남초등학교 체육관" → 원문 → 붙여쓰기 → 시설어 제거
+// 붙여쓰기 변형을 넣는 이유는 POI 이름이 띄어쓰기 없이 등록된 경우가 많아서다.
+//
+// 뒤에서 떼는 말은 **정해진 목록**으로만 한정한다. 아무 토큰이나 떼면
+// "서울 강남구 삼성로135길 42" 에서 번지가 날아가 엉뚱한 곳을 찍는다.
+var FACILITY_TAIL = [
+    "국민체육센터", "다목적체육관", "실내체육관", "체육센터", "체육관",
+    "다목적", "실내", "강당", "경기장", "운동장", "코트", "센터", "관"
+];
+
+function placeQueryVariants(raw) {
+    var base = String(raw == null ? "" : raw).trim().replace(/\s+/g, " ");
+    if (!base) return [];
+
+    var out = [];
+    function push(v) {
+        var t = String(v || "").trim().replace(/\s+/g, " ");
+        if (t && out.indexOf(t) === -1) out.push(t);
+    }
+
+    push(base);
+    push(base.replace(/\s+/g, ""));
+
+    // 뒤쪽 시설어를 떼어 낸 형태. 토큰이 하나만 남을 때까지만.
+    var parts = base.split(" ");
+    var changed = false;
+    while (parts.length > 1) {
+        var last = parts[parts.length - 1];
+        if (FACILITY_TAIL.indexOf(last) === -1) break;
+        parts.pop();
+        changed = true;
+    }
+    if (changed) {
+        push(parts.join(" "));
+        push(parts.join(""));
+    }
+
+    // 질의 한 번이 곧 API 호출 한 번이다. 넓게 퍼뜨리기보다 네 번에서 끊는다.
+    return out.slice(0, 4);
+}
+
 module.exports = {
     escapeHtml: escapeHtml,
+    placeQueryVariants: placeQueryVariants,
+    AREA_GRID_DIVISOR: AREA_GRID_DIVISOR,
+    roundToAreaGrid: roundToAreaGrid,
+    isAreaGridAligned: isAreaGridAligned,
+    areaLabel: areaLabel,
+    locationPrecision: locationPrecision,
+    isAreaOnly: isAreaOnly,
     MAX_CLUB_ADMINS: MAX_CLUB_ADMINS,
     clubAdminUids: clubAdminUids,
     canManageClub: canManageClub,

@@ -19,6 +19,7 @@
             window.markers.forEach(function (m) {
                 if (m.marker) m.marker.setMap(null);
                 if (m.overlay) m.overlay.setMap(null);
+                if (m.circle) m.circle.setMap(null);
             });
             window.markers = [];
         }

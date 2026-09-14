@@ -382,6 +382,55 @@ describe('geocodeAddress / nearestStation (복원된 함수)', () => {
             '카카오 호스트인데 undici 헤더가 나감');
     });
 
+    // "광남초등학교 체육관" 처럼 시설 종류가 뒤에 붙는 표기가 흔하다. 카카오에
+    // 그 이름의 장소는 없고 '광남초등학교' 만 있으면, 통째로 한 번만 던지던
+    // 예전 코드는 0건을 받고 그대로 포기했다 — 사용자는 핀을 직접 찍어야 했다.
+    test('geocodeAddress: 첫 질의가 0건이면 시설어를 떼고 재시도한다', async () => {
+        const asked = [];
+        reset((req) => {
+            if (req.headers.host.indexOf('ntruss') !== -1) {
+                return { status: 200, body: '{"addresses":[]}' };
+            }
+            const q = decodeURIComponent((req.url.match(/query=([^&]*)/) || [])[1] || '');
+            asked.push(q);
+            // 시설어가 붙은 질의는 못 찾고, 학교 이름만 남았을 때 찾는다.
+            if (q !== '광남초등학교') return { status: 200, body: '{"documents":[]}' };
+            return {
+                status: 200,
+                body: JSON.stringify({
+                    documents: [{
+                        place_name: '광남초등학교',
+                        road_address_name: '서울 광진구 아차산로 452',
+                        x: '127.0861', y: '37.5461'
+                    }]
+                })
+            };
+        });
+
+        const out = await indexFns.geocodeAddress.run({
+            auth: { uid: 'u1' }, data: { address: '광남초등학교 체육관' }
+        });
+
+        assert.strictEqual(out.source, 'place');
+        assert.strictEqual(out.placeName, '광남초등학교');
+        assert.ok(Math.abs(out.lat - 37.5461) < 1e-9);
+
+        // 원문 → 붙여쓰기 → 시설어 제거 순으로 좁은 것부터 물어봤는지.
+        assert.deepStrictEqual(asked, ['광남초등학교 체육관', '광남초등학교체육관', '광남초등학교']);
+    });
+
+    // 변형을 전부 물어봐도 없으면 null 이다. 아무거나 찍어주면 잘못된 좌표가
+    // 저장되고, 그건 못 찾는 것보다 나쁘다.
+    test('geocodeAddress: 모든 변형이 0건이면 null', async () => {
+        reset((req) => (req.headers.host.indexOf('ntruss') !== -1
+            ? { status: 200, body: '{"addresses":[]}' }
+            : { status: 200, body: '{"documents":[]}' }));
+        const out = await indexFns.geocodeAddress.run({
+            auth: { uid: 'u1' }, data: { address: '있을 리 없는 체육관' }
+        });
+        assert.strictEqual(out.lat, null);
+    });
+
     // 네이버가 통째로 죽어도 장소 검색으로 살아남아야 한다. 전엔 여기서
     // unavailable 로 throw 해서 사용자는 아무것도 못 하고 막혔다.
     test('geocodeAddress: 네이버 게이트웨이가 모두 5xx여도 장소 검색으로 산다', async () => {

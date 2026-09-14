@@ -53,7 +53,35 @@ service cloud.firestore {
           && (!('last_verified_at' in d) || d.last_verified_at is timestamp)
           && (!('data_status' in d) || d.data_status in ['active', 'needs_check', 'dormant'])
           // 관리자 정원 3명. 넘는 배열이 들어오면 그 자체가 잘못된 쓰기다.
-          && (!('admins' in d) || (d.admins is list && d.admins.size() <= 3));
+          && (!('admins' in d) || (d.admins is list && d.admins.size() <= 3))
+          && (!('location_precision' in d) || d.location_precision in ['exact', 'area'])
+          && areaCoordsCoarse();
+    }
+
+    // 위치를 '대략만' 공개하기로 한 팀은 **정확한 좌표를 저장하지 못하게** 한다.
+    //
+    // clubs 는 allow read: if true 다. 화면에서만 흐리게 그리면 Firestore 를 직접
+    // 읽어 정확한 값을 그대로 꺼낼 수 있으므로, 흐리는 건 저장 단계여야 한다.
+    // 여기서 막지 않으면 '대략만'은 사실상 아무것도 안 하는 표시가 된다.
+    //
+    // 0.005° 격자(≈ 위도 550m). 식이 functions/lib/pure.js 의 roundToAreaGrid 와
+    // **같아야** 한다 — 부동소수 결과가 어긋나면 정상 저장이 거부된다.
+    function areaCoordsCoarse() {
+      let d = request.resource.data;
+      return !('location_precision' in d)
+          || d.location_precision != 'area'
+          || !('coordinates' in d)
+          || d.coordinates == null
+          || (gridAligned(d.coordinates.lat) && gridAligned(d.coordinates.lng));
+    }
+
+    // 값을 200배 했을 때 정수인가. 나눗셈을 쓰지 않는 이유는 math.round() 가
+    // **정수**를 돌려줘서 `/ 200` 이 정수 나눗셈이 되기 때문이다(37 이 나온다).
+    // 빼기로 비교하면 double 로 승격되고, 부동소수 잡음도 함께 흡수한다 —
+    // 클라이언트의 Math.round(v*200)/200 결과가 *200 했을 때 정확히 정수가
+    // 아닐 수 있어서, 엄격 일치로 두면 정상 저장이 거부된다.
+    function gridAligned(v) {
+      return math.abs(v * 200 - math.round(v * 200)) < 0.000001;
     }
 
     // 픽업 스팟 필드 타입·길이 검증 (존재 필드만 검사 → 부분 update도 통과)
@@ -110,9 +138,12 @@ service cloud.firestore {
       // 경로는 clubFieldsValid() 를 타지 않아, 안에 두면 콘솔에서 4명짜리
       // 배열이 그대로 들어간다. (Functions 는 admin SDK 라 룰을 통째로
       // 우회하므로 서버의 정상 경로는 여기 걸리지 않는다.)
+      // 정원과 마찬가지로 위치 흐리기도 isAdmin() 바깥이다. 둘 다 '팀에게 한
+      // 약속'이라, 운영자 콘솔에서 조용히 깨질 수 있으면 약속이 아니다.
       allow update: if (!('admins' in request.resource.data)
                         || (request.resource.data.admins is list
                             && request.resource.data.admins.size() <= 3))
+                    && areaCoordsCoarse()
                     && (isAdmin()
                     || (request.auth != null
                         && isClubManager(resource.data)

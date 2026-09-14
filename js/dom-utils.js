@@ -79,3 +79,88 @@
         return s || 'photo';
     };
 })();
+
+// ── 위치 공개 수준 ──────────────────────────────────────────────
+// 팀은 대개 학교·구민 체육관을 빌려 쓴다. 장소와 시간표를 같이 공개하면
+// "그 체육관 그 시간에 누가 쓰는지"가 누구에게나 보인다 — 대관에서 밀린 사람이
+// 찾아가 민원을 넣은 일이 실제로 있었다(2026-09).
+//
+// 'area' 를 고른 팀은 **정확한 좌표를 아예 저장하지 않는다.** clubs 는
+// allow read: if true 라서, 화면에서만 흐리면 Firestore 를 직접 읽어 그대로
+// 꺼낼 수 있다. firestore.rules 의 gridAligned() 가 저장 단계에서 강제한다.
+//
+// 이 세 함수는 functions/lib/pure.js 와 **같은 규칙**이어야 한다
+// (tests/club-admins.test.js 가 대조한다).
+window.AREA_GRID_DIVISOR = 200; // 1/0.005° ≈ 위도 550m
+
+window.roundToAreaGrid = function (v) {
+    var n = Number(v);
+    if (!isFinite(n)) return null;
+    return Math.round(n * window.AREA_GRID_DIVISOR) / window.AREA_GRID_DIVISOR;
+};
+
+window.areaLabel = function (address) {
+    var SIDO = /^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|충청|전라|경상)/;
+    var raw = String(address == null ? '' : address)
+        .replace(/[()[\]]/g, ' ')
+        .trim().replace(/\s+/g, ' ');
+    if (!raw) return '';
+    var parts = raw.split(' ');
+    var start = -1;
+    for (var i = 0; i < parts.length; i++) {
+        if (SIDO.test(parts[i])) { start = i; break; }
+    }
+    if (start === -1) return '';
+    var out = [parts[start]];
+    for (var j = start + 1; j < parts.length && out.length < 3; j++) {
+        if (!/[시군구]$/.test(parts[j])) break;
+        out.push(parts[j]);
+    }
+    return out.join(' ');
+};
+
+// 기본은 '정확히'. 필드가 없는 기존 문서를 조용히 뭉개면 팀은 모르는 사이에
+// 자기 팀이 지도에서 옮겨진 것처럼 보게 된다.
+window.isAreaOnly = function (club) {
+    return !!club && club.location_precision === 'area';
+};
+
+// ── 장소 검색 질의 변형 ─────────────────────────────────────────
+// 주소 검색이 0건일 때 카카오 키워드 검색에 던질 질의들. 좁은 것부터 넓은 것 순.
+// functions/lib/pure.js 의 placeQueryVariants 와 **같은 규칙**이어야 한다
+// (tests/club-admins.test.js 가 대조한다).
+//
+// 뒤에서 떼는 말은 정해진 목록으로만 한정한다 — 아무 토큰이나 떼면
+// "서울 강남구 삼성로135길 42" 에서 번지가 날아가 엉뚱한 곳을 찍는다.
+window.placeQueryVariants = function (raw) {
+    var FACILITY_TAIL = [
+        '국민체육센터', '다목적체육관', '실내체육관', '체육센터', '체육관',
+        '다목적', '실내', '강당', '경기장', '운동장', '코트', '센터', '관'
+    ];
+    var base = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
+    if (!base) return [];
+
+    var out = [];
+    function push(v) {
+        var t = String(v || '').trim().replace(/\s+/g, ' ');
+        if (t && out.indexOf(t) === -1) out.push(t);
+    }
+
+    push(base);
+    push(base.replace(/\s+/g, ''));
+
+    var parts = base.split(' ');
+    var changed = false;
+    while (parts.length > 1) {
+        if (FACILITY_TAIL.indexOf(parts[parts.length - 1]) === -1) break;
+        parts.pop();
+        changed = true;
+    }
+    if (changed) {
+        push(parts.join(' '));
+        push(parts.join(''));
+    }
+
+    // 질의 한 번이 곧 API 호출 한 번이다. 네 번에서 끊는다.
+    return out.slice(0, 4);
+};
