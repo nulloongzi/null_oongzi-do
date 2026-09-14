@@ -384,7 +384,14 @@ window.geocodeOrPlace = function (address) {
                     if (window.track) {
                         window.track('registration_geocode_place_hit', { variant: i });
                     }
-                    resolve(ok(places[0]));
+                    var pl = places[0];
+                    // 무엇에 매칭됐는지 함께 돌려준다 — 확인 화면이 "광남초등학교로
+                    // 찾았어요" 라고 말해줘야 사용자가 맞는지 판단할 수 있다.
+                    resolve(Object.assign(ok(pl), {
+                        source: 'place',
+                        placeName: pl.place_name || '',
+                        roadAddress: pl.road_address_name || pl.address_name || ''
+                    }));
                 } else {
                     tryPlace(i + 1);
                 }
@@ -392,7 +399,15 @@ window.geocodeOrPlace = function (address) {
         }
 
         new svc.Geocoder().addressSearch(address, function (result, status) {
-            if (status === svc.Status.OK && result[0]) { resolve(ok(result[0])); return; }
+            if (status === svc.Status.OK && result[0]) {
+                var r = result[0];
+                resolve(Object.assign(ok(r), {
+                    source: 'address',
+                    placeName: '',
+                    roadAddress: (r.road_address && r.road_address.address_name) || r.address_name || ''
+                }));
+                return;
+            }
             tryPlace(0);
         });
     });
@@ -419,34 +434,77 @@ window.reverseAreaLabel = function (coords) {
 // 지도 picker 사용 중에도 편집 모드 상태를 보존하기 위해, 모달 닫기/재열기 대신
 // overlay visibility만 토글. opts로 복귀 오버레이/주소 입력칸을 받아 동호회·픽업 공용.
 window.startMapPicker = function (opts) {
-    window._mpReturn = (opts && opts.overlay) || 'regModalOverlay';
-    window._mpInput = (opts && opts.input) || 'regAddress';
+    opts = opts || {};
+    window._mpReturn = opts.overlay || 'regModalOverlay';
+    window._mpInput = opts.input || 'regAddress';
+    // 확인 모드: 지오코딩 결과가 맞는지 보여주고 고칠 기회를 준다.
+    // 일반 모드(지도에서 찾기)와 달리 주소칸을 덮어쓰지 않는다 — 사용자가 적은
+    // '광남초등학교 체육관' 이 팀을 찾는 사람들의 검색어이기도 하다.
+    window._mpConfirmMode = !!opts.confirm;
+    window._mpResolve = opts.resolve || null;
+
+    var panel = document.getElementById('mpConfirmPanel');
+    if (panel) panel.style.display = window._mpConfirmMode ? 'block' : 'none';
+    var btn = document.getElementById('mpConfirmBtn');
+    if (btn) btn.textContent = window.t(window._mpConfirmMode ? 'mp_confirm_here' : 'mp_confirm');
+
+    if (window._mpConfirmMode && opts.center && window.map) {
+        window.map.setCenter(new kakao.maps.LatLng(opts.center.lat, opts.center.lng));
+        // 건물 한 채를 구분할 수 있는 배율까지 당긴다. 멀리서 보면 '맞다'고
+        // 눌러버리기 쉽고, 그게 지금 문제의 원인이다.
+        if (window.map.getLevel() > 3) window.map.setLevel(3);
+    }
+
     document.getElementById(window._mpReturn).style.display = 'none';
     document.getElementById('mapPickerOverlay').style.display = 'block';
 };
 
-window.cancelMapPicker = function () {
+// 지오코딩 결과를 지도에 보여주고 확인받는다. 사용자가 옮겼으면 옮긴 좌표를 준다.
+window.confirmLocationOnMap = function (coords, meta) {
+    return new Promise(function (resolve) {
+        var lines = [];
+        if (meta && meta.placeName) lines.push(window.tf('mp_matched_place', { name: meta.placeName }));
+        if (meta && meta.roadAddress) lines.push(window.tf('mp_matched_addr', { addr: meta.roadAddress }));
+        var el = document.getElementById('mpMatched');
+        if (el) el.textContent = lines.join(' · ');
+        window.startMapPicker({ confirm: true, center: coords, resolve: resolve });
+    });
+};
+
+function finishMapPicker(result) {
+    var resolve = window._mpResolve;
+    window._mpConfirmMode = false;
+    window._mpResolve = null;
     document.getElementById('mapPickerOverlay').style.display = 'none';
     document.getElementById(window._mpReturn || 'regModalOverlay').style.display = 'flex';
+    if (resolve) resolve(result);
+}
+
+window.cancelMapPicker = function () {
+    finishMapPicker({ ok: false });
 };
 
 window.confirmMapPicker = function () {
     if (!window.map) return;
     var center = window.map.getCenter();
-    var lat = center.getLat();
-    var lng = center.getLng();
-    window.selectedCoords = { lat: lat, lng: lng };
+    var coords = { lat: center.getLat(), lng: center.getLng() };
+    window.selectedCoords = coords;
+
+    // 확인 모드에서는 주소칸을 그대로 둔다. 사용자가 적은 표현이 곧 검색어이고,
+    // 여기서 도로명으로 갈아끼우면 '내가 쓴 게 왜 바뀌었지' 가 된다.
+    if (window._mpConfirmMode) {
+        finishMapPicker({ ok: true, coords: coords });
+        return;
+    }
 
     var geocoder = new kakao.maps.services.Geocoder();
-    geocoder.coord2Address(lng, lat, function (result, status) {
+    geocoder.coord2Address(coords.lng, coords.lat, function (result, status) {
         var detailAddr = window.t('reg_map_loc');
         if (status === kakao.maps.services.Status.OK && result[0]) {
             detailAddr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
         }
         document.getElementById(window._mpInput || 'regAddress').value = detailAddr;
-
-        document.getElementById('mapPickerOverlay').style.display = 'none';
-        document.getElementById(window._mpReturn || 'regModalOverlay').style.display = 'flex';
+        finishMapPicker({ ok: true, coords: coords });
     });
 };
 
@@ -540,7 +598,12 @@ window.submitRegistration = async function () {
 
     try {
         // Geocode address to coordinates
+        //
+        // selectedCoords 가 비어 있다 = 이번 제출에서 새로 지오코딩한다는 뜻이다
+        // (주소칸 oninput 이 값을 지운다). 그때만 확인 단계를 거친다 — 지도에서
+        // 이미 찍었거나, 주소를 안 건드린 수정에는 군더더기를 붙이지 않는다.
         var coords;
+        var needsConfirm = !window.selectedCoords;
         if (window.selectedCoords) {
             coords = window.selectedCoords;
         } else {
@@ -557,6 +620,19 @@ window.submitRegistration = async function () {
                 window.startMapPicker();
                 return;
             }
+        }
+
+        // 찾은 위치를 보여주고 확인받는다. 예전엔 조용히 저장해서, 같은 이름의
+        // 학교가 여러 개이거나 시설어를 뗀 질의가 다른 동네를 집어도 아무도
+        // 몰랐다 — 틀린 좌표는 나중에 신고로 돌아온다.
+        if (needsConfirm) {
+            btn.innerText = window.t('reg_submit');
+            btn.disabled = false;
+            var picked = await window.confirmLocationOnMap(coords, coords);
+            if (!picked.ok) return;   // 취소 → 폼으로 돌아간다(입력은 그대로)
+            coords = picked.coords;   // 사용자가 옮겼을 수 있다
+            btn.innerText = window.t('processing');
+            btn.disabled = true;
         }
 
         // ── 위치 공개 수준 ──
