@@ -84,6 +84,28 @@ gcloud projects add-iam-policy-binding <project-id> \
 `admin.auth()` 를 쓰는 함수를 새로 추가할 때 이 역할이 있는지 먼저 확인할 것.
 현재 사용처는 `claimMyClubs`, `adminReassignOwner` 두 곳이다.
 
+## 인증 승인은 팀이 있을 때만
+
+`chatbotApprove` 는 `clubs/{id}` 에 `set({ is_verified: true }, { merge: true })`
+를 썼다. `merge` 는 문서가 없으면 **만든다** — 삭제된 팀의 인증 요청을 승인하면
+`is_verified` 하나만 든 문서가 새로 생겼다. 이름도 좌표도 없어 지도엔 안 뜨고
+목록에만 남는다.
+
+실제로 `clubs` 62건 중 2건이 그렇게 생긴 것이었다. `wp4qeje5fac` 는 테스트 인증
+요청(`[테스트팀] S4검증용`)을 승인한 **1초 뒤**에 만들어졌다.
+
+```
+인증 승인   2026-08-19T01:24:13.058Z
+클럽 생성   2026-08-19T01:24:14.203Z
+```
+
+이제 `markClubVerified()` 가 트랜잭션 안에서 `snap.exists` 를 보고, 팀이 없으면
+요청을 `rejected` + `reject_reason: "club_missing"` 으로 닫는다. 이메일 링크
+경로도 같다 — 그쪽은 `update()` 라 유령은 안 생겼지만 요청을 `approved` 로 바꾼
+**뒤에** 팀을 써서, 팀이 없으면 요청만 승인된 채 남았다. 순서도 뒤집었다.
+
+`grantClubAdmin()` 이 처음부터 같은 모양이었다(없으면 `not_found`).
+
 ## 관련 파일
 
 | 파일 | 역할 |
