@@ -36,8 +36,17 @@
     }
     window.reelCodeFromUrl = reelCodeFromUrl;
 
+    // 릴스 재생 탭 계측(reel_play): 포스터/제네릭 카드를 탭해 임베드를 여는 순간.
+    // meta = { source: 'club'|'pickup', id, index } — renderInstaEmbeds 호출부가 넘긴다(없으면 생략).
+    // view_*/…_contact의 has_reel과 묶어 "릴스가 물꼬에 도움이 되는가"를 본다(2026-09-16 결정 로그).
+    function trackPlay(meta, poster) {
+        if (!window.track) return;
+        meta = meta || {};
+        window.track('reel_play', { source: meta.source, id: meta.id, index: meta.index, poster: poster });
+    }
+
     // 제네릭 카드(커버 없을 때 폴백): 아이콘 + '탭하면 재생' 한 줄. → 탭하면 임베드.
-    function genericCard(host, url, replaceTarget) {
+    function genericCard(host, url, replaceTarget, meta) {
         var card = document.createElement('div');
         card.setAttribute('style',
             'display:flex;align-items:center;gap:12px;margin-top:10px;padding:14px;' +
@@ -60,6 +69,7 @@
         card.appendChild(icon);
         card.appendChild(txt);
         card.onclick = function () {
+            trackPlay(meta, 'generic');
             var box = document.createElement('div');
             card.parentNode.replaceChild(box, card);
             window.renderInstaEmbed(box, url);
@@ -70,7 +80,7 @@
 
     // 커버 포스터(정지 커버): 릴스 실제 커버를 크롬 없이 라운드+갈색 그림자 카드로.
     // 커버 이미지 로드 실패(만료/차단) → 제네릭 카드로 폴백. 탭 → 그 자리에서 임베드.
-    function posterCard(host, url, coverUrl) {
+    function posterCard(host, url, coverUrl, meta) {
         var card = document.createElement('div');
         card.setAttribute('style',
             'position:relative;margin-top:10px;width:100%;aspect-ratio:4/5;overflow:hidden;cursor:pointer;' +
@@ -80,7 +90,7 @@
         img.alt = window.t('insta_reel_title');
         img.loading = 'lazy';
         img.referrerPolicy = 'no-referrer';
-        img.onerror = function () { genericCard(host, url, card); }; // 커버 실패 → 제네릭 카드
+        img.onerror = function () { genericCard(host, url, card, meta); }; // 커버 실패 → 제네릭 카드
         img.src = coverUrl;
         // 하단 스크림(재생 글리프 대비) + 중앙 재생 버튼
         var scrim = document.createElement('div');
@@ -96,6 +106,7 @@
         card.appendChild(scrim);
         card.appendChild(play);
         card.onclick = function () {
+            trackPlay(meta, 'cover');
             var box = document.createElement('div');
             card.parentNode.replaceChild(box, card);
             window.renderInstaEmbed(box, url);
@@ -105,16 +116,19 @@
 
     // 릴스 지연 로딩(앱 패리티 W3): 커버 있으면 포스터, 없으면 제네릭 카드 → 탭하면 임베드.
     // 임베드 iframe을 즉시 안 붙여 상세 오픈이 가볍고 스크롤이 매끄러움.
-    window.renderReelPoster = function (host, url, coverUrl) {
-        if (coverUrl) posterCard(host, url, coverUrl);
-        else genericCard(host, url);
+    // meta(옵션): reel_play 계측용 { source, id, index }.
+    window.renderReelPoster = function (host, url, coverUrl, meta) {
+        if (coverUrl) posterCard(host, url, coverUrl, meta);
+        else genericCard(host, url, null, meta);
     };
 
     // 멀티 릴스(앱 패리티 W1): 첫 릴스는 항상 + 나머지는 '릴스 더 보기 (n)' 토글로 지연 렌더.
     // urls: insta_reels 배열(없으면 단일 insta_reel을 [1개]로 감싸 전달).
     // covers: insta_reel_covers 맵(code→coverUrl, 옵션). 있으면 정지 커버 포스터로 표시.
-    window.renderInstaEmbeds = function (container, urls, covers) {
+    // meta(옵션): { source: 'club'|'pickup', id } — 각 릴스 탭 시 reel_play 이벤트에 index와 함께 실림.
+    window.renderInstaEmbeds = function (container, urls, covers, meta) {
         if (!container) return false;
+        function metaAt(i) { return meta ? { source: meta.source, id: meta.id, index: i } : { index: i }; }
         var list = [];
         for (var i = 0; i < (urls || []).length; i++) {
             var s = window.sanitizeInstaPostUrl ? window.sanitizeInstaPostUrl(urls[i]) : '';
@@ -127,7 +141,7 @@
         container.innerHTML = '';
         if (!list.length) { container.style.display = 'none'; return false; }
         container.style.display = '';
-        window.renderReelPoster(container, list[0], coverFor(list[0], covers)); // 커버 포스터 → 탭 재생(W3)
+        window.renderReelPoster(container, list[0], coverFor(list[0], covers), metaAt(0)); // 커버 포스터 → 탭 재생(W3)
         if (list.length < 2) return true;
         var more = document.createElement('button');
         more.setAttribute('style',
@@ -142,7 +156,7 @@
             open = !open;
             if (open && !restWrap.childNodes.length) {
                 for (var j = 1; j < list.length; j++) {
-                    window.renderReelPoster(restWrap, list[j], coverFor(list[j], covers)); // 각 릴스도 커버 포스터 → 탭 재생
+                    window.renderReelPoster(restWrap, list[j], coverFor(list[j], covers), metaAt(j)); // 각 릴스도 커버 포스터 → 탭 재생
                 }
             }
             restWrap.style.display = open ? '' : 'none';

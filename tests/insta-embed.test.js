@@ -20,9 +20,16 @@ function makeEl(tag) {
         _innerHTML: '',
         setAttribute(k, v) { this._attrs[k] = v; },
         getAttribute(k) { return this._attrs[k]; },
-        appendChild(c) { this.children.push(c); this.firstChild = this.children[0]; return c; },
+        appendChild(c) { c.parentNode = this; this.children.push(c); this.firstChild = this.children[0]; return c; },
+        // 포스터/제네릭 카드가 탭 시 자기 자리를 임베드 박스로 바꾸는 경로(card.parentNode.replaceChild)용
+        replaceChild(n, o) {
+            const i = this.children.indexOf(o);
+            if (i >= 0) this.children[i] = n; else this.children.push(n);
+            n.parentNode = this; this.firstChild = this.children[0]; return o;
+        },
         addEventListener() { }
     };
+    Object.defineProperty(el, 'childNodes', { get() { return el.children; } });
     Object.defineProperty(el, 'innerHTML', {
         get() { return el._innerHTML; },
         set(v) { el._innerHTML = v; if (v === '') { el.children = []; el.firstChild = null; } }
@@ -103,5 +110,60 @@ describe('renderInstaEmbed', () => {
     test('빈 컨테이너 인자는 안전하게 false', () => {
         const { window } = load();
         assert.strictEqual(window.renderInstaEmbed(null, VALID), false);
+    });
+});
+
+// 릴스 탭 계측(reel_play) — 2026-09-16 결정 로그: 릴스가 물꼬에 도움이 되는지 재기 위한 이벤트.
+describe('renderInstaEmbeds → reel_play 계측', () => {
+    test('제네릭 카드 탭 → reel_play(source/id/index/poster=generic) 1회 + 그 자리에 임베드', () => {
+        const { window, document } = load({ instgrm: true });
+        const calls = [];
+        window.track = (name, params) => calls.push([name, params]);
+        const box = document.createElement('div');
+        assert.equal(window.renderInstaEmbeds(box, [VALID], null, { source: 'club', id: 'c1' }), true);
+        const card = box.children[0];
+        assert.equal(calls.length, 0, '렌더만으로는 이벤트 없음');
+        card.onclick();
+        assert.deepEqual(calls, [['reel_play', { source: 'club', id: 'c1', index: 0, poster: 'generic' }]]);
+        // 카드 자리가 임베드 박스로 바뀌고 permalink가 정규화되어 들어감
+        const embedBox = box.children[0];
+        assert.notEqual(embedBox, card);
+        assert.equal(embedBox.dataset.reelUrl, NORM);
+    });
+
+    test('커버 포스터 탭 → poster=cover, 두 번째 릴스는 index=1', () => {
+        const { window, document } = load({ instgrm: true });
+        const calls = [];
+        window.track = (name, params) => calls.push([name, params]);
+        const box = document.createElement('div');
+        const second = 'https://www.instagram.com/reel/XYZ_2/';
+        const covers = { 'ABC-123_x': 'https://cdn.example/cover.jpg' };
+        window.renderInstaEmbeds(box, [VALID, second], covers, { source: 'pickup', id: 'p9' });
+        box.children[0].onclick(); // 첫 릴스: 커버 포스터
+        const more = box.children[1]; // '릴스 더 보기' 버튼
+        more.onclick();
+        const restWrap = box.children[2];
+        restWrap.children[0].onclick(); // 두 번째 릴스: 커버 없음 → 제네릭
+        assert.deepEqual(calls, [
+            ['reel_play', { source: 'pickup', id: 'p9', index: 0, poster: 'cover' }],
+            ['reel_play', { source: 'pickup', id: 'p9', index: 1, poster: 'generic' }]
+        ]);
+    });
+
+    test('meta 없이 호출해도 안전 — index만 실림', () => {
+        const { window, document } = load({ instgrm: true });
+        const calls = [];
+        window.track = (name, params) => calls.push([name, params]);
+        const box = document.createElement('div');
+        window.renderInstaEmbeds(box, [VALID]);
+        box.children[0].onclick();
+        assert.deepEqual(calls, [['reel_play', { source: undefined, id: undefined, index: 0, poster: 'generic' }]]);
+    });
+
+    test('window.track 없으면 탭해도 예외 없음', () => {
+        const { window, document } = load({ instgrm: true });
+        const box = document.createElement('div');
+        window.renderInstaEmbeds(box, [VALID], null, { source: 'club', id: 'c1' });
+        assert.doesNotThrow(() => box.children[0].onclick());
     });
 });
