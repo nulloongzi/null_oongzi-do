@@ -652,6 +652,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
 // ══════════════════════════════════════════════════════════
 
 // 오픈빌더 블록 ID: 배포 후 실제 ID로 교체 필요
+var TEAM_LIST_SIZE = 10;                                   // 카카오 carousel 상한은 10
 var TEAM_LIST_BLOCK_ID = "69e62f64d2b391b64c603714";       // 팀관리 블록 (발화: 팀관리)
 var TEAM_DELETE_ASK_BLOCK_ID = "69e62f884cb5cb85009b4b19";  // 팀삭제확인 블록 (action=block 전용)
 var TEAM_DELETE_BLOCK_ID = "69e62fa62ba171220dde09da";     // 팀삭제완료 블록 (action=block 전용)
@@ -661,10 +662,33 @@ var TEAM_DELETE_BLOCK_ID = "69e62fa62ba171220dde09da";     // 팀삭제완료 �
 exports.chatbotTeamList = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
         if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
-        var auth = await isAllowedKakaoUser(req);
-        if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
-        var snap = await db.collection("clubs").get();
+        // 권한 확인과 목록 조회를 **같이** 띄운다. 콜드 인스턴스에서 Firestore
+        // 왕복은 한 번에 수백 ms 라, 순서대로 기다리면 그만큼 5초 타임아웃에
+        // 가까워진다. 실제로 이 스킬은 늘 콜드이고(운영자가 며칠에 한 번 쓴다)
+        // 3.0~4.3초를 찍어 왔다.
+        //
+        // 스킬 키를 이미 통과했으니 카카오에서 온 호출이다. 권한이 없으면 아래에서
+        // 목록을 그대로 버린다 — 밖으로 나가지 않는다.
+        //
+        // 정렬은 Firestore 에 맡기고 10개만 받는다. 예전에는 62개를 통째로 받아
+        // 메모리에서 정렬했는데, created_at 이 없는 문서는 0 으로 밀려 어차피
+        // 상위 10개에 못 들었다(현재 그런 문서는 테스트 잔해 2개뿐이다).
+        // 즉 보이는 목록은 그대로다.
+        var authP = isAllowedKakaoUser(req);
+        var snapP = db.collection("clubs")
+            .orderBy("metadata.created_at", "desc")
+            .limit(TEAM_LIST_SIZE)
+            .get();
+
+        var auth = await authP;
+        if (!auth.allowed) {
+            snapP.catch(function () {});   // 버릴 거라도 rejection 은 받아준다
+            res.json(unauthorizedResponse());
+            return;
+        }
+
+        var snap = await snapP;
         if (snap.empty) {
             res.json({
                 version: "2.0",
@@ -673,17 +697,12 @@ exports.chatbotTeamList = onRequest(CHATBOT_OPTS, async function (req, res) {
             return;
         }
 
-        // 메모리에서 정렬 (레거시 문서는 metadata.created_at 없을 수 있음)
-        var clubs = [];
+        var top = [];
         snap.forEach(function (doc) {
             var d = doc.data();
             d._id = doc.id;
-            var ca = d.metadata && d.metadata.created_at;
-            d._createdMs = ca && ca.toMillis ? ca.toMillis() : (ca ? new Date(ca).getTime() : 0);
-            clubs.push(d);
+            top.push(d);
         });
-        clubs.sort(function (a, b) { return b._createdMs - a._createdMs; });
-        var top = clubs.slice(0, 10);
 
         var DEFAULT_THUMB = "https://do.nulloongzi.com/app_ui/nulloongzido%20logo_512px.png";
         var items = top.map(function (c) {
