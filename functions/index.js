@@ -14,9 +14,6 @@ var KAKAO_REFRESH_TOKEN = defineSecret("KAKAO_REFRESH_TOKEN");
 var KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
 var KAKAO_CLIENT_SECRET = defineSecret("KAKAO_CLIENT_SECRET");
 var APP_SECRET = defineSecret("WEBHOOK_SECRET");
-// 챗봇 스킬 공유 비밀. 카카오 콘솔의 스킬 설정에서 헤더로 붙여 보낸다.
-// 미설정이면 검증을 건너뛴다 — 콘솔 설정 전에 배포해도 챗봇이 죽지 않도록.
-var CHATBOT_SKILL_KEY = defineSecret("CHATBOT_SKILL_KEY");
 // 네이버 클라우드 플랫폼 Maps(지오코딩). 콘솔에서 해당 앱에 'Geocoding' 활성화 필요.
 //   firebase functions:secrets:set NAVER_MAP_CLIENT_ID
 //   firebase functions:secrets:set NAVER_MAP_CLIENT_SECRET
@@ -25,25 +22,59 @@ var NAVER_MAP_CLIENT_SECRET = defineSecret("NAVER_MAP_CLIENT_SECRET");
 
 // ══════════════════════════════════════════════════════════
 // 챗봇 스킬 공통 옵션. 모든 스킬 엔드포인트가 같은 시크릿을 읽어야 한다.
-var CHATBOT_OPTS = { cors: true, invoker: "public", secrets: [CHATBOT_SKILL_KEY] };
+var CHATBOT_OPTS = { cors: true, invoker: "public" };
 
 // 이 요청이 정말 카카오에서 온 것인가. 누가 보냈는지(권한)와는 별개 층이다.
 //   ① skillCallAllowed  — 채널이 맞나         (주소를 아는 아무나 차단)
 //   ② isAllowedKakaoUser — 이 사람이 운영자인가 (관리자 전용 발화만)
 // 공개 발화는 ①만 지나고 ②는 타지 않는다.
-function skillCallAllowed(req) {
-    var expected = "";
-    try { expected = CHATBOT_SKILL_KEY.value() || ""; } catch (e) { expected = ""; }
-    if (!expected) {
-        console.warn("⚠️ CHATBOT_SKILL_KEY 미설정 — 스킬 호출을 검증 없이 통과시키는 중");
+// 스킬 키는 Secret Manager 가 아니라 system/chatbot_skill_key 에 둔다.
+// defineSecret 을 쓰면 (1) 시크릿이 없으면 배포 자체가 거부되고
+// (2) 값을 바꿀 때마다 재배포해야 한다. 카카오 토큰 회전 때 같은 이유로
+// system 문서를 택했던 것과 같은 판단이다. 이 컬렉션은 규칙상 read·write 모두
+// false 라 Functions 말고는 아무도 못 본다.
+var skillKeyCache = { keys: null, at: 0 };
+var SKILL_KEY_TTL_MS = 60 * 1000;
+
+async function currentSkillKeys() {
+    // 값이 있을 때만 캐시한다. 미설정 상태를 캐시하면 방금 넣은 키가 1분 동안
+    // 안 먹어서 "설정했는데 왜 안 되지"가 된다.
+    if (skillKeyCache.keys && Date.now() - skillKeyCache.at < SKILL_KEY_TTL_MS) {
+        return skillKeyCache.keys;
+    }
+    try {
+        var snap = await db.collection("system").doc("chatbot_skill_key").get();
+        var d = (snap.exists && snap.data()) || {};
+        var keys = Array.isArray(d.keys) ? d.keys : [];
+        if (keys.length) skillKeyCache = { keys: keys, at: Date.now() };
+        return keys;
+    } catch (e) {
+        console.error("스킬 키 조회 실패:", e && e.message);
+        // 조회가 죽었을 때 문을 닫으면 Firestore 잠깐 흔들릴 때 챗봇이 통째로
+        // 멈춘다. 열어두되, 관리 발화는 바로 뒤 isAllowedKakaoUser 가 같은
+        // Firestore 를 읽고 **실패 시 거부**하므로 실제로 열리는 건 공개 발화뿐이다.
+        return skillKeyCache.keys || [];
+    }
+}
+
+async function skillCallAllowed(req) {
+    var keys = await currentSkillKeys();
+    // req.get 은 Express 가 주지만, 없다고 여기서 터지면 챗봇이 통째로 멈춘다.
+    var header = "";
+    try {
+        header = (typeof req.get === "function" && req.get("X-Nurungji-Skill-Key"))
+            || (req.headers && (req.headers["x-nurungji-skill-key"] || req.headers["X-Nurungji-Skill-Key"]))
+            || "";
+    } catch (e) { header = ""; }
+    var provided = header || (req.query && req.query.k) || "";
+    var verdict = pure.skillKeyMatches(provided, keys);
+    if (!verdict.configured) {
+        console.warn("⚠️ 스킬 키 미설정 — 호출을 검증 없이 통과시키는 중 "
+            + "(adminSetChatbotSkillKey 로 설정하세요)");
         return true;
     }
-    var provided = req.get("X-Nurungji-Skill-Key")
-        || (req.query && req.query.k)
-        || "";
-    var ok = pure.skillKeyOk(provided, expected);
-    if (!ok) console.warn("⛔ 스킬 키 불일치 — 카카오 밖에서 온 호출로 본다");
-    return ok;
+    if (!verdict.ok) console.warn("⛔ 스킬 키 불일치 — 카카오 밖에서 온 호출로 본다");
+    return verdict.ok;
 }
 
 // 카카오가 아닌 곳에서 온 호출이다. 챗봇 말풍선이 아니라 평범한 401 로 끊는다 —
@@ -331,7 +362,7 @@ var renderResultPage = pure.renderResultPage;
 // ── 스킬 1: 대기 중인 인증 요청 목록 ──
 exports.chatbotPending = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -397,7 +428,7 @@ exports.chatbotPending = onRequest(CHATBOT_OPTS, async function (req, res) {
 // ── 스킬 2: 승인 처리 ──
 exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -460,7 +491,7 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
 // ── 스킬 3: 거절 - 사유 선택 QuickReply 표시 ──
 exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -520,9 +551,9 @@ exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
 });
 
 // ── 스킬 4: 거절 확정 + 사유 저장 ──
-exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secrets: [CHATBOT_SKILL_KEY, KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] }, async function (req, res) {
+exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] }, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -616,7 +647,7 @@ var TEAM_DELETE_BLOCK_ID = "69e62fa62ba171220dde09da";     // 팀삭제완료 �
 // ── 스킬 5: 팀 목록 (최신 10개) ──
 exports.chatbotTeamList = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -679,7 +710,7 @@ exports.chatbotTeamList = onRequest(CHATBOT_OPTS, async function (req, res) {
 // ── 스킬 6: 팀 삭제 확인 ──
 exports.chatbotTeamDeleteAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -734,7 +765,7 @@ exports.chatbotTeamDeleteAsk = onRequest(CHATBOT_OPTS, async function (req, res)
 // ── 스킬 7: 팀 삭제 + verification_requests cleanup ──
 exports.chatbotTeamDelete = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -885,7 +916,7 @@ exports.onReportCreated = onDocumentCreated(
 // ── 스킬 8: 미처리 신고 목록 (발화: 신고관리) ──
 exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -986,7 +1017,7 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
 // 나중에 셀 수 있다(guidelines.html 3-2 의 7일 약속을 검증하는 유일한 근거).
 exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1256,7 +1287,7 @@ exports.onClubAdminRequestCreated = onDocumentCreated(
 // ── 스킬: 관리자 권한 신청 목록 (발화: 관리자관리) ──
 exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1345,7 +1376,7 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
 
 // 승인/거절 공통.
 async function resolveAdminRequest(req, res, approve) {
-    if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+    if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
     var auth = await isAllowedKakaoUser(req);
     if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1471,7 +1502,7 @@ async function notifyClaimRequests(created, emailMasked) {
 // ── 스킬 10: 대기 중인 소유권 클레임 (발화: 클레임관리) ──
 exports.chatbotClaims = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1552,7 +1583,7 @@ exports.chatbotClaims = onRequest(CHATBOT_OPTS, async function (req, res) {
 
 // 승인/거절 공통. 승인일 때만 clubs.registered_by 를 바꾼다.
 async function resolveClaim(req, res, approve) {
-    if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+    if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
     var auth = await isAllowedKakaoUser(req);
     if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1629,6 +1660,56 @@ exports.chatbotClaimReject = onRequest(CHATBOT_OPTS, async function (req, res) {
     }
 });
 
+// 스킬 키를 넣고 빼는 유일한 경로. system/ 은 규칙상 클라이언트가 못 쓰므로
+// 운영자도 여기를 거쳐야 한다(adminSetClubClaimEmails 와 같은 모양).
+//
+// keys 가 목록인 이유는 회전 때문이다. 하나만 두면 콘솔과 서버 중 어느 쪽을
+// 먼저 고쳐도 그 사이 챗봇이 죽는다:
+//   1) add 로 새 키를 **더한다**  → 옛 키·새 키 둘 다 통한다
+//   2) 카카오 콘솔 헤더를 새 키로 교체
+//   3) remove 로 옛 키를 뺀다
+exports.adminSetChatbotSkillKey = onCall(async function (request) {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    var adminSnap = await db.collection("admins").doc(request.auth.uid).get();
+    if (!adminSnap.exists) throw new HttpsError("permission-denied", "관리자만 사용할 수 있습니다.");
+
+    var data = request.data || {};
+    var mode = String(data.mode || "add");
+    var key = String(data.key == null ? "" : data.key).trim();
+
+    var ref = db.collection("system").doc("chatbot_skill_key");
+    var snap = await ref.get();
+    var keys = ((snap.exists && snap.data()) || {}).keys;
+    keys = Array.isArray(keys) ? keys.slice() : [];
+
+    if (mode === "list") {
+        // 값은 돌려주지 않는다 — 있는지와 몇 개인지만.
+        return { ok: true, count: keys.length, configured: keys.length > 0 };
+    }
+    if (!key) throw new HttpsError("invalid-argument", "key 가 필요합니다.");
+
+    if (mode === "add") {
+        if (key.length < 24) {
+            throw new HttpsError("invalid-argument", "키는 24자 이상으로 해주세요.");
+        }
+        if (keys.indexOf(key) === -1) keys.push(key);
+    } else if (mode === "remove") {
+        keys = keys.filter(function (k) { return k !== key; });
+    } else {
+        throw new HttpsError("invalid-argument", "mode 는 add · remove · list 중 하나입니다.");
+    }
+
+    await ref.set({
+        keys: keys,
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        updated_by: request.auth.uid
+    }, { merge: true });
+
+    // 최대 1분은 옛 캐시가 남는다(다른 인스턴스는 각자 만료된다).
+    skillKeyCache = { keys: null, at: 0 };
+    return { ok: true, count: keys.length, configured: keys.length > 0 };
+});
+
 // ── 공개 발화 ─────────────────────────────────────────────────────
 // 여기서부터는 **누구나** 쓸 수 있다. 스킬 키(①)는 지나지만 관리자 검사(②)는
 // 타지 않는다. 위의 관리 발화와 같은 파일에 있으니 옮길 때 섞이지 않게 주의.
@@ -1643,7 +1724,7 @@ var LOGO = SITE + "/app_ui/nulloongzido%20logo_512px.png";
 // 길잡이. 도움말 발화와 폴백(무슨 말인지 모를 때)이 같이 쓴다.
 exports.chatbotHelp = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
         res.json({
             version: "2.0",
             template: {
@@ -1673,7 +1754,7 @@ exports.chatbotHelp = onRequest(CHATBOT_OPTS, async function (req, res) {
 // 앱 신고와 같은 reports 컬렉션에 넣는다 — 운영자가 '신고관리' 하나만 보면 되게.
 exports.chatbotPublicReport = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
-        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
 
         var body = req.body || {};
         var utterance = (body.userRequest && body.userRequest.utterance) || "";
