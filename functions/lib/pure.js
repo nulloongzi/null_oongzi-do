@@ -170,6 +170,39 @@ function claimBlockReason(club) {
     return null;
 }
 
+// 클레임 요청 문서 id 를 (팀, 사람)으로 고정한다.
+//
+// 예전에는 add() 로 자동 id 를 썼고, 중복은 "pending 이 있나" 조회로만 막았다.
+// 읽고 나서 쓰는 사이에 같은 사람의 두 번째 호출이 끼어들면 둘 다 "없다"를 보고
+// 각자 문서를 만든다 — 실제로 로그인 한 번에 claimMyClubs 가 같은 초에 두 번
+// 불린 기록이 있다(2026-09-16). id 를 고정하면 Firestore 가 같은 문서로 모아
+// 주므로 겹쳐 불려도 문서는 하나다.
+//
+// uid 는 영숫자라 구분자 "__" 가 팀 id 쪽 밑줄과 섞여도 갈라지지 않는다.
+function claimRequestId(clubId, uid) {
+    var c = String(clubId == null ? "" : clubId).trim();
+    var u = String(uid == null ? "" : uid).trim();
+    if (!c || !u) return "";
+    // Firestore 문서 id 제약: "/" 불가, "." ".." 불가, "__...__" 불가.
+    if (c.indexOf("/") !== -1 || u.indexOf("/") !== -1) return "";
+    return c + "__" + u;
+}
+
+// 이미 문서가 있을 때 새 요청을 만들지 말지.
+//
+// 거절은 운영자가 내린 판단이다. 예전 코드는 pending 만 막아서, 거절당한
+// 사람이 로그인할 때마다 요청이 새로 생겼다 — 운영자 목록에 같은 건이 무한히
+// 다시 올라온다는 뜻이다. 거절도 막는다. 잘못 거절한 경우는 '관리자 신청'
+// (사진 증빙)이라는 다른 통로가 이미 있으므로 사람이 갇히지는 않는다.
+function claimReuseReason(existing) {
+    if (!existing) return null;
+    var status = String(existing.status == null ? "" : existing.status).trim();
+    if (status === "pending") return "already_requested";
+    if (status === "rejected") return "already_rejected";
+    if (status === "approved") return "already_yours";
+    return null;
+}
+
 // ── 딥링크 URL ──────────────────────────────────────────────────
 // 카카오 알림의 '자세히 보기'는 지금까지 사이트 첫 화면으로만 갔다. 신고를 받고
 // 눌러도 "어느 팀이었지"부터 다시 찾아야 했다는 뜻이다 — 알림에 대상 이름이
@@ -482,6 +515,8 @@ module.exports = {
     normalizeEmail: normalizeEmail,
     maskEmail: maskEmail,
     claimBlockReason: claimBlockReason,
+    claimRequestId: claimRequestId,
+    claimReuseReason: claimReuseReason,
     pickKakaoPlace: pickKakaoPlace,
     generateToken: generateToken,
     unauthorizedResponse: unauthorizedResponse,
