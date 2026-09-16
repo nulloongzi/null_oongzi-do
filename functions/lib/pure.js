@@ -392,7 +392,60 @@ function placeQueryVariants(raw) {
     return out.slice(0, 4);
 }
 
+// ── 챗봇 스킬 호출 검증 ───────────────────────────────────────────
+// 스킬 URL 은 invoker: "public" 이다. 카카오 서버가 불러야 하니 어쩔 수 없는데,
+// 지금까지는 본문에 실린 user.id 만 봤다. 그러면 운영자의 카카오 user id 를 아는
+// 사람이 주소만 알면 팀 삭제·관리자 승인·소유권 이전까지 할 수 있다 —
+// 그 id 는 카카오가 정하는 값이라 새어도 사장이 바꿀 수가 없다.
+//
+// 그래서 카카오 콘솔이 붙여 보내는 공유 비밀을 **먼저** 본다. 주소를 알아도
+// 이 값을 모르면 못 부르고, 새면 값만 갈면 된다.
+//
+// expected 가 비어 있으면 통과시킨다. 서버에 검증을 먼저 켜고 콘솔에 헤더를
+// 넣으면 그 사이 챗봇이 통째로 죽는다 — 순서를 안전한 쪽으로 강제하는 장치다.
+// (호출부가 미설정 상태를 경고로 남긴다.)
+function skillKeyOk(provided, expected) {
+    var want = String(expected == null ? "" : expected).trim();
+    if (!want) return true;
+    var got = String(provided == null ? "" : provided).trim();
+    // 길이로 먼저 빠지면 길이가 새지만, 비밀 자체보다 훨씬 덜 민감하다.
+    if (got.length !== want.length) return false;
+    var diff = 0;
+    for (var i = 0; i < want.length; i++) diff |= got.charCodeAt(i) ^ want.charCodeAt(i);
+    return diff === 0;
+}
+
+// ── 신고 종류 라벨 ───────────────────────────────────────────────
+// 'chatbot' 은 카톡 채널로 들어온 제보다. 앱 신고와 한 목록에 섞이는데,
+// 모르는 값을 전부 '동호회' 로 보여주면 대상이 특정되지 않은 글을 보고
+// 운영자가 어느 팀인지 찾아 헤맨다.
+var REPORT_KIND_LABEL = { club: "동호회", pickup: "픽업", chatbot: "카톡 제보" };
+function reportKindLabel(kind) {
+    return REPORT_KIND_LABEL[String(kind == null ? "" : kind)] || "동호회";
+}
+
+// ── 공개 제보 파싱 ───────────────────────────────────────────────
+// "제보 GVT 주소가 바뀌었어요" → "GVT 주소가 바뀌었어요"
+// 오픈빌더가 발화 전체를 넘겨주므로 앞의 키워드만 떼고 나머지를 내용으로 본다.
+// 되묻는 단계를 두지 않는 이유: 카톡 스킬은 5초 제한이 있고, 왕복이 늘수록
+// 제보를 하다 마는 사람이 늘어난다. 한 번에 받는 쪽이 실제로 접수된다.
+var PUBLIC_REPORT_PREFIX = /^(제보하기|제보|정보수정|정보 수정|수정요청|수정 요청|오류신고|오류 신고)\s*/;
+var PUBLIC_REPORT_MAX = 500;
+function parsePublicReport(utterance) {
+    var raw = String(utterance == null ? "" : utterance).replace(/\s+/g, " ").trim();
+    if (!raw) return { ok: false, reason: "empty", text: "" };
+    var body = raw.replace(PUBLIC_REPORT_PREFIX, "").trim();
+    // 키워드만 보냈다 — 안내를 돌려줘야지 빈 제보를 접수하면 안 된다.
+    if (!body) return { ok: false, reason: "no_body", text: "" };
+    if (body.length < 2) return { ok: false, reason: "too_short", text: body };
+    return { ok: true, reason: null, text: body.slice(0, PUBLIC_REPORT_MAX) };
+}
+
 module.exports = {
+    skillKeyOk: skillKeyOk,
+    reportKindLabel: reportKindLabel,
+    parsePublicReport: parsePublicReport,
+    PUBLIC_REPORT_MAX: PUBLIC_REPORT_MAX,
     escapeHtml: escapeHtml,
     placeQueryVariants: placeQueryVariants,
     AREA_GRID_DIVISOR: AREA_GRID_DIVISOR,

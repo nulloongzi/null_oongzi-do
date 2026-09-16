@@ -97,7 +97,10 @@ const fnStubs = {
         onDocumentUpdated: (o, h) => ({ _handler: h }), onDocumentDeleted: (o, h) => ({ _handler: h })
     },
     'firebase-functions/params': {
-        defineSecret: (n) => ({ value: () => 'secret', name: n }),
+        // CHATBOT_SKILL_KEY 만 빈 값을 준다. 이 파일이 보는 건 알림 배선이지
+        // 접근 경계가 아니고, 빈 값이면 스킬 키 검증이 '미설정' 경로로 통과한다.
+        // 설정된 경우의 동작은 tests/chatbot-access.test.js 가 본다.
+        defineSecret: (n) => ({ value: () => (n === 'CHATBOT_SKILL_KEY' ? '' : 'secret'), name: n }),
         defineString: (n, o) => ({ value: () => (o && o.default) || '', name: n })
     }
 };

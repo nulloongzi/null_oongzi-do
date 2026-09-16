@@ -544,3 +544,77 @@ describe('placeQueryVariants (시설명 검색 재시도)', () => {
         assert.strictEqual(new Set(v).size, v.length);
     });
 });
+
+// ── 챗봇 접근 경계·공개 제보 (2026-09-16) ────────────────────────
+describe('skillKeyOk', () => {
+    test('기대값이 비면 통과 — 콘솔 설정 전 배포에도 챗봇이 살아야 한다', () => {
+        assert.strictEqual(pure.skillKeyOk('아무거나', ''), true);
+        assert.strictEqual(pure.skillKeyOk('', ''), true);
+        assert.strictEqual(pure.skillKeyOk(null, null), true);
+    });
+    test('일치하면 true, 다르면 false', () => {
+        assert.strictEqual(pure.skillKeyOk('abc123', 'abc123'), true);
+        assert.strictEqual(pure.skillKeyOk('abc124', 'abc123'), false);
+    });
+    test('앞뒤 공백은 무시한다 — 콘솔에서 복붙하면 잘 붙는다', () => {
+        assert.strictEqual(pure.skillKeyOk('  abc123 ', 'abc123'), true);
+    });
+    test('길이가 다르면 false', () => {
+        assert.strictEqual(pure.skillKeyOk('abc', 'abc123'), false);
+        assert.strictEqual(pure.skillKeyOk('abc1234', 'abc123'), false);
+    });
+    test('빈 값을 보내면 막는다 — 헤더 누락이 통과되면 안 된다', () => {
+        assert.strictEqual(pure.skillKeyOk('', 'abc123'), false);
+        assert.strictEqual(pure.skillKeyOk(undefined, 'abc123'), false);
+    });
+});
+
+describe('reportKindLabel', () => {
+    test('알려진 종류', () => {
+        assert.strictEqual(pure.reportKindLabel('club'), '동호회');
+        assert.strictEqual(pure.reportKindLabel('pickup'), '픽업');
+        assert.strictEqual(pure.reportKindLabel('chatbot'), '카톡 제보');
+    });
+    test('모르는 값·빈 값은 동호회로 — 기존 문서에 kind 가 없다', () => {
+        assert.strictEqual(pure.reportKindLabel(''), '동호회');
+        assert.strictEqual(pure.reportKindLabel(undefined), '동호회');
+        assert.strictEqual(pure.reportKindLabel('몰라'), '동호회');
+    });
+});
+
+describe('parsePublicReport', () => {
+    test('키워드를 떼고 내용만 남긴다', () => {
+        const r = pure.parsePublicReport('제보 GVT 운동 시간이 바뀌었어요');
+        assert.strictEqual(r.ok, true);
+        assert.strictEqual(r.text, 'GVT 운동 시간이 바뀌었어요');
+    });
+    test('여러 키워드 표기를 받는다', () => {
+        for (const k of ['제보', '제보하기', '정보수정', '정보 수정', '수정요청', '오류신고']) {
+            const r = pure.parsePublicReport(k + ' 주소가 틀려요');
+            assert.strictEqual(r.ok, true, k + ' 가 안 먹는다');
+            assert.strictEqual(r.text, '주소가 틀려요');
+        }
+    });
+    test('키워드 없이 본문만 보내도 받는다 — 폴백에서 넘어올 수 있다', () => {
+        const r = pure.parsePublicReport('여기 주소가 틀렸어요');
+        assert.strictEqual(r.ok, true);
+        assert.strictEqual(r.text, '여기 주소가 틀렸어요');
+    });
+    test('키워드만 보내면 거부 — 빈 제보가 쌓이면 안 된다', () => {
+        assert.strictEqual(pure.parsePublicReport('제보').ok, false);
+        assert.strictEqual(pure.parsePublicReport('제보   ').ok, false);
+        assert.strictEqual(pure.parsePublicReport('').ok, false);
+    });
+    test('한 글자는 거부', () => {
+        assert.strictEqual(pure.parsePublicReport('제보 ㅇ').ok, false);
+    });
+    test('너무 길면 자른다', () => {
+        const r = pure.parsePublicReport('제보 ' + 'ㄱ'.repeat(900));
+        assert.strictEqual(r.ok, true);
+        assert.strictEqual(r.text.length, pure.PUBLIC_REPORT_MAX);
+    });
+    test('줄바꿈·연속 공백을 한 칸으로 정리한다', () => {
+        const r = pure.parsePublicReport('제보  GVT\n\n주소가   틀려요');
+        assert.strictEqual(r.text, 'GVT 주소가 틀려요');
+    });
+});
