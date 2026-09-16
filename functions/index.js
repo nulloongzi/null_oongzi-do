@@ -33,32 +33,33 @@ var CHATBOT_OPTS = { cors: true, invoker: "public" };
 // (2) 값을 바꿀 때마다 재배포해야 한다. 카카오 토큰 회전 때 같은 이유로
 // system 문서를 택했던 것과 같은 판단이다. 이 컬렉션은 규칙상 read·write 모두
 // false 라 Functions 말고는 아무도 못 본다.
-var skillKeyCache = { keys: null, at: 0 };
+var skillKeyCache = { keys: null, enforce: true, at: 0 };
 var SKILL_KEY_TTL_MS = 60 * 1000;
 
-async function currentSkillKeys() {
+async function currentSkillConfig() {
     // 값이 있을 때만 캐시한다. 미설정 상태를 캐시하면 방금 넣은 키가 1분 동안
     // 안 먹어서 "설정했는데 왜 안 되지"가 된다.
     if (skillKeyCache.keys && Date.now() - skillKeyCache.at < SKILL_KEY_TTL_MS) {
-        return skillKeyCache.keys;
+        return skillKeyCache;
     }
     try {
         var snap = await db.collection("system").doc("chatbot_skill_key").get();
         var d = (snap.exists && snap.data()) || {};
         var keys = Array.isArray(d.keys) ? d.keys : [];
-        if (keys.length) skillKeyCache = { keys: keys, at: Date.now() };
-        return keys;
+        var enforce = d.mode !== "audit";
+        if (keys.length) skillKeyCache = { keys: keys, enforce: enforce, at: Date.now() };
+        return { keys: keys, enforce: enforce, at: Date.now() };
     } catch (e) {
         console.error("스킬 키 조회 실패:", e && e.message);
         // 조회가 죽었을 때 문을 닫으면 Firestore 잠깐 흔들릴 때 챗봇이 통째로
         // 멈춘다. 열어두되, 관리 발화는 바로 뒤 isAllowedKakaoUser 가 같은
         // Firestore 를 읽고 **실패 시 거부**하므로 실제로 열리는 건 공개 발화뿐이다.
-        return skillKeyCache.keys || [];
+        return skillKeyCache.keys ? skillKeyCache : { keys: [], enforce: true, at: 0 };
     }
 }
 
 async function skillCallAllowed(req) {
-    var keys = await currentSkillKeys();
+    var conf = await currentSkillConfig();
     // req.get 은 Express 가 주지만, 없다고 여기서 터지면 챗봇이 통째로 멈춘다.
     var header = "";
     try {
@@ -67,14 +68,26 @@ async function skillCallAllowed(req) {
             || "";
     } catch (e) { header = ""; }
     var provided = header || (req.query && req.query.k) || "";
-    var verdict = pure.skillKeyMatches(provided, keys);
+
+    var verdict = pure.skillKeyMatches(provided, conf.keys);
     if (!verdict.configured) {
         console.warn("⚠️ 스킬 키 미설정 — 호출을 검증 없이 통과시키는 중 "
             + "(adminSetChatbotSkillKey 로 설정하세요)");
         return true;
     }
-    if (!verdict.ok) console.warn("⛔ 스킬 키 불일치 — 카카오 밖에서 온 호출로 본다");
-    return verdict.ok;
+    if (verdict.ok) return true;
+
+    // 어느 스킬이 헤더를 안 달고 왔는지 이름으로 남긴다. 콘솔 스킬이 17개라
+    // 하나 빠뜨리기 쉽고, 이름이 없으면 로그를 봐도 어딜 고쳐야 할지 모른다.
+    var who = process.env.K_SERVICE || "(함수명 불명)";
+    if (!conf.enforce) {
+        // audit: 막지 않고 기록만. 대기 건이 0이라 실제로 눌러볼 수 없는 스킬이
+        // 많아서, 켜자마자 막으면 '쓰려는 순간에야' 죽은 걸 알게 된다.
+        console.warn("📋 [audit] 스킬 키 없음/불일치 — 통과시킴: " + who);
+        return true;
+    }
+    console.warn("⛔ 스킬 키 불일치 — 카카오 밖에서 온 호출로 본다: " + who);
+    return false;
 }
 
 // 카카오가 아닌 곳에서 온 호출이다. 챗봇 말풍선이 아니라 평범한 401 로 끊는다 —
@@ -1682,9 +1695,24 @@ exports.adminSetChatbotSkillKey = onCall(async function (request) {
     var keys = ((snap.exists && snap.data()) || {}).keys;
     keys = Array.isArray(keys) ? keys.slice() : [];
 
+    var cur = (snap.exists && snap.data()) || {};
+    var enforce = cur.mode !== "audit";
+
     if (mode === "list") {
-        // 값은 돌려주지 않는다 — 있는지와 몇 개인지만.
-        return { ok: true, count: keys.length, configured: keys.length > 0 };
+        // 값은 돌려주지 않는다 — 있는지, 몇 개인지, 막고 있는지만.
+        return { ok: true, count: keys.length, configured: keys.length > 0, enforce: enforce };
+    }
+    // audit 은 '기록만 하고 통과'. 콘솔 스킬이 17개라 하나 빠뜨리기 쉽고, 대기 건이
+    // 0인 스킬은 눌러볼 수도 없다. 켜자마자 막으면 쓰려는 순간에야 죽은 걸 안다.
+    // 그래서 audit 으로 며칠 굴려 로그를 보고, 빠진 게 없으면 enforce 로 넘어간다.
+    if (mode === "audit" || mode === "enforce") {
+        await ref.set({
+            mode: mode === "audit" ? "audit" : "enforce",
+            updated_at: admin.firestore.FieldValue.serverTimestamp(),
+            updated_by: request.auth.uid
+        }, { merge: true });
+        skillKeyCache = { keys: null, enforce: true, at: 0 };
+        return { ok: true, count: keys.length, configured: keys.length > 0, enforce: mode === "enforce" };
     }
     if (!key) throw new HttpsError("invalid-argument", "key 가 필요합니다.");
 
@@ -1696,7 +1724,7 @@ exports.adminSetChatbotSkillKey = onCall(async function (request) {
     } else if (mode === "remove") {
         keys = keys.filter(function (k) { return k !== key; });
     } else {
-        throw new HttpsError("invalid-argument", "mode 는 add · remove · list 중 하나입니다.");
+        throw new HttpsError("invalid-argument", "mode 는 add · remove · list · audit · enforce 중 하나입니다.");
     }
 
     await ref.set({
@@ -1706,8 +1734,8 @@ exports.adminSetChatbotSkillKey = onCall(async function (request) {
     }, { merge: true });
 
     // 최대 1분은 옛 캐시가 남는다(다른 인스턴스는 각자 만료된다).
-    skillKeyCache = { keys: null, at: 0 };
-    return { ok: true, count: keys.length, configured: keys.length > 0 };
+    skillKeyCache = { keys: null, enforce: true, at: 0 };
+    return { ok: true, count: keys.length, configured: keys.length > 0, enforce: enforce };
 });
 
 // ── 공개 발화 ─────────────────────────────────────────────────────

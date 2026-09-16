@@ -26,7 +26,7 @@ const assert = require('node:assert');
 const Module = require('node:module');
 const path = require('node:path');
 
-const SKILL_KEY = 'test-skill-key';
+const SKILL_KEY = 'test-skill-key-0123456789abcdef';   // 24자 이상(콜러블 검증 통과용)
 
 let docs = {};
 let added = [];   // collection.add 로 들어온 것 — 제보가 실제로 저장되는지 본다
@@ -97,13 +97,21 @@ const fns = require(path.join(process.cwd(), 'functions', 'index.js'));
 Module._load = origLoad;
 after(() => { Object.assign(console, _quiet); });
 
-beforeEach(() => {
+beforeEach(async () => {
     docs = {};
     queryDocs = {};
     added = [];
     // 스킬 키는 system/chatbot_skill_key 에 있다(Secret Manager 가 아니라).
-    // 값이 있을 때만 캐시되므로, 매번 같은 키를 심어두면 캐시가 어긋나지 않는다.
-    docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY] };
+    //
+    // 키 조회는 60초 캐시라 앞 테스트의 값이 남는다. 콜러블이 그 캐시를 비우므로
+    // 매 테스트를 실제 경로로 초기화한다 — docs 만 갈아끼우면 캐시가 어긋나서
+    // '테스트는 통과하는데 실제로는 다른 값' 이 된다.
+    docs['admins/__reset__'] = { ok: true };
+    await fns.adminSetChatbotSkillKey({
+        auth: { uid: '__reset__' },
+        data: { mode: 'add', key: SKILL_KEY }
+    });
+    delete docs['admins/__reset__'];
 });
 
 // ── 요청/응답 스텁 ──
@@ -308,5 +316,65 @@ describe('스킬 키 운용 — 회전과 미설정', () => {
         assert.strictEqual(r.configured, true);
         assert.strictEqual(r.count, 1);
         assert.ok(!JSON.stringify(r).includes(SKILL_KEY), '조회 응답에 키 값이 실렸다');
+    });
+});
+
+describe('audit 모드 — 17개 중 하나를 빠뜨렸을 때', () => {
+    // 콘솔 스킬이 17개라 헤더를 하나 빠뜨리기 쉽다. 게다가 대기 건이 0인 스킬은
+    // 눌러볼 수가 없어서, 켜자마자 막으면 '쓰려는 순간에야' 죽은 걸 알게 된다.
+    test('audit 이면 키가 없어도 통과시킨다', async () => {
+        docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY], mode: 'audit' };
+        docs['admins/kakao-boss'] = { ok: true };
+        const res = makeRes();
+        await fns.chatbotHelp(makeReq({}), res);   // 헤더 없음
+        assert.strictEqual(res.statusCode, 200, 'audit 인데 막았다');
+    });
+
+    test('audit 이어도 관리자 검사는 그대로 산다', async () => {
+        docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY], mode: 'audit' };
+        const res = makeRes();
+        await fns.chatbotTeamDelete(makeReq({ userId: 'kakao-stranger' }), res);
+        assert.ok(text(res).includes('권한이 없습니다'),
+            'audit 은 스킬 키만 느슨하게 하는 것이지 권한을 여는 게 아니다');
+    });
+
+    test('enforce 로 바꾸면 막는다', async () => {
+        docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY], mode: 'enforce' };
+        const res = makeRes();
+        await fns.chatbotHelp(makeReq({}), res);
+        assert.strictEqual(res.statusCode, 401);
+    });
+
+    test('mode 가 없으면 enforce 가 기본 — 열어두는 쪽이 기본이면 안 된다', async () => {
+        docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY] };
+        const res = makeRes();
+        await fns.chatbotHelp(makeReq({}), res);
+        assert.strictEqual(res.statusCode, 401);
+    });
+
+    test('콜러블로 audit ↔ enforce 를 오간다', async () => {
+        docs['admins/boss'] = { ok: true };
+        docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY] };
+        const call = (data) => fns.adminSetChatbotSkillKey({ auth: { uid: 'boss' }, data });
+
+        let r = await call({ mode: 'audit' });
+        assert.strictEqual(r.enforce, false);
+        let a = makeRes();
+        await fns.chatbotHelp(makeReq({}), a);
+        assert.strictEqual(a.statusCode, 200, 'audit 으로 바꿨는데 여전히 막는다');
+
+        r = await call({ mode: 'enforce' });
+        assert.strictEqual(r.enforce, true);
+        let b = makeRes();
+        await fns.chatbotHelp(makeReq({}), b);
+        assert.strictEqual(b.statusCode, 401, 'enforce 로 바꿨는데 안 막는다');
+    });
+
+    test('list 가 지금 막고 있는지 알려준다', async () => {
+        docs['admins/boss'] = { ok: true };
+        docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY], mode: 'audit' };
+        const r = await fns.adminSetChatbotSkillKey({ auth: { uid: 'boss' }, data: { mode: 'list' } });
+        assert.strictEqual(r.configured, true);
+        assert.strictEqual(r.enforce, false);
     });
 });
