@@ -128,12 +128,13 @@ async function handle(event) {
 
     var covers = (d.insta_reel_covers && typeof d.insta_reel_covers === "object") ? d.insta_reel_covers : {};
 
-    // code 기준으로 아직 커버 없는 것만 (무한 루프 가드)
+    // code 기준으로 아직 우리 캐시가 아닌 것만 (무한 루프 가드). 예전 oEmbed 시절의 인스타 CDN 값은
+    // 서명 만료로 죽어 있으니 다시 캐싱한다. 실패하면 기존 값을 그대로 두고 아무것도 쓰지 않는다.
     var pending = [];
     var seen = {};
     for (var i = 0; i < urls.length; i++) {
         var code = reelCode(urls[i]);
-        if (!code || covers[code] || seen[code]) continue;
+        if (!code || pure.isCachedCoverUrl(covers[code]) || seen[code]) continue;
         seen[code] = true;
         pending.push(code);
     }
@@ -159,6 +160,7 @@ async function handle(event) {
 exports.cacheClubReelCovers = onDocumentWritten({ document: "clubs/{clubId}" }, handle);
 exports.cachePickupReelCovers = onDocumentWritten({ document: "pickup_games/{gameId}" }, handle);
 
-// 순수 로직 테스트용 export
+// 순수 로직 테스트용 + 백필 스크립트(scripts/backfill-reel-covers.js)용 export
 exports._reelCode = reelCode;
 exports._reelUrls = reelUrls;
+exports._handle = handle;

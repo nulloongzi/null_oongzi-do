@@ -662,6 +662,13 @@ describe('extractInstaPoster / isInstaCdnUrl / instaReelCode (릴스 커버)', (
         assert.strictEqual(pure.isInstaCdnUrl('https://cdninstagram.com.evil.io/a.jpg'), false);
         assert.strictEqual(pure.isInstaCdnUrl('https://169.254.169.254/latest'), false);
     });
+    test('isCachedCoverUrl: 우리 Storage reel_covers 다운로드 URL 만 true (옛 CDN 값은 재캐싱 대상)', () => {
+        assert.strictEqual(pure.isCachedCoverUrl(
+            'https://firebasestorage.googleapis.com/v0/b/proj.appspot.com/o/reel_covers%2FABC-1_x.jpg?alt=media&token=uuid'), true);
+        assert.strictEqual(pure.isCachedCoverUrl('https://scontent-ssn1-1.cdninstagram.com/v/t51/abc.jpg?se=1'), false);
+        assert.strictEqual(pure.isCachedCoverUrl('https://firebasestorage.googleapis.com/v0/b/p/o/club_photos%2Fx.jpg?alt=media&token=t'), false);
+        assert.strictEqual(pure.isCachedCoverUrl(undefined), false);
+    });
     test('instaReelCode: reel/reels/p/tv 의 shortcode, 그 외 null', () => {
         assert.strictEqual(pure.instaReelCode('https://www.instagram.com/reel/ABC-1_x/?utm=1'), 'ABC-1_x');
         assert.strictEqual(pure.instaReelCode('https://instagram.com/p/XYZ/'), 'XYZ');

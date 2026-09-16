@@ -526,6 +526,13 @@ function isInstaCdnUrl(u) {
     return /^https:\/\/[a-z0-9.-]+\.(?:cdninstagram\.com|fbcdn\.net|instagram\.com)\/[^\s"'<>]+$/i.test(u);
 }
 
+// insta_reel_covers 값이 "우리 Storage 캐시" 인가. 예전 oEmbed 시절 값(인스타 CDN, 서명 만료)은
+// false → 다시 캐싱 대상. Cloud Function 의 무한 루프 가드는 이 판정으로 끝난다(캐시 URL 이면 pending 아님).
+function isCachedCoverUrl(u) {
+    return typeof u === "string" &&
+        /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/reel_covers%2F[^?]+\?alt=media&token=/.test(u);
+}
+
 // 릴스/게시물 URL → shortcode. 클라이언트 insta-embed.js 의 reelCodeFromUrl 과 같은 규칙.
 function instaReelCode(u) {
     if (typeof u !== "string") return null;
@@ -571,5 +578,6 @@ module.exports = {
     chooseRefreshToken: chooseRefreshToken,
     extractInstaPoster: extractInstaPoster,
     isInstaCdnUrl: isInstaCdnUrl,
+    isCachedCoverUrl: isCachedCoverUrl,
     instaReelCode: instaReelCode
 };
