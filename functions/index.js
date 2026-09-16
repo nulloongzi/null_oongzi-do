@@ -14,6 +14,9 @@ var KAKAO_REFRESH_TOKEN = defineSecret("KAKAO_REFRESH_TOKEN");
 var KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
 var KAKAO_CLIENT_SECRET = defineSecret("KAKAO_CLIENT_SECRET");
 var APP_SECRET = defineSecret("WEBHOOK_SECRET");
+// 챗봇 스킬 공유 비밀. 카카오 콘솔의 스킬 설정에서 헤더로 붙여 보낸다.
+// 미설정이면 검증을 건너뛴다 — 콘솔 설정 전에 배포해도 챗봇이 죽지 않도록.
+var CHATBOT_SKILL_KEY = defineSecret("CHATBOT_SKILL_KEY");
 // 네이버 클라우드 플랫폼 Maps(지오코딩). 콘솔에서 해당 앱에 'Geocoding' 활성화 필요.
 //   firebase functions:secrets:set NAVER_MAP_CLIENT_ID
 //   firebase functions:secrets:set NAVER_MAP_CLIENT_SECRET
@@ -21,6 +24,34 @@ var NAVER_MAP_CLIENT_ID = defineSecret("NAVER_MAP_CLIENT_ID");
 var NAVER_MAP_CLIENT_SECRET = defineSecret("NAVER_MAP_CLIENT_SECRET");
 
 // ══════════════════════════════════════════════════════════
+// 챗봇 스킬 공통 옵션. 모든 스킬 엔드포인트가 같은 시크릿을 읽어야 한다.
+var CHATBOT_OPTS = { cors: true, invoker: "public", secrets: [CHATBOT_SKILL_KEY] };
+
+// 이 요청이 정말 카카오에서 온 것인가. 누가 보냈는지(권한)와는 별개 층이다.
+//   ① skillCallAllowed  — 채널이 맞나         (주소를 아는 아무나 차단)
+//   ② isAllowedKakaoUser — 이 사람이 운영자인가 (관리자 전용 발화만)
+// 공개 발화는 ①만 지나고 ②는 타지 않는다.
+function skillCallAllowed(req) {
+    var expected = "";
+    try { expected = CHATBOT_SKILL_KEY.value() || ""; } catch (e) { expected = ""; }
+    if (!expected) {
+        console.warn("⚠️ CHATBOT_SKILL_KEY 미설정 — 스킬 호출을 검증 없이 통과시키는 중");
+        return true;
+    }
+    var provided = req.get("X-Nurungji-Skill-Key")
+        || (req.query && req.query.k)
+        || "";
+    var ok = pure.skillKeyOk(provided, expected);
+    if (!ok) console.warn("⛔ 스킬 키 불일치 — 카카오 밖에서 온 호출로 본다");
+    return ok;
+}
+
+// 카카오가 아닌 곳에서 온 호출이다. 챗봇 말풍선이 아니라 평범한 401 로 끊는다 —
+// "권한이 없습니다" 카드를 돌려줘 엔드포인트가 살아 있음을 알릴 이유가 없다.
+function rejectSkillCall(res) {
+    res.status(401).json({ error: "unauthorized" });
+}
+
 // 챗봇 관리자 인증: /admin_kakao_ids/{kakao_user_id} 문서 존재 여부
 // ══════════════════════════════════════════════════════════
 async function isAllowedKakaoUser(req) {
@@ -298,8 +329,9 @@ var renderResultPage = pure.renderResultPage;
 // ══════════════════════════════════════════════════════════
 
 // ── 스킬 1: 대기 중인 인증 요청 목록 ──
-exports.chatbotPending = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotPending = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -363,8 +395,9 @@ exports.chatbotPending = onRequest({ cors: true, invoker: "public" }, async func
 });
 
 // ── 스킬 2: 승인 처리 ──
-exports.chatbotApprove = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -425,8 +458,9 @@ exports.chatbotApprove = onRequest({ cors: true, invoker: "public" }, async func
 });
 
 // ── 스킬 3: 거절 - 사유 선택 QuickReply 표시 ──
-exports.chatbotRejectAsk = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -486,8 +520,9 @@ exports.chatbotRejectAsk = onRequest({ cors: true, invoker: "public" }, async fu
 });
 
 // ── 스킬 4: 거절 확정 + 사유 저장 ──
-exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] }, async function (req, res) {
+exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secrets: [CHATBOT_SKILL_KEY, KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET] }, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -579,8 +614,9 @@ var TEAM_DELETE_BLOCK_ID = "69e62fa62ba171220dde09da";     // 팀삭제완료 �
 
 
 // ── 스킬 5: 팀 목록 (최신 10개) ──
-exports.chatbotTeamList = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotTeamList = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -641,8 +677,9 @@ exports.chatbotTeamList = onRequest({ cors: true, invoker: "public" }, async fun
 });
 
 // ── 스킬 6: 팀 삭제 확인 ──
-exports.chatbotTeamDeleteAsk = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotTeamDeleteAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -695,8 +732,9 @@ exports.chatbotTeamDeleteAsk = onRequest({ cors: true, invoker: "public" }, asyn
 });
 
 // ── 스킬 7: 팀 삭제 + verification_requests cleanup ──
-exports.chatbotTeamDelete = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotTeamDelete = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -816,7 +854,7 @@ exports.onReportCreated = onDocumentCreated(
             return;
         }
 
-        var kindLabel = d.kind === "pickup" ? "픽업" : "동호회";
+        var kindLabel = pure.reportKindLabel(d.kind);
         var lines = [
             "[신고 접수] " + kindLabel + " · " + (d.target_name || d.target_id || ""),
             "",
@@ -845,8 +883,9 @@ exports.onReportCreated = onDocumentCreated(
 );
 
 // ── 스킬 8: 미처리 신고 목록 (발화: 신고관리) ──
-exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -884,7 +923,7 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
         // 블록 ID가 아직 없으면 버튼 대신 텍스트로 — 콘솔 설정 전에도 목록은 보여야 한다.
         if (!doneBlockId) {
             var text = top.map(function (d, i) {
-                var kindLabel = d.kind === "pickup" ? "픽업" : "동호회";
+                var kindLabel = pure.reportKindLabel(d.kind);
                 var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
                 return (i + 1) + ". " + (d.notify_failed ? "⚠️ " : "") + "[" + kindLabel + "] " + (d.target_name || d.target_id)
                     + "\n   " + reportReasonLabel(d.reason) + " · " + dateStr
@@ -908,7 +947,7 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
 
         var DEFAULT_THUMB = "https://do.nulloongzi.com/app_ui/nulloongzido%20logo_512px.png";
         var cards = top.map(function (d) {
-            var kindLabel = d.kind === "pickup" ? "픽업" : "동호회";
+            var kindLabel = pure.reportKindLabel(d.kind);
             var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
             var desc = kindLabel + " · " + reportReasonLabel(d.reason) + "\n" + dateStr;
             if (d.detail) desc += "\n" + String(d.detail).slice(0, 60);
@@ -945,8 +984,9 @@ exports.chatbotReports = onRequest({ cors: true, invoker: "public" }, async func
 // ── 스킬 9: 신고 처리 완료 ──
 // 신고 문서는 지우지 않고 status만 바꾼다 — 처리 이력이 남아야 "며칠 만에 확인했나"를
 // 나중에 셀 수 있다(guidelines.html 3-2 의 7일 약속을 검증하는 유일한 근거).
-exports.chatbotReportDone = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1214,8 +1254,9 @@ exports.onClubAdminRequestCreated = onDocumentCreated(
 );
 
 // ── 스킬: 관리자 권한 신청 목록 (발화: 관리자관리) ──
-exports.chatbotAdminRequests = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1304,6 +1345,7 @@ exports.chatbotAdminRequests = onRequest({ cors: true, invoker: "public" }, asyn
 
 // 승인/거절 공통.
 async function resolveAdminRequest(req, res, approve) {
+    if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
     var auth = await isAllowedKakaoUser(req);
     if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1359,14 +1401,14 @@ async function resolveAdminRequest(req, res, approve) {
         + "\n관리자 " + granted.admins.length + "/" + pure.MAX_CLUB_ADMINS + "명");
 }
 
-exports.chatbotAdminApprove = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotAdminApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveAdminRequest(req, res, true); } catch (error) {
         console.error("chatbotAdminApprove 오류:", error);
         res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] } });
     }
 });
 
-exports.chatbotAdminReject = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotAdminReject = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveAdminRequest(req, res, false); } catch (error) {
         console.error("chatbotAdminReject 오류:", error);
         res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] } });
@@ -1427,8 +1469,9 @@ async function notifyClaimRequests(created, emailMasked) {
 }
 
 // ── 스킬 10: 대기 중인 소유권 클레임 (발화: 클레임관리) ──
-exports.chatbotClaims = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotClaims = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
         var auth = await isAllowedKakaoUser(req);
         if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1509,6 +1552,7 @@ exports.chatbotClaims = onRequest({ cors: true, invoker: "public" }, async funct
 
 // 승인/거절 공통. 승인일 때만 clubs.registered_by 를 바꾼다.
 async function resolveClaim(req, res, approve) {
+    if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
     var auth = await isAllowedKakaoUser(req);
     if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
 
@@ -1571,17 +1615,117 @@ async function resolveClaim(req, res, approve) {
 }
 
 // ── 스킬 11·12: 클레임 승인 / 거절 ──
-exports.chatbotClaimApprove = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotClaimApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveClaim(req, res, true); } catch (error) {
         console.error("chatbotClaimApprove 오류:", error);
         res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] } });
     }
 });
 
-exports.chatbotClaimReject = onRequest({ cors: true, invoker: "public" }, async function (req, res) {
+exports.chatbotClaimReject = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveClaim(req, res, false); } catch (error) {
         console.error("chatbotClaimReject 오류:", error);
         res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] } });
+    }
+});
+
+// ── 공개 발화 ─────────────────────────────────────────────────────
+// 여기서부터는 **누구나** 쓸 수 있다. 스킬 키(①)는 지나지만 관리자 검사(②)는
+// 타지 않는다. 위의 관리 발화와 같은 파일에 있으니 옮길 때 섞이지 않게 주의.
+//
+// 챗봇이 지도를 흉내내지 않는다. 지도는 앱·웹이 훨씬 잘한다. 챗봇이 유일하게
+// 잘하는 건 **앱을 안 깐 사람을 지도까지 데려다주는 것**과 **앱 없이 제보를
+// 받는 것** 두 가지다(PHILOSOPHY.md 가치 필터 #4 — 지도가 wedge).
+
+var SITE = "https://do.nulloongzi.com";
+var LOGO = SITE + "/app_ui/nulloongzido%20logo_512px.png";
+
+// 길잡이. 도움말 발화와 폴백(무슨 말인지 모를 때)이 같이 쓴다.
+exports.chatbotHelp = onRequest(CHATBOT_OPTS, async function (req, res) {
+    try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+        res.json({
+            version: "2.0",
+            template: {
+                outputs: [{
+                    basicCard: {
+                        title: "누룽지도 🏐",
+                        description: "전국 배구 동호회를 지도 한 눈에.\n소개해줄 친구가 없어도, 집 근처에서 배구를 시작하게.\n\n· 우리 팀 등록: 지도에서 로그인 후 '+' 버튼\n· 정보가 틀렸을 때: 아래 '정보가 틀려요'",
+                        thumbnail: { imageUrl: LOGO, fixedRatio: true },
+                        buttons: [
+                            { label: "🗺 지도 보기", action: "webLink", webLinkUrl: SITE }
+                        ]
+                    }
+                }],
+                quickReplies: [
+                    { label: "✏️ 정보가 틀려요", action: "message", messageText: "제보 " },
+                    { label: "🗺 지도 보기", action: "message", messageText: "지도" }
+                ]
+            }
+        });
+    } catch (error) {
+        console.error("chatbotHelp 오류:", error);
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "누룽지도 — " + SITE } }] } });
+    }
+});
+
+// 제보 접수. "제보 GVT 주소가 바뀌었어요" 한 줄이면 끝난다.
+// 앱 신고와 같은 reports 컬렉션에 넣는다 — 운영자가 '신고관리' 하나만 보면 되게.
+exports.chatbotPublicReport = onRequest(CHATBOT_OPTS, async function (req, res) {
+    try {
+        if (!skillCallAllowed(req)) { rejectSkillCall(res); return; }
+
+        var body = req.body || {};
+        var utterance = (body.userRequest && body.userRequest.utterance) || "";
+        var parsed = pure.parsePublicReport(utterance);
+
+        if (!parsed.ok) {
+            res.json({
+                version: "2.0",
+                template: {
+                    outputs: [{
+                        simpleText: {
+                            text: "어떤 정보가 틀렸는지 한 줄로 적어주세요.\n\n예) 제보 GVT 운동 시간이 바뀌었어요\n예) 제보 파주 임팩트 이제 활동 안 해요"
+                        }
+                    }]
+                }
+            });
+            return;
+        }
+
+        // 제보자를 특정할 수 있는 건 카카오 user id 뿐이고, 그걸로 답장을 보낼
+        // 수단이 없다(채널 메시지는 별도 API·비용). 그래서 저장은 하되 답장은
+        // 약속하지 않는다 — 응답 문구가 그 사실을 먼저 말한다.
+        var reporter = (body.userRequest && body.userRequest.user && body.userRequest.user.id) || "";
+
+        await db.collection("reports").add({
+            kind: "chatbot",
+            target_id: "",
+            target_name: "카카오톡 채널 제보",
+            reason: "other",
+            detail: parsed.text,
+            status: "open",
+            reporter_kakao_id: reporter,
+            created_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.json({
+            version: "2.0",
+            template: {
+                outputs: [{
+                    simpleText: {
+                        text: "제보 고맙습니다 🙏\n영업일 7일 안에 확인합니다.\n\n확인 결과를 따로 답장드리진 못해요. 대신 지도에 반영되면 바로 보실 수 있습니다."
+                    }
+                }],
+                quickReplies: [{ label: "🗺 지도 보기", action: "webLink", webLinkUrl: SITE }]
+            }
+        });
+    } catch (error) {
+        console.error("chatbotPublicReport 오류:", error);
+        res.json({
+            version: "2.0",
+            template: { outputs: [{ simpleText: { text: "제보 접수 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." } }] }
+        });
     }
 });
 
