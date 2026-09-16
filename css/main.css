@@ -2810,13 +2810,6 @@
             justify-content: center;
         }
 
-        .insta-embed-box .instagram-media {
-            margin: 0 auto !important;
-            min-width: 0 !important;
-            max-width: 360px !important;
-            width: 100% !important;
-        }
-
         /* 📸 스토리 카드 + 🔗 링크 공유를 한 줄에 (스토리 = 누룽지 옐로 강조) */
         .ps-share-row {
             display: flex;

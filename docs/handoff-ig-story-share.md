@@ -218,6 +218,15 @@
 > B는 프로페셔널 계정만 가능 + App Review·비즈니스 인증·토큰 60일 갱신 등 상시 비용.
 
 ### ✅ A — 구현 완료 (클럽 + 픽업, jsdom 검증)
+
+> **2026-09-16 개정 — 임베드 → 커버 카드.** 공식 embed 는 로그아웃 상태에서 인라인 재생이 안 되고(포스터 + "Instagram에서 보기"),
+> oEmbed `thumbnail_url` 도 2025-11-03 삭제됐다. 그래서 웹·앱 모두 **우리 Storage 에 캐시한 정지 커버 → 탭 한 번 → 인스타**로 바꿨다.
+> - 커버: `functions/insta-cover.js` 가 `/reel/<code>/embed/` HTML 에서 포스터를 뽑아(og:image 폴백) `reel_covers/<code>.jpg` 에 저장,
+>   `insta_reel_covers[code]` 에 Storage URL. `META_OEMBED_TOKEN` 시크릿은 더 이상 안 쓴다(지워도 됨).
+> - 웹 `js/insta-embed.js`: `embed.js` 미적재. `renderInstaEmbeds` 시그니처는 그대로(4번째 `meta` 는 `reel_play` 계측용).
+> - 앱 `lib/widgets/reel_card.dart`: WebView 제거(`webview_flutter` 의존 삭제). 상세·지도 피크 모두 커버 카드.
+> - 아래 원문은 임베드 시절 기록으로 남긴다.
+
 호스트가 등록 시 **공개 인스타 릴스/게시물 링크**를 붙이면, 상세 화면에 공식 `embed.js`로 임베드.
 - `js/insta-embed.js`(신규): `window.renderInstaEmbed(container, url)` — blockquote + embed.js 지연로드 + `Embeds.process()`. 같은 URL 재처리 생략.
 - `js/dom-utils.js`: `sanitizeInstaPostUrl(url)` — `{p|reel|tv}/<shortcode>`만 통과시켜 정규 permalink로 정규화(화이트리스트, lookalike/`javascript:` 차단). `data-instgrm-permalink`에 박히므로 보안 핵심.

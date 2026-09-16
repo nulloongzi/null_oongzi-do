@@ -50,6 +50,14 @@ service firebase.storage {
                     && fileName.size() <= 100;
     }
 
+    // ── 릴스 커버 캐시 ──
+    // Cloud Function(insta-cover.js)이 admin SDK 로만 쓴다(규칙 우회). 클라이언트는 읽기만.
+    // 공개 읽기: 발견 카드·지도 피크가 로그인 없이 커버를 보여줘야 한다.
+    match /reel_covers/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ── 팀 사진 ──
     match /club_photos/{allPaths=**} {
       allow read: if true;

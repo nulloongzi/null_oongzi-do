@@ -631,3 +631,41 @@ describe('parsePublicReport', () => {
         assert.strictEqual(r.text, 'GVT 주소가 틀려요');
     });
 });
+
+// 릴스 커버 추출(insta-cover.js) — oEmbed thumbnail_url 삭제(2025-11-03) 이후의 대체 경로.
+describe('extractInstaPoster / isInstaCdnUrl / instaReelCode (릴스 커버)', () => {
+    const CDN = 'https://scontent-ssn1-1.cdninstagram.com/v/t51.2885-15/abc.jpg?stp=dst-jpg&amp;_nc_ht=x';
+    test('/embed/ 페이지의 EmbeddedMediaImage src (속성 순서 무관, &amp; 디코드)', () => {
+        const a = `<div><img class="EmbeddedMediaImage" alt="" src="${CDN}"></div>`;
+        const b = `<img src="${CDN}" class="foo EmbeddedMediaImage bar">`;
+        assert.strictEqual(pure.extractInstaPoster(a), CDN.replace('&amp;', '&'));
+        assert.strictEqual(pure.extractInstaPoster(b), CDN.replace('&amp;', '&'));
+    });
+    test('없으면 og:image 폴백', () => {
+        const html = `<head><meta property="og:image" content="https://scontent.cdninstagram.com/og.jpg" /></head>`;
+        assert.strictEqual(pure.extractInstaPoster(html), 'https://scontent.cdninstagram.com/og.jpg');
+    });
+    test('그다음 인라인 JSON display_url (역슬래시 이스케이프 해제)', () => {
+        const html = `<script>{"display_url":"https:\\/\\/scontent.cdninstagram.com\\/v\\/x.jpg?a=1\\u0026b=2"}</script>`;
+        assert.strictEqual(pure.extractInstaPoster(html), 'https://scontent.cdninstagram.com/v/x.jpg?a=1&b=2');
+    });
+    test('아무것도 없으면 null, 비문자열도 null', () => {
+        assert.strictEqual(pure.extractInstaPoster('<html><body>login</body></html>'), null);
+        assert.strictEqual(pure.extractInstaPoster(undefined), null);
+    });
+    test('isInstaCdnUrl: 인스타/메타 CDN 만 통과 (SSRF 가드)', () => {
+        assert.strictEqual(pure.isInstaCdnUrl('https://scontent-ssn1-1.cdninstagram.com/v/a.jpg?x=1'), true);
+        assert.strictEqual(pure.isInstaCdnUrl('https://scontent.xx.fbcdn.net/v/a.jpg'), true);
+        assert.strictEqual(pure.isInstaCdnUrl('https://www.instagram.com/static/a.png'), true);
+        assert.strictEqual(pure.isInstaCdnUrl('https://evil.com/cdninstagram.com/a.jpg'), false);
+        assert.strictEqual(pure.isInstaCdnUrl('http://scontent.cdninstagram.com/a.jpg'), false);
+        assert.strictEqual(pure.isInstaCdnUrl('https://cdninstagram.com.evil.io/a.jpg'), false);
+        assert.strictEqual(pure.isInstaCdnUrl('https://169.254.169.254/latest'), false);
+    });
+    test('instaReelCode: reel/reels/p/tv 의 shortcode, 그 외 null', () => {
+        assert.strictEqual(pure.instaReelCode('https://www.instagram.com/reel/ABC-1_x/?utm=1'), 'ABC-1_x');
+        assert.strictEqual(pure.instaReelCode('https://instagram.com/p/XYZ/'), 'XYZ');
+        assert.strictEqual(pure.instaReelCode('https://www.instagram.com/null_oongzi/'), null);
+        assert.strictEqual(pure.instaReelCode(null), null);
+    });
+});

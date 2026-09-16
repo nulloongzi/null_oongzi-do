@@ -489,6 +489,50 @@ function parsePublicReport(utterance) {
     return { ok: true, reason: null, text: body.slice(0, PUBLIC_REPORT_MAX) };
 }
 
+// ── 인스타 릴스 커버 추출 (insta-cover.js) ──
+// 2025-11-03 Meta 가 oEmbed 응답에서 thumbnail_url 을 뺐다. Meta 가 권한 대안은
+// "게시물 HTML 메타데이터에서 직접" — 익명 fetch 용으로 만들어진 /embed/ 페이지에서
+// 미디어 <img> 를, 없으면 og:image / 인라인 JSON 의 display_url 을 본다.
+// 결과는 반드시 isInstaCdnUrl 로 걸러서 쓴다 (이 URL 로 이미지를 다시 fetch 하므로 SSRF 가드).
+
+function decodeHtmlAttr(v) {
+    return String(v)
+        .replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
+
+function extractInstaPoster(html) {
+    if (typeof html !== "string" || !html) return null;
+    var m;
+    // 1) /embed/ 페이지의 미디어 이미지. 속성 순서가 바뀌어도 잡히게 두 방향.
+    m = html.match(/<img[^>]+class="[^"]*EmbeddedMediaImage[^"]*"[^>]*\ssrc="([^"]+)"/i)
+        || html.match(/<img[^>]*\ssrc="([^"]+)"[^>]*class="[^"]*EmbeddedMediaImage[^"]*"/i);
+    if (m) return decodeHtmlAttr(m[1]);
+    // 2) og:image (permalink 페이지 / 일부 embed 변형)
+    m = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)
+        || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i);
+    if (m) return decodeHtmlAttr(m[1]);
+    // 3) 인라인 JSON: "display_url":"https:\/\/..." (역슬래시·유니코드 이스케이프는 JSON 파서에 맡긴다)
+    m = html.match(/"(?:display_url|thumbnail_src)"\s*:\s*"((?:\\.|[^"\\])+)"/);
+    if (m) {
+        try { return JSON.parse("\"" + m[1] + "\""); } catch (e) { return null; }
+    }
+    return null;
+}
+
+// 커버 이미지를 받아올 호스트 화이트리스트: 인스타/메타 CDN 만.
+function isInstaCdnUrl(u) {
+    if (typeof u !== "string") return false;
+    return /^https:\/\/[a-z0-9.-]+\.(?:cdninstagram\.com|fbcdn\.net|instagram\.com)\/[^\s"'<>]+$/i.test(u);
+}
+
+// 릴스/게시물 URL → shortcode. 클라이언트 insta-embed.js 의 reelCodeFromUrl 과 같은 규칙.
+function instaReelCode(u) {
+    if (typeof u !== "string") return null;
+    var m = u.match(/^https:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/);
+    return m ? m[1] : null;
+}
+
 module.exports = {
     skillKeyOk: skillKeyOk,
     skillKeyMatches: skillKeyMatches,
@@ -524,5 +568,8 @@ module.exports = {
     extractRejectInfo: extractRejectInfo,
     renderResultPage: renderResultPage,
     refreshTokenFingerprint: refreshTokenFingerprint,
-    chooseRefreshToken: chooseRefreshToken
+    chooseRefreshToken: chooseRefreshToken,
+    extractInstaPoster: extractInstaPoster,
+    isInstaCdnUrl: isInstaCdnUrl,
+    instaReelCode: instaReelCode
 };
