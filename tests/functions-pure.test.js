@@ -547,11 +547,6 @@ describe('placeQueryVariants (시설명 검색 재시도)', () => {
 
 // ── 챗봇 접근 경계·공개 제보 (2026-09-16) ────────────────────────
 describe('skillKeyOk', () => {
-    test('기대값이 비면 통과 — 콘솔 설정 전 배포에도 챗봇이 살아야 한다', () => {
-        assert.strictEqual(pure.skillKeyOk('아무거나', ''), true);
-        assert.strictEqual(pure.skillKeyOk('', ''), true);
-        assert.strictEqual(pure.skillKeyOk(null, null), true);
-    });
     test('일치하면 true, 다르면 false', () => {
         assert.strictEqual(pure.skillKeyOk('abc123', 'abc123'), true);
         assert.strictEqual(pure.skillKeyOk('abc124', 'abc123'), false);
@@ -563,9 +558,27 @@ describe('skillKeyOk', () => {
         assert.strictEqual(pure.skillKeyOk('abc', 'abc123'), false);
         assert.strictEqual(pure.skillKeyOk('abc1234', 'abc123'), false);
     });
-    test('빈 값을 보내면 막는다 — 헤더 누락이 통과되면 안 된다', () => {
-        assert.strictEqual(pure.skillKeyOk('', 'abc123'), false);
-        assert.strictEqual(pure.skillKeyOk(undefined, 'abc123'), false);
+    test('빈 값끼리는 통과가 아니다 — 여기서 열면 안 된다', () => {
+        assert.strictEqual(pure.skillKeyOk('', ''), false);
+        assert.strictEqual(pure.skillKeyOk(undefined, undefined), false);
+    });
+});
+
+describe('skillKeyMatches', () => {
+    test('목록이 비면 미설정 — 통과시키되 configured 로 구분한다', () => {
+        assert.deepStrictEqual(pure.skillKeyMatches('x', []), { configured: false, ok: true });
+        assert.deepStrictEqual(pure.skillKeyMatches('x', undefined), { configured: false, ok: true });
+    });
+    test('빈 문자열만 든 목록도 미설정으로 본다', () => {
+        assert.deepStrictEqual(pure.skillKeyMatches('x', ['', '   ']), { configured: false, ok: true });
+    });
+    test('하나라도 맞으면 통과 — 회전 중에는 두 키가 동시에 산다', () => {
+        assert.deepStrictEqual(pure.skillKeyMatches('b2', ['a1', 'b2']), { configured: true, ok: true });
+        assert.deepStrictEqual(pure.skillKeyMatches('a1', ['a1', 'b2']), { configured: true, ok: true });
+    });
+    test('설정됐는데 안 맞으면 거부', () => {
+        assert.deepStrictEqual(pure.skillKeyMatches('zz', ['a1']), { configured: true, ok: false });
+        assert.deepStrictEqual(pure.skillKeyMatches('', ['a1']), { configured: true, ok: false });
     });
 });
 

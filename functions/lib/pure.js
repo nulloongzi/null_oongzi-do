@@ -398,21 +398,36 @@ function placeQueryVariants(raw) {
 // 사람이 주소만 알면 팀 삭제·관리자 승인·소유권 이전까지 할 수 있다 —
 // 그 id 는 카카오가 정하는 값이라 새어도 사장이 바꿀 수가 없다.
 //
-// 그래서 카카오 콘솔이 붙여 보내는 공유 비밀을 **먼저** 본다. 주소를 알아도
-// 이 값을 모르면 못 부르고, 새면 값만 갈면 된다.
-//
-// expected 가 비어 있으면 통과시킨다. 서버에 검증을 먼저 켜고 콘솔에 헤더를
-// 넣으면 그 사이 챗봇이 통째로 죽는다 — 순서를 안전한 쪽으로 강제하는 장치다.
-// (호출부가 미설정 상태를 경고로 남긴다.)
+// 그래서 카카오 콘솔이 붙여 보내는 공유 비밀을 **먼저** 본다.
 function skillKeyOk(provided, expected) {
     var want = String(expected == null ? "" : expected).trim();
-    if (!want) return true;
+    if (!want) return false;
     var got = String(provided == null ? "" : provided).trim();
     // 길이로 먼저 빠지면 길이가 새지만, 비밀 자체보다 훨씬 덜 민감하다.
     if (got.length !== want.length) return false;
     var diff = 0;
     for (var i = 0; i < want.length; i++) diff |= got.charCodeAt(i) ^ want.charCodeAt(i);
     return diff === 0;
+}
+
+// 키를 **여러 개** 받는다. 하나만 두면 값을 바꾸는 순간 콘솔과 서버 중 어느 쪽을
+// 먼저 고쳐도 그 사이 챗봇이 죽는다. 목록이면 회전이 끊김 없이 된다:
+//   새 키 추가 → 콘솔 헤더 교체 → 옛 키 제거
+//
+// 목록이 비어 있으면 '아직 설정 안 함'이고 통과시킨다. 설정 전에 배포해도
+// 챗봇이 죽지 않아야 이행이 가능하다(호출부가 경고를 남긴다).
+function skillKeyMatches(provided, keys) {
+    var list = Array.isArray(keys) ? keys : [];
+    var usable = [];
+    for (var i = 0; i < list.length; i++) {
+        var k = String(list[i] == null ? "" : list[i]).trim();
+        if (k) usable.push(k);
+    }
+    if (!usable.length) return { configured: false, ok: true };
+    for (var j = 0; j < usable.length; j++) {
+        if (skillKeyOk(provided, usable[j])) return { configured: true, ok: true };
+    }
+    return { configured: true, ok: false };
 }
 
 // ── 신고 종류 라벨 ───────────────────────────────────────────────
@@ -443,6 +458,7 @@ function parsePublicReport(utterance) {
 
 module.exports = {
     skillKeyOk: skillKeyOk,
+    skillKeyMatches: skillKeyMatches,
     reportKindLabel: reportKindLabel,
     parsePublicReport: parsePublicReport,
     PUBLIC_REPORT_MAX: PUBLIC_REPORT_MAX,

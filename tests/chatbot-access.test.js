@@ -76,15 +76,13 @@ const providerHttpStub = {
     getJson: async () => ({ status: 200, json: {} })
 };
 const fnStubs = {
-    'firebase-functions/v2/https': { onRequest: (o, h) => h, onCall: (o, h) => h, HttpsError: class extends Error {} },
+    'firebase-functions/v2/https': { onRequest: (o, h) => h, onCall: (o, h) => (typeof o === 'function' ? o : h), HttpsError: class extends Error {} },
     'firebase-functions/v2/firestore': {
         onDocumentCreated: (o, h) => ({ _handler: h }), onDocumentWritten: (o, h) => ({ _handler: h }),
         onDocumentUpdated: (o, h) => ({ _handler: h }), onDocumentDeleted: (o, h) => ({ _handler: h })
     },
     'firebase-functions/params': {
-        // CHATBOT_SKILL_KEY 만 실제 값을 주고 나머지는 아무 값이나. 이 파일의
-        // 관심사는 '키가 맞고 틀림'이라 그 구분이 되는 게 중요하다.
-        defineSecret: (n) => ({ value: () => (n === 'CHATBOT_SKILL_KEY' ? SKILL_KEY : 'secret'), name: n }),
+        defineSecret: (n) => ({ value: () => 'secret', name: n }),
         defineString: (n, o) => ({ value: () => (o && o.default) || '', name: n })
     }
 };
@@ -99,7 +97,14 @@ const fns = require(path.join(process.cwd(), 'functions', 'index.js'));
 Module._load = origLoad;
 after(() => { Object.assign(console, _quiet); });
 
-beforeEach(() => { docs = {}; queryDocs = {}; added = []; });
+beforeEach(() => {
+    docs = {};
+    queryDocs = {};
+    added = [];
+    // 스킬 키는 system/chatbot_skill_key 에 있다(Secret Manager 가 아니라).
+    // 값이 있을 때만 캐시되므로, 매번 같은 키를 심어두면 캐시가 어긋나지 않는다.
+    docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY] };
+});
 
 // ── 요청/응답 스텁 ──
 function makeReq(opts) {
@@ -249,5 +254,59 @@ describe('신고 목록에서 카톡 제보가 구분된다', () => {
         await fns.chatbotReports(withKey({ userId: 'kakao-boss' }), res);
         const out = text(res);
         assert.ok(out.includes('카톡 제보'), '카톡 제보가 라벨로 구분되지 않는다');
+    });
+});
+
+describe('스킬 키 운용 — 회전과 미설정', () => {
+    test('키를 여러 개 두면 둘 다 통한다 — 회전 중 끊기지 않게', async () => {
+        docs['admins/boss'] = { ok: true };
+        const oldKey = 'old-key-'.padEnd(30, 'x');
+        // 실제 회전 경로를 그대로 탄다: 콜러블로 키를 더하면 캐시도 그때 비워진다.
+        await fns.adminSetChatbotSkillKey({ auth: { uid: 'boss' }, data: { mode: 'add', key: oldKey } });
+
+        const a = makeRes();
+        await fns.chatbotHelp(makeReq({ headers: { 'X-Nurungji-Skill-Key': oldKey } }), a);
+        assert.strictEqual(a.statusCode, 200, '더한 키가 안 먹는다');
+        const b = makeRes();
+        await fns.chatbotHelp(withKey({}), b);
+        assert.strictEqual(b.statusCode, 200, '기존 키가 끊겼다 — 회전 중 챗봇이 죽는다');
+    });
+
+    test('adminSetChatbotSkillKey: 관리자만 쓸 수 있다', async () => {
+        await assert.rejects(
+            () => fns.adminSetChatbotSkillKey({ auth: { uid: 'nobody' }, data: { key: 'x'.repeat(30) } })
+        );
+    });
+
+    test('adminSetChatbotSkillKey: add 는 더하고 remove 는 뺀다', async () => {
+        docs['admins/boss'] = { ok: true };
+        docs['system/chatbot_skill_key'] = { keys: [] };
+        const ctx = (data) => ({ auth: { uid: 'boss' }, data });
+        const k1 = 'k1'.padEnd(30, 'a');
+        const k2 = 'k2'.padEnd(30, 'b');
+
+        let r = await fns.adminSetChatbotSkillKey(ctx({ mode: 'add', key: k1 }));
+        assert.strictEqual(r.count, 1);
+        r = await fns.adminSetChatbotSkillKey(ctx({ mode: 'add', key: k2 }));
+        assert.strictEqual(r.count, 2, '회전하려면 두 개가 동시에 살아 있어야 한다');
+        r = await fns.adminSetChatbotSkillKey(ctx({ mode: 'remove', key: k1 }));
+        assert.strictEqual(r.count, 1);
+        assert.deepStrictEqual(docs['system/chatbot_skill_key'].keys, [k2]);
+    });
+
+    test('adminSetChatbotSkillKey: 짧은 키는 거부', async () => {
+        docs['admins/boss'] = { ok: true };
+        await assert.rejects(
+            () => fns.adminSetChatbotSkillKey({ auth: { uid: 'boss' }, data: { mode: 'add', key: 'short' } })
+        );
+    });
+
+    test('adminSetChatbotSkillKey: list 는 값을 돌려주지 않는다', async () => {
+        docs['admins/boss'] = { ok: true };
+        docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY] };
+        const r = await fns.adminSetChatbotSkillKey({ auth: { uid: 'boss' }, data: { mode: 'list' } });
+        assert.strictEqual(r.configured, true);
+        assert.strictEqual(r.count, 1);
+        assert.ok(!JSON.stringify(r).includes(SKILL_KEY), '조회 응답에 키 값이 실렸다');
     });
 });
