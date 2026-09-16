@@ -1188,24 +1188,33 @@ exports.claimMyClubs = onCall(
             if (blocked) { skipped.push({ clubId: clubId, reason: blocked }); continue; }
             if (club.registered_by === uid) { skipped.push({ clubId: clubId, reason: "already_yours" }); continue; }
 
-            // 같은 (팀, 사람) 요청이 이미 떠 있으면 다시 만들지 않는다 —
+            // 같은 (팀, 사람) 요청이 이미 있으면 다시 만들지 않는다 —
             // 로그인할 때마다 부르는 함수라 안 막으면 운영자 목록이 도배된다.
-            var dupSnap = await db.collection("club_claim_requests")
-                .where("club_id", "==", clubId)
-                .where("uid", "==", uid)
-                .where("status", "==", "pending")
-                .limit(1).get();
-            if (!dupSnap.empty) { skipped.push({ clubId: clubId, reason: "already_requested" }); continue; }
-
-            var reqRef = await db.collection("club_claim_requests").add({
-                club_id: clubId,
-                club_name: (club && club.name) || "",
-                uid: uid,
-                email_masked: pure.maskEmail(email),
-                status: "pending",
-                created_at: admin.firestore.FieldValue.serverTimestamp()
+            //
+            // 조회로 막던 걸 문서 id 고정 + 트랜잭션으로 바꿨다. 조회는 읽고 쓰는
+            // 사이가 비어 있어서, 같은 사람의 호출이 겹치면 둘 다 통과해 요청이
+            // 두 개 생겼다. 트랜잭션은 같은 문서를 건드리는 호출을 직렬화한다.
+            var reqId = pure.claimRequestId(clubId, uid);
+            if (!reqId) { skipped.push({ clubId: clubId, reason: "bad_id" }); continue; }
+            var reqRef = db.collection("club_claim_requests").doc(reqId);
+            var clubName = (club && club.name) || "";
+            var outcome = await db.runTransaction(async function (tx) {
+                var cur = await tx.get(reqRef);
+                var reuse = pure.claimReuseReason(cur.exists ? cur.data() : null);
+                if (reuse) return reuse;
+                tx.set(reqRef, {
+                    club_id: clubId,
+                    club_name: clubName,
+                    uid: uid,
+                    email_masked: pure.maskEmail(email),
+                    status: "pending",
+                    created_at: admin.firestore.FieldValue.serverTimestamp()
+                });
+                return null;
             });
-            created.push({ clubId: clubId, requestId: reqRef.id, clubName: (club && club.name) || "" });
+            if (outcome) { skipped.push({ clubId: clubId, reason: outcome }); continue; }
+
+            created.push({ clubId: clubId, requestId: reqRef.id, clubName: clubName });
         }
 
         if (created.length) await notifyClaimRequests(created, pure.maskEmail(email));
