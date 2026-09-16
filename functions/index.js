@@ -22,7 +22,21 @@ var NAVER_MAP_CLIENT_SECRET = defineSecret("NAVER_MAP_CLIENT_SECRET");
 
 // ══════════════════════════════════════════════════════════
 // 챗봇 스킬 공통 옵션. 모든 스킬 엔드포인트가 같은 시크릿을 읽어야 한다.
-var CHATBOT_OPTS = { cors: true, invoker: "public" };
+// cpu·memory 를 올린 이유는 요금이 아니라 **5초**다.
+//
+// 카카오 스킬 타임아웃은 5초인데, 운영자가 며칠에 한 번 쓰는 스킬이라 인스턴스가
+// 늘 0으로 내려가 있고 매번 콜드로 뜬다. 게다가 스킬 17개가 각각 별개의 Cloud
+// Run 서비스라 '팀관리' 로 하나를 덥혀도 이어 누르는 '승인' 은 또 콜드다.
+// 실측(2026-09-16): 아무 일도 안 하는 chatbotHelp 조차 콜드 2.5초 / 웜 0.005초,
+// chatbotTeamList 는 5.16초를 찍어 실제로 카카오가 먼저 끊었다.
+//
+// 콜드 시간의 대부분은 컨테이너 기동 + firebase-admin 로드라 CPU 를 탄다.
+// 256MiB/1vCPU 는 그걸 감당하기엔 얇다.
+//
+// 상시 인스턴스(minInstances)와 달리 이건 **호출이 도는 동안만** 과금된다.
+// 하루 몇 번 부르는 스킬이라 단가가 올라도 총액은 그대로 0 에 가깝다.
+// 같은 이유로 minInstances 는 넣지 않았다 — 그쪽은 17개 서비스가 24시간 켜진다.
+var CHATBOT_OPTS = { cors: true, invoker: "public", memory: "512MiB", cpu: 2 };
 
 // 이 요청이 정말 카카오에서 온 것인가. 누가 보냈는지(권한)와는 별개 층이다.
 //   ① skillCallAllowed  — 채널이 맞나         (주소를 아는 아무나 차단)
@@ -342,12 +356,26 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
         }
 
         if (action === "approve") {
+            var verified = await markClubVerified(requestData.club_id);
+            if (!verified.ok) {
+                if (verified.reason === "club_missing") {
+                    await requestRef.update({
+                        status: "rejected",
+                        reject_reason: "club_missing",
+                        reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                    res.send(renderResultPage(
+                        "없어진 팀",
+                        (requestData.club_name || "") + " 팀이 이미 삭제되어 요청을 거절 처리했습니다."
+                    ));
+                    return;
+                }
+                res.status(500).send(renderResultPage("오류", "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
+                return;
+            }
             await requestRef.update({
                 status: "approved",
                 reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-            });
-            await db.collection("clubs").doc(requestData.club_id).update({
-                is_verified: true
             });
             await grantClubAdmin(requestData.club_id, requestData.requested_by);
             res.send(renderResultPage("승인 완료 ✅", requestData.club_name + " 팀의 인증이 승인되었습니다."));
@@ -472,13 +500,36 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
             return;
         }
 
+        // 팀부터 확인한다. 예전에는 요청을 approved 로 바꾼 **뒤에** 팀을 썼다 —
+        // 팀이 없으면 요청만 승인된 채 남거나(이메일 경로) 유령 문서가 생겼다.
+        var verified = await markClubVerified(requestData.club_id);
+        if (!verified.ok) {
+            if (verified.reason === "club_missing") {
+                await requestRef.update({
+                    status: "rejected",
+                    reject_reason: "club_missing",
+                    reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+                });
+                res.json({
+                    version: "2.0",
+                    template: {
+                        outputs: [{ simpleText: { text: "❌ " + (requestData.club_name || "") + " 팀이 이미 없어졌습니다.\n요청을 거절 처리했습니다." } }],
+                        quickReplies: [{ label: "📋 인증 목록", action: "message", messageText: "인증관리" }]
+                    }
+                });
+                return;
+            }
+            res.json({
+                version: "2.0",
+                template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] }
+            });
+            return;
+        }
+
         await requestRef.update({
             status: "approved",
             reviewed_at: admin.firestore.FieldValue.serverTimestamp()
         });
-        await db.collection("clubs").doc(requestData.club_id).set({
-            is_verified: true
-        }, { merge: true });
         // 인증을 신청한 사람이 곧 그 팀을 돌보는 사람이다. 배지만 주고 수정
         // 권한을 안 주면, 정작 정보를 고칠 사람이 없는 팀이 인증만 받는다.
         await grantClubAdmin(requestData.club_id, requestData.requested_by);
@@ -1259,6 +1310,32 @@ var ADMIN_REJECT_BLOCK_ID = (process.env.ADMIN_REJECT_BLOCK_ID || "").trim();
 
 // 팀 문서를 다시 읽어 정원을 확인하고 명단에 넣는다.
 // 읽고-쓰는 사이에 다른 승인이 끼어들면 정원이 넘을 수 있어 트랜잭션으로 묶는다.
+// 인증 승인은 팀 문서가 **있을 때만** 배지를 단다.
+//
+// 예전 챗봇 경로는 set({ is_verified: true }, { merge: true }) 를 썼다. merge 는
+// 문서가 없으면 만든다 — 그래서 삭제된 팀의 인증 요청을 승인하면 is_verified
+// 하나만 든 유령 문서가 생겼다. 이름도 좌표도 없으니 지도에 안 뜨고, 목록에만
+// 남아 운영자가 "이게 뭐지"를 반복하게 된다. 실제로 clubs 62건 중 2건이
+// 그렇게 생긴 것이었다(wp4qeje5fac 는 테스트 인증 승인 1초 뒤에 만들어졌다).
+//
+// 읽고 쓰는 사이에 팀이 지워질 수 있으므로 트랜잭션 안에서 본다.
+// grantClubAdmin 이 이미 같은 모양이다.
+async function markClubVerified(clubId) {
+    if (!clubId) return { ok: false, reason: "club_missing" };
+    var ref = db.collection("clubs").doc(String(clubId));
+    try {
+        return await db.runTransaction(async function (tx) {
+            var snap = await tx.get(ref);
+            if (!snap.exists) return { ok: false, reason: "club_missing" };
+            tx.update(ref, { is_verified: true });
+            return { ok: true, reason: null };
+        });
+    } catch (e) {
+        console.error("markClubVerified 실패 - club:", clubId, e && e.message);
+        return { ok: false, reason: "error" };
+    }
+}
+
 async function grantClubAdmin(clubId, uid) {
     if (!clubId || !uid) return { added: false, reason: "no_uid" };
     var clubRef = db.collection("clubs").doc(String(clubId));
