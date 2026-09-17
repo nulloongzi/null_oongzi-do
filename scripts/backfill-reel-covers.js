@@ -9,10 +9,13 @@
  * 사용:
  *   cd functions && npm ci && cd ..
  *   node scripts/backfill-reel-covers.js            # 드라이런: 대상 문서와 code 만 출력
- *   GOOGLE_APPLICATION_CREDENTIALS=<serviceAccount.json> node scripts/backfill-reel-covers.js --commit
+ *   node scripts/backfill-reel-covers.js --commit   # 실제 캐싱
  *
+ * 자격증명(둘 중 하나, 드라이런도 Firestore 읽기라 필요):
+ *   a) gcloud auth application-default login  ← 프로젝트 권한이 있는 구글 계정으로. 키 파일 불필요.
+ *      (이때 GOOGLE_APPLICATION_CREDENTIALS 는 비워 둘 것 — 설정돼 있으면 그 파일을 먼저 찾는다)
+ *   b) GOOGLE_APPLICATION_CREDENTIALS=<serviceAccount.json>
  * Storage 버킷은 js/firebase-init.js 의 storageBucket 을 읽는다(--bucket 으로 덮어쓰기 가능).
- * 드라이런도 Firestore 읽기는 하므로 자격증명이 필요하다.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -30,10 +33,13 @@ function bucketFromWebConfig() {
 }
 
 async function main() {
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        console.error('GOOGLE_APPLICATION_CREDENTIALS 가 없습니다. 서비스 계정 키를 지정하세요.');
+    const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (keyFile && !fs.existsSync(keyFile)) {
+        console.error(`GOOGLE_APPLICATION_CREDENTIALS 가 가리키는 파일이 없습니다: ${keyFile}`);
+        console.error('gcloud 로그인으로 쓰려면 이 환경변수를 지우세요 (PowerShell: Remove-Item Env:GOOGLE_APPLICATION_CREDENTIALS).');
         process.exit(1);
     }
+    console.log(keyFile ? `자격증명: 키 파일 ${keyFile}` : '자격증명: Application Default (gcloud auth application-default login)');
     const storageBucket = bucketArg || bucketFromWebConfig();
     if (!storageBucket) {
         console.error('Storage 버킷을 알 수 없습니다. --bucket <name> 을 주세요.');
