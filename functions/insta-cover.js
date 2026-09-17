@@ -62,11 +62,25 @@ async function fetchPosterUrl(code) {
             var u = pure.extractInstaPoster(html);
             if (u && pure.isInstaCdnUrl(u)) return u;
             if (u) console.warn("커버 URL 이 인스타 CDN 이 아님 — 무시:", code, u.slice(0, 80));
+            else console.warn("포스터 추출 실패:", pages[i], describeHtml(html));
         } catch (e) {
             console.warn("커버 페이지 요청 실패:", pages[i], e && e.message);
         }
     }
     return null;
+}
+
+// 추출 실패 시 로그용 요약: 길이·<title>·로그인 벽 여부·CDN 이미지 태그 유무. (진단 스크립트도 사용)
+function describeHtml(html) {
+    var h = String(html || "");
+    var title = (h.match(/<title[^>]*>([^<]*)<\/title>/i) || [])[1] || "";
+    return "len=" + h.length +
+        " title=" + JSON.stringify(title.trim().slice(0, 60)) +
+        " login=" + /accounts\/login|LoginAndSignupPage/i.test(h) +
+        " cdnImg=" + /<img[^>]+cdninstagram\.com/i.test(h) +
+        " ogImage=" + /property="og:image"/i.test(h) +
+        " displayUrl=" + /"display_url"/.test(h) +
+        " embeddedMedia=" + /EmbeddedMedia/i.test(h);
 }
 
 function downloadUrl(bucket, filePath, token) {
@@ -164,3 +178,6 @@ exports.cachePickupReelCovers = onDocumentWritten({ document: "pickup_games/{gam
 exports._reelCode = reelCode;
 exports._reelUrls = reelUrls;
 exports._handle = handle;
+exports._fetchText = fetchText;
+exports._describeHtml = describeHtml;
+exports._fetchPosterUrl = fetchPosterUrl;
