@@ -1,27 +1,18 @@
 // insta-embed.js
-// 공개 인스타 게시물/릴스 임베드 (A-1: blockquote + 공식 embed.js).
-// Meta 앱·로그인·검수 불필요 — 공개 콘텐츠만, 호스트가 URL을 직접 붙여넣는 큐레이션 방식.
-// (계정 연동 자동 피드=B는 추후 과제: docs/handoff-ig-story-share.md §11 참고.)
-// URL은 window.sanitizeInstaPostUrl로 화이트리스트 검증 후에만 삽입(XSS 방지).
-// 셸(Flutter WebView)에서 렌더되려면 앱 NavigationDelegate가 하위프레임(iframe) 로드를
-// 가로채지 않아야 한다 — 앱 레포 main.dart의 isMainFrame 가드에서 처리.
+// 릴스 발견 카드: 정지 커버(우리 Storage 캐시) 포스터 → 탭하면 인스타 앱/웹으로.
+//
+// 왜 임베드가 아니라 커버인가 (2026-09-16 결정, docs/OPEN-QUESTIONS.md):
+// 인스타 공식 embed 는 로그아웃 상태에서 인라인 재생이 안 된다 — 포스터 + "Instagram에서 보기" 만
+// 보여주고 결국 인스타로 넘긴다. 그러면 우리 시트 안에 남의 크롬(프로필 보기·♡·댓글 달기·좋아요 수)이
+// 통째로 들어오면서 얻는 게 없다. 커버 한 장 + 한 번 탭이 같은 결과를 더 깨끗하게 낸다.
+// embed.js 는 더 이상 싣지 않는다.
+//
+// 커버는 Cloud Function(functions/insta-cover.js) 이 문서의 insta_reel_covers 맵(code→URL)에 채운다.
+// 없거나 로드 실패면 제네릭 카드(그라데이션 + ▶). 둘 다 탭 → 인스타.
+// URL 은 window.sanitizeInstaPostUrl 로 화이트리스트 검증 후에만 사용.
 // Depends on: dom-utils.js (sanitizeInstaPostUrl), i18n.js (window.t)
 
 (function () {
-    // 공식 embed.js를 1회만 로드. 로드되면 콜백으로 Embeds.process() 트리거.
-    function ensureEmbedScript(cb) {
-        if (window.instgrm && window.instgrm.Embeds) { cb(); return; }
-        var existing = document.getElementById('insta-embed-js');
-        if (existing) { existing.addEventListener('load', cb, { once: true }); return; }
-        var s = document.createElement('script');
-        s.id = 'insta-embed-js';
-        s.async = true;
-        s.src = 'https://www.instagram.com/embed.js';
-        s.onload = cb;
-        s.onerror = function () { /* 네트워크 차단 등: blockquote 안의 링크가 폴백 역할 */ };
-        document.body.appendChild(s);
-    }
-
     // 릴스 URL → shortcode (/reel/<CODE>/). insta_reel_covers 맵 조회 키. Cloud Function과 동일 규칙.
     function reelCodeFromUrl(u) {
         if (typeof u !== 'string') return null;
@@ -36,8 +27,21 @@
     }
     window.reelCodeFromUrl = reelCodeFromUrl;
 
-    // 제네릭 카드(커버 없을 때 폴백): 아이콘 + '탭하면 재생' 한 줄. → 탭하면 임베드.
-    function genericCard(host, url, replaceTarget) {
+    // 릴스 탭 계측(reel_play): 이제 "인스타로 나간 횟수". meta = { source, id, index } (없으면 생략).
+    // view_*/…_contact의 has_reel과 묶어 "릴스가 물꼬에 도움이 되는가"를 본다(2026-09-16 결정 로그).
+    function trackPlay(meta, poster) {
+        if (!window.track) return;
+        meta = meta || {};
+        window.track('reel_play', { source: meta.source, id: meta.id, index: meta.index, poster: poster });
+    }
+
+    // 인스타로 이동. 셸(앱)이 아니라 브라우저이므로 새 탭 — 인스타 앱이 있으면 OS가 가로챈다.
+    function openInsta(url) {
+        window.open(url, '_blank', 'noopener');
+    }
+
+    // 제네릭 카드(커버 없을 때 폴백): 아이콘 + '탭하면 인스타에서 보기' 한 줄.
+    function genericCard(host, url, replaceTarget, meta) {
         var card = document.createElement('div');
         card.setAttribute('style',
             'display:flex;align-items:center;gap:12px;margin-top:10px;padding:14px;' +
@@ -54,67 +58,72 @@
         t1.textContent = window.t('insta_reel_title');
         var t2 = document.createElement('div');
         t2.setAttribute('style', 'font-size:12px;color:#8d6e63;');
-        t2.textContent = window.t('reel_tap_play');
+        t2.textContent = window.t('insta_reel_open');
         txt.appendChild(t1);
         txt.appendChild(t2);
         card.appendChild(icon);
         card.appendChild(txt);
         card.onclick = function () {
-            var box = document.createElement('div');
-            card.parentNode.replaceChild(box, card);
-            window.renderInstaEmbed(box, url);
+            trackPlay(meta, 'generic');
+            openInsta(url);
         };
         if (replaceTarget && replaceTarget.parentNode) replaceTarget.parentNode.replaceChild(card, replaceTarget);
         else host.appendChild(card);
     }
 
-    // 커버 포스터(정지 커버): 릴스 실제 커버를 크롬 없이 라운드+갈색 그림자 카드로.
-    // 커버 이미지 로드 실패(만료/차단) → 제네릭 카드로 폴백. 탭 → 그 자리에서 임베드.
-    function posterCard(host, url, coverUrl) {
+    // 커버 포스터: 릴스 실제 커버를 9:16 세로 카드로(높이 상한으로 시트 리듬 유지) + 중앙 ▶ +
+    // 하단 '인스타에서 보기' 필. 커버 로드 실패(만료/차단) → 제네릭 카드로 폴백. 탭 → 인스타.
+    function posterCard(host, url, coverUrl, meta) {
         var card = document.createElement('div');
         card.setAttribute('style',
-            'position:relative;margin-top:10px;width:100%;aspect-ratio:4/5;overflow:hidden;cursor:pointer;' +
-            'border-radius:20px;box-shadow:0 8px 32px rgba(93,64,55,.15);background:#efe9dd;');
+            'position:relative;margin:10px auto 0;height:min(480px,60vh);aspect-ratio:9/16;max-width:100%;' +
+            'overflow:hidden;cursor:pointer;border-radius:20px;box-shadow:0 8px 32px rgba(93,64,55,.15);background:#efe9dd;');
         var img = document.createElement('img');
         img.setAttribute('style', 'width:100%;height:100%;object-fit:cover;object-position:center;display:block;');
         img.alt = window.t('insta_reel_title');
         img.loading = 'lazy';
         img.referrerPolicy = 'no-referrer';
-        img.onerror = function () { genericCard(host, url, card); }; // 커버 실패 → 제네릭 카드
+        img.onerror = function () { genericCard(host, url, card, meta); }; // 커버 실패 → 제네릭 카드
         img.src = coverUrl;
-        // 하단 스크림(재생 글리프 대비) + 중앙 재생 버튼
+        // 하단 스크림(재생 글리프·필 대비) + 중앙 재생 버튼 + 하단 필
         var scrim = document.createElement('div');
         scrim.setAttribute('style',
-            'position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 64%,rgba(0,0,0,.30));pointer-events:none;');
+            'position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(0,0,0,.45));pointer-events:none;');
         var play = document.createElement('div');
         play.setAttribute('style',
             'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;' +
             'display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;padding-left:3px;' +
             'background:rgba(0,0,0,.42);border:2px solid rgba(255,255,255,.92);backdrop-filter:blur(2px);pointer-events:none;');
         play.textContent = '▶';
+        var pill = document.createElement('div');
+        pill.setAttribute('style',
+            'position:absolute;left:12px;right:12px;bottom:12px;padding:8px 12px;border-radius:999px;' +
+            'background:rgba(255,255,255,.92);color:#4e342e;font-weight:800;font-size:13px;text-align:center;pointer-events:none;');
+        pill.textContent = window.t('insta_view') + ' ↗';
         card.appendChild(img);
         card.appendChild(scrim);
         card.appendChild(play);
+        card.appendChild(pill);
         card.onclick = function () {
-            var box = document.createElement('div');
-            card.parentNode.replaceChild(box, card);
-            window.renderInstaEmbed(box, url);
+            trackPlay(meta, 'cover');
+            openInsta(url);
         };
         host.appendChild(card);
     }
 
-    // 릴스 지연 로딩(앱 패리티 W3): 커버 있으면 포스터, 없으면 제네릭 카드 → 탭하면 임베드.
-    // 임베드 iframe을 즉시 안 붙여 상세 오픈이 가볍고 스크롤이 매끄러움.
-    window.renderReelPoster = function (host, url, coverUrl) {
-        if (coverUrl) posterCard(host, url, coverUrl);
-        else genericCard(host, url);
+    // 릴스 카드 1개: 커버 있으면 포스터, 없으면 제네릭 카드. meta(옵션): reel_play 계측용 { source, id, index }.
+    window.renderReelPoster = function (host, url, coverUrl, meta) {
+        if (coverUrl) posterCard(host, url, coverUrl, meta);
+        else genericCard(host, url, null, meta);
     };
 
     // 멀티 릴스(앱 패리티 W1): 첫 릴스는 항상 + 나머지는 '릴스 더 보기 (n)' 토글로 지연 렌더.
     // urls: insta_reels 배열(없으면 단일 insta_reel을 [1개]로 감싸 전달).
     // covers: insta_reel_covers 맵(code→coverUrl, 옵션). 있으면 정지 커버 포스터로 표시.
-    window.renderInstaEmbeds = function (container, urls, covers) {
+    // meta(옵션): { source: 'club'|'pickup', id } — 각 릴스 탭 시 reel_play 이벤트에 index와 함께 실림.
+    window.renderInstaEmbeds = function (container, urls, covers, meta) {
         if (!container) return false;
+        function metaAt(i) { return meta ? { source: meta.source, id: meta.id, index: i } : { index: i }; }
         var list = [];
         for (var i = 0; i < (urls || []).length; i++) {
             var s = window.sanitizeInstaPostUrl ? window.sanitizeInstaPostUrl(urls[i]) : '';
@@ -127,7 +136,7 @@
         container.innerHTML = '';
         if (!list.length) { container.style.display = 'none'; return false; }
         container.style.display = '';
-        window.renderReelPoster(container, list[0], coverFor(list[0], covers)); // 커버 포스터 → 탭 재생(W3)
+        window.renderReelPoster(container, list[0], coverFor(list[0], covers), metaAt(0));
         if (list.length < 2) return true;
         var more = document.createElement('button');
         more.setAttribute('style',
@@ -142,7 +151,7 @@
             open = !open;
             if (open && !restWrap.childNodes.length) {
                 for (var j = 1; j < list.length; j++) {
-                    window.renderReelPoster(restWrap, list[j], coverFor(list[j], covers)); // 각 릴스도 커버 포스터 → 탭 재생
+                    window.renderReelPoster(restWrap, list[j], coverFor(list[j], covers), metaAt(j));
                 }
             }
             restWrap.style.display = open ? '' : 'none';
@@ -150,44 +159,6 @@
         };
         container.appendChild(more);
         container.appendChild(restWrap);
-        return true;
-    };
-
-    // container에 url의 인스타 임베드를 렌더. url이 없거나 무효면 container를 비우고 숨김 + false 반환.
-    // 같은 url로 재호출되면 재처리 생략(언어 전환 재렌더 등에서 깜빡임/재로드 방지).
-    window.renderInstaEmbed = function (container, url) {
-        if (!container) return false;
-        var safe = window.sanitizeInstaPostUrl ? window.sanitizeInstaPostUrl(url) : '';
-        if (!safe) {
-            container.innerHTML = '';
-            container.style.display = 'none';
-            if (container.dataset) delete container.dataset.reelUrl;
-            return false;
-        }
-        if (container.dataset && container.dataset.reelUrl === safe && container.firstChild) {
-            container.style.display = 'block';
-            return true;
-        }
-        if (container.dataset) container.dataset.reelUrl = safe;
-        container.style.display = 'block';
-        container.innerHTML = '';
-
-        // blockquote 조립: permalink는 검증된 instagram.com URL만 → setAttribute로 안전 삽입
-        var bq = document.createElement('blockquote');
-        bq.className = 'instagram-media';
-        bq.setAttribute('data-instgrm-permalink', safe);
-        bq.setAttribute('data-instgrm-version', '14');
-        bq.style.margin = '0 auto';
-        bq.style.maxWidth = '100%';
-        var a = document.createElement('a');
-        a.href = safe; a.target = '_blank'; a.rel = 'noopener noreferrer';
-        a.textContent = window.t ? window.t('insta_view') : 'View on Instagram';
-        bq.appendChild(a);
-        container.appendChild(bq);
-
-        ensureEmbedScript(function () {
-            try { if (window.instgrm && window.instgrm.Embeds) window.instgrm.Embeds.process(); } catch (e) { /* noop */ }
-        });
         return true;
     };
 })();

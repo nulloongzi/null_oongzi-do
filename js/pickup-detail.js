@@ -43,9 +43,11 @@
         var spot = window.findPickupGame(id);
         if (!spot) return;
         window.currentPickupId = id;
+        var hasReel = ((spot.insta_reels && spot.insta_reels.length) || spot.insta_reel) ? 1 : 0;
 
         if (!opts.silent) {
-            if (window.track) window.track('view_pickup', { id: id });
+            // 릴스 유무 동반 계측(club-detail.js와 동일 취지) — 1/0 숫자.
+            if (window.track) window.track('view_pickup', { id: id, has_reel: hasReel });
             try {
                 if (spot.lat && spot.lng && window.map) {
                     window.map.setLevel(Math.min(window.map.getLevel(), 5), { animate: true });
@@ -73,6 +75,7 @@
     }
 
     function renderSheet(spot) {
+        var hasReel = ((spot.insta_reels && spot.insta_reels.length) || spot.insta_reel) ? 1 : 0; // pickup_contact 계측용
         var host = window.canModifyPickup(spot);
         var c = document.getElementById('pickupSheetContent');
         if (!c) return;
@@ -124,7 +127,7 @@
             // 물꼬 계측: 인스타 클릭도 픽업의 first-contact (Q2 지표)
             igLink.onclick = function () {
                 if (window.track) {
-                    window.track('pickup_contact', { id: spot.id, type: 'insta', sport: spot.sport }); // 기존 대시보드 연속성 유지
+                    window.track('pickup_contact', { id: spot.id, type: 'insta', sport: spot.sport, has_reel: hasReel }); // 기존 대시보드 연속성 유지
                     window.track('contact_click', { channel: 'instagram', id: spot.id, source: 'pickup' }); // North Star Metric 보조 지표
                 }
             };
@@ -142,7 +145,7 @@
             // 물꼬 계측: 단톡 들어가기 = 픽업의 first-contact 순간 (Q2 지표)
             cta.onclick = function () {
                 if (window.track) {
-                    window.track('pickup_contact', { id: spot.id, type: 'link', sport: spot.sport });
+                    window.track('pickup_contact', { id: spot.id, type: 'link', sport: spot.sport, has_reel: hasReel });
                     // NSM 전용 이벤트 — 단톡 링크도 연락 전환이므로 channel:'link'로 집계
                     window.track('contact_click', { channel: 'link', id: spot.id, source: 'pickup' });
                 }
@@ -186,7 +189,7 @@
         if (reelUrls.length && window.renderInstaEmbeds) {
             var reelBox = el('div', 'insta-embed-box');
             c.appendChild(reelBox);
-            window.renderInstaEmbeds(reelBox, reelUrls, spot.insta_reel_covers);
+            window.renderInstaEmbeds(reelBox, reelUrls, spot.insta_reel_covers, { source: 'pickup', id: spot.id });
         }
 
         // 데이터 신선도 + 신고 통로 (guidelines.html 2-3 · 3-1).

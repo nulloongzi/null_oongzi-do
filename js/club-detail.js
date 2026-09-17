@@ -279,7 +279,10 @@ window.openClubDetail = function (id, opts) {
     // 현재 열린 클럽 추적 (언어 전환 시 바텀시트 재렌더링용)
     window.currentClubId = id;
 
-    if (!silent && window.track) window.track('view_club', { club_id: club.id, club_name: club.name });
+    // 릴스 유무를 view/contact에 같이 찍는다 — 릴스가 물꼬(first-contact)에 도움이 되는지 비교하기 위해.
+    // (2026-09-16 결정 로그: 팀 영상 도입은 이 전환율 데이터를 본 뒤.) 1/0 숫자 = 앱과 동일 스키마.
+    var hasReel = ((club.insta_reels && club.insta_reels.length) || club.insta_reel) ? 1 : 0;
+    if (!silent && window.track) window.track('view_club', { club_id: club.id, club_name: club.name, has_reel: hasReel });
 
     var verifiedBadge = '<svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:text-bottom;margin-right:2px;" fill="#1DA1F2"><path d="M22.5 12.5c0-1.58-.87-2.92-2.14-3.58.14-.52.22-1.07.22-1.63 0-3.18-2.58-5.75-5.75-5.75-.56 0-1.11.08-1.63.22C12.54 1.49 11.2 0.62 9.62 0.62 6.44 0.62 3.87 3.2 3.87 6.38c0 .56.08 1.11.22 1.63C2.82 8.67 1.95 10 1.95 11.58c0 3.18 2.58 5.75 5.75 5.75.56 0 1.11-.08 1.63-.22.66 1.27 2 2.14 3.58 2.14 3.18 0 5.75-2.58 5.75-5.75 0-.56-.08-1.11-.22-1.63 1.27-.66 2.14-2 2.14-3.58zm-12.26 3.63L6 11.89l1.41-1.41 2.83 2.83 6.36-6.36 1.41 1.41-7.77 7.77z"/></svg>';
     // XSS 방지: 사용자 입력(club.name, club.insta)을 직접 innerHTML에 박지 않고 DOM 노드로 조립
@@ -297,7 +300,7 @@ window.openClubDetail = function (id, opts) {
         instaLink.innerHTML = window.instaCssIcon; // 정적 마크업, 사용자 입력 없음
         instaLink.onclick = function () {
             if (window.track) {
-                window.track('club_contact', { type: 'insta', club_id: club.id }); // 기존 대시보드 연속성 유지
+                window.track('club_contact', { type: 'insta', club_id: club.id, has_reel: hasReel }); // 기존 대시보드 연속성 유지
                 window.track('contact_click', { channel: 'instagram', club_id: club.id, source: 'club' }); // North Star Metric 보조 지표
             }
         };
@@ -348,7 +351,7 @@ window.openClubDetail = function (id, opts) {
         linkSpan.textContent = window.t('home_tag');
         linkA.onclick = function () {
             if (window.track) {
-                window.track('club_contact', { type: 'link', club_id: club.id });
+                window.track('club_contact', { type: 'link', club_id: club.id, has_reel: hasReel });
                 // NSM 전용 이벤트 — 홈페이지 링크도 연락 전환으로 집계
                 window.track('contact_click', { channel: 'link', club_id: club.id, source: 'club' });
             }
@@ -360,7 +363,7 @@ window.openClubDetail = function (id, opts) {
     btnWayEl.href = "https://map.kakao.com/link/to/" + club.name + "," + club.lat + "," + club.lng;
     btnWayEl.onclick = function () {
         if (window.track) {
-            window.track('club_contact', { type: 'directions', club_id: club.id }); // 기존 대시보드 연속성 유지
+            window.track('club_contact', { type: 'directions', club_id: club.id, has_reel: hasReel }); // 기존 대시보드 연속성 유지
             window.track('get_directions', { club_id: club.id, source: 'club' }); // North Star Metric: 주당 길찾기 클릭 수
         }
     };
@@ -368,7 +371,7 @@ window.openClubDetail = function (id, opts) {
     // 인스타 릴스/게시물 임베드 (호스트가 붙인 공개 콘텐츠가 있으면)
     if (window.renderInstaEmbeds) window.renderInstaEmbeds(document.getElementById('clubReelEmbed'),
         (club.insta_reels && club.insta_reels.length) ? club.insta_reels : (club.insta_reel ? [club.insta_reel] : []),
-        club.insta_reel_covers);
+        club.insta_reel_covers, { source: 'club', id: club.id });
 
     var urgentArea = document.getElementById('urgentArea');
     if (club.is_urgent && club.urgent_msg) {

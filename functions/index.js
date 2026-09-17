@@ -2087,7 +2087,7 @@ exports.kakaoCustomToken = socialAuth.kakaoCustomToken;
 exports.naverCustomToken = socialAuth.naverCustomToken;
 
 // ══════════════════════════════════════════════════════════
-// 릴스 정지 커버 캐싱(발견 카드용) → 인스타 oEmbed. 구현은 insta-cover.js.
+// 릴스 정지 커버 캐싱(발견 카드용) → 크롤러 UA 로 permalink 의 og:image 를 받아 Storage 에 저장. 구현은 insta-cover.js.
 // ══════════════════════════════════════════════════════════
 var instaCover = require("./insta-cover");
 exports.cacheClubReelCovers = instaCover.cacheClubReelCovers;

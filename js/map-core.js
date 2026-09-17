@@ -98,7 +98,7 @@ function buildClubLabelEl(club, includeVerifiedBadge) {
     return el;
 }
 
-// 릴스 피크 오버레이(앱 마커 롱프레스 대응): 블러 딤 + 팀명 + 첫 릴스 임베드. 바깥 탭 닫기.
+// 릴스 피크 오버레이(앱 마커 롱프레스 대응): 블러 딤 + 팀명 + 첫 릴스 커버 카드. 바깥 탭 닫기.
 function showReelPeek(club) {
     var urls = (club.insta_reels && club.insta_reels.length)
         ? club.insta_reels : (club.insta_reel ? [club.insta_reel] : []);
@@ -123,11 +123,10 @@ function showReelPeek(club) {
         if (e.target === ov) document.body.removeChild(ov);
     });
     document.body.appendChild(ov);
-    // 커버 있으면 정지 커버 포스터 → 탭하면 임베드(빠른 감 잡기). 없으면 기존 임베드.
+    // 정지 커버 포스터(없으면 제네릭 카드) → 탭하면 인스타로. 임베드는 더 이상 쓰지 않는다(insta-embed.js 참고).
     var covers = club.insta_reel_covers;
     var cover = (covers && window.reelCodeFromUrl) ? (covers[window.reelCodeFromUrl(urls[0])] || '') : '';
-    if (window.renderReelPoster) window.renderReelPoster(box, urls[0], cover);
-    else if (window.renderInstaEmbed) window.renderInstaEmbed(box, urls[0]);
+    if (window.renderReelPoster) window.renderReelPoster(box, urls[0], cover, { source: 'peek', id: club.id, index: 0 });
     if (window.track) window.track('reel_peek', { via: 'label' });
 }
 

@@ -189,6 +189,23 @@ describe('Phase 3: club_photos 룰 (대칭 적용)', () => {
     });
 });
 
+describe('reel_covers 룰 (Cloud Function 전용 쓰기, 공개 읽기)', () => {
+    test('공개 read 통과', async () => {
+        await testEnv.withSecurityRulesDisabled(async (sctx) => {
+            await sctx.storage().ref('reel_covers/ABC123.jpg').put(makeBlob(1024, 'image/jpeg'));
+        });
+        const ctx = testEnv.unauthenticatedContext();
+        await assertSucceeds(ctx.storage().ref('reel_covers/ABC123.jpg').getDownloadURL());
+    });
+
+    test('로그인해도 클라이언트 쓰기 거부', async () => {
+        const ctx = testEnv.authenticatedContext('user-A');
+        await assertFails(
+            ctx.storage().ref('reel_covers/hijack.jpg').put(makeBlob(1024, 'image/jpeg'))
+        );
+    });
+});
+
 describe('정의되지 않은 경로는 기본 거부', () => {
     test('임의 경로 쓰기 거부', async () => {
         const ctx = testEnv.authenticatedContext('user-A');

@@ -41,9 +41,9 @@
         return '';
     };
 
-    // 인스타 공개 게시물/릴스 permalink만 통과(임베드용). 정규 permalink로 정규화해 반환,
+    // 인스타 공개 게시물/릴스 permalink만 통과(릴스 카드용). 정규 permalink로 정규화해 반환,
     // 무효/그 외 URL은 '' 반환. 쿼리·해시·유저네임 프리픽스는 버리고 {p|reel|tv}/{shortcode}만 사용.
-    // (data-instgrm-permalink 속성에 박히므로 화이트리스트로 강하게 제한 — XSS/오용 방지)
+    // (탭 시 window.open 으로 열리고 Firestore 에 저장되므로 화이트리스트로 강하게 제한 — XSS/오용 방지)
     window.sanitizeInstaPostUrl = function (value) {
         if (!value) return '';
         var s = String(value).trim();
