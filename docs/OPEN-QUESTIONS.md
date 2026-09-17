@@ -99,4 +99,6 @@
     넘어간다. 즉 임베드는 재생도 못 하면서 남의 크롬(프로필 보기·♡·댓글 달기·좋아요 수)만 시트에 들여오던 셈. 두 갈래
     (웹=커버 / 앱=임베드 다듬기)도 검토했지만 앱 임베드를 다듬어 남는 건 "인스타가 그린 포스터 한 장"이라 커버와 같고, 비용
     (스크롤 경로의 WebView·셀렉터 취약성)만 남아 한 갈래로 간다. 커버는 oEmbed `thumbnail_url`(2025-11-03 삭제) 대신
-    `/embed/` HTML 에서 뽑아 **우리 Storage 에 캐시**(인스타 CDN URL 은 서명 만료 → 핫링크 금지). `functions/insta-cover.js`.
+    **크롤러 UA(facebookexternalhit)로 permalink 의 og:image** 를 받아 **우리 Storage 에 캐시**(인스타 CDN URL 은 서명 만료 →
+    핫링크 금지). 브라우저 UA 로는 `/embed/` 도 JS 셸만 온다(2026-09-17 실측). `functions/insta-cover.js`.
+    첫 백필: 릴스 있는 팀 3곳·릴스 8개 전부 캐싱 성공.

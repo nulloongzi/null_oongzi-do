@@ -2,7 +2,9 @@
 //
 // 왜: 인스타 embed 위젯은 커버를 크로스 오리진 iframe 안에 그려서 우리가 못 꺼내고,
 // 2025-11-03 부터 oEmbed 응답에도 thumbnail_url 이 없다. Meta 가 권한 대안은
-// "게시물 HTML 메타데이터에서 직접 가져가라" → 익명 fetch 용 /embed/ 페이지에서 포스터를 뽑는다.
+// "게시물 HTML 메타데이터에서 직접 가져가라". 실측(2026-09-17): 브라우저 UA 로는 /embed/ 든 permalink 든
+// 게시물 데이터 없는 JS 셸만 오고, 링크 미리보기 크롤러 UA(facebookexternalhit)로 permalink 를 받으면
+// 서버 렌더된 og:image 가 온다 — 카톡·왓츠앱에 릴스 링크를 붙였을 때 커버가 뜨는 그 경로. 그걸 쓴다.
 //
 // 인스타 CDN URL 은 서명 만료가 있어 핫링크하면 며칠 뒤 조용히 깨진다. 그래서 이미지를
 // 우리 Storage(reel_covers/<code>.jpg, 공개 읽기) 에 저장하고 그 URL 을 insta_reel_covers 맵에 넣는다.

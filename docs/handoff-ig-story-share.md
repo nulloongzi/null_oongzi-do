@@ -221,8 +221,10 @@
 
 > **2026-09-16 개정 — 임베드 → 커버 카드.** 공식 embed 는 로그아웃 상태에서 인라인 재생이 안 되고(포스터 + "Instagram에서 보기"),
 > oEmbed `thumbnail_url` 도 2025-11-03 삭제됐다. 그래서 웹·앱 모두 **우리 Storage 에 캐시한 정지 커버 → 탭 한 번 → 인스타**로 바꿨다.
-> - 커버: `functions/insta-cover.js` 가 `/reel/<code>/embed/` HTML 에서 포스터를 뽑아(og:image 폴백) `reel_covers/<code>.jpg` 에 저장,
->   `insta_reel_covers[code]` 에 Storage URL. `META_OEMBED_TOKEN` 시크릿은 더 이상 안 쓴다(지워도 됨).
+> - 커버: `functions/insta-cover.js` 가 **`facebookexternalhit` UA 로 permalink 의 `og:image`** 를 받아 `reel_covers/<code>.jpg` 에 저장,
+>   `insta_reel_covers[code]` 에 Storage URL. 브라우저 UA 로는 `/embed/` 든 permalink 든 게시물 데이터 없는 JS 셸만 온다(2026-09-17 실측,
+>   `scripts/backfill-reel-covers.js --debug <code>` 로 재확인 가능). `META_OEMBED_TOKEN` 시크릿은 더 이상 안 쓴다(지워도 됨).
+> - 기존 문서 백필: `node scripts/backfill-reel-covers.js` (드라이런) → `--commit`. 자격증명은 `gcloud auth application-default login`.
 > - 웹 `js/insta-embed.js`: `embed.js` 미적재. `renderInstaEmbeds` 시그니처는 그대로(4번째 `meta` 는 `reel_play` 계측용).
 > - 앱 `lib/widgets/reel_card.dart`: WebView 제거(`webview_flutter` 의존 삭제). 상세·지도 피크 모두 커버 카드.
 > - 아래 원문은 임베드 시절 기록으로 남긴다.
