@@ -20,8 +20,16 @@ var pure = require("./lib/pure");
 
 var reelCode = pure.instaReelCode;
 
-// 브라우저처럼 보여야 /embed/ 가 정상 HTML 을 준다(봇 UA 는 로그인 벽으로 보낼 수 있음).
-var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+// 서버(익명) 요청에 인스타는 게시물 데이터가 없는 JS 앱 셸을 준다(/embed/ 도 마찬가지, 2026-09 확인).
+// 서버 렌더된 og:image 를 받는 길은 링크 미리보기 크롤러 UA — 카톡·왓츠앱에 릴스 링크를 붙이면
+// 커버가 뜨는 바로 그 경로다. 브라우저 UA 는 마지막 폴백으로만 둔다.
+var UA_BROWSER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+var UA_CRAWLERS = [
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "WhatsApp/2.23.20.0 A",
+    "Twitterbot/1.0",
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+];
 var FETCH_TIMEOUT_MS = 8000;
 var MAX_IMAGE_BYTES = 5 * 1024 * 1024; // storage.rules 의 이미지 상한과 동일
 
@@ -40,34 +48,14 @@ function reelUrls(d) {
     return out;
 }
 
-async function fetchText(url) {
+async function fetchText(url, ua) {
     var res = await fetch(url, {
-        headers: { "User-Agent": UA, "Accept-Language": "ko,en;q=0.8" },
+        headers: { "User-Agent": ua || UA_BROWSER, "Accept": "text/html,*/*;q=0.8", "Accept-Language": "ko,en;q=0.8" },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         redirect: "follow"
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     return await res.text();
-}
-
-// /embed/ → 포스터 URL. 없으면 permalink 의 og:image 로 한 번 더.
-async function fetchPosterUrl(code) {
-    var pages = [
-        "https://www.instagram.com/reel/" + code + "/embed/",
-        "https://www.instagram.com/p/" + code + "/"
-    ];
-    for (var i = 0; i < pages.length; i++) {
-        try {
-            var html = await fetchText(pages[i]);
-            var u = pure.extractInstaPoster(html);
-            if (u && pure.isInstaCdnUrl(u)) return u;
-            if (u) console.warn("커버 URL 이 인스타 CDN 이 아님 — 무시:", code, u.slice(0, 80));
-            else console.warn("포스터 추출 실패:", pages[i], describeHtml(html));
-        } catch (e) {
-            console.warn("커버 페이지 요청 실패:", pages[i], e && e.message);
-        }
-    }
-    return null;
 }
 
 // 추출 실패 시 로그용 요약: 길이·<title>·로그인 벽 여부·CDN 이미지 태그 유무. (진단 스크립트도 사용)
@@ -81,6 +69,57 @@ function describeHtml(html) {
         " ogImage=" + /property="og:image"/i.test(h) +
         " displayUrl=" + /"display_url"/.test(h) +
         " embeddedMedia=" + /EmbeddedMedia/i.test(h);
+}
+
+// 시도 순서. 각 후보는 { kind, url, ua }. kind=page 는 HTML 에서 추출, kind=media 는 리다이렉트 Location.
+function candidates(code) {
+    var list = [];
+    var permalink = "https://www.instagram.com/p/" + code + "/";
+    var reel = "https://www.instagram.com/reel/" + code + "/";
+    for (var i = 0; i < UA_CRAWLERS.length; i++) {
+        list.push({ kind: "page", url: permalink, ua: UA_CRAWLERS[i] });
+        list.push({ kind: "page", url: reel, ua: UA_CRAWLERS[i] });
+    }
+    // 옛 /media/?size=l 리다이렉트(살아 있으면 가장 싸다)
+    list.push({ kind: "media", url: permalink + "media/?size=l", ua: UA_BROWSER });
+    list.push({ kind: "page", url: reel + "embed/", ua: UA_BROWSER });
+    list.push({ kind: "page", url: permalink, ua: UA_BROWSER });
+    return list;
+}
+
+// 후보 하나 시도 → { url: 커버 URL | null, note: 진단 문자열 }
+async function tryCandidate(c) {
+    try {
+        if (c.kind === "media") {
+            var r = await fetch(c.url, {
+                headers: { "User-Agent": c.ua },
+                signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+                redirect: "manual"
+            });
+            var loc = r.headers.get("location") || "";
+            if (r.status >= 300 && r.status < 400 && pure.isInstaCdnUrl(loc)) return { url: loc, note: "redirect " + r.status };
+            return { url: null, note: "status=" + r.status + " location=" + JSON.stringify(loc.slice(0, 80)) };
+        }
+        var html = await fetchText(c.url, c.ua);
+        var u = pure.extractInstaPoster(html);
+        if (u && pure.isInstaCdnUrl(u)) return { url: u, note: "ok" };
+        return { url: null, note: (u ? "non-cdn " + u.slice(0, 60) + " " : "") + describeHtml(html), html: html };
+    } catch (e) {
+        return { url: null, note: "요청 실패: " + (e && e.message) };
+    }
+}
+
+// 후보를 순서대로 → 첫 성공의 커버 URL. 전부 실패면 마지막 요약을 남기고 null.
+async function fetchPosterUrl(code) {
+    var list = candidates(code);
+    var last = "";
+    for (var i = 0; i < list.length; i++) {
+        var r = await tryCandidate(list[i]);
+        if (r.url) return r.url;
+        last = list[i].kind + " " + list[i].url + " [" + list[i].ua.slice(0, 20) + "] → " + r.note;
+    }
+    console.warn("포스터 추출 실패:", code, "마지막 시도:", last);
+    return null;
 }
 
 function downloadUrl(bucket, filePath, token) {
@@ -105,7 +144,7 @@ async function cacheCover(code) {
     if (!src) return null;
 
     var res = await fetch(src, {
-        headers: { "User-Agent": UA },
+        headers: { "User-Agent": UA_BROWSER },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
     });
     if (!res.ok) { console.warn("커버 이미지 응답 실패:", code, res.status); return null; }
@@ -181,3 +220,5 @@ exports._handle = handle;
 exports._fetchText = fetchText;
 exports._describeHtml = describeHtml;
 exports._fetchPosterUrl = fetchPosterUrl;
+exports._candidates = candidates;
+exports._tryCandidate = tryCandidate;

@@ -40,32 +40,18 @@ function bucketFromWebConfig() {
 
 async function debugCode(code) {
     const instaCover = require(path.join(__dirname, '..', 'functions', 'insta-cover'));
-    const pure = require(path.join(__dirname, '..', 'functions', 'lib', 'pure'));
-    const pages = [
-        `https://www.instagram.com/reel/${code}/embed/`,
-        `https://www.instagram.com/p/${code}/embed/captioned/`,
-        `https://www.instagram.com/p/${code}/`,
-    ];
-    for (const page of pages) {
-        console.log(`\n== ${page}`);
-        let html;
-        try {
-            html = await instaCover._fetchText(page);
-        } catch (e) {
-            console.log('  요청 실패:', e && e.message);
-            continue;
+    const list = instaCover._candidates(code);
+    for (const c of list) {
+        const r = await instaCover._tryCandidate(c);
+        console.log(`\n== ${c.kind} ${c.url}\n   UA: ${c.ua}\n   → ${r.url ? 'OK ' + r.url.slice(0, 120) : r.note}`);
+        if (r.html) {
+            const out = path.join(os.tmpdir(), `insta-${code}-${list.indexOf(c)}.html`);
+            fs.writeFileSync(out, r.html);
+            console.log('   원문 저장:', out);
         }
-        console.log('  ' + instaCover._describeHtml(html));
-        console.log('  extractInstaPoster →', pure.extractInstaPoster(html));
-        const imgs = [...html.matchAll(/<img[^>]*>/gi)].map((m) => m[0]).slice(0, 4);
-        for (const tag of imgs) console.log('  img:', tag.replace(/\s+/g, ' ').slice(0, 220));
-        const cdn = [...html.matchAll(/https?:(?:\\\/\\\/|\/\/)[a-z0-9.-]*cdninstagram\.com[^"'\s<>]{0,160}/gi)]
-            .map((m) => m[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3);
-        for (const u of cdn) console.log('  cdn:', u.slice(0, 200));
-        const out = path.join(os.tmpdir(), `insta-${code}-${pages.indexOf(page)}.html`);
-        fs.writeFileSync(out, html);
-        console.log('  원문 저장:', out);
+        if (r.url) { console.log('\n첫 성공 후보를 함수도 같은 순서로 쓴다. 여기서 멈춤.'); return; }
     }
+    console.log('\n모든 후보 실패.');
 }
 
 async function main() {
