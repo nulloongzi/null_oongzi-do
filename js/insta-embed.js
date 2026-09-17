@@ -75,9 +75,11 @@
     // 하단 '인스타에서 보기' 필. 커버 로드 실패(만료/차단) → 제네릭 카드로 폴백. 탭 → 인스타.
     function posterCard(host, url, coverUrl, meta) {
         var card = document.createElement('div');
+        // 폭을 기준으로 잡고 높이는 비율로(블록 레이아웃에서 모호함 없음). 최대 높이 480px/60vh 에 해당하는 폭.
         card.setAttribute('style',
-            'position:relative;margin:10px auto 0;height:min(480px,60vh);aspect-ratio:9/16;max-width:100%;' +
-            'overflow:hidden;cursor:pointer;border-radius:20px;box-shadow:0 8px 32px rgba(93,64,55,.15);background:#efe9dd;');
+            'position:relative;display:block;margin:10px auto 0;width:min(100%,calc(min(480px,60vh) * 9 / 16));' +
+            'aspect-ratio:9/16;overflow:hidden;cursor:pointer;border-radius:20px;' +
+            'box-shadow:0 8px 32px rgba(93,64,55,.15);background:#efe9dd;');
         var img = document.createElement('img');
         img.setAttribute('style', 'width:100%;height:100%;object-fit:cover;object-position:center;display:block;');
         img.alt = window.t('insta_reel_title');
