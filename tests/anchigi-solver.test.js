@@ -31,8 +31,9 @@ function stubEl() {
     return el;
 }
 
-function makeSandbox() {
-    const store = new Map();
+/** seed 로 localStorage 를 미리 채운 뒤 스크립트를 돌린다(저장본 마이그레이션 검증용). */
+function makeSandbox(seed) {
+    const store = new Map(Object.entries(seed || {}));
     const sandbox = {
         console,
         URLSearchParams,
@@ -300,6 +301,30 @@ describe('검수에서 나온 것들', () => {
         const legacy = games.some((g) => g.teams.some((t) =>
             t.some((x) => !x || (!x.empty && x.id == null))));
         assert.strictEqual(legacy, false, '빈 자리는 구형 기록이 아니다');
+    });
+
+    test('고정 때문에 A · B · C 가 막히면 고정을 풀지, 자유 편성으로 내려가지 않는다', () => {
+        // 12명 · 6인 팀이면 C 코어가 0명이라 C 로 지정한 사람은 들어갈 자리가 없다
+        const people = roster(12, V6_MAIN);
+        people[0].pinTeam = 2;
+        const games = draw(box, people, { mode: 'abc' });
+        assert.ok(games, '배치는 나와야 한다');
+        assert.strictEqual(box.pinsRelaxed, true, '고정을 풀었다고 알려야 한다');
+        assert.strictEqual(box.abcFellBack, false, 'A · B · C 를 포기할 일이 아니다');
+        assert.ok(games[0].cores, 'A · B · C 로 짜여야 한다');
+    });
+
+    test('껐던 구성은 다시 켜지지 않는다', () => {
+        // 새 구성을 아는 저장본(6-2 를 꺼 둔 상태)은 그대로 읽어야 한다
+        const kept = ['mb2', 'mb1li', 'mb2li', 'v9q1', 'v9q2', 'v9q3'];
+        const box2 = makeSandbox({ 'anchigi.tpl.v1': JSON.stringify(kept) });
+        assert.ok(box2.allowed.indexOf('mb2x62') < 0, '꺼 둔 6-2 구성이 되살아나면 안 된다');
+    });
+
+    test('5-1 구성만 있던 예전 저장본에는 새 구성을 켜 준다', () => {
+        const box2 = makeSandbox({ 'anchigi.tpl.v1': JSON.stringify(['mb2', 'mb1li', 'mb2li']) });
+        assert.ok(box2.allowed.indexOf('mb2x62') >= 0, '6-2 를 몰랐던 저장본이다');
+        assert.ok(box2.allowed.indexOf('v9q2') >= 0);
     });
 
     test('확정할 때 빈 자리를 사람으로 세지 않는다', () => {

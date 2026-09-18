@@ -1747,11 +1747,17 @@
     var tactic = load(K('tactic'), null) || '5-1';
     if (tactic !== '5-1' && tactic !== '6-2') tactic = '5-1';
     var ALL_TPL = TEMPLATES.map(function (t) { return t.id; });
+    var LEGACY_TPL = ['mb2', 'mb1li', 'mb2li'];
     var allowed = load(K('tpl'), null) || ALL_TPL.slice();
-    /* 예전 저장본에는 새 구성(6-2 · 9인제)이 없다 — 켜 둔 채로 시작한다 */
-    ALL_TPL.forEach(function (id) {
-      if (allowed.indexOf(id) < 0 && id !== 'mb2' && id !== 'mb1li' && id !== 'mb2li') allowed.push(id);
-    });
+    /* 5-1 구성만 들어 있는 저장본은 새 구성(6-2 · 9인제)을 아직 모르는 것이다.
+       그때만 켜 준다 — 사용자가 끈 구성을 매번 되살리면 안 된다. */
+    (function backfillTemplates() {
+      var knowsNew = allowed.some(function (id) { return LEGACY_TPL.indexOf(id) < 0; });
+      if (knowsNew) return;
+      ALL_TPL.forEach(function (id) {
+        if (allowed.indexOf(id) < 0) allowed.push(id);
+      });
+    })();
     var schedule = load(K('schedule'), null) || { start: '13:00', warmup: '14:00', end: '17:00', perGame: 15, rest: 10 };
     if (schedule.rest == null) schedule.rest = 10;
 
@@ -1829,6 +1835,8 @@
        평균을 경기마다 다시 재게 되면서(refreshAvg) 모두가 같이 올라가 +2 에는 잘 안 닿는다.
        측정해 보니 1 쪽이 세터 최다출전과 출전 편차 모두 낮았다. */
     var SETTER_OVERUSE_N = 1;
+    /* 이 종목에서 '세터' 자리를 가리키는 키 */
+    function setterKey() { return sport === 'v9' ? 'S9' : 'S'; }
     /* 고정(📌)한 사람을 그 자리에 앉히는 값. 대기로 밀리지 않을 만큼은 커야 한다 */
     var PIN_SLOT_BONUS = 9.0;
     /* 직전 경기에 대기한 사람을 또 대기시키는 벌점. 연속 대기를 막는다 */
@@ -1857,7 +1865,7 @@
       /* 과출전 세터 개방: 세터 전용(nOpt===1)이 팀 평균보다 N게임 이상 많이 뛰었으면
          그 세터를 세터 자리에 앉히는 비용을 크게 올려, Flex가 대신 세터로 들어가게 한다.
          (하드 제약이 아니라 비용 편향이라, Flex가 없으면 여전히 이 세터가 들어감) */
-      if (pos === 'S') {
+      if (pos === setterKey()) {
         var avg = sc.__avgPlay != null ? sc.__avgPlay : 0;
         if (nOpt === 1 && s.play >= avg + SETTER_OVERUSE_N) {
           c += (s.play - avg) * 3.0;   // 많이 뛴 만큼 세터 자리 비용 가중
@@ -2149,7 +2157,8 @@
       /* 과출전 세터 판정: 세터 전용(pos===['S'])이고 평균보다 N게임 이상 많이 뛴 사람.
          이런 사람은 코어 배정에서 뒤로 밀어 이번 라운드 쉬게 하고, 세터 자리를 Flex가 잇게 한다. */
       function overusedSetter(p) {
-        return p.pos.length === 1 && p.pos[0] === 'S' && st(p.id).play >= avgP + SETTER_OVERUSE_N;
+        return p.pos.length === 1 && p.pos[0] === setterKey() &&
+          st(p.id).play >= avgP + SETTER_OVERUSE_N;
       }
       var byFlex = present.slice().sort(function (a, b) {
         var ao = overusedSetter(a) ? 1 : 0, bo = overusedSetter(b) ? 1 : 0;
@@ -2289,26 +2298,35 @@
 
     function solveRound(present, nG) {
       pinsRelaxed = false; abcFellBack = false;
-      var r = solveOnce(present, nG);
-      if (r) return r;
-      /* 고정(📌)을 다 지키면 답이 없을 수 있다. 마지막에 고정을 풀고 한 번 더. */
       var anyPin = players.some(function (p) { return (p.pin && p.pin[sport]) || p.pinTeam != null; });
-      if (!anyPin) return null;
-      pinsOn = false;
-      try { r = solveOnce(present, nG); } finally { pinsOn = true; }
-      if (r) pinsRelaxed = true;
+
+      /* 1) 고른 모드 그대로, 고정을 지켜서 */
+      var r = attempt(present, nG);
+      if (r) return r;
+
+      /* 2) 고정(📌)을 다 지키면 답이 없을 수 있다 — 풀고 같은 모드로 한 번 더.
+         (A · B · C 를 포기하기 전에 이걸 먼저 본다. 고정 때문에 막힌 건데
+          자유 편성으로 내려가면 엉뚱한 안내가 나간다.) */
+      if (anyPin) {
+        pinsOn = false;
+        try { r = attempt(present, nG); } finally { pinsOn = true; }
+        if (r) { pinsRelaxed = true; return r; }
+      }
+
+      /* 3) 그래도 안 되면 자유 편성으로. A · B · C 는 팀 인원의 2~3배가 필요하다. */
+      if (mode !== 'abc') return null;
+      r = solveRoundFree(present, nG);
+      if (r) { abcFellBack = true; return r; }
+      if (anyPin) {
+        pinsOn = false;
+        try { r = solveRoundFree(present, nG); } finally { pinsOn = true; }
+        if (r) { abcFellBack = true; pinsRelaxed = true; }
+      }
       return r;
     }
 
-    function solveOnce(present, nG) {
-      if (mode !== 'abc') return solveRoundFree(present, nG);
-      var r = solveRoundABC(present, nG);
-      if (r) return r;
-      /* A · B · C 는 팀 인원의 2~3배가 필요하다. 인원이 그에 못 미치면
-         못 뽑는다고 막는 대신 자유 편성으로 돌려 빈자리를 보여준다. */
-      r = solveRoundFree(present, nG);
-      if (r) abcFellBack = true;
-      return r;
+    function attempt(present, nG) {
+      return mode === 'abc' ? solveRoundABC(present, nG) : solveRoundFree(present, nG);
     }
 
     /* ============================================================
