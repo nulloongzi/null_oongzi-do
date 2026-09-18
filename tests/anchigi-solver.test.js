@@ -63,14 +63,15 @@ function makeSandbox() {
 }
 
 /** 명단을 갈아 끼우고(참석 전원) 라운드를 뽑는다. */
-function draw(box, people, { sport = 'v6', mode = 'free', prio = 'custom', nGames = 3 } = {}) {
+function draw(box, people, { sport = 'v6', mode = 'free', prio = 'custom', nGames = 3, tactic = '5-1' } = {}) {
     box.sport = sport;
     box.POS = box.POS_BY_SPORT[sport];
     box.mode = mode;
     box.prio = prio;
     box.nGames = nGames;
     box.flexSlots = null;
-    box.allowed = ['mb2', 'mb1li', 'mb2li', 'v9'];
+    box.tactic = tactic;
+    box.allowed = box.TEMPLATES.map((t) => t.id);
     box.stat = {};
     box.round = 1;
     box.players = people.map((p) => box.normalizePlayer(p));
@@ -85,6 +86,16 @@ function roster(n, tierOf) {
     }
     return out;
 }
+
+/** 6-2 전술은 세터 두 명이 코트에 선다. */
+const V6_TWO_SETTERS = (i) => {
+    const cycle = [
+        { S: 'main' }, { S: 'main' },
+        { OH: 'main' }, { OH: 'main' },
+        { MB: 'main' }, { MB: 'main', Li: 'sub' },
+    ];
+    return Object.assign({}, cycle[i % cycle.length]);
+};
 
 const V6_MAIN = (i) => {
     const cycle = [
@@ -183,6 +194,36 @@ describe('6인제 배치', () => {
     });
 });
 
+describe('6인제 전술', () => {
+    test('5-1 은 코트에 세터가 한 명', () => {
+        const games = draw(box, roster(12, V6_MAIN));
+        assert.ok(games);
+        games.forEach((g) => g.teams.forEach((t) => {
+            assert.strictEqual(t.filter((x) => x.p === 'S').length, 1);
+        }));
+    });
+
+    test('6-2 는 코트에 세터가 두 명 — 하나는 라이트 자리', () => {
+        const games = draw(box, roster(12, V6_TWO_SETTERS), { tactic: '6-2' });
+        assert.ok(games, '6-2 로도 배치가 나와야 한다');
+        games.forEach((g) => g.teams.forEach((t) => {
+            const setters = t.filter((x) => x.p === 'S');
+            assert.strictEqual(setters.length, 2);
+            // 전위 세터는 라이트(존 4) 자리에 선다
+            assert.deepStrictEqual(Array.from(setters.map((x) => x.z).sort()), [1, 4]);
+        }));
+        assertLineupSane(box, games);
+    });
+
+    test('존이 겹치지 않는다', () => {
+        const games = draw(box, roster(12, V6_MAIN));
+        games.forEach((g) => g.teams.forEach((t) => {
+            const zones = t.filter((x) => !x.off).map((x) => x.z).sort();
+            assert.strictEqual(new Set(zones).size, zones.length, '한 존에 두 명이 설 수 없다');
+        }));
+    });
+});
+
 describe('인원이 모자랄 때 — 빈 자리를 (필요)로 남긴다', () => {
     test('9명이면 뽑히긴 하고 빈 자리가 표시된다', () => {
         const games = draw(box, roster(9, V6_MAIN));
@@ -204,9 +245,14 @@ describe('인원이 모자랄 때 — 빈 자리를 (필요)로 남긴다', () =
     test('아무도 못 서는 자리는 비운다 — 리베로 가능자가 없어도 뽑힌다', () => {
         // 전원 세터/레프트만 가능 → Li 자리는 채울 사람이 없다
         const people = roster(12, () => ({ S: 'sub', OH: 'sub' }));
-        box.allowed = ['mb1li'];
         const games = draw(box, people);
-        box.allowed = ['mb1li'];
+        box.allowed = ['mb1li'];   // 리베로가 반드시 필요한 구성만 남긴다
+        const g2 = box.solveRound(box.players, 3);
+        assert.ok(g2, '리베로 가능자가 없어도 배치는 나와야 한다');
+        assert.ok(
+            g2.some((g) => g.need[0].concat(g.need[1]).indexOf('Li') >= 0),
+            '리베로 자리가 (필요)로 남아야 한다',
+        );
         assert.ok(games);
         assertLineupSane(box, games);
     });
@@ -219,18 +265,34 @@ describe('인원이 모자랄 때 — 빈 자리를 (필요)로 남긴다', () =
 });
 
 describe('9인제', () => {
-    test('18명이면 아홉 자리씩 채운다', () => {
+    test('18명이면 포메이션 아홉 자리를 채운다', () => {
         const games = draw(box, roster(18, null), { sport: 'v9' });
         assert.ok(games);
         games.forEach((g) => {
             assert.strictEqual(g.teams[0].length, 9);
             assert.strictEqual(g.teams[1].length, 9);
-            g.teams.forEach((t) => {
-                const seats = t.map((x) => x.p).sort();
-                assert.deepStrictEqual(seats, box.POS_BY_SPORT.v9.slice().sort(), '아홉 자리가 겹치지 않아야 한다');
+            g.teams.forEach((t, ti) => {
+                const tpl = box.tplById(g.tpls[ti]);
+                assert.ok(tpl, '어떤 포메이션으로 짰는지 남아야 한다');
+                // 자리 구성이 포메이션 정의와 같아야 한다(속공 수 · 줄 인원)
+                assert.deepStrictEqual(
+                    t.map((x) => x.p),
+                    tpl.slots.map((sl) => sl.p),
+                );
+                assert.strictEqual(
+                    tpl.rows.reduce((a, b) => a + b, 0), 9,
+                    '줄 인원의 합이 아홉이어야 한다',
+                );
             });
         });
         assertLineupSane(box, games, { sport: 'v9' });
+    });
+
+    test('포메이션마다 속공 수가 1 · 2 · 3 으로 갈린다', () => {
+        const counts = box.TEMPLATES
+            .filter((t) => t.sport === 'v9')
+            .map((t) => t.slots.filter((sl) => sl.p === 'QK').length);
+        assert.deepStrictEqual(Array.from(counts), [1, 2, 3]);
     });
 
     test('12명이면 여섯 자리를 (필요)로 남긴다', () => {

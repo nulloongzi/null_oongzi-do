@@ -494,8 +494,17 @@
       background: repeating-linear-gradient(45deg, #fffdf5, #fffdf5 10px, #fffbea 10px, #fffbea 20px);
       padding: 8px;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
       gap: 6px;
+    }
+
+    /* 코트 한 줄. 포메이션마다 칸 수가 달라(2-4-3 등) 줄마다 열 수를 준다 */
+    .crow {
+      display: grid;
+      gap: 6px;
+    }
+
+    .cell.empty {
+      visibility: hidden;
     }
 
     .side.top {
@@ -592,22 +601,29 @@
       background: var(--pos-li);
     }
 
-    /* 9인제 자리 — 전위 · 중위 · 후위 세 줄을 색으로 구분한다 */
-    .pos.FL,
-    .pos.FC,
-    .pos.FR {
-      background: var(--pos-op);
+    /* 9인제 역할 — 세터 · 속공 · 레프트 · 라이트 · 차 · 백 */
+    .pos.S9 {
+      background: var(--pos-s);
+      color: var(--pos-s-fg);
     }
 
-    .pos.CL,
-    .pos.CC,
-    .pos.CR {
+    .pos.QK {
+      background: var(--pos-mb);
+    }
+
+    .pos.L9 {
       background: var(--pos-oh);
     }
 
-    .pos.BL,
-    .pos.BC,
-    .pos.BR {
+    .pos.R9 {
+      background: var(--pos-op);
+    }
+
+    .pos.CH {
+      background: #5c6bc0;
+    }
+
+    .pos.BK {
       background: var(--pos-li);
     }
 
@@ -1076,29 +1092,24 @@
     var SPORTS = ['v6', 'v9'];
     var POS_BY_SPORT = {
       v6: ['S', 'OP', 'OH', 'MB', 'Li'],
-      v9: ['FL', 'FC', 'FR', 'CL', 'CC', 'CR', 'BL', 'BC', 'BR']
+      /* 9인제는 포메이션마다 자리 이름이 달라(앞속공·빽속공·앞차·빽차…),
+         명단에서는 역할 6종만 고르고 구체적인 자리는 코트에만 표시한다. */
+      v9: ['S9', 'QK', 'L9', 'R9', 'CH', 'BK']
     };
     var ALL_POS = POS_BY_SPORT.v6.concat(POS_BY_SPORT.v9);
     var POS_KO = {
       S: '세터', OP: '라이트', OH: '레프트', MB: '센터', Li: '리베로',
-      FL: '전위 왼쪽', FC: '전위 가운데', FR: '전위 오른쪽',
-      CL: '중위 왼쪽', CC: '중위 가운데', CR: '중위 오른쪽',
-      BL: '후위 왼쪽', BC: '후위 가운데', BR: '후위 오른쪽'
+      S9: '세터', QK: '속공', L9: '레프트', R9: '라이트', CH: '차', BK: '백'
     };
     /* 명단 칩처럼 좁은 자리에 쓰는 짧은 이름 */
     var POS_SHORT_KO = {
       S: '세터', OP: '라이트', OH: '레프트', MB: '센터', Li: '리베로',
-      FL: '전좌', FC: '전중', FR: '전우',
-      CL: '중좌', CC: '중중', CR: '중우',
-      BL: '후좌', BC: '후중', BR: '후우'
+      S9: '세터', QK: '속공', L9: '레프트', R9: '라이트', CH: '차', BK: '백'
     };
     var POS_EN = {
       S: 'Setter', OP: 'Opposite', OH: 'Outside', MB: 'Middle', Li: 'Libero',
-      FL: 'Front left', FC: 'Front center', FR: 'Front right',
-      CL: 'Mid left', CC: 'Mid center', CR: 'Mid right',
-      BL: 'Back left', BC: 'Back center', BR: 'Back right'
+      S9: 'Setter', QK: 'Quick', L9: 'Left', R9: 'Right', CH: 'Mid', BK: 'Back'
     };
-    /* 현재 종목의 자리 목록. 종목을 바꾸면 refreshSport() 가 갈아 끼운다. */
     var sport = 'v6';
     var POS = POS_BY_SPORT.v6;
 
@@ -1195,8 +1206,24 @@
         tpl_mb2li: 'MB 2 + Li 1', tpl_mb2li_desc: '리베로가 후위 센터와 교대',
         tpl_person: '인',
         sport_title: '종목',
+        tactic_title: '전술',
+        tactic_51: '5-1', tactic_51_sub: '세터 1명',
+        tactic_62: '6-2', tactic_62_sub: '세터 2명 · 전위는 라이트',
+        tactic_hint: '5-1 은 세터 한 명이 여섯 자리를 다 돌고, 6-2 는 세터 둘이 후위에서 번갈아 토스합니다. 6-2 의 전위 세터는 라이트 자리에서 공격합니다.',
+        form_title: '포메이션', form_hint: '(속공 수에 따라 리시브 줄이 갈립니다)',
+        tpl_q1: '속공 1 · 2-4-3', tpl_q1_desc: '앞 2 · 가운데 4 · 뒤 3',
+        tpl_q2: '속공 2 · 3-4-2', tpl_q2_desc: '앞 3 · 가운데 4 · 뒤 2',
+        tpl_q3: '속공 3 · 4-3-2', tpl_q3_desc: '앞 4 · 가운데 3 · 뒤 2',
+        note_q2: '앞차 · 빽차 중 한 명은 수비 때 뒤로 빠져 가운데를 보고, 거기서 공격에 들어갑니다.',
+        note_q3: '차는 수비 때 뒤로 빠져 가운데를 보고, 거기서 공격에 들어갑니다.',
+        seat_s9: '세터', seat_qk: '속공', seat_fqk: '앞속공', seat_bqk: '빽속공',
+        seat_qa: '앞A', seat_qb: '앞B', seat_b: 'B',
+        seat_l9: '레프트', seat_r9: '라이트',
+        seat_ch: '차', seat_fch: '앞차', seat_bch: '빽차',
+        seat_lb: '레프트백', seat_cb: '백센터', seat_cb2: '센터백', seat_rb: '라이트백',
+        seat_s_front: '세터 · 라이트',
         sport_v6: '6인제', sport_v6_sub: '로테이션 · 대각',
-        sport_v9: '9인제', sport_v9_sub: '자리 고정 3×3',
+        sport_v9: '9인제', sport_v9_sub: '속공 수로 줄 구성',
         prio_custom: '맞춘 자리 우선', prio_custom_sub: '고정 · 주 자리부터',
         prio_variety2: '다양성 우선', prio_variety2_sub: '안 해본 자리부터',
         prio_hint: '맞춘 자리 우선은 <b>고정(📌)해 둔 자리</b>와 각자 고른 <b>주 자리</b>를 먼저 지킵니다. 사람에게 등급을 매기는 게 아니라, 진행하는 사람이 자리를 직접 지정하는 것입니다.',
@@ -1218,9 +1245,7 @@
         bulk_ph: '이름을 줄바꿈이나 쉼표로 구분해 붙여넣기',
         bulk_btn: '한 번에 추가',
         compact_title: '보기', compact_court: '코트', compact_list: '간단히',
-        row_front: '전위', row_mid: '중위', row_back: '후위',
-        tpl_v9: '9인제 정규', tpl_v9_desc: '전 · 중 · 후위 3자리씩',
-        ok_done_suf9: ' 모든 자리가 그 사람 가능 자리 안이고, 전 · 중 · 후위 아홉 자리를 모두 채웠습니다.',
+        ok_done_suf9: ' 모든 자리가 그 사람 가능 역할 안이고, 포메이션의 아홉 자리를 모두 채웠습니다.',
         meet_title: '지난 모임', meet_none: '보관한 모임이 없습니다.',
         meet_archive: '이번 모임 보관하고 새로 시작',
         meet_archive_confirm: '이번 모임 기록을 보관하고 1R부터 새로 시작합니다. 명단은 그대로 남습니다.',
@@ -1305,8 +1330,24 @@
         tpl_mb2li: 'MB 2 + Li 1', tpl_mb2li_desc: 'libero swaps with back-row center',
         tpl_person: '-person',
         sport_title: 'Format',
+        tactic_title: 'System',
+        tactic_51: '5-1', tactic_51_sub: 'one setter',
+        tactic_62: '6-2', tactic_62_sub: 'two setters · front one hits right',
+        tactic_hint: 'In 5-1 a single setter runs all six rotations; in 6-2 two setters take turns setting from the back row, and the front-row setter attacks from the right.',
+        form_title: 'Formation', form_hint: '(the number of quicks decides the receive rows)',
+        tpl_q1: '1 quick · 2-4-3', tpl_q1_desc: 'front 2 · middle 4 · back 3',
+        tpl_q2: '2 quicks · 3-4-2', tpl_q2_desc: 'front 3 · middle 4 · back 2',
+        tpl_q3: '3 quicks · 4-3-2', tpl_q3_desc: 'front 4 · middle 3 · back 2',
+        note_q2: 'On defence one of the two mids drops back to cover the centre, and attacks from there.',
+        note_q3: 'On defence the mid drops back to cover the centre, and attacks from there.',
+        seat_s9: 'Setter', seat_qk: 'Quick', seat_fqk: 'Front quick', seat_bqk: 'Back quick',
+        seat_qa: 'A quick', seat_qb: 'B quick', seat_b: 'B',
+        seat_l9: 'Left', seat_r9: 'Right',
+        seat_ch: 'Mid', seat_fch: 'Front mid', seat_bch: 'Back mid',
+        seat_lb: 'Left back', seat_cb: 'Back centre', seat_cb2: 'Centre back', seat_rb: 'Right back',
+        seat_s_front: 'Setter · right',
         sport_v6: '6-a-side', sport_v6_sub: 'rotation · diagonals',
-        sport_v9: '9-a-side', sport_v9_sub: 'fixed 3×3 seats',
+        sport_v9: '9-a-side', sport_v9_sub: 'rows by quick count',
         prio_custom: 'Set seats first', prio_custom_sub: 'pins · main seats',
         prio_variety2: 'Variety first', prio_variety2_sub: 'unplayed seats first',
         prio_hint: '"Set seats first" keeps <b>pinned (📌) seats</b> and each player\'s <b>main seat</b> as much as possible. It is not a skill grade — the organizer picks the seats.',
@@ -1328,9 +1369,7 @@
         bulk_ph: 'Paste names separated by new lines or commas',
         bulk_btn: 'Add all',
         compact_title: 'View', compact_court: 'Court', compact_list: 'Compact',
-        row_front: 'Front', row_mid: 'Middle', row_back: 'Back',
-        tpl_v9: '9-a-side', tpl_v9_desc: '3 seats each in front · middle · back',
-        ok_done_suf9: ' Every seat is within a player\'s seats, and all nine front · middle · back seats are filled.',
+        ok_done_suf9: ' Every seat is within a player\'s roles, and all nine seats of the formation are filled.',
         meet_title: 'Past meetups', meet_none: 'No meetups archived yet.',
         meet_archive: 'Archive this meetup · start fresh',
         meet_archive_confirm: 'Archive this meetup\'s record and restart from R1. The roster stays.',
@@ -1357,7 +1396,7 @@
       if (lang === 'en') {
         return '<div class="card"><h3>How lineups are decided</h3>' +
           '<ol class="muted" style="margin:0;padding-left:18px">' +
-          '<li>Pick the <b>format</b> first. 6-a-side rotates, so seats are roles (setter, outside…) and each team needs one setter with a valid diagonal. 9-a-side does not rotate, so the nine court seats (front · middle · back × left · center · right) <i>are</i> the positions.</li>' +
+          '<li>Pick the <b>format</b> first. 6-a-side rotates through zones 1–6: <b>5-1</b> runs one setter through all six rotations, <b>6-2</b> alternates two setters from the back row while the front-row setter attacks from the right. 9-a-side does not rotate, and the <b>number of quicks</b> decides the receive rows: one quick → <b>2-4-3</b>, two → <b>3-4-2</b>, three → <b>4-3-2</b>. The roster only asks for six roles (setter · quick · left · right · mid · back); the exact seats show up on the court.</li>' +
           '<li>Among <b>attendees</b>, anyone leaving before a game starts is removed from it.</li>' +
           '<li>Teams are formed by mode.<ul style="padding-left:16px;margin:4px 0">' +
           '<li><b>A · B · C fixed</b> — three team cores are set at round start. Games run A vs B → B vs C → C vs A, and cores always play their own team\'s game. Missing spots are <b>borrowed</b> from the team sitting out. Needs attendance of 2×–3× a team size; below that it falls back to a free draft.</li>' +
@@ -1391,7 +1430,9 @@
       }
       return '<div class="card"><h3>배치가 정해지는 순서</h3>' +
         '<ol class="muted" style="margin:0;padding-left:18px">' +
-        '<li>먼저 <b>종목</b>을 고릅니다. 6인제는 로테이션이 있어 자리가 역할(세터 · 레프트…)이고 팀마다 세터 1명 · 대각(S↔OP, OH↔OH, MB↔Li)을 맞춥니다. 9인제는 로테이션이 없어 코트의 아홉 자리(전 · 중 · 후위 × 좌 · 중 · 우)가 곧 포지션입니다.</li>' +
+        '<li>먼저 <b>종목</b>을 고릅니다.<ul style="padding-left:16px;margin:4px 0">' +
+        '<li><b>6인제</b> — 로테이션이 있어 존(1~6)으로 섭니다. <b>5-1</b>은 세터 한 명이 여섯 자리를 다 돌고, <b>6-2</b>는 세터 둘이 후위에서 번갈아 토스하며 전위 세터는 라이트 자리에서 공격합니다.</li>' +
+        '<li><b>9인제</b> — 로테이션이 없고 <b>속공 수</b>로 리시브 줄이 갈립니다. 속공 1명이면 <b>2-4-3</b>(속공 · 세터 / 레프트 · 앞차 · 빽차 · 라이트 / 레프트백 · 백센터 · 라이트백), 2명이면 <b>3-4-2</b>, 3명이면 <b>4-3-2</b> 입니다. 명단에서는 자리 이름 대신 <b>역할 6종</b>(세터 · 속공 · 레프트 · 라이트 · 차 · 백)만 고르면 되고, 구체적인 자리는 코트에 표시됩니다.</li></ul></li>' +
         '<li><b>참석자</b> 중 경기 시작 전에 퇴장하는 사람을 뺍니다.</li>' +
         '<li>모드에 따라 팀을 짭니다.<ul style="padding-left:16px;margin:4px 0">' +
         '<li><b>A · B · C 고정</b> — 라운드 시작에 세 팀 코어를 정하고 A vs B → B vs C → C vs A 로 붙습니다. 코어는 자기 팀 경기에 반드시 출전하고, 모자란 자리는 안 뛰는 팀에서 <b>차출</b>합니다. 참석이 팀 인원의 2~3배여야 하고, 그보다 적으면 자유 편성으로 내려갑니다.</li>' +
@@ -1424,17 +1465,54 @@
         '</div>';
     }
 
-    /* 팀 구성 템플릿
-       6인제 — 대각(S↔OP, OH↔OH, MB↔Li)을 만족하는 조합
-       9인제 — 로테이션이 없으므로 코트 아홉 자리를 그대로 채운다(조합은 하나뿐) */
+    /* ============================================================
+       팀 구성 템플릿
+       ------------------------------------------------------------
+       한 자리는 { p: 역할, z: 6인제 존 번호, l: 자리 이름 키, off: 코트 밖 }.
+         p  — 명단에서 고르는 역량 키. 이게 맞아야 그 자리에 설 수 있다.
+         z  — 6인제 코트 존(1~6). 로테이션이 있어 역할이 아니라 존으로 선다.
+         l  — 9인제(와 6-2의 전위 세터)처럼 자리에 고유한 이름이 있을 때.
+       6인제는 전술(5-1 · 6-2)로 갈리고, 9인제는 속공 수로 포메이션이 갈린다.
+       ============================================================ */
+    function SL(p, z, l, off) { return { p: p, z: z || 0, l: l || '', off: !!off }; }
     var TEMPLATES = [
-      { id: 'mb2', sport: 'v6', size: 6, labelK: 'tpl_mb2', descK: 'tpl_mb2_desc', slots: ['S', 'OP', 'OH', 'OH', 'MB', 'MB'] },
-      { id: 'mb1li', sport: 'v6', size: 6, labelK: 'tpl_mb1li', descK: 'tpl_mb1li_desc', slots: ['S', 'OP', 'OH', 'OH', 'MB', 'Li'] },
-      { id: 'mb2li', sport: 'v6', size: 7, labelK: 'tpl_mb2li', descK: 'tpl_mb2li_desc', slots: ['S', 'OP', 'OH', 'OH', 'MB', 'MB', 'Li'] },
-      { id: 'v9', sport: 'v9', size: 9, labelK: 'tpl_v9', descK: 'tpl_v9_desc', slots: ['FL', 'FC', 'FR', 'CL', 'CC', 'CR', 'BL', 'BC', 'BR'] }
+      /* 5-1 — 세터 한 명이 여섯 자리를 다 돈다 */
+      { id: 'mb2', sport: 'v6', tactic: '5-1', size: 6, labelK: 'tpl_mb2', descK: 'tpl_mb2_desc',
+        slots: [SL('S', 1), SL('OP', 4), SL('OH', 2), SL('OH', 5), SL('MB', 3), SL('MB', 6)] },
+      { id: 'mb1li', sport: 'v6', tactic: '5-1', size: 6, labelK: 'tpl_mb1li', descK: 'tpl_mb1li_desc',
+        slots: [SL('S', 1), SL('OP', 4), SL('OH', 2), SL('OH', 5), SL('MB', 3), SL('Li', 6)] },
+      { id: 'mb2li', sport: 'v6', tactic: '5-1', size: 7, labelK: 'tpl_mb2li', descK: 'tpl_mb2li_desc',
+        slots: [SL('S', 1), SL('OP', 4), SL('OH', 2), SL('OH', 5), SL('MB', 3), SL('MB', 6), SL('Li', 0, '', true)] },
+      /* 6-2 — 세터 둘. 후위 세터가 토스하고, 전위 세터는 라이트 자리에서 공격한다 */
+      { id: 'mb2x62', sport: 'v6', tactic: '6-2', size: 6, labelK: 'tpl_mb2', descK: 'tpl_mb2_desc',
+        slots: [SL('S', 1), SL('S', 4, 'seat_s_front'), SL('OH', 2), SL('OH', 5), SL('MB', 3), SL('MB', 6)] },
+      { id: 'mb1lix62', sport: 'v6', tactic: '6-2', size: 6, labelK: 'tpl_mb1li', descK: 'tpl_mb1li_desc',
+        slots: [SL('S', 1), SL('S', 4, 'seat_s_front'), SL('OH', 2), SL('OH', 5), SL('MB', 3), SL('Li', 6)] },
+      { id: 'mb2lix62', sport: 'v6', tactic: '6-2', size: 7, labelK: 'tpl_mb2li', descK: 'tpl_mb2li_desc',
+        slots: [SL('S', 1), SL('S', 4, 'seat_s_front'), SL('OH', 2), SL('OH', 5), SL('MB', 3), SL('MB', 6), SL('Li', 0, '', true)] },
+
+      /* 9인제 — 로테이션이 없다. 속공을 몇 명 두느냐로 리시브 줄 구성이 갈린다.
+         rows 는 앞줄부터의 인원(네트 쪽이 앞줄). slots 는 그 순서대로 나열한다. */
+      { id: 'v9q1', sport: 'v9', size: 9, labelK: 'tpl_q1', descK: 'tpl_q1_desc', rows: [2, 4, 3],
+        slots: [SL('QK', 0, 'seat_qk'), SL('S9', 0, 'seat_s9'),
+          SL('L9', 0, 'seat_l9'), SL('CH', 0, 'seat_fch'), SL('CH', 0, 'seat_bch'), SL('R9', 0, 'seat_r9'),
+          SL('BK', 0, 'seat_lb'), SL('BK', 0, 'seat_cb'), SL('BK', 0, 'seat_rb')] },
+      { id: 'v9q2', sport: 'v9', size: 9, labelK: 'tpl_q2', descK: 'tpl_q2_desc', rows: [3, 4, 2], noteK: 'note_q2',
+        slots: [SL('QK', 0, 'seat_fqk'), SL('S9', 0, 'seat_s9'), SL('QK', 0, 'seat_bqk'),
+          SL('L9', 0, 'seat_l9'), SL('CH', 0, 'seat_fch'), SL('CH', 0, 'seat_bch'), SL('R9', 0, 'seat_r9'),
+          SL('BK', 0, 'seat_lb'), SL('BK', 0, 'seat_cb2')] },
+      { id: 'v9q3', sport: 'v9', size: 9, labelK: 'tpl_q3', descK: 'tpl_q3_desc', rows: [4, 3, 2], noteK: 'note_q3',
+        slots: [SL('QK', 0, 'seat_qb'), SL('QK', 0, 'seat_qa'), SL('S9', 0, 'seat_s9'), SL('QK', 0, 'seat_b'),
+          SL('L9', 0, 'seat_l9'), SL('CH', 0, 'seat_ch'), SL('R9', 0, 'seat_r9'),
+          SL('BK', 0, 'seat_lb'), SL('BK', 0, 'seat_rb')] }
     ];
     function tplById(id) { for (var i = 0; i < TEMPLATES.length; i++) if (TEMPLATES[i].id === id) return TEMPLATES[i]; return null; }
-    function tplsOfSport() { return TEMPLATES.filter(function (t) { return t.sport === sport; }); }
+    /* 6인제는 전술까지 맞는 구성만. 9인제는 포메이션이 곧 구성이다. */
+    function tplsOfSport() {
+      return TEMPLATES.filter(function (t) {
+        return t.sport === sport && (sport !== 'v6' || t.tactic === tactic);
+      });
+    }
 
     /* 픽업(공개 기능)에서 열리는 범용 도구라 기본 명단은 비어 있다.
        예전에 쓰던 명단은 위 migrateKeys 가 옮겨오고 아래 load() 가 우선하므로 유지된다. */
@@ -1605,7 +1683,15 @@
     }
     if (PRIOS.indexOf(prio) < 0) prio = 'custom';
     if (typeof flexSlots !== 'number') flexSlots = null;
-    var allowed = load(K('tpl'), null) || ['mb2', 'mb1li', 'mb2li'];
+    /* 6인제 전술 — 5-1(세터 1) / 6-2(세터 2). 9인제에는 없다. */
+    var tactic = load(K('tactic'), null) || '5-1';
+    if (tactic !== '5-1' && tactic !== '6-2') tactic = '5-1';
+    var ALL_TPL = TEMPLATES.map(function (t) { return t.id; });
+    var allowed = load(K('tpl'), null) || ALL_TPL.slice();
+    /* 예전 저장본에는 새 구성(6-2 · 9인제)이 없다 — 켜 둔 채로 시작한다 */
+    ALL_TPL.forEach(function (id) {
+      if (allowed.indexOf(id) < 0 && id !== 'mb2' && id !== 'mb1li' && id !== 'mb2li') allowed.push(id);
+    });
     var schedule = load(K('schedule'), null) || { start: '13:00', warmup: '14:00', end: '17:00', perGame: 15, rest: 10 };
     if (schedule.rest == null) schedule.rest = 10;
 
@@ -1622,7 +1708,7 @@
     function persist() {
       save(KEY_P, players); save(KEY_H, stat); save(K('round'), round);
       save(K('ngames'), nGames); save(K('mode'), mode); save(K('tpl'), allowed);
-      save(K('prio'), prio); save(K('flex'), flexSlots);
+      save(K('prio'), prio); save(K('flex'), flexSlots); save(K('tactic'), tactic);
       save(K('sport'), sport); save(K('meets'), meets); save(K('compact'), compact);
       save(K('schedule'), schedule);
       save(K('past'), pastRounds);
@@ -1754,18 +1840,18 @@
       sc.__avgPlay = cnt ? tot / cnt : 0;
     }
 
-    function finish(present, sc, assign, slots, teamNames) {
+    function finish(present, sc, assign, tplIds, teamNames) {
       var t = [[], []], cost = 0, used = {}, capOf = {}, need = [[], []];
       present.forEach(function (q) { capOf[q.id] = q.pos.length; });
       assign.forEach(function (a) {
         /* 사람이 없어 비워 둔 자리 — 코트에 '(필요)' 로 남는다 */
         if (a.empty) {
-          t[a.team].push({ empty: true, p: a.p });
+          t[a.team].push({ empty: true, p: a.p, z: a.z, l: a.l, off: a.off });
           need[a.team].push(a.p);
           cost += EMPTY_SLOT_COST;
           return;
         }
-        t[a.team].push({ id: a.id, n: a.n, p: a.p });
+        t[a.team].push({ id: a.id, n: a.n, p: a.p, z: a.z, l: a.l, off: a.off });
         used[a.id] = 1;
         cost += slotCost(a.id, a.p, sc, capOf[a.id]);
       });
@@ -1791,7 +1877,7 @@
       cost += gap * F().balanceW * 6;
 
       return { teams: t, names: teamNames, bench: bench, cost: cost,
-        fitGap: gap, nonMain: nonMain, need: need };
+        fitGap: gap, nonMain: nonMain, need: need, tpls: tplIds || null };
     }
 
     /* ============================================================
@@ -1852,7 +1938,8 @@
           if (emptyLeft <= 0) return false;
           var etm = slots[bi].team;
           emptyLeft--; left[etm]--;
-          assign[bi] = { empty: true, p: slots[bi].pos, team: etm };
+          assign[bi] = { empty: true, p: slots[bi].pos, team: etm,
+            z: slots[bi].z, l: slots[bi].l, off: slots[bi].off };
           if (bt(depth + 1)) return true;
           emptyLeft++; left[etm]++; assign[bi] = null;
           return false;
@@ -1865,7 +1952,9 @@
         for (k = 0; k < bc.length; k++) {
           var p = bc[k];
           var isNM = tierOf(p, slots[bi].pos) !== 'main';
-          used[p.id] = 1; assign[bi] = { id: p.id, n: p.name, p: slots[bi].pos, team: tm };
+          used[p.id] = 1;
+          assign[bi] = { id: p.id, n: p.name, p: slots[bi].pos, team: tm,
+            z: slots[bi].z, l: slots[bi].l, off: slots[bi].off };
           left[tm]--; if (must && must[tm][p.id]) need[tm]--;
           if (isNM) nm[tm]++;
           if (bt(depth + 1)) return true;
@@ -1892,9 +1981,12 @@
 
     function mkSlots(tplA, tplB, allowA, allowB) {
       var o = [], i;
-      for (i = 0; i < tplA.slots.length; i++) o.push({ team: 0, pos: tplA.slots[i], allow: allowA || null });
-      for (i = 0; i < tplB.slots.length; i++) o.push({ team: 1, pos: tplB.slots[i], allow: allowB || null });
+      for (i = 0; i < tplA.slots.length; i++) o.push(slotOf(0, tplA.slots[i], allowA));
+      for (i = 0; i < tplB.slots.length; i++) o.push(slotOf(1, tplB.slots[i], allowB));
       return o;
+    }
+    function slotOf(team, def, allow) {
+      return { team: team, pos: def.p, allow: allow || null, z: def.z, l: def.l, off: def.off };
     }
 
     /* ============================================================
@@ -1914,7 +2006,7 @@
               sl = mkSlots(T[i], T[j]);
               allow = pass === 0 ? 0 : emptyAllowance(present, sl);
               as = search(present, sc, sl, null, 20000, bud, allow);
-              if (as) { probe = finish(present, sc, as, null, ['A', 'B']); usedBudget = bud; }
+              if (as) { probe = finish(present, sc, as, [T[i].id, T[j].id], ['A', 'B']); usedBudget = bud; }
             }
           }
         }
@@ -1928,7 +2020,7 @@
         if (!allow && a.size + b.size > present.length) continue;
         as = search(present, sc, sl, null, 3000, bud, allow ? emptyAllowance(present, sl) : 0);
         if (!as) continue;
-        var r = finish(present, sc, as, null, ['A', 'B']);
+        var r = finish(present, sc, as, [a.id, b.id], ['A', 'B']);
         if (r.cost < best.cost) best = r;
       }
       return best;
@@ -1959,7 +2051,7 @@
       function bt(i) {
         if (i === ms.length) return true;
         for (var k = 0; k < slots.length; k++) {
-          if (used[k] || ms[i].pos.indexOf(slots[k]) < 0) continue;
+          if (used[k] || ms[i].pos.indexOf(slots[k].p) < 0) continue;
           used[k] = 1;
           if (bt(i + 1)) return true;
           used[k] = 0;
@@ -2029,7 +2121,7 @@
         for (j = 0; j < opts.length && !best; j++) {
           sl = mkSlots(opts[i], opts[j], [X, Z], [Y, Z]);
           as = search(present, sc, sl, must, 6000, bud, allowOf(sl));
-          if (as) best = finish(present, sc, as, null, [TEAM_NAME[X], TEAM_NAME[Y]]);
+          if (as) best = finish(present, sc, as, [opts[i].id, opts[j].id], [TEAM_NAME[X], TEAM_NAME[Y]]);
         }
       }
       if (!best) return null;
@@ -2038,7 +2130,7 @@
         sl = mkSlots(a, b, [X, Z], [Y, Z]);
         as = search(present, sc, sl, must, 3000, bud, allowOf(sl));
         if (!as) continue;
-        r = finish(present, sc, as, null, [TEAM_NAME[X], TEAM_NAME[Y]]);
+        r = finish(present, sc, as, [a.id, b.id], [TEAM_NAME[X], TEAM_NAME[Y]]);
         if (r.cost < best.cost) best = r;
       }
       return best;
@@ -2152,7 +2244,7 @@
     function maxSlotFor(P) {
       var m = 0;
       tpls().forEach(function (t) {
-        var c = t.slots.filter(function (x) { return x === P; }).length;
+        var c = t.slots.filter(function (x) { return x.p === P; }).length;
         if (c > m) m = c;
       });
       return m * 2;
@@ -2160,7 +2252,7 @@
     function minSlotFor(P) {
       var m = 99;
       tpls().forEach(function (t) {
-        var c = t.slots.filter(function (x) { return x === P; }).length;
+        var c = t.slots.filter(function (x) { return x.p === P; }).length;
         if (c < m) m = c;
       });
       return m * 2;
@@ -2174,8 +2266,8 @@
       if (!n) return false;
       if (n < minCourt()) return true;
       return tpls().every(function (t) {
-        return t.slots.some(function (P) {
-          return !present.some(function (q) { return q.pos.indexOf(P) >= 0; });
+        return t.slots.some(function (sl) {
+          return !present.some(function (q) { return q.pos.indexOf(sl.p) >= 0; });
         });
       });
     }
@@ -2207,70 +2299,106 @@
        코트 렌더 — 세터가 존1(우후위)에서 서브 시작
        7인 팀은 리베로를 코트 밖에 따로 표시(후위 센터와 교대)
        ============================================================ */
-    function toZones(lineup) {
-      var z = {}, ohs = [2, 5], mbs = [3, 6], libero = null, i, p;
-      /* 9인제는 자리 이름이 곧 코트 칸이라 배치 변환이 필요 없다 */
+    /* 한 팀의 코트를 줄 단위로 만든다.
+       6인제 — 존 번호(1~6)로 두 줄. 코트 밖(리베로 교대)은 따로 뺀다.
+       9인제 — 포메이션의 rows(앞줄부터 인원)대로 잘라 세 줄. */
+    function courtRows(lineup, tplId, isTop) {
+      var off = lineup.filter(function (x) { return x.off; });
+      var on = lineup.filter(function (x) { return !x.off; });
+
       if (sport === 'v9') {
-        for (i = 0; i < lineup.length; i++) z[lineup[i].p] = lineup[i];
-        return { z: z, libero: null };
+        var tpl = tplById(tplId);
+        var lens = (tpl && tpl.rows && tpl.slots.length === lineup.length) ? tpl.rows : null;
+        var rows = [], i = 0, k;
+        if (lens) {
+          for (k = 0; k < lens.length; k++) { rows.push(on.slice(i, i + lens[k])); i += lens[k]; }
+        } else {
+          /* 구성을 모르는 옛 기록 — 세 칸씩 잘라 보여주기만 한다 */
+          for (i = 0; i < on.length; i += 3) rows.push(on.slice(i, i + 3));
+        }
+        /* 위쪽 팀은 네트가 아래라 뒷줄부터 그리고, 좌우도 뒤집힌다 */
+        if (isTop) {
+          rows = rows.slice().reverse().map(function (r) { return r.slice().reverse(); });
+        }
+        return { rows: rows, off: off, note: tpl && tpl.noteK ? L(tpl.noteK) : '' };
       }
-      var nMB = lineup.filter(function (x) { return x.p === 'MB'; }).length;
-      var nLi = lineup.filter(function (x) { return x.p === 'Li'; }).length;
-      var split = (nMB === 2 && nLi === 1);
+
+      var z = {};
+      on.forEach(function (x) { if (x.z) z[x.z] = x; });
+      /* 존 정보가 없는 옛 기록은 역할로 자리를 되짚는다 */
+      if (!Object.keys(z).length) z = legacyZones(on);
+      var order = isTop ? TOP_ROWS : BOT_ROWS;
+      return {
+        rows: order.map(function (r) { return r.map(function (zn) { return z[zn] || null; }); }),
+        off: off, note: off.length ? L('team_swap') : ''
+      };
+    }
+
+    /* 존 번호를 안 싣던 시절의 기록용 — 역할로 자리를 되짚는다 */
+    function legacyZones(lineup) {
+      var z = {}, ohs = [2, 5], mbs = [3, 6], i, p;
       for (i = 0; i < lineup.length; i++) {
         p = lineup[i];
         if (p.p === 'S') z[1] = p;
         else if (p.p === 'OP') z[4] = p;
         else if (p.p === 'OH') z[ohs.shift()] = p;
         else if (p.p === 'MB') z[mbs.shift()] = p;
-        else if (p.p === 'Li') { if (split) libero = p; else z[6] = p; }
+        else if (p.p === 'Li') z[6] = p;
       }
-      return { z: z, libero: libero };
+      return z;
     }
     var TOP_ROWS = [[1, 6, 5], [2, 3, 4]], BOT_ROWS = [[4, 3, 2], [5, 6, 1]];
-    /* 9인제 — 네트에서 먼 줄부터 그린다. 위쪽 팀은 좌우가 뒤집힌다(마주 보는 코트) */
-    var V9_TOP_ROWS = [['BR', 'BC', 'BL'], ['CR', 'CC', 'CL'], ['FR', 'FC', 'FL']];
-    var V9_BOT_ROWS = [['FL', 'FC', 'FR'], ['CL', 'CC', 'CR'], ['BL', 'BC', 'BR']];
-    function rowsFor(isTop) {
-      if (sport === 'v9') return isTop ? V9_TOP_ROWS : V9_BOT_ROWS;
-      return isTop ? TOP_ROWS : BOT_ROWS;
-    }
-    /* 코트 칸 머리에 붙는 작은 글씨 — 6인제는 존 번호, 9인제는 자리 이름 */
-    function zoneLabel(zn) {
-      return sport === 'v9' ? POSCHIP(zn) : (L('court_zone') + ' ' + zn);
+
+    /* 코트 칸 머리에 붙는 작은 글씨 — 자리 이름이 있으면 그걸, 없으면 존 번호 */
+    function seatLabel(x) {
+      if (!x) return '';
+      if (x.l && x.z) return L('court_zone') + ' ' + x.z + ' · ' + L(x.l);
+      if (x.l) return L(x.l);
+      if (x.z) return L('court_zone') + ' ' + x.z;
+      return POSCHIP(x.p);
     }
 
     /* coreList = 이 팀 코어 [{id,n}] (차출 표시용). id 로 대조한다 — 동명이인 구분. */
     function isBorrowed(coreList, pl) {
       return coreList && !coreList.some(function (x) { return x.id === pl.id; });
     }
-    function sideHTML(team, lineup, isTop, coreNames) {
-      var r = toZones(lineup), rows = rowsFor(isTop), html = '', i, k, zn, pl;
+    function sideHTML(team, lineup, isTop, coreNames, tplId) {
+      var r = courtRows(lineup, tplId, isTop), html = '', i, k, pl;
       var filled = lineup.filter(function (x) { return !x.empty; }).length;
       var label = '<div class="team-label"><span class="tname">' + L('team_word') + ' ' + team + '</span><span>' +
         filled + L('people') + '</span></div>';
-      for (i = 0; i < rows.length; i++) for (k = 0; k < rows[i].length; k++) {
-        zn = rows[i][k]; pl = r.z[zn];
-        if (!pl) continue;
-        if (pl.empty) {
-          /* 사람이 없어 비운 자리 — 어떤 자리를 구해야 하는지 여기서 읽힌다 */
-          html += '<div class="cell need"><span class="zone">' + zoneLabel(zn) + '</span>' +
-            '<span class="name">(' + L('need_label') + ')</span>' +
-            '<span><span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span></span></div>';
-          continue;
+      for (i = 0; i < r.rows.length; i++) {
+        html += '<div class="crow" style="grid-template-columns:repeat(' + r.rows[i].length + ',1fr)">';
+        for (k = 0; k < r.rows[i].length; k++) {
+          pl = r.rows[i][k];
+          if (!pl) { html += '<div class="cell empty"></div>'; continue; }
+          html += cellHTML(pl, coreNames);
         }
-        html += '<div class="cell" data-p="' + pl.id + '"><span class="zone">' + zoneLabel(zn) + '</span>' +
-          '<span class="name">' + pl.n + (isBorrowed(coreNames, pl) ? '<span class="core">' + L('borrowed') + '</span>' : '') +
-          '</span><span><span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span></span></div>';
+        html += '</div>';
       }
-      if (r.libero) {
-        html += '<div class="libero" data-p="' + r.libero.id + '"><span class="pos Li">Li</span>' +
-          '<span class="nm">' + r.libero.n +
-          (isBorrowed(coreNames, r.libero) ? '<span class="core">' + L('borrowed') + '</span>' : '') + '</span>' +
+      /* 코트 밖에서 교대하는 자리(6인제 리베로) */
+      for (i = 0; i < r.off.length; i++) {
+        pl = r.off[i];
+        html += '<div class="libero"' + (pl.empty ? '' : ' data-p="' + pl.id + '"') + '>' +
+          '<span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span>' +
+          '<span class="nm">' + (pl.empty ? '(' + L('need_label') + ')' : pl.n) +
+          (!pl.empty && isBorrowed(coreNames, pl) ? '<span class="core">' + L('borrowed') + '</span>' : '') + '</span>' +
           '<span>' + L('team_swap') + '</span></div>';
       }
       return '<div class="side ' + (isTop ? 'top' : 'bottom') + '">' +
         (isTop ? label + html : html + label) + '</div>';
+    }
+
+    function cellHTML(pl, coreNames) {
+      if (pl.empty) {
+        /* 사람이 없어 비운 자리 — 어떤 자리를 구해야 하는지 여기서 읽힌다 */
+        return '<div class="cell need"><span class="zone">' + seatLabel(pl) + '</span>' +
+          '<span class="name">(' + L('need_label') + ')</span>' +
+          '<span><span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span></span></div>';
+      }
+      return '<div class="cell" data-p="' + pl.id + '"><span class="zone">' + seatLabel(pl) + '</span>' +
+        '<span class="name">' + pl.n + (isBorrowed(coreNames, pl) ? '<span class="core">' + L('borrowed') + '</span>' : '') +
+        '</span><span><span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span></span></div>';
     }
 
     function gameHTML(g, idx, rnd) {
@@ -2289,13 +2417,23 @@
       var cores = null;
       if (g.cores) cores = [g.cores[TEAM_NAME.indexOf(g.names[0])], g.cores[TEAM_NAME.indexOf(g.names[1])]];
 
+      var tplIds = g.tpls || [null, null];
       var body = compact
         ? '<div class="lineup-list">' +
         listHTML(g.names[0], g.teams[0], cores && cores[0]) +
         listHTML(g.names[1], g.teams[1], cores && cores[1]) + '</div>'
         : '<div class="court">' +
-        sideHTML(g.names[0], g.teams[0], true, cores && cores[0]) + '<div class="net"></div>' +
-        sideHTML(g.names[1], g.teams[1], false, cores && cores[1]) + '</div>';
+        sideHTML(g.names[0], g.teams[0], true, cores && cores[0], tplIds[0]) + '<div class="net"></div>' +
+        sideHTML(g.names[1], g.teams[1], false, cores && cores[1], tplIds[1]) + '</div>';
+      /* 포메이션마다 따라붙는 수비 전환 메모(속공 2 · 3) */
+      var notes = [], ni, nt;
+      for (ni = 0; ni < tplIds.length; ni++) {
+        nt = tplById(tplIds[ni]);
+        if (nt && nt.noteK && notes.indexOf(L(nt.noteK)) < 0) notes.push(L(nt.noteK));
+      }
+      var noteHtml = notes.length
+        ? '<p class="muted" style="margin:8px 0 0;font-size:11.5px">↔ ' + notes.join('<br>↔ ') + '</p>'
+        : '';
 
       /* 비는 자리 요약 — 코트를 안 보고도 뭘 구해야 하는지 알게 */
       var needAll = [].concat(g.need ? g.need[0] : [], g.need ? g.need[1] : []);
@@ -2311,7 +2449,7 @@
         L('game_no') + ' ' + (idx + 1) +
         '</span>' + timeStr + g.names[0] + ' vs ' + g.names[1] + '</div>' + body +
         '<div class="bench"><span>' + L('bench_label') + '</span>' + bench + '</div>' +
-        needHtml + leftHtml + '</div>';
+        needHtml + leftHtml + noteHtml + '</div>';
     }
 
     /* 간단히 보기 — 코트 그림 대신 '자리 이름 · 사람' 한 줄 */
@@ -2319,9 +2457,9 @@
       return '<div class="tline"><span class="tname">' + L('team_word') + ' ' + team + '</span>' +
         lineup.map(function (pl) {
           if (pl.empty) {
-            return '<span class="slot need"><span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span>(' + L('need_label') + ')</span>';
+            return '<span class="slot need"><span class="pos ' + pl.p + '">' + seatLabel(pl) + '</span>(' + L('need_label') + ')</span>';
           }
-          return '<span class="slot" data-p="' + pl.id + '"><span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span>' +
+          return '<span class="slot" data-p="' + pl.id + '"><span class="pos ' + pl.p + '">' + seatLabel(pl) + '</span>' +
             pl.n + (isBorrowed(coreNames, pl) ? '<span class="core">' + L('borrowed') + '</span>' : '') + '</span>';
         }).join('') + '</div>';
     }
@@ -2389,13 +2527,26 @@
          실험 자리 · 팀 구성 · 경기 수는 '고급 설정'으로 한 겹 내린다. */
       var tplList = tplsOfSport();
       s += '<details class="fold-card"' + foldOpen + '><summary>' + L('card_settings') +
-        ' <span class="muted">' + L('sport_' + sport) + ' · ' +
+        ' <span class="muted">' + L('sport_' + sport) + (sport === 'v6' ? ' ' + L('tactic_' + tactic.replace('-', '')) : '') + ' · ' +
         (mode === 'abc' ? L('mode_abc') : L('mode_free')) + ' · ' + L('prio_' + (prio === 'variety' ? 'variety2' : 'custom')) + '</span></summary>' +
         '<p class="muted" style="margin:0 0 7px"><b>' + L('sport_title') + '</b></p>' +
         '<div class="seg" id="sport">' + SPORTS.map(function (sp) {
           return '<button type="button" data-s="' + sp + '" aria-pressed="' + (sport === sp) + '">' +
             L('sport_' + sp) + '<small>' + L('sport_' + sp + '_sub') + '</small></button>';
         }).join('') + '</div>' +
+        (sport === 'v6'
+          ? '<p class="muted" style="margin:11px 0 7px"><b>' + L('tactic_title') + '</b></p>' +
+          '<div class="seg" id="tactic">' +
+          ['5-1', '6-2'].map(function (tc) {
+            return '<button type="button" data-tc="' + tc + '" aria-pressed="' + (tactic === tc) + '">' +
+              L('tactic_' + tc.replace('-', '')) + '<small>' + L('tactic_' + tc.replace('-', '') + '_sub') + '</small></button>';
+          }).join('') + '</div>' +
+          '<p class="muted" style="margin:7px 0 0;font-size:12px">' + L('tactic_hint') + '</p>'
+          : '<p class="muted" style="margin:11px 0 7px"><b>' + L('form_title') + '</b> ' + L('form_hint') + '</p>' +
+          '<div class="tpl" id="form">' + tplsOfSport().map(function (t) {
+            return '<button type="button" data-id="' + t.id + '" aria-pressed="' + (allowed.indexOf(t.id) >= 0) + '">' +
+              L(t.labelK) + '<small>' + L(t.descK) + '</small></button>';
+          }).join('') + '</div>') +
         '<p class="muted" style="margin:11px 0 7px"><b>' + L('card_settings') + '</b></p>' +
         '<div class="seg" id="mode">' +
         '<button type="button" data-m="abc" aria-pressed="' + (mode === 'abc') + '">' + L('mode_abc') + '<small>' + L('mode_abc_sub') + '</small></button>' +
@@ -2421,7 +2572,7 @@
         }).join('') + '</select></label>' +
         '</div>' +
         '<p class="muted" style="margin:7px 0 0;font-size:12px">' + L('flex_hint') + '</p>' +
-        (tplList.length > 1
+        (sport === 'v6' && tplList.length > 1
           ? '<p class="muted" style="margin:11px 0 7px"><b>' + L('tpl_title') + '</b> ' + L('tpl_hint') + '</p>' +
           '<div class="tpl" id="tpl">' + tplList.map(function (t) {
             return '<button type="button" data-id="' + t.id + '" aria-pressed="' + (allowed.indexOf(t.id) >= 0) + '">' +
@@ -2535,6 +2686,13 @@
         flexSlots = null; current = null;
         persist(); renderPlay(); renderRoster(); renderStat();
       };
+      var tacticEl = document.getElementById('tactic');
+      if (tacticEl) tacticEl.onclick = function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        tactic = b.getAttribute('data-tc'); current = null; persist(); renderPlay();
+      };
+      var formEl = document.getElementById('form');
+      if (formEl) formEl.onclick = function (e) { toggleTpl(e); };
       var prioEl = document.getElementById('prio');
       if (prioEl) prioEl.onclick = function (e) {
         var b = e.target.closest('button'); if (!b) return;
@@ -2546,17 +2704,7 @@
         compact = b.getAttribute('data-v') === 'list'; persist(); renderPlay();
       };
       var tplEl = document.getElementById('tpl');
-      if (tplEl) tplEl.onclick = function (e) {
-        var b = e.target.closest('button'); if (!b) return;
-        var id = b.getAttribute('data-id'), k = allowed.indexOf(id);
-        if (k >= 0) {
-          /* 이 종목에서 마지막 하나 남은 구성은 끌 수 없다 */
-          var onNow = tplsOfSport().filter(function (t) { return allowed.indexOf(t.id) >= 0; });
-          if (onNow.length <= 1) return;
-          allowed.splice(k, 1);
-        } else allowed.push(id);
-        current = null; persist(); renderPlay();
-      };
+      if (tplEl) tplEl.onclick = function (e) { toggleTpl(e); };
       document.getElementById('go').onclick = draw;
       if (document.getElementById('again')) document.getElementById('again').onclick = draw;
       if (document.getElementById('fix')) document.getElementById('fix').onclick = commit;
@@ -2576,6 +2724,18 @@
         schedule.rest = +this.value; current = null; persist(); renderPlay();
       };
       applyHL();
+    }
+
+    /* 구성 · 포메이션 칩 토글 — 이 종목에서 마지막 하나 남은 것은 끌 수 없다 */
+    function toggleTpl(e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var id = b.getAttribute('data-id'), k = allowed.indexOf(id);
+      if (k >= 0) {
+        var onNow = tplsOfSport().filter(function (t) { return allowed.indexOf(t.id) >= 0; });
+        if (onNow.length <= 1) return;
+        allowed.splice(k, 1);
+      } else allowed.push(id);
+      current = null; persist(); renderPlay();
     }
 
     function draw() {
