@@ -23,7 +23,7 @@ function stubEl() {
         onclick: null, onchange: null, onkeydown: null,
         addEventListener() { }, removeEventListener() { },
         setAttribute() { }, getAttribute() { return null; }, hasAttribute() { return false; },
-        appendChild() { }, removeChild() { }, insertAdjacentHTML() { },
+        appendChild() { }, removeChild() { }, remove() { }, insertAdjacentHTML() { },
         scrollIntoView() { }, click() { }, focus() { },
         querySelector() { return stubEl(); }, querySelectorAll() { return []; },
         closest() { return null; },
@@ -261,6 +261,53 @@ describe('인원이 모자랄 때 — 빈 자리를 (필요)로 남긴다', () =
         const games = draw(box, roster(9, V6_MAIN), { mode: 'abc' });
         assert.ok(games);
         assert.strictEqual(box.abcFellBack, true);
+    });
+});
+
+describe('검수에서 나온 것들', () => {
+    test('자리를 볼 사람이 자리 수보다 적어도 뽑히고 (필요)로 남는다', () => {
+        // 18명 중 세터를 볼 사람은 한 명인데 코트에는 세터 자리가 둘(팀당 하나)
+        const people = roster(18, (i) => (i === 0
+            ? { S9: 'main' }
+            : { QK: 'main', L9: 'sub', R9: 'sub', CH: 'sub', BK: 'sub' }));
+        box.tactic = '5-1';
+        box.sport = 'v9';
+        box.POS = box.POS_BY_SPORT.v9;
+        box.mode = 'free';
+        box.prio = 'custom';
+        box.nGames = 3;
+        box.flexSlots = null;
+        box.allowed = ['v9q1'];
+        box.stat = {};
+        box.round = 1;
+        box.players = people.map((p) => box.normalizePlayer(p));
+
+        assert.strictEqual(box.shortHanded(box.players), true, '미리 알려줘야 한다');
+        const games = box.solveRound(box.players, 3);
+        assert.ok(games, '막지 말고 뽑아야 한다');
+        games.forEach((g) => {
+            assert.ok(
+                g.need[0].concat(g.need[1]).indexOf('S9') >= 0,
+                '세터 자리가 (필요)로 남아야 한다',
+            );
+        });
+    });
+
+    test('빈 자리가 있는 라운드를 확정해도 지난 기록이 날아가지 않는다', () => {
+        const games = draw(box, roster(9, V6_MAIN), { nGames: 1 });
+        assert.ok(games);
+        // dropLegacyPast 가 쓰는 판정과 같은 식
+        const legacy = games.some((g) => g.teams.some((t) =>
+            t.some((x) => !x || (!x.empty && x.id == null))));
+        assert.strictEqual(legacy, false, '빈 자리는 구형 기록이 아니다');
+    });
+
+    test('확정할 때 빈 자리를 사람으로 세지 않는다', () => {
+        const games = draw(box, roster(9, V6_MAIN), { nGames: 1 });
+        box.current = { round: 1, games: games, sport: 'v6', mode: 'free', prio: 'custom', budget: 1, flexAsked: 1 };
+        box.commit();
+        assert.ok(!('undefined' in box.stat), "stat 에 'undefined' 가 생기면 안 된다");
+        assert.strictEqual(Object.keys(box.stat).length, 9);
     });
 });
 

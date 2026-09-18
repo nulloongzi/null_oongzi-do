@@ -1715,7 +1715,8 @@
       var legacy = pastRounds.some(function (R) {
         return (R.games || []).some(function (g) {
           return (g.teams || []).some(function (t) {
-            return t.some(function (x) { return !x || x.id == null; });
+            /* 사람이 없어 비워 둔 자리에는 id 가 없다 — 구형 기록이 아니다 */
+            return t.some(function (x) { return !x || (!x.empty && x.id == null); });
           });
         });
       });
@@ -2026,16 +2027,29 @@
       return bt(0) ? assign : null;
     }
 
-    /* 비워 둘 수 있는 자리 수.
-       (1) 사람이 자리 수보다 모자란 만큼 (2) 아무도 설 수 없는 자리 수.
-       이만큼만 열어 두면, 채울 수 있는 자리는 반드시 채운 배치가 나온다. */
+    /* 이 인원으로 최대 몇 자리까지 채울 수 있나 — 이분 매칭.
+       티어 · 예산 · 고정은 보지 않는다. '가능 자리'만으로 따진다. */
+    function maxFillable(present, slots) {
+      var matchOf = new Array(slots.length), n = 0, i;
+      function tryFill(pi, seen) {
+        for (var k = 0; k < slots.length; k++) {
+          if (seen[k]) continue;
+          if (present[pi].pos.indexOf(slots[k].pos) < 0) continue;
+          seen[k] = 1;
+          if (matchOf[k] == null || tryFill(matchOf[k], seen)) { matchOf[k] = pi; return true; }
+        }
+        return false;
+      }
+      for (i = 0; i < present.length; i++) if (tryFill(i, {})) n++;
+      return n;
+    }
+
+    /* 비워 둘 수 있는 자리 수 = 아무리 잘 배치해도 못 채우는 자리 수.
+       인원이 모자란 경우뿐 아니라 '그 자리를 볼 사람이 자리 수보다 적은' 경우도
+       여기서 잡힌다(세터 가능자가 한 명인데 코트에 세터 자리가 둘인 경우 등).
+       이만큼만 열어 두면 채울 수 있는 자리는 반드시 채운 배치가 나온다. */
     function emptyAllowance(present, slots) {
-      var deficit = Math.max(0, slots.length - present.length), impossible = 0;
-      slots.forEach(function (sl) {
-        var any = present.some(function (p) { return p.pos.indexOf(sl.pos) >= 0; });
-        if (!any) impossible++;
-      });
-      return deficit + impossible;
+      return slots.length - maxFillable(present, slots);
     }
 
     function mkSlots(tplA, tplB, allowA, allowB) {
@@ -2321,14 +2335,15 @@
     /* 자리가 빌 것 같은 상황인지 — 막는 판단이 아니라 미리 알려주는 판단이다.
        인원이 코트를 다 못 채우거나, 어떤 템플릿을 써도 아무도 못 서는 자리가 있을 때. */
     function shortHanded(present) {
-      var n = present.length;
-      if (!n) return false;
-      if (n < minCourt()) return true;
-      return tpls().every(function (t) {
-        return t.slots.some(function (sl) {
-          return !present.some(function (q) { return q.pos.indexOf(sl.p) >= 0; });
-        });
-      });
+      if (!present.length) return false;
+      var ts = tpls(), i, j;
+      /* 한 조합이라도 자리를 다 채울 수 있으면 부족하지 않다 */
+      for (i = 0; i < ts.length; i++) {
+        for (j = 0; j < ts.length; j++) {
+          if (emptyAllowance(present, mkSlots(ts[i], ts[j])) === 0) return false;
+        }
+      }
+      return true;
     }
 
     function diagnose(present) {
@@ -2361,11 +2376,12 @@
     /* 한 팀의 코트를 줄 단위로 만든다.
        6인제 — 존 번호(1~6)로 두 줄. 코트 밖(리베로 교대)은 따로 뺀다.
        9인제 — 포메이션의 rows(앞줄부터 인원)대로 잘라 세 줄. */
-    function courtRows(lineup, tplId, isTop) {
+    function courtRows(lineup, tplId, isTop, sp) {
+      sp = sp || sport;
       var off = lineup.filter(function (x) { return x.off; });
       var on = lineup.filter(function (x) { return !x.off; });
 
-      if (sport === 'v9') {
+      if (sp === 'v9') {
         var tpl = tplById(tplId);
         var lens = (tpl && tpl.rows && tpl.slots.length === lineup.length) ? tpl.rows : null;
         var rows = [], i = 0, k;
@@ -2421,8 +2437,8 @@
     function isBorrowed(coreList, pl) {
       return coreList && !coreList.some(function (x) { return x.id === pl.id; });
     }
-    function sideHTML(team, lineup, isTop, coreNames, tplId) {
-      var r = courtRows(lineup, tplId, isTop), html = '', i, k, pl;
+    function sideHTML(team, lineup, isTop, coreNames, tplId, sp) {
+      var r = courtRows(lineup, tplId, isTop, sp), html = '', i, k, pl;
       var filled = lineup.filter(function (x) { return !x.empty; }).length;
       var label = '<div class="team-label"><span class="tname">' + L('team_word') + ' ' + team + '</span><span>' +
         filled + L('people') + '</span></div>';
@@ -2460,7 +2476,8 @@
         '</span><span><span class="pos ' + pl.p + '">' + POSCHIP(pl.p) + '</span></span></div>';
     }
 
-    function gameHTML(g, idx, rnd) {
+    function gameHTML(g, idx, rnd, sp) {
+      sp = sp || sport;
       var timeStr = rnd ? '<span style="font-size:12px;font-weight:700;color:var(--nurungji-brown)">' +
         formatTime(gameStartMin(rnd, idx)) + '-' + formatTime(gameEndMin(rnd, idx)) + '</span>' : '';
       var bench = g.bench.length
@@ -2482,8 +2499,8 @@
         listHTML(g.names[0], g.teams[0], cores && cores[0]) +
         listHTML(g.names[1], g.teams[1], cores && cores[1]) + '</div>'
         : '<div class="court">' +
-        sideHTML(g.names[0], g.teams[0], true, cores && cores[0], tplIds[0]) + '<div class="net"></div>' +
-        sideHTML(g.names[1], g.teams[1], false, cores && cores[1], tplIds[1]) + '</div>';
+        sideHTML(g.names[0], g.teams[0], true, cores && cores[0], tplIds[0], sp) + '<div class="net"></div>' +
+        sideHTML(g.names[1], g.teams[1], false, cores && cores[1], tplIds[1], sp) + '</div>';
       /* 포메이션마다 따라붙는 수비 전환 메모(속공 2 · 3) */
       var notes = [], ni, nt;
       for (ni = 0; ni < tplIds.length; ni++) {
@@ -2529,6 +2546,8 @@
     var current = null;
     /* 코트 보기에서 지금 보고 있는 경기 번호 */
     var gameTab = 0;
+    /* 지금 열려 있는 탭 — 하단 고정 바는 배치 탭에서만 뜬다 */
+    var activeTab = 0;
     /* 이번 배치에 사람이 없어 비워 둔 자리가 있는지 */
     function hasNeed(games) {
       return games.some(function (g) { return g.need && (g.need[0].length || g.need[1].length); });
@@ -2537,6 +2556,7 @@
 
     function renderPlay() {
       var h = here(), n = h.length, szs = sizes();
+      renderActionBar();
 
       /* empty-state: 명단이 없으면 온보딩만 보여준다 */
       if (!players.length) {
@@ -2705,7 +2725,7 @@
 
         if (compact) {
           /* 간단히 보기는 한 경기가 두어 줄이라 세 경기를 한눈에 둔다 */
-          s += current.games.map(function (g, idx) { return gameHTML(g, idx, current.round); }).join('');
+          s += current.games.map(function (g, idx) { return gameHTML(g, idx, current.round, current.sport); }).join('');
         } else {
           /* 코트는 한 장이 길어서 한 경기씩 본다 — 현장에서 필요한 건 지금 뛰는 경기다 */
           if (gameTab >= current.games.length) gameTab = 0;
@@ -2715,7 +2735,7 @@
               (gi + 1) + L('game_no_suf') + (gi === nowIdx ? ' <b class="nowdot">' + L('now_word') + '</b>' : '') +
               '<small>' + formatTime(gameStartMin(current.round, gi)) + '</small></button>';
           }).join('') + '</div>';
-          s += gameHTML(current.games[gameTab], gameTab, current.round);
+          s += gameHTML(current.games[gameTab], gameTab, current.round, current.sport);
         }
 
         s += '<p class="muted" style="margin:0 0 4px">' + L('confirm_hint') + '</p>';
@@ -2741,7 +2761,7 @@
               (ll.length ? '<span class="tl-leave"> ⚠ ' + ll.map(function (x) { return x.n; }).join(' · ') + ' ' + L('leave_word') + '</span>' : '') + '</div>';
           });
           s += '</div>';
-          s += R.games.map(function (g, idx) { return gameHTML(g, idx, R.round); }).join('');
+          s += R.games.map(function (g, idx) { return gameHTML(g, idx, R.round, R.sport || 'v6'); }).join('');
           s += '</details>';
         }
         s += '</div>';
@@ -2754,7 +2774,9 @@
       document.getElementById('fx').onchange = function () { flexSlots = +this.value; current = null; persist(); renderPlay(); };
       document.getElementById('mode').onclick = function (e) {
         var b = e.target.closest('button'); if (!b) return;
-        mode = b.getAttribute('data-m'); current = null; persist(); renderPlay();
+        mode = b.getAttribute('data-m'); current = null; persist();
+        /* 팀 지정(A · B · C) 칸은 이 모드에서만 보인다 — 명단도 같이 다시 그린다 */
+        renderPlay(); renderRoster();
       };
       document.getElementById('sport').onclick = function (e) {
         var b = e.target.closest('button'); if (!b) return;
@@ -2834,7 +2856,8 @@
     function renderActionBar() {
       var bar = document.getElementById('actionBar');
       var wrap = document.querySelector('.wrap');
-      if (!current) {
+      /* 배치 탭에서 뽑아 둔 결과가 있을 때만 — 다른 탭 위에 떠 있으면 안 된다 */
+      if (!current || activeTab !== 0 || !players.length) {
         if (bar) bar.remove();
         if (wrap) wrap.classList.remove('has-bar');
         return;
@@ -2883,10 +2906,15 @@
     function commit() {
       if (!current) return;
       current.games.forEach(function (g) {
-        g.teams.forEach(function (t) { t.forEach(function (x) { var s = st(x.id); s.play++; s.pos[x.p]++; }); });
+        g.teams.forEach(function (t) {
+          t.forEach(function (x) {
+            if (x.empty) return;          /* 비운 자리는 사람이 아니다 */
+            var s = st(x.id); s.play++; s.pos[x.p]++;
+          });
+        });
         g.bench.forEach(function (b) { st(b.id).bench++; });
       });
-      pastRounds.push({ round: current.round, games: current.games, mode: current.mode });
+      pastRounds.push({ round: current.round, games: current.games, mode: current.mode, sport: current.sport });
       round++; current = null; persist();
       renderPlay(); renderStat();
     }
@@ -3164,7 +3192,10 @@
       var data = {
         app: 'anchigi', v: 1, exportedAt: new Date().toISOString(),
         players: players, stat: stat, round: round, past: pastRounds, meets: meets,
-        settings: { sport: sport, mode: mode, prio: prio, flex: flexSlots, tpl: allowed, ngames: nGames, schedule: schedule }
+        settings: {
+          sport: sport, tactic: tactic, mode: mode, prio: prio, flex: flexSlots,
+          tpl: allowed, ngames: nGames, compact: compact, schedule: schedule
+        }
       };
       var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       var url = URL.createObjectURL(blob);
@@ -3182,6 +3213,8 @@
         if (!confirm(L('backup_import_confirm'))) return;
         var sg = d.settings || {};
         if (SPORTS.indexOf(sg.sport) >= 0) sport = sg.sport;
+        if (sg.tactic === '5-1' || sg.tactic === '6-2') tactic = sg.tactic;
+        if (typeof sg.compact === 'boolean') compact = sg.compact;
         POS = POS_BY_SPORT[sport];
         players = d.players.map(normalizePlayer);
         stat = d.stat || {};
@@ -3208,8 +3241,10 @@
     [].forEach.call(tabs, function (b) {
       b.onclick = function () {
         var t = +b.getAttribute('data-t');
+        activeTab = t;
         [].forEach.call(tabs, function (x, j) { x.setAttribute('aria-selected', j === t ? 'true' : 'false'); });
         [0, 1, 2, 3].forEach(function (j) { document.getElementById('p' + j).style.display = j === t ? '' : 'none'; });
+        renderActionBar();
         var tabBar = document.querySelector('.tabs');
         if (tabBar) tabBar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       };
