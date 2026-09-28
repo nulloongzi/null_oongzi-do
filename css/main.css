@@ -1567,6 +1567,31 @@
             border-radius: 8px;
         }
 
+        /* 포장 형태 칩: 어두운 딤 위라 칩 기본(반투명 흰)보다 불투명하게 */
+        .preview-shape {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .preview-shape[hidden] {
+            display: none;
+        }
+
+        .preview-shape .chip {
+            background: #fffdf8;
+            font-family: inherit;
+        }
+
+        .preview-shape .chip.selected {
+            background: var(--nurungji-yellow);
+        }
+
+        .preview-img-box.is-loading img {
+            opacity: 0.45;
+            transition: opacity 0.15s;
+        }
+
         .preview-btns {
             display: flex;
             gap: 15px;

@@ -11,11 +11,11 @@
 // 상태가 됐다. 클럽 스토리 카드(share.js generateStoryCard)는 이미 canvas로
 // 그리고 있어서, 같은 기법·같은 헬퍼로 통일한다.
 //
-// 두 규격:
-//   · 스토리형 1080×1920 (9:16) — 네임카드 + 도시락통
-//   · 피드형  1080×1350 (4:5)  — [네임카드 | 도시락통] + 식단표
-//     인스타 피드가 받는 가장 긴 세로가 4:5다. 3:4(0.75)로 내면 위아래가 잘리고,
-//     하필 잘리는 자리가 상단 브랜드 헤더와 하단 QR(유일한 유입 경로)이다.
+// 두 규격 (docs/design-system.md §7 — 팀·픽업 카드와 같은 틀):
+//   · 스토리형 1080×1920 (9:16) — 밥색 필드(신원) + 도시락통
+//   · 피드형  1080×1440 (3:4)  — 밥색 필드(신원) + 도시락통 + 식단표
+//     인스타가 2025년부터 3:4 업로드·그리드를 지원한다. 4:5는 그리드 썸네일에서 위아래가 잘렸다.
+// 머리글·스텁(QR)·그림자·글자 크기는 share.js 의 공유 카드 키트를 그대로 쓴다.
 //
 // 도시락통 배치는 화면 UI(css .lunchbox-grid)와 같은 그리드를 쓴다 — 공유 이미지가
 // 앱에서 보던 그 도시락통과 다른 물건으로 보이면 안 된다.
@@ -25,13 +25,14 @@
 //             i18n.js, profile.js (window.currentProfileData)
 
 (function () {
-    var W = 1080, PAD = 80;
-    var INK = '#3D2C22', SUB = '#A99A8C', DARK = '#4E342E', BROWN = '#8D6E63',
-        CREAM = '#FBF3E2', CARD = '#FFFDF8', HAIR = 'rgba(141,110,99,.13)';
+    var W = 1080, PAD = 80, PAD_W = W - PAD * 2;
+    var INK = '#3D2C22', SUB = '#A99A8C', DARK = '#4E342E', BROWN = '#8D6E63', CARD = '#FFFDF8';
 
     // 도시락 칸 색 — 화면 UI·식단표 블록과 같은 색이어야 도시락통이 곧 범례가 된다.
     var RAIL = ['#FBC02D', '#F57C00', '#689F38', '#D84315', '#8E24AA'];
     var SLOTBG = ['#FFFDE7', '#FFF3E0', '#F1F8E9', '#FBE9E7', '#F3E5F5'];
+    // 식단표 블록: 칸 배경과 레일 색의 45% 혼합 — 옅은 배경은 작게 보면 선처럼 읽힌다(앱과 같은 값).
+    var SLOTFILL = ['#FDE293', '#FABD7B', '#B3D099', '#EB9E88', '#C68ED3'];
 
     // 화면 UI(.lunchbox-grid)와 같은 6열 그리드.
     //   행1: 반찬 3칸(각 2열)   행2: 밥(1~3열) | 국(4~6열)  ← 밥·국은 좌우
@@ -46,16 +47,7 @@
     var ROW_FR = [0.8, 1.2]; // 아래(밥·국)가 더 크다 — 화면 UI와 같은 비율
     var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
-    function fnt(px, wt) {
-        return wt + ' ' + px + 'px "Pretendard Variable", Pretendard, -apple-system, sans-serif';
-    }
-    function shadow(ctx, blur, dy, a) {
-        ctx.shadowColor = 'rgba(93,64,55,' + a + ')';
-        ctx.shadowBlur = blur; ctx.shadowOffsetY = dy;
-    }
-    function noShadow(ctx) {
-        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-    }
+    function fnt(px, wt) { return window.cardFont(px, wt); }
     function rr(ctx, x, y, w, h, r) { window.storyRoundRect(ctx, x, y, w, h, r); }
 
     // 한 줄 말줄임
@@ -96,19 +88,6 @@
         if (lines.length > maxLines) lines = lines.slice(0, maxLines);
         if (lines.length) lines[lines.length - 1] = ellip(ctx, lines[lines.length - 1], maxW);
         return lines;
-    }
-
-    // 스토리 도시락통의 '자연' 높이: 안쪽여백 + 헤더 + (반찬행 + 간격 + 밥국행) + 안쪽여백.
-    // 칸이 너무 커지면 팀 이름 한 줄만 덩그러니 떠서 빈 상자처럼 보인다.
-    var STORY_BENTO_H = 26 + 42 + (190 + 14 + 260) + 26;
-
-    // 네임카드가 실제로 쓰는 세로. 이름 폰트는 가변이지만 최대값으로 잡아
-    // 긴 이름이 들어와도 아래가 눌리지 않게 한다.
-    function storyHeroHeight(d) {
-        var h = 46 + 96 + 26 + 52 + 12;      // 여백 + 엠블럼 + 간격 + 이름 + 간격
-        if (d.joined) h += 36;
-        if (d.mainTeam) h += 4 + 52;
-        return h + 46;
     }
 
     // ── 데이터 수집 ────────────────────────────────────────────────
@@ -168,317 +147,327 @@
         };
     };
 
+    // ── 배치 ──────────────────────────────────────────────────────
+    // 구조(두 규격 공통): 전폭 밥색 필드(히어로: 머리글 + 신원) / 본문 카드(필드 아랫단을
+    // 덮음) / 티켓 스텁(QR). 규격·토큰은 docs/design-system.md §7, 앱 my_card.dart 와 같다.
+    //   · 스토리 9:16 — 신원은 가운데 세로 스택, 본문은 도시락통(탄력 440~760)
+    //   · 피드 3:4   — 신원은 가로 한 줄, 본문은 도시락통(고정) + 식단표(탄력)
+    // 남는 세로는 밥색 필드가 먹는다 — 빈 크림 띠를 남기지 않는다.
+    var BENTO = { storyMin: 440, storyMax: 760, feedH: 360, feedMinH: 300, dietMin: 320 };
+    var ID_STORY = { emblem: 136, gapE: 28, name: 72, nameMin: 44, gapN: 12, joined: 34, gapJ: 28, pill: 60 };
+    var ID_FEED = { emblem: 120, gap: 32, name: 56, nameMin: 36, joined: 30, gapJ: 14, pill: 52 };
+
+    function identityStoryH(d) {
+        var I = ID_STORY, h = I.emblem + I.gapE + I.name + 8;
+        if (d.joined) h += I.gapN + I.joined;
+        if (d.mainTeam) h += I.gapJ + I.pill;
+        return h;
+    }
+    function identityFeedH(d) {
+        var I = ID_FEED, t = I.name + 8;
+        if (d.joined) t += 6 + I.joined;
+        if (d.mainTeam) t += I.gapJ + I.pill;
+        return Math.max(I.emblem, t);
+    }
+
+    // 배치 계산(그리기와 분리 — 테스트·앱이 같은 값을 쓴다).
+    window.myCardLayout = function (d, feed) {
+        var fmt = window.cardFormat(feed ? 'feed' : 'story');
+        var SC = window.SHARE_CARD;
+        var stubTop = window.cardStubTop(fmt);
+        var headBot = fmt.top + SC.HEADER_H;
+        var bodyBot = stubTop - SC.GAP;
+        if (!feed) {
+            var idH = identityStoryH(d);
+            var minTop = headBot + 40 + idH + 48;               // 신원 아래 최소 간격 48
+            var bentoH = Math.max(BENTO.storyMin, Math.min(BENTO.storyMax, bodyBot - minTop));
+            var cardY = bodyBot - bentoH;
+            return {
+                fmt: fmt, stubTop: stubTop, headerY: fmt.top,
+                field: { h: cardY + SC.OVERLAP },
+                // 신원은 머리글 ~ 도시락통 사이 가운데 (남는 세로가 위아래로 고르게)
+                identity: { x: SC.M, y: headBot + (cardY - headBot - idH) / 2, w: PAD_W, h: idH },
+                bento: { x: SC.M, y: cardY, w: PAD_W, h: bentoH },
+                diet: null
+            };
+        }
+        var fid = identityFeedH(d);
+        var idY = headBot + 32;
+        var bY = idY + fid + 40;
+        var bH = BENTO.feedH;
+        if (bodyBot - (bY + bH + 24) < BENTO.dietMin) bH = BENTO.feedMinH;
+        var dY = bY + bH + 24;
+        return {
+            fmt: fmt, stubTop: stubTop, headerY: fmt.top,
+            field: { h: bY + SC.OVERLAP },
+            identity: { x: SC.M, y: idY, w: PAD_W, h: fid },
+            bento: { x: SC.M, y: bY, w: PAD_W, h: bH },
+            diet: { x: SC.M, y: dY, w: PAD_W, h: bodyBot - dY }
+        };
+    };
     // ── 그리기 ────────────────────────────────────────────────────
     function drawCard(ctx, d, feed, logo) {
-        var H = feed ? 1350 : 1920;
-        var headerY = feed ? 72 : 110;
-        var footH = feed ? 176 : 200;
-        // 피드는 푸터를 바닥에 고정. 스토리는 아래에서 스택 높이를 보고 다시 정한다.
-        var footTop = H - footH - 40;
-        var zoneTop = feed ? 176 : 200;
-        var qrSize = feed ? 158 : 178;
-        var CW = W - PAD * 2;
-
-        ctx.fillStyle = CREAM; ctx.fillRect(0, 0, W, H);
-        var g = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, H * 0.7);
-        g.addColorStop(0.15, 'rgba(255,252,240,.6)');
-        g.addColorStop(1, 'rgba(240,226,196,.5)');
-        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-        brandHeader(ctx, PAD, headerY, logo);
-
-        var zoneH = (footTop - 34) - zoneTop, GAP = 26;   // 피드 2단 배치용
-        var hero, box, diet = null;
-
-        if (feed) {
-            // 상단: 네임카드 | 도시락통   하단: 식단표(전체 폭)
-            // 도시락통이 6열이라 폭이 좁으면 팀 이름이 잘린다 → 히어로를 좁게 잡는다.
-            var heroW = 380, colGap = 24;
-            var topH = Math.round(zoneH * 0.46);
-            hero = { x: PAD, y: zoneTop, w: heroW, h: topH };
-            box = { x: PAD + heroW + colGap, y: zoneTop, w: CW - heroW - colGap, h: topH };
-            diet = { x: PAD, y: zoneTop + topH + GAP, w: CW, h: zoneH - topH - GAP };
-        } else {
-            // 세 블록(네임카드·도시락통·QR)의 좌우 기준선을 하나로 — PAD ~ W-PAD.
-            // 높이는 고정이 아니라 '내용이 필요한 만큼'. 고정하면 카드 안이 텅 비거나
-            // 도시락 칸만 과하게 커진다.
-            //
-            // 셋을 한 덩어리로 묶어 안전영역(로고 아래 ~ 답장바 위) 가운데 놓는다.
-            // 푸터만 바닥에 붙이면 도시락통과 QR 사이가 크게 벌어진다.
-            var heroH = storyHeroHeight(d);
-            var boxH = STORY_BENTO_H;
-            var footGap = 64;
-            var safeBot = H - 210;                    // 210 = 스토리 답장바 여유
-            var stackH = heroH + 30 + boxH + footGap + footH;
-            var top = zoneTop + Math.max(0, (safeBot - zoneTop - stackH) / 2);
-            hero = { x: PAD, y: top, w: CW, h: heroH, big: true };
-            box = { x: PAD, y: top + heroH + 30, w: CW, h: boxH };
-            footTop = box.y + boxH + footGap;
-        }
-
-        drawHero(ctx, hero, d, logo);
-        drawBento(ctx, box, d);
-        if (diet) drawTimetable(ctx, diet, d);
-        drawFooter(ctx, footTop, footH, qrSize, d);
+        var L = window.myCardLayout(d, feed);
+        window.cardBackground(ctx, L.fmt.h);
+        drawField(ctx, L.field.h, d);
+        window.cardHeader(ctx, L.headerY, logo);
+        if (feed) drawIdentityFeed(ctx, L.identity, d, logo); else drawIdentityStory(ctx, L.identity, d, logo);
+        drawBento(ctx, L.bento, d, feed);
+        if (L.diet) drawTimetable(ctx, L.diet, d);
+        window.cardStub(ctx, L.fmt, d.url, window.t('mc_cta') || '내 밥이름 만들러 가기');
     }
 
-    function brandHeader(ctx, x, y, logo) {
-        var cy = y + 26;
-        ctx.beginPath(); ctx.arc(x + 26, cy, 26, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff'; shadow(ctx, 16, 4, .12); ctx.fill(); noShadow(ctx);
-        if (logo) {
-            ctx.save(); ctx.beginPath(); ctx.arc(x + 26, cy, 24, 0, Math.PI * 2); ctx.clip();
-            ctx.drawImage(logo, x + 2, cy - 24, 48, 48); ctx.restore();
+    // 밥색 필드: 프로필 밥 색 + 밝힘 + 밥알 무늬(좌표 시드 고정 → 매번 같은 그림).
+    function drawField(ctx, h, d) {
+        ctx.fillStyle = d.bgColor || '#FFF9C4'; ctx.fillRect(0, 0, W, h);
+        // 밥 색이 어떤 값이든 글씨가 읽히도록 살짝 밝힌다
+        ctx.fillStyle = 'rgba(255,255,255,0.30)'; ctx.fillRect(0, 0, W, h);
+        var seed = 7;
+        function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        for (var i = 0; i < 70; i++) {
+            ctx.save(); ctx.translate(rnd() * W, rnd() * h); ctx.rotate(rnd() * Math.PI);
+            ctx.beginPath(); ctx.ellipse(0, 0, 11, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         }
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.font = fnt(28, 800); ctx.fillStyle = DARK;
-        ctx.fillText(window.t('brand') || '누룽지도', x + 66, cy);
-    }
-
-    function heroShell(ctx, r, bg, riceType) {
-        shadow(ctx, 40, 14, .16);
-        rr(ctx, r.x, r.y, r.w, r.h, 40); ctx.fillStyle = bg; ctx.fill(); noShadow(ctx);
-        // 밥 색이 어떤 값이든 글씨가 읽히도록 안쪽을 살짝 밝힌다
-        rr(ctx, r.x, r.y, r.w, r.h, 40); ctx.fillStyle = 'rgba(255,255,255,.34)'; ctx.fill();
-        if (riceType) {
-            ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-            ctx.font = fnt(24, 600); ctx.fillStyle = 'rgba(61,44,34,.28)';
-            ctx.fillText(riceType, r.x + 34, r.y + 40);
-        }
+        var fade = ctx.createLinearGradient(0, h - 160, 0, h);
+        fade.addColorStop(0, 'rgba(251,243,226,0)'); fade.addColorStop(1, 'rgba(251,243,226,1)');
+        ctx.fillStyle = fade; ctx.fillRect(0, h - 160, W, 160);
     }
 
     function emblem(ctx, cx, cy, s, logo) {
         ctx.beginPath(); ctx.arc(cx, cy, s / 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff'; shadow(ctx, 22, 8, .18); ctx.fill(); noShadow(ctx);
+        ctx.fillStyle = '#fff'; window.cardShadow(ctx, false); ctx.fill(); window.cardNoShadow(ctx);
         if (logo) {
-            ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, s / 2 - 4, 0, Math.PI * 2); ctx.clip();
-            ctx.drawImage(logo, cx - s / 2 + 4, cy - s / 2 + 4, s - 8, s - 8);
+            ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, s / 2 - 6, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(logo, cx - s / 2 + 6, cy - s / 2 + 6, s - 12, s - 12);
             ctx.restore();
+        } else {
+            window.cardVolley(ctx, cx, cy, s * 0.3, '#FAC710');
         }
     }
 
-    function teamPill(ctx, cx, y, h, label, maxW) {
-        var fs = h > 48 ? 25 : 21;
+    // 대표팀 알약: 배구공(벡터) + 팀 이름. align: 'center' | 'left'
+    function teamPill(ctx, x, y, h, label, maxW, align) {
+        var fs = h >= 60 ? 28 : 25;
         ctx.font = fnt(fs, 700);
-        var lb = ellip(ctx, label, maxW - 86);
-        var pw = Math.min(ctx.measureText(lb).width + 80, maxW);
-        var x = cx - pw / 2;
-        rr(ctx, x, y, pw, h, h / 2);
-        ctx.fillStyle = '#fff'; shadow(ctx, 14, 5, .12); ctx.fill(); noShadow(ctx);
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.font = fnt(fs - 4, 400); ctx.fillText('🏐', x + 20, y + h / 2 + 1);
-        ctx.font = fnt(fs, 700); ctx.fillStyle = DARK; ctx.fillText(lb, x + 52, y + h / 2);
+        var ico = h * 0.44;
+        var lb = ellip(ctx, label, maxW - (24 + ico + 12 + 26));
+        var pw = 24 + ico + 12 + ctx.measureText(lb).width + 26;
+        var px = align === 'center' ? x - pw / 2 : x;
+        window.cardPill(ctx, px, y, pw, h);
+        window.cardVolley(ctx, px + 24 + ico / 2, y + h / 2, ico / 2, '#E0A800');
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = DARK;
+        ctx.fillText(lb, px + 24 + ico + 12, y + h / 2 + 1);
+        ctx.textBaseline = 'top';
     }
 
-    // 네임카드 — 두 규격 모두 세로형. 정렬축을 하나(가운데)로 둔다.
-    function drawHero(ctx, r, d, logo) {
-        heroShell(ctx, r, d.bgColor, d.riceType);
-        var big = !!r.big;
-        var cx = r.x + r.w / 2;
-        var es = big ? 96 : 74;
-        var cy = r.y + (big ? 46 : 32);
-
-        emblem(ctx, cx, cy + es / 2, es, logo);
-        cy += es + (big ? 26 : 20);
-
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        var nameW = r.w - 44;
-        var sz = fitFont(ctx, d.nickname, nameW, big ? 52 : 34, big ? 34 : 22, 800);
-        ctx.fillStyle = INK;
-        ctx.fillText(ellip(ctx, d.nickname, nameW), cx, cy + sz / 2);
-        cy += sz + 12;
-
+    function drawIdentityStory(ctx, r, d, logo) {
+        var I = ID_STORY, cx = r.x + r.w / 2, y = r.y;
+        emblem(ctx, cx, y + I.emblem / 2, I.emblem, logo);
+        y += I.emblem + I.gapE;
+        fitFont(ctx, d.nickname, r.w, I.name, I.nameMin, 800);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
+        ctx.fillText(ellip(ctx, d.nickname, r.w), cx, y + I.name / 2);
+        y += I.name + 8;
         if (d.joined) {
-            ctx.font = fnt(big ? 23 : 19, 500); ctx.fillStyle = BROWN;
-            ctx.fillText(d.joined, cx, cy + 10);
-            cy += big ? 36 : 28;
+            y += I.gapN;
+            ctx.font = fnt(28, 600); ctx.fillStyle = BROWN;
+            ctx.fillText(d.joined, cx, y + I.joined / 2);
+            y += I.joined;
         }
-        if (d.mainTeam) teamPill(ctx, cx, cy + 4, big ? 52 : 44, d.mainTeam, r.w - 36);
-        ctx.textAlign = 'left';
+        if (d.mainTeam) { y += I.gapJ; teamPill(ctx, cx, y, I.pill, d.mainTeam, r.w, 'center'); }
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     }
 
-    // 도시락통 — 화면 UI와 같은 6열 그리드
-    function drawBento(ctx, r, d) {
-        shadow(ctx, 34, 12, .13);
-        rr(ctx, r.x, r.y, r.w, r.h, 30); ctx.fillStyle = CARD; ctx.fill(); noShadow(ctx);
+    function drawIdentityFeed(ctx, r, d, logo) {
+        var I = ID_FEED;
+        emblem(ctx, r.x + I.emblem / 2, r.y + r.h / 2, I.emblem, logo);
+        var tx = r.x + I.emblem + I.gap, tw = r.x + r.w - tx;
+        var textH = I.name + 8 + (d.joined ? 6 + I.joined : 0) + (d.mainTeam ? I.gapJ + I.pill : 0);
+        var y = r.y + (r.h - textH) / 2;
+        fitFont(ctx, d.nickname, tw, I.name, I.nameMin, 800);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
+        ctx.fillText(ellip(ctx, d.nickname, tw), tx, y + I.name / 2);
+        y += I.name + 8;
+        if (d.joined) {
+            y += 6;
+            ctx.font = fnt(26, 600); ctx.fillStyle = BROWN;
+            ctx.fillText(d.joined, tx, y + I.joined / 2);
+            y += I.joined;
+        }
+        if (d.mainTeam) { y += I.gapJ; teamPill(ctx, tx, y, I.pill, d.mainTeam, tw, 'left'); }
+        ctx.textBaseline = 'top';
+    }
 
-        var ip = 26, ix = r.x + ip, iw = r.w - ip * 2;
-        var cy = r.y + ip;
+    function card(ctx, r) {
+        window.storyRoundRect(ctx, r.x, r.y, r.w, r.h, 28);
+        ctx.fillStyle = CARD; window.cardShadow(ctx, false); ctx.fill(); window.cardNoShadow(ctx);
+    }
+
+    function sectionTitle(ctx, x, y, text, right, w) {
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.font = fnt(27, 800); ctx.fillStyle = INK;
-        ctx.fillText((window.t('mc_lunchbox') || '도시락') + ' 🍱', ix, cy);
+        ctx.font = fnt(32, 800); ctx.fillStyle = INK;
+        ctx.fillText(text, x, y);
+        if (right) {
+            ctx.font = fnt(24, 700); ctx.fillStyle = SUB; ctx.textAlign = 'right';
+            ctx.fillText(right, x + w, y + 6);
+            ctx.textAlign = 'left';
+        }
+    }
 
+    // 도시락통 — 화면 UI(.lunchbox-grid)와 같은 6열 그리드
+    function drawBento(ctx, r, d, feed) {
+        card(ctx, r);
+        var ip = 32, ix = r.x + ip, iw = r.w - ip * 2;
         var filled = 0;
         for (var i = 0; i < d.slots.length; i++) if (d.slots[i]) filled++;
-        ctx.font = fnt(21, 600); ctx.fillStyle = SUB; ctx.textAlign = 'right';
-        ctx.fillText(filled + ' / 5', ix + iw, cy + 6);
-        ctx.textAlign = 'left';
-        cy += 42;
-
+        sectionTitle(ctx, ix, r.y + ip, window.t('mc_lunchbox') || '도시락', filled + ' / 5', iw);
+        var cy = r.y + ip + 32 + 20;
         var gap = 14;
         var gridH = (r.y + r.h - ip) - cy;
         var colW = (iw - gap * 5) / 6;
         var unit = (gridH - gap) / (ROW_FR[0] + ROW_FR[1]);
         var rowH = [ROW_FR[0] * unit, ROW_FR[1] * unit];
         var rowY = [cy, cy + rowH[0] + gap];
-
         for (var k = 0; k < GRID.length; k++) {
-            var gcell = GRID[k];
-            var x = ix + (colW + gap) * gcell.col;
-            var w = colW * gcell.span + gap * (gcell.span - 1);
-            drawCell(ctx, x, rowY[gcell.row], w, rowH[gcell.row], gcell, d);
+            var g = GRID[k];
+            drawCell(ctx, ix + (colW + gap) * g.col, rowY[g.row], colW * g.span + gap * (g.span - 1), rowH[g.row], g, d, feed);
         }
-        ctx.textBaseline = 'middle';
     }
 
-    function drawCell(ctx, x, y, w, h, gcell, d) {
-        var name = d.slots[gcell.slot];
-        var label = window.t(gcell.key) || '';
-
+    function drawCell(ctx, x, y, w, h, g, d, feed) {
+        var name = d.slots[g.slot];
+        // 캔버스에는 이모지를 쓰지 않는다(앱 캔버스에서 □로 깨진다) — 라벨의 이모지를 뺀다.
+        var label = window.storyStripEmoji ? window.storyStripEmoji(window.t(g.key)) : window.t(g.key);
         if (!name) {
-            // 빈 칸: 점선 + 키워드·이모지만.
-            // 화면 UI의 "국을 담아주세요🥘" 같은 입력 유도 문구는 공유물이 아니다 —
-            // 받아 보는 사람에게 하는 말처럼 읽힌다. 키워드+이모지는 도시락통다움이라 남긴다.
+            // 빈 칸: 점선 + 키워드만. 화면 UI의 "국을 담아주세요" 같은 입력 유도 문구는
+            // 공유물이 아니다 — 받아 보는 사람에게 하는 말처럼 읽힌다.
             rr(ctx, x, y, w, h, 16);
-            ctx.fillStyle = 'rgba(141,110,99,.04)'; ctx.fill();
-            ctx.setLineDash([9, 8]); ctx.lineWidth = 2;
-            ctx.strokeStyle = 'rgba(141,110,99,.24)'; ctx.stroke();
-            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(141,110,99,.05)'; ctx.fill();
+            ctx.setLineDash([10, 8]); ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(141,110,99,.28)'; ctx.stroke(); ctx.setLineDash([]);
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.font = fnt(21, 700); ctx.fillStyle = 'rgba(141,110,99,.42)';
+            ctx.font = fnt(24, 700); ctx.fillStyle = 'rgba(141,110,99,.5)';
             ctx.fillText(label, x + w / 2, y + h / 2);
             ctx.textAlign = 'left'; ctx.textBaseline = 'top';
             return;
         }
-
-        rr(ctx, x, y, w, h, 16); ctx.fillStyle = SLOTBG[gcell.slot]; ctx.fill();
-        ctx.lineWidth = 3; ctx.strokeStyle = RAIL[gcell.slot]; ctx.stroke();
-        rr(ctx, x, y, 10, h, 5); ctx.fillStyle = RAIL[gcell.slot]; ctx.fill();
-
+        rr(ctx, x, y, w, h, 16); ctx.fillStyle = SLOTBG[g.slot]; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = RAIL[g.slot]; ctx.stroke();
         ctx.save(); rr(ctx, x, y, w, h, 16); ctx.clip();
-        // 칸 안 좌상단 옅은 라벨 — 팀 이름만 남으면 어느 칸인지 사라진다
+        ctx.fillStyle = RAIL[g.slot]; ctx.fillRect(x, y, 10, h);
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.font = fnt(17, 700); ctx.fillStyle = 'rgba(61,44,34,.32)';
-        ctx.fillText(label, x + 20, y + 12);
-
+        ctx.font = fnt(20, 700); ctx.fillStyle = 'rgba(61,44,34,.4)';
+        ctx.fillText(label, x + 22, y + 12);
+        var big = g.span >= 3;
+        var fs = feed ? (big ? 30 : 24) : (big ? 36 : 28);
+        var lh = Math.round(fs * 1.22);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = fnt(gcell.span >= 3 ? 27 : 22, 800); ctx.fillStyle = INK;
+        ctx.font = fnt(fs, 800); ctx.fillStyle = INK;
         var lines = wrapWords(ctx, name, w - 40, 2);
-        var lh = gcell.span >= 3 ? 33 : 28;
-        var sy = y + h / 2 + 8 - (lines.length - 1) * lh / 2;
-        for (var i = 0; i < lines.length; i++) ctx.fillText(lines[i], x + w / 2, sy + i * lh);
+        var sy = y + h / 2 + 10 - (lines.length - 1) * lh / 2;
+        for (var i = 0; i < lines.length; i++) ctx.fillText(lines[i], x + w / 2 + 5, sy + i * lh);
         ctx.restore();
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     }
 
+    // 겹치는 일정은 칸을 레인으로 나눠 나란히 (앱 assignLanes 와 같은 규칙).
+    // 반환: 각 이벤트의 { lane, lanes }. 같은 시간대에 겹치는 무리 안에서 레인 수를 맞춘다.
+    function assignLanes(evs) {
+        var out = [], group = [], groupEnd = -1, laneEnds = [];
+        function flush() {
+            for (var g = 0; g < group.length; g++) out[group[g]].lanes = laneEnds.length;
+            group = []; laneEnds = [];
+        }
+        for (var i = 0; i < evs.length; i++) {
+            var e = evs[i];
+            if (group.length && e.start >= groupEnd) flush();
+            var lane = -1;
+            for (var l = 0; l < laneEnds.length; l++) if (laneEnds[l] <= e.start) { lane = l; break; }
+            if (lane < 0) { lane = laneEnds.length; laneEnds.push(e.end); } else laneEnds[lane] = e.end;
+            out[i] = { lane: lane, lanes: 1 };
+            group.push(i);
+            groupEnd = Math.max(groupEnd, e.end);
+        }
+        flush();
+        return out;
+    }
+    window.myCardAssignLanes = assignLanes;
+
     // 식단표 — 피드형에만. 블록 색이 도시락 칸 색과 같아 도시락통이 범례가 된다.
     function drawTimetable(ctx, r, d) {
-        shadow(ctx, 34, 12, .13);
-        rr(ctx, r.x, r.y, r.w, r.h, 30); ctx.fillStyle = CARD; ctx.fill(); noShadow(ctx);
-
-        var ip = 26, ix = r.x + ip, iw = r.w - ip * 2;
-        var cy = r.y + ip;
-        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.font = fnt(27, 800); ctx.fillStyle = INK;
-        ctx.fillText((window.t('mc_timetable') || '식단표') + ' 🗓', ix, cy);
-        cy += 42;
-
-        // 일정이 하나도 없으면 빈 격자만 크게 남아 '왜 비었는지'를 말해주지 않는다.
-        // 앱과 같이 이유를 적는다.
+        card(ctx, r);
+        var ip = 32, ix = r.x + ip, iw = r.w - ip * 2;
+        sectionTitle(ctx, ix, r.y + ip, window.t('mc_timetable') || '식단표', '', iw);
+        var top = r.y + ip + 32 + 20;
         if (!d.events.length) {
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.font = fnt(24, 500); ctx.fillStyle = SUB;
-            ctx.fillText(window.t('mc_no_sched') || '찜한 팀의 일정이 없어요',
-                r.x + r.w / 2, r.y + r.h / 2);
+            ctx.font = fnt(26, 500); ctx.fillStyle = SUB;
+            ctx.fillText(window.t('mc_no_sched') || '찜한 팀의 일정이 없어요', r.x + r.w / 2, (top + r.y + r.h - ip) / 2);
             ctx.textAlign = 'left'; ctx.textBaseline = 'top';
             return;
         }
-
-        // 표시 구간은 실제 일정에 맞춘다
         var minH = 24, maxH = 0;
         for (var i = 0; i < d.events.length; i++) {
             if (d.events[i].start < minH) minH = d.events[i].start;
             if (d.events[i].end > maxH) maxH = d.events[i].end;
         }
-        var H0 = Math.max(6, Math.floor(minH) - 1);
-        var H1 = Math.min(24, Math.ceil(maxH) + 1);
-        if (H1 - H0 < 3) H1 = Math.min(24, H0 + 3);
-        var rows = H1 - H0;
+        var H0 = Math.min(22, Math.max(6, Math.floor(minH) - 1));
+        var H1 = Math.min(24, Math.max(H0 + 3, Math.ceil(maxH) + 1));
+        var hours = H1 - H0;
+        var headH = 36, timeW = 44;
+        var gx = ix + timeW, gy = top + headH, gw = iw - timeW, gh = (r.y + r.h - ip) - gy;
+        var colW = gw / 7, rowH = gh / hours;
 
-        var gridTop = cy + 30, gridBot = r.y + r.h - ip;
-        var gridH = gridBot - gridTop, timeW = 46;
-        var colW = (iw - timeW) / 7;
+        ctx.font = fnt(24, 700); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (var dn = 0; dn < 7; dn++) {
+            ctx.fillText(window.i18nDay ? window.i18nDay(DAYS[dn]) : DAYS[dn], gx + colW * dn + colW / 2, top + headH / 2 - 4);
+        }
+        // 시간축: 촘촘하면 두 시간마다. 라벨은 선 '위'에 — 마지막 눈금(끝시각)까지 찍는다.
+        var every = rowH >= 40 ? 1 : 2;
+        ctx.font = fnt(20, 600); ctx.fillStyle = SUB; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+        ctx.strokeStyle = 'rgba(61,44,34,.08)'; ctx.lineWidth = 1;
+        for (var t = 0; t <= hours; t++) {
+            var ly = gy + rowH * t;
+            ctx.beginPath(); ctx.moveTo(gx, ly); ctx.lineTo(gx + gw, ly); ctx.stroke();
+            if ((H0 + t) % every === 0 || t === hours) ctx.fillText(String(H0 + t), gx - 8, ly + 2);
+        }
+        ctx.strokeStyle = 'rgba(61,44,34,.06)';
+        for (var c = 0; c <= 7; c++) { ctx.beginPath(); ctx.moveTo(gx + colW * c, gy); ctx.lineTo(gx + colW * c, gy + gh); ctx.stroke(); }
 
-        ctx.font = fnt(22, 700); ctx.fillStyle = BROWN; ctx.textAlign = 'center';
-        for (var dnum = 0; dnum < 7; dnum++) {
-            var lbl = window.i18nDay ? window.i18nDay(DAYS[dnum]) : DAYS[dnum];
-            ctx.fillText(lbl, ix + timeW + colW * dnum + colW / 2, cy);
+        ctx.save(); ctx.beginPath(); ctx.rect(gx, gy, gw, gh); ctx.clip();
+        for (var day = 0; day < 7; day++) {
+            var evs = d.events.filter(function (e) { return e.day === day; })
+                .sort(function (a, b) { return a.start - b.start; });
+            var lanes = assignLanes(evs);
+            for (var k = 0; k < evs.length; k++) {
+                var ev = evs[k], slot = ev.slot % 5;
+                var lw = (colW - 4) / lanes[k].lanes;
+                var bx = gx + colW * day + 2 + lw * lanes[k].lane;
+                var by = gy + (ev.start - H0) * rowH + 1;
+                var bw = lw - (lanes[k].lanes > 1 ? 2 : 0);
+                var bh = Math.max(14, (ev.end - ev.start) * rowH - 3);
+                rr(ctx, bx, by, bw, bh, 6); ctx.fillStyle = SLOTFILL[slot]; ctx.fill();
+                ctx.fillStyle = RAIL[slot]; ctx.fillRect(bx, by, Math.min(5, bw), bh);
+                // 팀 이름: 블록이 충분히 클 때만 (작으면 색이 곧 범례)
+                if (bw >= 56 && bh >= 44) {
+                    ctx.save(); rr(ctx, bx, by, bw, bh, 6); ctx.clip();
+                    ctx.font = fnt(18, 800); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    var nl = wrapWords(ctx, ev.name, bw - 12, 2);
+                    for (var n = 0; n < nl.length; n++) ctx.fillText(nl[n], bx + bw / 2 + 2, by + bh / 2 + (n - (nl.length - 1) / 2) * 22);
+                    ctx.restore();
+                }
+            }
         }
-        ctx.textAlign = 'right'; ctx.font = fnt(18, 600); ctx.fillStyle = SUB;
-        ctx.strokeStyle = HAIR; ctx.lineWidth = 1;
-        for (var t = 0; t <= rows; t++) {
-            var y = gridTop + gridH * (t / rows);
-            ctx.fillText(String(H0 + t), ix + timeW - 8, y - 8);
-            ctx.beginPath(); ctx.moveTo(ix + timeW, y); ctx.lineTo(ix + iw, y); ctx.stroke();
-        }
-        for (var c = 0; c <= 7; c++) {
-            var x = ix + timeW + colW * c;
-            ctx.beginPath(); ctx.moveTo(x, gridTop); ctx.lineTo(x, gridBot); ctx.stroke();
-        }
-
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        for (var e = 0; e < d.events.length; e++) {
-            var ev = d.events[e];
-            var bx = ix + timeW + colW * ev.day + 3;
-            var y0 = gridTop + gridH * ((ev.start - H0) / rows);
-            var y1 = gridTop + gridH * ((ev.end - H0) / rows);
-            var bh = Math.max(y1 - y0 - 4, 22), bw = colW - 6;
-            rr(ctx, bx, y0 + 2, bw, bh, 7);
-            ctx.fillStyle = SLOTBG[ev.slot]; ctx.fill();
-            ctx.lineWidth = 2; ctx.strokeStyle = RAIL[ev.slot]; ctx.stroke();
-            ctx.save(); rr(ctx, bx, y0 + 2, bw, bh, 7); ctx.clip();
-            ctx.font = fnt(17, 800); ctx.fillStyle = INK;
-            ctx.fillText(ellip(ctx, ev.name, bw - 8), bx + bw / 2, (y0 + y1) / 2);
-            ctx.restore();
-        }
+        ctx.restore();
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    }
-
-    // 푸터 — QR + CTA. 스토리는 링크가 안 걸리는 매체라 QR이 유일한 유입 경로다.
-    function drawFooter(ctx, top, h, qs, d) {
-        ctx.beginPath(); ctx.moveTo(PAD, top); ctx.lineTo(W - PAD, top);
-        ctx.strokeStyle = HAIR; ctx.lineWidth = 2; ctx.stroke();
-
-        var qx = PAD, qy = top + (h - qs) / 2;
-        // QR 라이브러리가 없으면(CDN 차단) 배경판도 그리지 않는다 — 흰 박스만 남아
-        // CTA 텍스트를 덮는다. 이때는 CTA를 왼쪽 끝부터 그린다.
-        var probe = ctx.canvas.ownerDocument.createElement('canvas');
-        probe.width = probe.height = 8;
-        var ok = window.storyDrawQR(probe.getContext('2d'), d.url, 0, 0, 8);
-        if (ok) {
-            rr(ctx, qx - 10, qy - 10, qs + 20, qs + 20, 16);
-            ctx.fillStyle = '#fff'; shadow(ctx, 16, 5, .12); ctx.fill(); noShadow(ctx);
-            window.storyDrawQR(ctx, d.url, qx, qy, qs);
-        }
-
-        var tx = ok ? qx + qs + 40 : qx;
-        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-        if (ok) {
-            ctx.font = fnt(20, 700); ctx.fillStyle = SUB;
-            ctx.fillText('S C A N', tx, qy + 34);
-        }
-        ctx.font = fnt(38, 800); ctx.fillStyle = DARK;
-        ctx.fillText(window.t('mc_cta') || '내 밥이름 만들러 가기', tx, qy + 88);
-        ctx.font = fnt(24, 500); ctx.fillStyle = BROWN;
-        ctx.fillText(String(d.url).replace(/^https?:\/\//, '').replace(/\/$/, ''), tx, qy + 130);
-        ctx.textBaseline = 'middle';
     }
 
     // ── 공개 API ──────────────────────────────────────────────────
     // 캔버스에 그려서 dataURL 을 돌려준다. 테스트·프리뷰가 같은 경로를 쓴다.
     window.renderMyCard = async function (data, feed) {
         var c = document.createElement('canvas');
-        c.width = W; c.height = feed ? 1350 : 1920;
+        c.width = W; c.height = window.cardFormat(feed ? 'feed' : 'story').h;
         var ctx = c.getContext('2d');
         // 번들 폰트가 늦게 오면 첫 렌더가 폴백 글꼴로 찍힌다.
         try {
@@ -493,20 +482,48 @@
         return c.toDataURL('image/png');
     };
 
+    // ── 포장하기 미리보기 + 형태 칩 ──────────────────────────────
+    // 예전엔 confirm() 으로 골랐다([확인]=피드 / [취소]=스토리) — 무엇이 나올지 보기 전에
+    // 골라야 했고, 취소가 곧 선택이라 헷갈렸다. 앱(share_image_screen)처럼 미리보기 위에
+    // 칩 두 개를 두고, 누르면 그 자리에서 다시 그린다. 기본은 앱과 같은 피드형.
+    var shapeRenderSeq = 0;
+
+    function setShapeChips(mode) {
+        var row = document.getElementById('previewShape');
+        if (!row) return;
+        row.hidden = false;
+        var chips = row.querySelectorAll('.chip');
+        for (var i = 0; i < chips.length; i++) {
+            var on = chips[i].getAttribute('data-shape') === mode;
+            chips[i].classList.toggle('selected', on);
+            chips[i].setAttribute('aria-checked', on ? 'true' : 'false');
+        }
+    }
+
     window.showShareOptions = function () {
         if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
-        // confirm: 확인=피드형(식단표 포함) / 취소=스토리형
-        window.generateShareImage(confirm(window.t('sh_pick_shape')) ? 'feed' : 'story');
+        window.generateShareImage('feed');
+    };
+
+    window.selectMyCardShape = function (mode) {
+        window.generateShareImage(mode === 'story' ? 'story' : 'feed');
     };
 
     window.generateShareImage = async function (mode) {
+        mode = mode === 'story' ? 'story' : 'feed';
+        var seq = ++shapeRenderSeq;
+        var box = document.getElementById('previewImgBox');
         try {
             if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
+            setShapeChips(mode);
+            if (box) box.classList.add('is-loading');
             var url = await window.renderMyCard(window.buildMyCardData(), mode === 'feed');
-            var box = document.getElementById('previewImgBox');
+            // 칩을 빠르게 번갈아 누르면 늦게 끝난 렌더가 최신 선택을 덮는다 — 마지막 것만 쓴다.
+            if (seq !== shapeRenderSeq) return;
             box.innerHTML = '';
             var img = document.createElement('img');
             img.src = url;
+            img.alt = window.t(mode === 'feed' ? 'mc_mode_feed' : 'mc_mode_story');
             box.appendChild(img);
             var overlay = document.getElementById('profileOverlay');
             if (overlay) overlay.style.display = 'none';
@@ -514,6 +531,8 @@
         } catch (e) {
             console.error(e);
             alert((window.t('sh_run_fail') || '') + (e && e.message ? e.message : e));
+        } finally {
+            if (box && seq === shapeRenderSeq) box.classList.remove('is-loading');
         }
     };
 })();

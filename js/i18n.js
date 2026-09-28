@@ -159,7 +159,9 @@
         lb_remove_confirm: { ko: '이 반찬을 도시락에서 뺄까요?', en: 'Take this dish out of your lunchbox?' },
 
         // 공유
-        sh_pick_shape: { ko: '📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)', en: '📸 Choose a layout to save!\n\n[OK] = 🍱 Feed (name card + lunchbox + meal plan)\n[Cancel] = 📱 Story (name card + lunchbox)' },
+        // 포장 형태 칩 — 앱 share_mode_feed / share_mode_story 와 같은 문구
+        mc_mode_feed: { ko: '피드형 (식단표 포함)', en: 'Feed (with schedule)' },
+        mc_mode_story: { ko: '스토리형', en: 'Story' },
         sh_login_required: { ko: '로그인이 필요합니다.', en: 'Please log in first.' },
         sh_weekly_plan: { ko: '📅 주간 식단표', en: '📅 Weekly menu' },
         sh_error: { ko: '오류 발생: ', en: 'Error: ' },
@@ -173,6 +175,7 @@
         sh_card_cta: { ko: 'QR 찍으면 누룽지도에서 열려요', en: 'Scan to open in Nulloongzi-do' },
         sh_menu_title: { ko: '공유 방법 선택', en: 'Share via' },
         sh_menu_story: { ko: '📸 인스타 스토리', en: '📸 Instagram Story' },
+        sh_menu_feed: { ko: '🖼 피드 이미지 (3:4)', en: '🖼 Feed image (3:4)' },
         sh_menu_kakao: { ko: '💬 카카오톡', en: '💬 KakaoTalk' },
         sh_menu_copy: { ko: '🔗 링크 복사', en: '🔗 Copy link' },
         sh_menu_more: { ko: '📤 다른 앱으로 (DM 등)', en: '📤 More apps (DM, etc.)' },
