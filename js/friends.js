@@ -336,11 +336,13 @@
         }
         fab.classList.add('warm-' + tier);
         fab.title = T('fr_meal_fab');
+        // 김: 뜸은 한 줄, 노릇·누룽지는 두 줄
+        var lines = Math.min(tier, 2);
+        if (steam && steam.children.length !== lines) { steam.remove(); steam = null; }
         if (!steam) {
             steam = el('span', 'fab-steam');
             steam.setAttribute('aria-hidden', 'true');
-            steam.appendChild(el('i'));
-            steam.appendChild(el('i'));
+            for (var i = 0; i < lines; i++) steam.appendChild(el('i'));
             fab.appendChild(steam);
         }
     }
