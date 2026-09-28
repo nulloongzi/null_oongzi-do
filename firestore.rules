@@ -314,6 +314,73 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── 밥친구 ─────────────────────────────────────────────────────
+    // 운동 시간표는 사실상 '언제 어디에 있는지'라서, 친구는 서로 수락해야 맺어지고
+    // 찾는 길은 초대코드 하나뿐이다(밥이름 검색 없음). 익명 인증(무로그인 픽업 등록용)은 못 쓴다.
+    function isMember() {
+      return request.auth != null
+             && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+    }
+
+    // invite_codes/{CODE}: 초대코드 → 주인 uid.
+    //   · 코드를 알아야 신청할 수 있다 — list 는 막아 코드 목록을 긁어 가지 못하게.
+    //   · 6자, 헷갈리는 0·O·1·I 는 뺀 32자. 새 코드를 받으면 옛 코드 문서를 지운다(즉시 무효).
+    match /invite_codes/{code} {
+      allow get: if isMember();
+      allow list: if false;
+      allow create: if isMember()
+                    && code.matches('^[A-HJ-NP-Z2-9]{6}$')
+                    && request.resource.data.keys().hasOnly(['uid', 'created_at'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.created_at == request.time;
+      allow update: if false;
+      allow delete: if isMember() && resource.data.uid == request.auth.uid;
+    }
+
+    // friendships/{작은uid_큰uid}: 신청과 친구 관계를 한 문서로.
+    //   · 문서 id 가 두 uid 라 쌍마다 하나 — 중복 신청이 생기지 않는다.
+    //   · 신청(create)은 상대의 **현재** 초대코드를 들고 와야 한다. uid 만 알아서는 못 건다.
+    //   · 수락은 받은 사람만 pending → accepted 로. 다른 필드는 못 바꾼다.
+    //   · 거절·취소·끊기는 모두 삭제. 둘 중 누구든 조용히 지울 수 있다(상대에게 알리지 않음).
+    function friendPairOk(pairId, d) {
+      return d.members is list && d.members.size() == 2
+             && d.members[0] < d.members[1]
+             && pairId == d.members[0] + '_' + d.members[1];
+    }
+
+    match /friendships/{pairId} {
+      // get 은 id 에 내 uid 가 들어 있으면 연다 — 없는 문서인지 확인할 수 있어야 신청 전에
+      // '이미 신청했나'를 본다. 남의 쌍은 id 를 알아도 못 본다.
+      allow get: if isMember() && request.auth.uid in pairId.split('_');
+      allow list: if isMember() && request.auth.uid in resource.data.members;
+
+      allow create: if isMember()
+                    && friendPairOk(pairId, request.resource.data)
+                    && request.resource.data.keys().hasOnly([
+                         'members', 'requested_by', 'requested_to', 'status', 'code', 'created_at'
+                       ])
+                    && request.resource.data.requested_by == request.auth.uid
+                    && request.auth.uid in request.resource.data.members
+                    && request.resource.data.requested_to in request.resource.data.members
+                    && request.resource.data.requested_to != request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.created_at == request.time
+                    && request.resource.data.code is string
+                    && exists(/databases/$(database)/documents/invite_codes/$(request.resource.data.code))
+                    && get(/databases/$(database)/documents/invite_codes/$(request.resource.data.code)).data.uid
+                         == request.resource.data.requested_to;
+
+      allow update: if isMember()
+                    && resource.data.status == 'pending'
+                    && request.auth.uid == resource.data.requested_to
+                    && request.resource.data.status == 'accepted'
+                    && request.resource.data.accepted_at == request.time
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'accepted_at']);
+
+      allow delete: if isMember() && request.auth.uid in resource.data.members;
+    }
+
     // 명시되지 않은 컬렉션은 기본적으로 차단 (catch-all 제거)
   }
 }

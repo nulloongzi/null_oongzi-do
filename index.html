@@ -148,6 +148,12 @@
 
     <!-- 프로필 오버레이 -->
     <div id="profileOverlay" class="profile-overlay" onclick="toggleProfileCard()">
+        <!-- 🍚 팝업 두 장(내 카드 ↔ 밥친구). 도트는 로그인했을 때만 — js/friends.js -->
+        <div class="pc-dots" id="pcDots" role="tablist" hidden onclick="event.stopPropagation()">
+            <button type="button" class="pc-dot on" role="tab" aria-selected="true" onclick="goProfilePage(0)"></button>
+            <button type="button" class="pc-dot" role="tab" aria-selected="false" onclick="goProfilePage(1)"></button>
+        </div>
+        <div class="pc-pager" id="pcPager">
         <div class="profile-card" id="myProfileCard" onclick="event.stopPropagation()">
             <!-- 로그인 수단 스탬프 (이스터에그): profile.js가 제공자 감지 후 아이콘 주입 -->
             <div id="pcProviderMark" class="pc-provider-mark" aria-hidden="true"></div>
@@ -189,6 +195,11 @@
                     <div class="pc-share-btn" onclick="showShareOptions()" data-i18n="share_wrap">🎁 포장하기</div>
                 </div>
             </div>
+        </div>
+        <div class="profile-card friends-card" id="friendsCard" hidden onclick="event.stopPropagation()">
+            <div id="friendsBody"></div>
+            <div class="fr-toast" id="friendsToast" role="status" hidden></div>
+        </div>
         </div>
     </div>
 
@@ -551,6 +562,7 @@
     <script src="js/pickup-filter.js?v=37"></script>
     <script src="js/pickup-data.js?v=37"></script>
     <script src="js/profile.js?v=37"></script>
+    <script src="js/friends.js?v=37"></script>
     <script src="js/auth.js?v=37"></script>
     <script src="js/social-auth.js?v=37"></script>
     <script src="js/lunchbox.js?v=37"></script>
