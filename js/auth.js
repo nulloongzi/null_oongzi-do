@@ -269,6 +269,7 @@ window.setupAuthListener = function () {
             window.currentProfileData = null;
             window.isAdmin = false;
             window.updateProfileUI(false);
+            if (window.onFriendsAuth) window.onFriendsAuth(null);
         } else if (user) {
             window.currentUser = user;
             await window.loadOrCreateUserProfile(user);
@@ -280,11 +281,14 @@ window.setupAuthListener = function () {
             if (window.resumePendingRegistration) window.resumePendingRegistration();
             // 구글시트로 접수했던 팀 담당자 메일과 일치하면 소유권 요청을 넣는다
             if (window.checkClubClaims) window.checkClubClaims();
+            // 밥친구: 관계 구독 + 초대 링크(?invite=)로 들어왔으면 이어서 추가 화면
+            if (window.onFriendsAuth) window.onFriendsAuth(user);
         } else {
             window.currentUser = null;
             window.currentProfileData = null;
             window.isAdmin = false;
             window.updateProfileUI(false);
+            if (window.onFriendsAuth) window.onFriendsAuth(null);
             // Reset watermark and background on logout
             var wm = document.getElementById('pcRiceWatermark');
             if (wm) wm.innerText = '';

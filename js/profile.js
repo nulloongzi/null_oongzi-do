@@ -203,6 +203,8 @@ window.toggleProfileCard = function () {
     var overlay = document.getElementById('profileOverlay');
     var closing = overlay.style.display === 'flex';
     overlay.style.display = closing ? 'none' : 'flex';
+    // 열 때마다 첫 장(내 카드)부터 — 밥친구 장은 옆으로 넘겨서 연다 (js/friends.js)
+    if (!closing && window.resetProfilePager) window.resetProfilePager();
     // 로그인 게이트 상태에서 로그인 없이 닫으면: 작성 중이던 등록 폼을 복원하고 대기 해제
     if (closing && window._regResumePending) {
         window._regResumePending = false;

@@ -307,3 +307,48 @@ test('포장하기: html2canvas 의존이 없다', async ({ page }) => {
     const has = await page.evaluate(() => typeof window.html2canvas !== 'undefined');
     expect(has).toBe(false);
 });
+
+// 밥친구(1단계): 🍚 팝업 두 장 + 도트 + 버블 배지. Firebase 없이 상태를 직접 넣어 화면 배선만 본다.
+test('밥친구: 로그인 전엔 한 장, 로그인하면 두 장 + 받은 신청 신호', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => window.toggleProfileCard());
+    await expect(page.locator('#pcDots')).toBeHidden();
+    await expect(page.locator('#friendsCard')).toBeHidden();
+    await page.evaluate(() => window.toggleProfileCard());
+
+    await page.evaluate(() => {
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { b: { name: '보리밥-k2', color: '#FFF59D' }, c: { name: '팥밥-q7', color: '#F8BBD0' } };
+        s.incoming = [{ id: 'b_me', other: 'b', doc: { status: 'pending' } }];
+        s.friends = [{ id: 'c_me', other: 'c', doc: { status: 'accepted' } }];
+        window.localStorage.removeItem('nurungji_seen_friend_req');
+        window.renderFriendsPage();
+        window.toggleProfileCard();
+    });
+
+    // 버블 배지 = 받은 신청 수
+    await expect(page.locator('#fabProfile .fab-badge')).toHaveText('1');
+    // 도트 두 개, 첫 장이 켜짐, 둘째 점은 새 소식으로 빛남
+    const dots = page.locator('#pcDots .pc-dot');
+    await expect(page.locator('#pcDots')).toBeVisible();
+    await expect(dots.nth(0)).toHaveClass(/on/);
+    await expect(dots.nth(1)).toHaveClass(/sig/);
+
+    // 둘째 장으로 넘기면 신청·친구가 보이고 신호는 꺼진다
+    await dots.nth(1).click();
+    await expect(page.locator('#friendsCard .fr-req')).toContainText('보리밥-k2');
+    await expect(page.locator('#friendsCard .fr-row')).toContainText('팥밥-q7');
+    await expect(dots.nth(1)).toHaveClass(/on/);
+    await expect(dots.nth(1)).not.toHaveClass(/sig/);
+
+    // 추가 화면: 형식 밖 코드는 바로 안내
+    await page.locator('#friendsCard .fr-add-top').click();
+    await page.locator('#frCodeInput').fill('abc');
+    await page.locator('#friendsCard .fr-form button[type="submit"]').click();
+    await expect(page.locator('#frLookupResult')).toContainText(/6자리|6 letters/);
+
+    // 다시 열면 첫 장부터
+    await page.evaluate(() => { window.toggleProfileCard(); window.toggleProfileCard(); });
+    await expect(dots.nth(0)).toHaveClass(/on/);
+});
