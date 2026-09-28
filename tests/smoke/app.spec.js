@@ -307,3 +307,23 @@ test('포장하기: html2canvas 의존이 없다', async ({ page }) => {
     const has = await page.evaluate(() => typeof window.html2canvas !== 'undefined');
     expect(has).toBe(false);
 });
+
+// 공유 카드: 실제 폰트로 측정해도(단위 테스트는 mock 측정) 아주 긴 내용이 QR 스텁을 덮지 않는다.
+// 칩이 줄 예산 밖에 있어서 태그가 많으면 넘치던 적이 있다 — 앱 테스트가 먼저 잡았다.
+test('공유 카드: 긴 내용도 QR 스텁을 덮지 않는다 (두 규격, 실측)', async ({ page }) => {
+    await page.goto('/');
+    const out = await page.evaluate(async () => {
+        await document.fonts.ready;
+        const long = {
+            title: '가'.repeat(120), url: 'https://do.nulloongzi.com/?spot=x',
+            tags: Array.from({ length: 12 }, (_, i) => ({ t: '태그' + i + ' 가나다라마바사' })),
+            thisWeek: '나'.repeat(300), schedule: '다'.repeat(300), fee: '라'.repeat(300),
+            venue: '마'.repeat(100), address: '서울 송파구 ' + '바'.repeat(200)
+        };
+        return ['story', 'feed'].map((f) => {
+            const L = window.spotCardLayout(long, f);
+            return { f, cardBottom: L.card.y + L.card.h, limit: L.stubTop - window.SHARE_CARD.GAP };
+        });
+    });
+    for (const r of out) expect(r.cardBottom, r.f).toBeLessThanOrEqual(r.limit + 0.01);
+});

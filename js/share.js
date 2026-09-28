@@ -471,9 +471,9 @@ window.cardVolley = cardVolley;
 var SPOT_MAP_MIN = { story: 640, feed: 440 };
 // 정보가 넘치면 이 순서로 줄 수를 줄인다. QR을 덮는 것보다 말줄임이 낫다.
 var SPOT_BUDGETS = [
-    { title: 2, week: 2, row: 2 },
-    { title: 2, week: 1, row: 1 },
-    { title: 1, week: 1, row: 1 }
+    { title: 2, week: 2, row: 2, chips: 3 },
+    { title: 2, week: 1, row: 1, chips: 2 },
+    { title: 1, week: 1, row: 1, chips: 1 }
 ];
 var SPOT_INFO = { pad: 48, titleFs: 60, titleLh: 70, chipH: 52, chipFs: 28, chipPad: 22, chipGap: 12, rowIcon: 36, rowFs: 32, rowLh: 44, rowGap: 14 };
 
@@ -489,6 +489,7 @@ function spotMeasureInfo(ctx, data, budget) {
     for (var i = 0; i < tags.length; i++) {
         var w = Math.min(iw, ctx.measureText(tags[i].t).width + S.chipPad * 2);
         if (cx + w > iw && cx > 0) { row++; cx = 0; }
+        if (row >= budget.chips) { row = budget.chips - 1; break; }   // 넘치는 칩은 뺀다
         chips.push({ tag: tags[i], x: cx, row: row, w: w });
         cx += w + S.chipGap;
     }
