@@ -396,6 +396,17 @@
             }
         }
 
+        /* 🍚 팝업이 화면보다 길면(작은 폰의 밥친구 상세: 겹쳐 보기 + 겸상 목록) 세로로 넘겨 본다.
+           가운데 정렬은 auto 마진으로 — justify-content: center 는 넘친 위쪽을 잘라 스크롤로 못 간다 */
+        #profileOverlay {
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            justify-content: flex-start;
+        }
+
+        #profileOverlay > :first-child { margin-top: auto; }
+        #profileOverlay > :last-child { margin-bottom: auto; }
+
         /* [누룽지 테마: 프로필 카드] */
         .profile-card {
             width: 85%;
