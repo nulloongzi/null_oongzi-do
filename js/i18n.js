@@ -160,6 +160,7 @@
 
         // 공유
         // 포장 형태 칩 — 앱 share_mode_feed / share_mode_story 와 같은 문구
+        nickname_reserved: { ko: '누룽지도 공식 계정만 쓸 수 있는 이름이에요. 다른 이름을 골라주세요.', en: 'That name is reserved for official Nulloongzi accounts. Please pick another.' },
         mc_mode_feed: { ko: '피드형 (식단표 포함)', en: 'Feed (with schedule)' },
         mc_mode_story: { ko: '스토리형', en: 'Story' },
         mc_friends_toggle: { ko: '밥친구 포함', en: 'Include bap friends' },

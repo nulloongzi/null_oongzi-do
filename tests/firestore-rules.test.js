@@ -304,6 +304,63 @@ describe('Phase 4: users 공개/비공개 분리 룰', () => {
     });
 });
 
+describe('예약 닉네임 — 누룽지·Nulloongzi·null_oongzi 는 공식 계정만', () => {
+    const USER = (uid, full, nick) => ({
+        nickname: nick || '현미밥', suffix: 'r1c', full_nickname: full, color: '#fac710', created_at: new Date()
+    });
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('official_accounts').doc('official-uid').set({ note: '운영자 부계정' });
+            await db.collection('users').doc('plain-uid').set(USER('plain-uid', '현미밥-p1a'));
+            await db.collection('users').doc('legacy-uid').set(USER('legacy-uid', '누룽지2'));   // 규칙 전부터 쓰던 이름
+            await db.collection('users').doc('admin-uid').set(USER('admin-uid', '현미밥-adm'));
+            await db.collection('users').doc('official-uid').set(USER('official-uid', '현미밥-off'));
+        });
+    });
+    const rename = (uid, name) => testEnv.authenticatedContext(uid).firestore()
+        .collection('users').doc(uid).update({ full_nickname: name });
+
+    for (const name of ['누룽지', '누룽지2', '누 룽 지', '진짜누룽지도', 'Nulloongzi', 'NULLOONGZI', 'null_oongzi', 'Null-Oongzi', 'nurungji', 'official nuloongzi']) {
+        test(`일반 계정은 '${name}' 으로 못 바꾼다`, async () => { await assertFails(rename('plain-uid', name)); });
+    }
+    test('일반 계정도 보통 이름은 바꿀 수 있다', async () => {
+        await assertSucceeds(rename('plain-uid', '배구하는현미'));
+        await assertSucceeds(rename('plain-uid', '누룽'));   // 부분 일치가 아니면 통과
+    });
+    test('새 프로필 생성(set)에서도 예약 닉네임은 거부', async () => {
+        const db = testEnv.authenticatedContext('new-uid').firestore();
+        await assertFails(db.collection('users').doc('new-uid').set(USER('new-uid', 'nulloongzi-abc')));
+        await assertFails(db.collection('users').doc('new-uid').set(USER('new-uid', '현미밥-abc', '누룽지')));
+        await assertSucceeds(db.collection('users').doc('new-uid').set(USER('new-uid', '현미밥-abc')));
+    });
+    test('운영자(admins)와 공식 계정(official_accounts)은 쓸 수 있다', async () => {
+        await assertSucceeds(rename('admin-uid', '누룽지'));
+        await assertSucceeds(rename('official-uid', '누룽지 부계'));
+    });
+    test('이미 쓰던 예약 닉네임은 그대로 두고 다른 필드는 고칠 수 있다', async () => {
+        const db = testEnv.authenticatedContext('legacy-uid').firestore();
+        await assertSucceeds(db.collection('users').doc('legacy-uid').update({ color: '#ffffff' }));
+        await assertSucceeds(db.collection('users').doc('legacy-uid').set(USER('legacy-uid', '누룽지2'), { merge: true }));
+        // 다른 예약 이름으로 바꾸는 건 안 된다
+        await assertFails(rename('legacy-uid', '누룽지3'));
+        await assertSucceeds(rename('legacy-uid', '평범한밥'));
+    });
+    test('문자열이 아닌 닉네임은 거부', async () => {
+        await assertFails(testEnv.authenticatedContext('plain-uid').firestore()
+            .collection('users').doc('plain-uid').update({ full_nickname: 123 }));
+    });
+    test('official_accounts: 본인 get 만, 목록·쓰기 불가', async () => {
+        const me = testEnv.authenticatedContext('official-uid').firestore();
+        await assertSucceeds(me.collection('official_accounts').doc('official-uid').get());
+        await assertFails(me.collection('official_accounts').get());
+        await assertFails(testEnv.authenticatedContext('plain-uid').firestore()
+            .collection('official_accounts').doc('official-uid').get());
+        await assertFails(testEnv.authenticatedContext('plain-uid').firestore()
+            .collection('official_accounts').doc('plain-uid').set({ note: 'me too' }));
+    });
+});
+
 describe('Phase 4: admins list 차단 + 본인 get만 허용', () => {
     test('PR-5: 비관리자도 자기 uid에 대한 admins/get 통과 (false 반환)', async () => {
         const ctx = testEnv.authenticatedContext('owner-uid');
