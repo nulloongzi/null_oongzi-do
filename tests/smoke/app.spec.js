@@ -605,3 +605,21 @@ test('로그인 복귀 주소(/auth/callback/)는 쿼리를 들고 루트로 넘
     page.on('dialog', (d) => d.dismiss());
     await expect.poll(() => new URL(page.url()).search).toBe('');
 });
+
+// 로그인 시작: 두 제공자 모두 복귀 주소가 /auth/callback/ 이어야 한다(루트면 앱이 가로챈다).
+test('소셜 로그인은 /auth/callback/ 으로 돌아오도록 요청한다', async ({ page }) => {
+    await page.goto('/');
+    const seen = [];
+    await page.route(/^https:\/\/(nid\.naver\.com|kauth\.kakao\.com)\//, (route) => {
+        seen.push(route.request().url());
+        route.fulfill({ status: 200, contentType: 'text/html', body: 'stub' });
+    });
+    for (const fn of ['loginWithNaver', 'loginWithKakao']) {
+        await page.evaluate((f) => window[f](), fn);
+        await expect.poll(() => seen.length).toBeGreaterThan(fn === 'loginWithNaver' ? 0 : 1);
+        await page.goto('/');
+    }
+    for (const u of seen) {
+        expect(new URL(u).searchParams.get('redirect_uri')).toBe('http://localhost:4173/auth/callback/');
+    }
+});
