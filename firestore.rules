@@ -231,6 +231,31 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── 예약 닉네임 ──────────────────────────────────────────────
+    // '누룽지'·'Nulloongzi'·'null_oongzi' 같은 서비스 이름은 공식 계정만 쓴다 — 아무나 쓰면
+    // 운영자인 척할 수 있다. 공백·기호·대소문자를 걷어내고 비교해서 '누 룽 지', 'Null_Oongzi',
+    // 'NULL-oongzi' 도 걸린다. js/profile.js isReservedNickname · 앱 reservedNickname() 과
+    // 같은 목록이어야 한다(tests/reserved-nickname.test.js 가 대조한다).
+    function isReservedNickname(s) {
+      return s.lower().replace('[^a-z0-9가-힣]', '')
+               .matches('.*(누룽지|nulloongzi|nuloongzi|nullongzi|nurungji|nurungzi|nuroongzi).*');
+    }
+    // 예약 닉네임을 쓸 수 있는 계정: 운영자(admins) 또는 공식 계정 목록(official_accounts).
+    // 부계정을 admins 에 넣으면 팀 삭제 같은 운영 권한까지 생기므로 목록을 나눴다.
+    function canUseReservedNickname() {
+      return isAdmin()
+             || exists(/databases/$(database)/documents/official_accounts/$(request.auth.uid));
+    }
+    // 이 필드를 새로 쓰거나 바꿀 때만 본다 — 이미 쓰던 이름은 그대로 두고, 다른 필드를 고치는
+    // 쓰기(색상 등)도 막지 않는다.
+    function nicknameFieldOk(field) {
+      return !(field in request.resource.data)
+             || (resource != null && field in resource.data
+                 && request.resource.data[field] == resource.data[field])
+             || (request.resource.data[field] is string
+                 && (!isReservedNickname(request.resource.data[field]) || canUseReservedNickname()));
+    }
+
     // users: 공개 프로필 (닉네임/색상). email·bookmarks·customTeams는
     // private 서브컬렉션으로 분리하여 PIPA 위험(이메일 공개 덤프) 차단.
     match /users/{userId} {
@@ -241,7 +266,17 @@ service cloud.firestore {
                     && request.auth.uid == userId
                     && request.resource.data.keys().hasOnly([
                          'nickname', 'suffix', 'full_nickname', 'color', 'created_at'
-                       ]);
+                       ])
+                    && nicknameFieldOk('full_nickname')
+                    && nicknameFieldOk('nickname');
+    }
+
+    // official_accounts: 예약 닉네임을 쓸 수 있는 공식 계정(운영자 부계정 등).
+    // admins 와 같은 모양 — 본인 uid get 만, 쓰기는 콘솔/admin SDK 에서만.
+    match /official_accounts/{userId} {
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list: if false;
+      allow write: if false;
     }
 
     // users 비공개 프로필: 본인만 읽기/쓰기
