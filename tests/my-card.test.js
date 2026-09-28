@@ -97,6 +97,12 @@ describe('포장하기 배치 — 밥친구 칸', () => {
         assert.deepStrictEqual(L.diet, L0.diet);
         assert.deepStrictEqual(L.bento, L0.bento);
     });
+    test('피드: 1명이어도 묶음 폭은 알약 최소 168, 본문 안', () => {
+        const w = load();
+        const L = w.myCardLayout(data([FRIEND(0)]), true);
+        assert.strictEqual(L.friends.w, 168);
+        assert.ok(L.friends.x + L.friends.w <= w.SHARE_CARD.W - w.SHARE_CARD.M + 0.01);
+    });
     test('5명 이상은 4명까지만 자리를 잡는다', () => {
         const w = load();
         const L = w.myCardLayout(data(Array.from({ length: 7 }, (_, i) => FRIEND(i))), true);

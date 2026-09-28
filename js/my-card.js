@@ -49,7 +49,7 @@
 
     // 밥친구(4단계): 스토리는 도시락통 아래 '이번 주 겸상' 칸, 피드는 신원 줄 오른쪽에
     // 얼굴 겹침 + 알약. 숫자는 docs/design-system.md §7-4, 앱 my_card.dart 와 같다.
-    var FR = { max: 4, storyH: 264, storyAv: 96, feedAv: 72, feedStep: 48, feedGap: 32 };
+    var FR = { max: 4, storyH: 264, storyAv: 96, feedAv: 72, feedStep: 48, feedGap: 32, feedMinW: 168 };   // feedMinW: 알약이 넘치지 않는 묶음 최소 폭
     // 익힘 단계 색 — 화면(css .fr-warm / 앱 warm_avatar.dart)과 같은 값
     var WARM_RING = ['', '#F1D9A6', '#F5B82E', '#A0522D'];
     var WARM_INK = ['#8D6E63', '#8D6E63', '#B7791F', '#8B4513'];
@@ -228,7 +228,7 @@
         if (bodyBot - (bY + bH + 24) < BENTO.dietMin) bH = BENTO.feedMinH;
         var dY = bY + bH + 24;
         // 피드는 세로가 빠듯해 칸을 따로 두지 않고, 신원 줄 오른쪽에 얼굴 겹침 + 알약. 식단표 크기는 그대로.
-        var cw = nFr ? FR.feedAv + FR.feedStep * (nFr - 1) : 0, ch = FR.feedAv + 8 + 30;
+        var cw = nFr ? Math.max(FR.feedAv + FR.feedStep * (nFr - 1), FR.feedMinW) : 0, ch = FR.feedAv + 8 + 30;
         return {
             fmt: fmt, stubTop: stubTop, headerY: fmt.top,
             field: { h: bY + SC.OVERLAP },
@@ -453,16 +453,20 @@
     // 피드: 신원 줄 오른쪽에 얼굴 겹침(흰 테두리로 구분) + '이번 주 겸상 N' 알약.
     function drawFriendCluster(ctx, r, d) {
         var list = d.friends.slice(0, FR.max), n = list.length, best = 0;
+        // 얼굴 줄은 묶음 안에서 가운데(묶음이 알약 폭만큼 넓을 수 있다)
+        var ax = r.x + (r.w - (FR.feedAv + FR.feedStep * (n - 1))) / 2;
         for (var i = 0; i < n; i++) {
-            drawFriendAvatar(ctx, r.x + FR.feedAv / 2 + FR.feedStep * i, r.y + FR.feedAv / 2, FR.feedAv, list[i], 3, 3);
+            drawFriendAvatar(ctx, ax + FR.feedAv / 2 + FR.feedStep * i, r.y + FR.feedAv / 2, FR.feedAv, list[i], 3, 3);
             best = Math.max(best, list[i].tier || 0);
         }
         var label = TF('mc_friends_pill', { n: n });
         ctx.font = fnt(20, 800);
         var pw = ctx.measureText(label).width + 28, py = r.y + FR.feedAv + 8;
-        window.cardPill(ctx, r.x + r.w / 2 - pw / 2, py, pw, 30);
+        // 알약은 본문 폭 안에 (긴 영어 문구도 오른쪽 여백을 넘지 않게)
+        var px = Math.max(window.SHARE_CARD.M, Math.min(W - window.SHARE_CARD.M - pw, r.x + r.w / 2 - pw / 2));
+        window.cardPill(ctx, px, py, pw, 30);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = WARM_INK[best];
-        ctx.fillText(label, r.x + r.w / 2, py + 16);
+        ctx.fillText(label, px + pw / 2, py + 16);
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     }
 

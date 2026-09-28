@@ -404,8 +404,14 @@
             justify-content: flex-start;
         }
 
-        #profileOverlay > :first-child { margin-top: auto; }
-        #profileOverlay > :last-child { margin-bottom: auto; }
+        /* 위아래 가상 요소의 auto 마진이 남는 세로를 반씩 먹는다 — 도트가 숨은(로그아웃) 때도
+           pager 가 가운데이고, .pc-pager 의 음수 아래 마진을 덮지 않는다 */
+        #profileOverlay::before,
+        #profileOverlay::after {
+            content: '';
+            flex: 0 0 0;
+            margin: auto 0;
+        }
 
         /* [누룽지 테마: 프로필 카드] */
         .profile-card {

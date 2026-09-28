@@ -312,6 +312,12 @@ test('포장하기: html2canvas 의존이 없다', async ({ page }) => {
 test('밥친구: 로그인 전엔 한 장, 로그인하면 두 장 + 받은 신청 신호', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => window.toggleProfileCard());
+    // 도트가 숨은(로그아웃) 팝업도 세로 가운데 — auto 마진 가운데 정렬 회귀
+    {
+        const box = await page.locator('#pcPager').boundingBox();
+        const vh = page.viewportSize().height;
+        expect(Math.abs(box.y + box.height / 2 - vh / 2)).toBeLessThan(60);
+    }
     await expect(page.locator('#pcDots')).toBeHidden();
     await expect(page.locator('#friendsCard')).toBeHidden();
     await page.evaluate(() => window.toggleProfileCard());

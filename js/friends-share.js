@@ -19,9 +19,9 @@
     function buildSharedLunchbox(bookmarks, customTeams, hidden, hideAll) {
         var out = { teams: [], custom: [], hide_all: !!hideAll };
         if (hideAll) return out;
-        var hid = hidden || [];
+        var hid = (hidden || []).map(String);   // 옛 숫자 id 도 문자열로 비교
         (bookmarks || []).slice(0, 5).forEach(function (id) {
-            if (id == null || hid.indexOf(id) !== -1) return;
+            if (id == null || hid.indexOf(String(id)) !== -1) return;
             var c = customTeams && customTeams[id];
             if (c) {
                 out.custom.push({
@@ -120,7 +120,7 @@
     // ── 내 설정 ──────────────────────────────────────────────────
     window.isFriendHidden = function (id) {
         var p = prof();
-        return !!(p && (p.friend_hidden || []).indexOf(id) !== -1);
+        return !!(p && (p.friend_hidden || []).map(String).indexOf(String(id)) !== -1);
     };
     window.isFriendHideAll = function () { var p = prof(); return !!(p && p.friend_hide_all); };
     window.needsFriendShareConfirm = function () {
@@ -131,27 +131,33 @@
     window.setFriendHidden = function (id, hide) {
         var p = prof();
         if (!p || !id) return Promise.resolve();
-        var list = (p.friend_hidden || []).filter(function (x) { return x !== id; });
+        var before = (p.friend_hidden || []).slice();
+        var list = before.filter(function (x) { return String(x) !== String(id); });
         if (hide) list.push(id);
-        p.friend_hidden = list;
+        p.friend_hidden = list;   // 낙관적으로 먼저 보여주고, 저장이 실패하면 되돌린다
         if (window.track) window.track('friend_team_visibility', { hidden: hide ? 1 : 0 });
-        return privateSet({ friend_hidden: list }).then(window.syncFriendShare);
+        return privateSet({ friend_hidden: list }).then(window.syncFriendShare, function (e) { p.friend_hidden = before; throw e; });
     };
     window.setFriendHideAll = function (v) {
         var p = prof();
         if (!p) return Promise.resolve();
+        var before = !!p.friend_hide_all;
         p.friend_hide_all = !!v;
         if (window.track) window.track('friend_hide_all', { on: v ? 1 : 0 });
-        return privateSet({ friend_hide_all: !!v }).then(window.syncFriendShare);
+        return privateSet({ friend_hide_all: !!v }).then(window.syncFriendShare, function (e) { p.friend_hide_all = before; throw e; });
     };
     // 첫 밥친구 때 '보일 팀' 확인. hiddenIds 는 체크를 끈 팀.
     window.confirmFriendShare = function (hiddenIds) {
         var p = prof();
         if (!p) return Promise.resolve();
-        p.friend_hidden = (hiddenIds || []).slice();
-        p.friend_share_ok = true;
-        if (window.track) window.track('friend_share_confirm', { hidden: p.friend_hidden.length });
-        return privateSet({ friend_hidden: p.friend_hidden, friend_share_ok: true }).then(window.syncFriendShare);
+        var hidden = (hiddenIds || []).slice();
+        if (window.track) window.track('friend_share_confirm', { hidden: hidden.length });
+        // 서버에 저장된 뒤에만 로컬 플래그를 켠다 — 실패했는데 켜져 있으면 다음 도시락 저장이 사본을 써 버린다
+        return privateSet({ friend_hidden: hidden, friend_share_ok: true }).then(function () {
+            p.friend_hidden = hidden;
+            p.friend_share_ok = true;
+            return window.syncFriendShare();
+        });
     };
 
     // ── 사본 동기화 ─────────────────────────────────────────────
@@ -195,7 +201,8 @@
                     if (c) teams.push({ id: id, name: c.name || '', schedule: c.schedule || '' });
                 });
                 (d.custom || []).forEach(function (c, i) {
-                    teams.push({ id: 'custom_' + i, name: c.name || '', schedule: c.schedule || '', isCustom: true });
+                    if (!c || typeof c !== 'object') return;   // 이상한 항목 하나 때문에 도시락 전체가 안 보이지 않게
+                    teams.push({ id: 'custom_' + i, name: String(c.name || ''), schedule: String(c.schedule || ''), isCustom: true });
                 });
                 teams.forEach(function (t, i) { t.slot = i; });
                 r = { status: d.hide_all ? 'hidden' : 'ok', teams: d.hide_all ? [] : teams, updatedMs: toMs(d.updated_at) };
@@ -208,9 +215,10 @@
 
     // '도시락 바뀜': 친구 사본의 updated_at 이 마지막으로 본 시각보다 뒤면. 처음 보는 친구는
     // 기준만 잡는다(새 친구를 '바뀜'으로 띄우지 않는다). 기준은 이 기기에만 둔다.
-    var SEEN_KEY = 'nurungji_friend_lb_seen';
-    function seenMap() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch (e) { return {}; } }
-    function saveSeen(m) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(m)); } catch (e) { } }
+    // 기기 저장 키는 계정별 — 한 기기에서 계정을 바꿔도 '본 시각'이 섞이지 않게
+    function seenKey() { return 'nurungji_friend_lb_seen:' + (uid() || ''); }
+    function seenMap() { try { return JSON.parse(localStorage.getItem(seenKey()) || '{}'); } catch (e) { return {}; } }
+    function saveSeen(m) { try { localStorage.setItem(seenKey(), JSON.stringify(m)); } catch (e) { } }
     window.isFriendLunchboxChanged = function (other) {
         var r = friendCache[other];
         if (!r || !r.updatedMs) return false;

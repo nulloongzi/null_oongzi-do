@@ -32,6 +32,10 @@ describe('친구용 도시락 사본', () => {
         assert.deepStrictEqual(r.custom.map(c => c.name), ['동네 모임']);
         assert.ok(!JSON.stringify(r).includes('회사팀'));
     });
+    test('옛 숫자 id 도 문자열 숨김 목록과 맞춘다', () => {
+        const out = P.buildSharedLunchbox([123, 'b'], {}, ['123'], false);
+        assert.deepEqual(out.teams, ['b']);
+    });
     test('전부 숨기기면 아무 팀도 나가지 않는다', () => {
         assert.deepStrictEqual(J(P.buildSharedLunchbox(bookmarks, custom, [], true)), { teams: [], custom: [], hide_all: true });
     });
