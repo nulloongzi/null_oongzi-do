@@ -47,7 +47,7 @@
     var ROW_FR = [0.8, 1.2]; // 아래(밥·국)가 더 크다 — 화면 UI와 같은 비율
     var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
-    // 밥친구(4단계): 스토리는 도시락통 아래 '이번 주 겸상' 칸, 피드는 신원 줄 오른쪽에
+    // 밥친구(4단계): 스토리는 도시락통 아래 '이번 주 합석' 칸, 피드는 신원 줄 오른쪽에
     // 얼굴 겹침 + 알약. 숫자는 docs/design-system.md §7-4, 앱 my_card.dart 와 같다.
     var FR = { max: 4, storyH: 264, storyAv: 96, feedAv: 72, feedStep: 48, feedGap: 32, feedMinW: 168 };   // feedMinW: 알약이 넘치지 않는 묶음 최소 폭
     // 익힘 단계 색 — 화면(css .fr-warm / 앱 warm_avatar.dart)과 같은 값
@@ -102,7 +102,7 @@
 
     // ── 데이터 수집 ────────────────────────────────────────────────
     // 화면에 보이는 것과 같은 슬롯을 쓴다(편집 중이면 tempSlots).
-    // 카드에 넣을 밥친구: 이번 주 겸상하는 친구만, 겸상 많은 순 최대 4명.
+    // 카드에 넣을 밥친구: 이번 주 합석하는 친구만, 합석 많은 순 최대 4명.
     // 나가는 건 밥이름·색·익힘 단계뿐 — 친구의 팀·요일·시간은 카드에 없다.
     // '식단표 전부 숨기기'를 켠 친구는 목록에 있어도 넣지 않는다(밖으로 나가는 이미지라 더 보수적으로).
     window.myCardFriends = function () {
@@ -413,18 +413,12 @@
         ctx.save(); ctx.translate(cx - s / 2, cy - s / 2); ctx.scale(k, k);
         ctx.fillStyle = INK; ctx.fill(new window.Path2D(BOWL_D)); ctx.restore();
     }
-    // 아바타: 익힘 테두리(누룽지는 갈색·금빛이 도는 테두리) → 흰 틈 → 밥 색 얼굴 + 밥그릇.
+    // 아바타: 익힘 단계 색 테두리 → 흰 틈 → 밥 색 얼굴 + 밥그릇.
     function drawFriendAvatar(ctx, cx, cy, size, f, ringW, gapW) {
         var r0 = size / 2, tier = Math.max(0, Math.min(3, f.tier || 0));
         if (tier) {
             ctx.beginPath(); ctx.arc(cx, cy, r0 + gapW + ringW, 0, Math.PI * 2);
-            var fill = WARM_RING[tier];
-            var g = tier === 3 && typeof ctx.createConicGradient === 'function' ? ctx.createConicGradient(0, cx, cy) : null;
-            if (g && g.addColorStop) {   // 오래된 브라우저엔 conic 이 없다 → 단색 갈색
-                ['#8B4513', '#F5B82E', '#C9772B', '#6D3B1A', '#F5B82E', '#8B4513'].forEach(function (c, i, a) { g.addColorStop(i / (a.length - 1), c); });
-                fill = g;
-            }
-            ctx.fillStyle = fill; ctx.fill();
+            ctx.fillStyle = WARM_RING[tier]; ctx.fill();   // 단계 색으로만 구분(그라데이션·효과 없음)
         }
         ctx.beginPath(); ctx.arc(cx, cy, r0 + gapW, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
         ctx.beginPath(); ctx.arc(cx, cy, r0, 0, Math.PI * 2); ctx.fillStyle = f.color || '#FFF9C4'; ctx.fill();
@@ -432,7 +426,7 @@
         ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.stroke();
         drawBowl(ctx, cx, cy, size * 0.58);
     }
-    // 스토리: 도시락통 아래 '이번 주 겸상' 칸. 얼굴 + 밥이름 + 익힘 단계·겸상 횟수.
+    // 스토리: 도시락통 아래 '이번 주 합석' 칸. 얼굴 + 밥이름 + 익힘 단계·합석 횟수.
     function drawFriends(ctx, r, d) {
         card(ctx, r);
         var ip = 32, ix = r.x + ip, iw = r.w - ip * 2;
@@ -450,7 +444,7 @@
         }
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     }
-    // 피드: 신원 줄 오른쪽에 얼굴 겹침(흰 테두리로 구분) + '이번 주 겸상 N' 알약.
+    // 피드: 신원 줄 오른쪽에 얼굴 겹침(흰 테두리로 구분) + '이번 주 합석 N' 알약.
     function drawFriendCluster(ctx, r, d) {
         var list = d.friends.slice(0, FR.max), n = list.length, best = 0;
         // 얼굴 줄은 묶음 안에서 가운데(묶음이 알약 폭만큼 넓을 수 있다)
@@ -586,7 +580,7 @@
     // 골라야 했고, 취소가 곧 선택이라 헷갈렸다. 앱(share_image_screen)처럼 미리보기 위에
     // 칩 두 개를 두고, 누르면 그 자리에서 다시 그린다. 기본은 앱과 같은 피드형.
     var shapeRenderSeq = 0;
-    // '밥친구 포함' 스위치(기본 꺼짐). 겸상하는 밥친구가 없으면 흐리게 잠긴다.
+    // '밥친구 포함' 스위치(기본 꺼짐). 합석하는 밥친구가 없으면 흐리게 잠긴다.
     var includeFriends = false, currentMode = 'feed';
 
     function syncFriendsToggle() {

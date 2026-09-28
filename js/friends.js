@@ -14,7 +14,7 @@
 //   friendships/{작은uid_큰uid}  { members, requested_by, requested_to,
 //                                  status: pending|accepted, code, created_at, accepted_at }
 //
-// 식단표 공유·겸상은 2·3단계. 이 파일은 관계만 다룬다.
+// 식단표 공유·합석은 2·3단계. 이 파일은 관계만 다룬다.
 // Depends on: firebase-init.js, i18n.js, profile.js (riceColorOf), share.js (SITE_BASE_URL)
 
 (function () {
@@ -296,6 +296,7 @@
         var seen = seenIds();
         if (state.incoming.some(function (x) { return seen.indexOf(x.id) === -1; })) return true;
         if (window.needsFriendShareConfirm && window.needsFriendShareConfirm()) return true;
+        if (unseenMealTier() > 0) return true;   // 처음 합석하게 된 밥친구
         return !!window.isFriendLunchboxChanged && state.friends.some(function (f) { return window.isFriendLunchboxChanged(f.other); });
     }
 
@@ -314,6 +315,8 @@
     };
     function onFriendsPageShown() {
         markSeen();
+        markMealSeen();
+        syncFabWarmth();
         // goProfilePage 와 스크롤 핸들러가 둘 다 부른다 → 팝업 열기당 한 번만 센다
         if (!state.shownTracked) { state.shownTracked = true; track('friends_open'); }
     }
@@ -354,33 +357,35 @@
         b.textContent = n > 9 ? '9+' : String(n);
         b.setAttribute('aria-label', TF('fr_badge_aria', { n: n }));
     }
-    // 이번 주 겸상 친구가 있으면 🍚 버블에도 김과 금빛 테두리(가장 높은 익힘 단계).
+    // 이번 주 합석 친구가 있으면 🍚 버블에도 김과 금빛 테두리(가장 높은 익힘 단계).
+    // 합석 알림은 처음 한 번만: 어떤 밥친구와 처음 합석하게 됐을 때 🍚 버블 테두리와 둘째 도트로
+    // 알리고, 밥친구 장을 열면 꺼진다. 이미 본 합석 친구는 다시 알리지 않는다(계정별로 기기에 둔다).
+    function mealSeenKey() { return 'nurungji_meal_seen:' + (state.uid || ''); }
+    function mealSeen() { try { return JSON.parse(localStorage.getItem(mealSeenKey()) || '[]'); } catch (e) { return []; } }
+    function mealFriends() {
+        if (!state.uid || !window.friendMeal) return [];
+        return state.friends.map(function (f) { return { uid: f.other, tier: window.friendMeal(f.other).tier }; })
+            .filter(function (x) { return x.tier > 0; });
+    }
+    function unseenMealTier() {
+        var seen = mealSeen(), tier = 0;
+        mealFriends().forEach(function (x) { if (seen.indexOf(x.uid) === -1) tier = Math.max(tier, x.tier); });
+        return tier;
+    }
+    function markMealSeen() {
+        var seen = mealSeen();
+        mealFriends().forEach(function (x) { if (seen.indexOf(x.uid) === -1) seen.push(x.uid); });
+        try { localStorage.setItem(mealSeenKey(), JSON.stringify(seen)); } catch (e) { }
+    }
     function syncFabWarmth() {
         var fab = document.getElementById('fabProfile');
         if (!fab) return;
-        var tier = 0;
-        if (state.uid && window.friendMeal) {
-            state.friends.forEach(function (f) { tier = Math.max(tier, window.friendMeal(f.other).tier); });
-        }
+        var tier = unseenMealTier();
         fab.classList.remove('warm-1', 'warm-2', 'warm-3');
         fab.classList.toggle('fab-warm', tier > 0);
-        var steam = fab.querySelector('.fab-steam');
-        if (!tier) {
-            if (steam) steam.remove();
-            fab.removeAttribute('title');
-            return;
-        }
+        if (!tier) { fab.removeAttribute('title'); return; }
         fab.classList.add('warm-' + tier);
         fab.title = T('fr_meal_fab');
-        // 김: 뜸은 한 줄, 노릇·누룽지는 두 줄
-        var lines = Math.min(tier, 2);
-        if (steam && steam.children.length !== lines) { steam.remove(); steam = null; }
-        if (!steam) {
-            steam = el('span', 'fab-steam');
-            steam.setAttribute('aria-hidden', 'true');
-            for (var i = 0; i < lines; i++) steam.appendChild(el('i'));
-            fab.appendChild(steam);
-        }
     }
     window.syncFriendsBadge = function () { syncBadge(); syncFabWarmth(); };
 
@@ -443,10 +448,6 @@
         if (!tier) return a;
         var w = el('div', 'fr-warm warm-' + tier + (big ? ' big' : ''));
         w.appendChild(a);
-        if (big) {
-            for (var i = 0; i < Math.min(tier, 2); i++) w.appendChild(el('i', 'fr-steam s' + i));
-            if (tier === 3) for (var k = 0; k < 5; k++) w.appendChild(el('i', 'fr-crumb c' + k));
-        }
         return w;
     }
     function mealOf(uid) { return window.friendMeal ? window.friendMeal(uid) : { n: 0, tier: 0, overlaps: [] }; }
@@ -558,7 +559,7 @@
             .sort(function (a, b) { return b.m.n - a.m.n; });
         if (hot.length) {
             body.appendChild(el('div', 'fr-label', T('fr_meal_title')));
-            body.appendChild(el('p', 'fr-note fr-meal-hint', T('fr_meal_hint')));   // 겸상이 낯선 사람에게 한 줄
+            body.appendChild(el('p', 'fr-note fr-meal-hint', T('fr_meal_hint')));   // 합석이 낯선 사람에게 한 줄
             var strip = el('div', 'fr-meal-strip');
             hot.forEach(function (v) {
                 var p = profileOf(v.x.other);
@@ -581,7 +582,7 @@
             body.appendChild(empty);
         } else {
             var list = el('div', 'fr-list');
-            // 겸상 많은 순, 같으면 이름순
+            // 합석 많은 순, 같으면 이름순
             state.friends.slice().sort(function (a, b) {
                 return (mealOf(b.other).n - mealOf(a.other).n) ||
                     profileOf(a.other).name.localeCompare(profileOf(b.other).name, 'ko');
@@ -822,7 +823,7 @@
             var meal = mealOf(other);
             window.renderFriendTimetable(tt, window.myFriendEvents(), window.friendSharePure.scheduleEvents(r.teams), meal.overlaps);
             if (!meal.n) { host.appendChild(el('p', 'fr-note center', T('fr_meal_zero'))); return; }
-            // 겸상 목록을 글로 한 번 더 — 표만으로는 요일·시각을 읽기 어렵다
+            // 합석 목록을 글로 한 번 더 — 표만으로는 요일·시각을 읽기 어렵다
             var ses = el('div', 'fr-sess-list');
             window.friendSharePure.sortOverlaps(meal.overlaps).forEach(function (o) {
                 var row = el('div', 'fr-sess');

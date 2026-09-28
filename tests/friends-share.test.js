@@ -61,16 +61,16 @@ describe('식단표 이벤트', () => {
     });
 });
 
-describe('겸상 · 익힘 (3단계)', () => {
+describe('합석 · 익힘 (3단계)', () => {
     const ev = (day, start, end) => ({ day, start, end });
-    test('같은 팀 · 같은 요일 · 30분 이상 겹치면 겸상', () => {
+    test('같은 팀 · 같은 요일 · 30분 이상 겹치면 합석', () => {
         const mine = [{ id: 'a', events: [ev('월', 19, 22), ev('수', 20, 22)] }];
         const theirs = [{ id: 'a', events: [ev('월', 19, 22), ev('수', 21.75, 23)] }];
         const ov = P.mealOverlaps(mine, theirs);
         assert.equal(ov.length, 1);   // 수요일은 15분만 겹쳐 빠진다
         assert.deepEqual({ ...ov[0] }, { id: 'a', day: '월', start: 19, end: 22 });
     });
-    test('다른 팀이면 같은 시간이어도 겸상이 아니다', () => {
+    test('다른 팀이면 같은 시간이어도 합석이 아니다', () => {
         const ov = P.mealOverlaps([{ id: 'a', events: [ev('월', 19, 22)] }], [{ id: 'b', events: [ev('월', 19, 22)] }]);
         assert.equal(ov.length, 0);
     });
@@ -96,8 +96,8 @@ describe('겸상 · 익힘 (3단계)', () => {
     });
 });
 
-describe('포장하기 밥친구 · 겸상 목록 (4단계)', () => {
-    test('pickCardFriends: 겸상 있는 친구만, 전부 숨긴 친구 제외, 겸상 많은 순 최대 4', () => {
+describe('포장하기 밥친구 · 합석 목록 (4단계)', () => {
+    test('pickCardFriends: 합석 있는 친구만, 전부 숨긴 친구 제외, 합석 많은 순 최대 4', () => {
         const out = P.pickCardFriends([
             { name: '가', n: 1, tier: 1 }, { name: '나', n: 0, tier: 0 }, { name: '다', n: 3, tier: 3 },
             { name: '라', n: 2, tier: 2, hidden: true }, { name: '마', n: 2, tier: 2 }, { name: '바', n: 1, tier: 1 }, { name: '사', n: 1, tier: 1 }

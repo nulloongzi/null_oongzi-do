@@ -57,7 +57,7 @@
         });
         return out;
     }
-    // 겸상: 같은 동호회(id) · 같은 요일 · 30분 이상 겹치는 시간. 직접 추가한 팀은 같은 팀인지
+    // 합석: 같은 동호회(id) · 같은 요일 · 30분 이상 겹치는 시간. 직접 추가한 팀은 같은 팀인지
     // 알 수 없어서 넣지 않는다. mine/theirs 는 [{id, events:[{day,start,end}]}] — 양쪽 모두
     // 친구에게 공개한 팀이어야 한다(숨긴 팀까지 세면 두 사람의 숫자가 달라져 숨긴 팀이 드러난다).
     var MEAL_MIN_H = 0.5;
@@ -81,15 +81,15 @@
         });
         return out;
     }
-    // 익힘 단계: 한 주 겸상 횟수 → 0 생쌀 · 1 뜸 · 2 노릇 · 3 누룽지(3회 이상)
+    // 익힘 단계: 한 주 합석 횟수 → 0 생쌀 · 1 뜸 · 2 노릇 · 3 누룽지(3회 이상)
     function warmthTier(n) { return n >= 3 ? 3 : n >= 2 ? 2 : n >= 1 ? 1 : 0; }
-    // 포장하기 카드에 넣을 밥친구: 겸상 있는 친구만, 전부 숨긴 친구는 빼고, 겸상 많은 순(같으면 이름순) 최대 max.
+    // 포장하기 카드에 넣을 밥친구: 합석 있는 친구만, 전부 숨긴 친구는 빼고, 합석 많은 순(같으면 이름순) 최대 max.
     function pickCardFriends(entries, max) {
         return (entries || []).filter(function (f) { return f && f.n > 0 && !f.hidden; })
             .sort(function (a, b) { return (b.n - a.n) || String(a.name).localeCompare(String(b.name), 'ko'); })
             .slice(0, max || 4);
     }
-    // 겸상 목록 정렬(요일 → 시작 시각) · 시각 표기 "19–22" / "19:30–22"
+    // 합석 목록 정렬(요일 → 시작 시각) · 시각 표기 "19–22" / "19:30–22"
     var DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일'];
     function sortOverlaps(list) {
         return (list || []).slice().sort(function (a, b) {
@@ -176,7 +176,7 @@
             var doc = { teams: want.teams, custom: want.custom, hide_all: want.hide_all, updated_at: window.firebaseServerTimestamp() };
             return sharedRef(u).set(doc).then(function () { lastShared = want; });
         }).then(function () {
-            // 내 공개 팀이 바뀌면 겸상도 바뀐다 — 🍚 버블의 익힘 효과를 다시 맞춘다
+            // 내 공개 팀이 바뀌면 합석도 바뀐다 — 🍚 버블의 익힘 효과를 다시 맞춘다
             if (window.syncFriendsBadge) window.syncFriendsBadge();
         }).catch(function (e) { console.warn('밥친구 도시락 공유 실패:', e && e.message); });
     };
@@ -245,8 +245,8 @@
         return scheduleEvents(entries);
     };
 
-    // ── 겸상 · 익힘 ─────────────────────────────────────────────
-    // 내 쪽은 친구에게 실제로 보이는 팀만 센다 — 확인 전이거나 전부 숨기기면 겸상도 없다.
+    // ── 합석 · 익힘 ─────────────────────────────────────────────
+    // 내 쪽은 친구에게 실제로 보이는 팀만 센다 — 확인 전이거나 전부 숨기기면 합석도 없다.
     function clubEntry(id) {
         var c = window.findClub ? window.findClub(id) : null;
         return c ? { id: id, events: scheduleEvents([{ name: c.name || '', schedule: c.schedule || '' }]) } : null;
@@ -257,7 +257,7 @@
         return buildSharedLunchbox(p.bookmarks, p.customTeams, p.friend_hidden, false).teams
             .map(clubEntry).filter(Boolean);
     };
-    // 친구 한 명과의 이번 주 겸상 { n, tier, overlaps }. 친구 도시락은 캐시(loadFriendLunchbox)에서.
+    // 친구 한 명과의 이번 주 합석 { n, tier, overlaps }. 친구 도시락은 캐시(loadFriendLunchbox)에서.
     window.friendMeal = function (other) {
         var r = window.peekFriendLunchbox(other);
         if (!r || r.status !== 'ok') return { n: 0, tier: 0, overlaps: [] };
@@ -267,7 +267,7 @@
     };
 
     // ── 겹쳐 보기 식단표 (DOM) ──────────────────────────────────
-    // 친구 칸은 도시락 색으로 채우고, 내 칸은 점선, 겸상 칸은 금빛으로 맨 위에 얹는다.
+    // 친구 칸은 도시락 색으로 채우고, 내 칸은 점선, 합석 칸은 금빛으로 맨 위에 얹는다.
     var FILL = ['#FDE293', '#FABD7B', '#B3D099', '#EB9E88', '#C68ED3'];
     var RAIL = ['#FBC02D', '#F57C00', '#689F38', '#D84315', '#8E24AA'];
     var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
