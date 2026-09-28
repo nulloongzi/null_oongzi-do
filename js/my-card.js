@@ -482,20 +482,48 @@
         return c.toDataURL('image/png');
     };
 
+    // ── 포장하기 미리보기 + 형태 칩 ──────────────────────────────
+    // 예전엔 confirm() 으로 골랐다([확인]=피드 / [취소]=스토리) — 무엇이 나올지 보기 전에
+    // 골라야 했고, 취소가 곧 선택이라 헷갈렸다. 앱(share_image_screen)처럼 미리보기 위에
+    // 칩 두 개를 두고, 누르면 그 자리에서 다시 그린다. 기본은 앱과 같은 피드형.
+    var shapeRenderSeq = 0;
+
+    function setShapeChips(mode) {
+        var row = document.getElementById('previewShape');
+        if (!row) return;
+        row.hidden = false;
+        var chips = row.querySelectorAll('.chip');
+        for (var i = 0; i < chips.length; i++) {
+            var on = chips[i].getAttribute('data-shape') === mode;
+            chips[i].classList.toggle('selected', on);
+            chips[i].setAttribute('aria-checked', on ? 'true' : 'false');
+        }
+    }
+
     window.showShareOptions = function () {
         if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
-        // confirm: 확인=피드형(식단표 포함) / 취소=스토리형
-        window.generateShareImage(confirm(window.t('sh_pick_shape')) ? 'feed' : 'story');
+        window.generateShareImage('feed');
+    };
+
+    window.selectMyCardShape = function (mode) {
+        window.generateShareImage(mode === 'story' ? 'story' : 'feed');
     };
 
     window.generateShareImage = async function (mode) {
+        mode = mode === 'story' ? 'story' : 'feed';
+        var seq = ++shapeRenderSeq;
+        var box = document.getElementById('previewImgBox');
         try {
             if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
+            setShapeChips(mode);
+            if (box) box.classList.add('is-loading');
             var url = await window.renderMyCard(window.buildMyCardData(), mode === 'feed');
-            var box = document.getElementById('previewImgBox');
+            // 칩을 빠르게 번갈아 누르면 늦게 끝난 렌더가 최신 선택을 덮는다 — 마지막 것만 쓴다.
+            if (seq !== shapeRenderSeq) return;
             box.innerHTML = '';
             var img = document.createElement('img');
             img.src = url;
+            img.alt = window.t(mode === 'feed' ? 'mc_mode_feed' : 'mc_mode_story');
             box.appendChild(img);
             var overlay = document.getElementById('profileOverlay');
             if (overlay) overlay.style.display = 'none';
@@ -503,6 +531,8 @@
         } catch (e) {
             console.error(e);
             alert((window.t('sh_run_fail') || '') + (e && e.message ? e.message : e));
+        } finally {
+            if (box && seq === shapeRenderSeq) box.classList.remove('is-loading');
         }
     };
 })();

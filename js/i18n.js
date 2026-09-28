@@ -159,7 +159,9 @@
         lb_remove_confirm: { ko: '이 반찬을 도시락에서 뺄까요?', en: 'Take this dish out of your lunchbox?' },
 
         // 공유
-        sh_pick_shape: { ko: '📸 저장할 모양을 선택해주세요!\n\n[확인] = 🍱 피드용 (네임카드+도시락+식단표)\n[취소] = 📱 스토리용 (네임카드+도시락)', en: '📸 Choose a layout to save!\n\n[OK] = 🍱 Feed (name card + lunchbox + meal plan)\n[Cancel] = 📱 Story (name card + lunchbox)' },
+        // 포장 형태 칩 — 앱 share_mode_feed / share_mode_story 와 같은 문구
+        mc_mode_feed: { ko: '피드형 (식단표 포함)', en: 'Feed (with schedule)' },
+        mc_mode_story: { ko: '스토리형', en: 'Story' },
         sh_login_required: { ko: '로그인이 필요합니다.', en: 'Please log in first.' },
         sh_weekly_plan: { ko: '📅 주간 식단표', en: '📅 Weekly menu' },
         sh_error: { ko: '오류 발생: ', en: 'Error: ' },

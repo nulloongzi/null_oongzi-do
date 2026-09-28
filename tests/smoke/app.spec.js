@@ -327,3 +327,36 @@ test('공유 카드: 긴 내용도 QR 스텁을 덮지 않는다 (두 규격, �
     });
     for (const r of out) expect(r.cardBottom, r.f).toBeLessThanOrEqual(r.limit + 0.01);
 });
+
+// 포장하기: confirm() 대신 미리보기 위 형태 칩(앱 share_image_screen 과 같은 두 칸).
+// 기본 피드형(3:4) → 스토리형 칩을 누르면 그 자리에서 9:16 으로 다시 그린다.
+test('포장하기: 형태 칩으로 피드(3:4) ↔ 스토리(9:16)를 바꾼다', async ({ page }) => {
+    await page.goto('/');
+    let dialogs = 0;
+    page.on('dialog', (d) => { dialogs++; d.dismiss(); });
+    await page.evaluate(() => {
+        window.currentProfileData = { full_nickname: '현미밥-a3z', nickname: '현미밥', bookmarks: [null, null, null, null, null] };
+        window.findClub = () => null;
+        window.showShareOptions();
+    });
+    const shape = page.locator('#previewShape');
+    await expect(shape).toBeVisible();
+    await expect(shape.locator('[data-shape="feed"]')).toHaveClass(/selected/);
+    const size = () => page.evaluate(() => new Promise((res) => {
+        const i = document.querySelector('#previewImgBox img');
+        const done = () => res([i.naturalWidth, i.naturalHeight]);
+        if (i.complete && i.naturalWidth) done(); else i.onload = done;
+    }));
+    await expect(page.locator('#previewImgBox img')).toHaveCount(1);
+    expect(await size()).toEqual([1080, 1440]);
+
+    await shape.locator('[data-shape="story"]').click();
+    await expect(shape.locator('[data-shape="story"]')).toHaveClass(/selected/);
+    await expect(shape.locator('[data-shape="feed"]')).not.toHaveClass(/selected/);
+    await expect.poll(size).toEqual([1080, 1920]);
+    expect(dialogs).toBe(0);                            // confirm 창이 뜨지 않는다
+
+    // 닫으면 칩도 숨는다 — 팀·픽업 카드 미리보기에는 형태 선택이 없다
+    await page.evaluate(() => window.closePreview());
+    await expect(shape).toBeHidden();
+});

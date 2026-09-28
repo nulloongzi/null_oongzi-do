@@ -7,9 +7,16 @@
 // 레이아웃 박스를 바꾸지 않아 배치가 어긋나고 빈 칸 안내문구까지 그대로 나갔다.
 // showShareOptions / generateShareImage 는 my-card.js 에서 정의한다.
 
+// 포장 형태 칩(내 카드 전용)을 숨긴다. 팀·픽업 카드 미리보기엔 형태 선택이 없다.
+function hidePreviewShape() {
+    var row = document.getElementById('previewShape');
+    if (row) row.hidden = true;
+}
+
 window.closePreview = function () {
     var overlay = document.getElementById('previewOverlay');
     overlay.style.display = 'none';
+    hidePreviewShape();
 
     // 메모리 절약을 위해 기존 이미지 삭제
     document.getElementById('previewImgBox').innerHTML = "";
@@ -727,6 +734,7 @@ function showStoryCardPreview(dataUrl) {
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         return;
     }
+    hidePreviewShape();
     previewBox.innerHTML = '';
     var img = document.createElement('img');
     img.src = dataUrl;
