@@ -277,7 +277,7 @@ test('포장하기: 두 규격이 정확한 크기로 렌더된다', async ({ pa
     });
 
     expect(out.story).toEqual([1080, 1920]);            // 9:16
-    expect(out.feed).toEqual([1080, 1350]);             // 4:5 — 인스타 피드 최대 세로
+    expect(out.feed).toEqual([1080, 1440]);             // 3:4 — 인스타 피드·그리드(2025~)
     // 슬롯 순서는 화면 UI와 같다: 0=밥 1=국 2~4=반찬
     expect(out.slots[0]).toBe('GVT 배구클럽');
     expect(out.slots[2]).toBe('월요 리시브반');
@@ -351,4 +351,57 @@ test('밥친구: 로그인 전엔 한 장, 로그인하면 두 장 + 받은 신�
     // 다시 열면 첫 장부터
     await page.evaluate(() => { window.toggleProfileCard(); window.toggleProfileCard(); });
     await expect(dots.nth(0)).toHaveClass(/on/);
+});
+
+// 공유 카드: 실제 폰트로 측정해도(단위 테스트는 mock 측정) 아주 긴 내용이 QR 스텁을 덮지 않는다.
+// 칩이 줄 예산 밖에 있어서 태그가 많으면 넘치던 적이 있다 — 앱 테스트가 먼저 잡았다.
+test('공유 카드: 긴 내용도 QR 스텁을 덮지 않는다 (두 규격, 실측)', async ({ page }) => {
+    await page.goto('/');
+    const out = await page.evaluate(async () => {
+        await document.fonts.ready;
+        const long = {
+            title: '가'.repeat(120), url: 'https://do.nulloongzi.com/?spot=x',
+            tags: Array.from({ length: 12 }, (_, i) => ({ t: '태그' + i + ' 가나다라마바사' })),
+            thisWeek: '나'.repeat(300), schedule: '다'.repeat(300), fee: '라'.repeat(300),
+            venue: '마'.repeat(100), address: '서울 송파구 ' + '바'.repeat(200)
+        };
+        return ['story', 'feed'].map((f) => {
+            const L = window.spotCardLayout(long, f);
+            return { f, cardBottom: L.card.y + L.card.h, limit: L.stubTop - window.SHARE_CARD.GAP };
+        });
+    });
+    for (const r of out) expect(r.cardBottom, r.f).toBeLessThanOrEqual(r.limit + 0.01);
+});
+
+// 포장하기: confirm() 대신 미리보기 위 형태 칩(앱 share_image_screen 과 같은 두 칸).
+// 기본 피드형(3:4) → 스토리형 칩을 누르면 그 자리에서 9:16 으로 다시 그린다.
+test('포장하기: 형태 칩으로 피드(3:4) ↔ 스토리(9:16)를 바꾼다', async ({ page }) => {
+    await page.goto('/');
+    let dialogs = 0;
+    page.on('dialog', (d) => { dialogs++; d.dismiss(); });
+    await page.evaluate(() => {
+        window.currentProfileData = { full_nickname: '현미밥-a3z', nickname: '현미밥', bookmarks: [null, null, null, null, null] };
+        window.findClub = () => null;
+        window.showShareOptions();
+    });
+    const shape = page.locator('#previewShape');
+    await expect(shape).toBeVisible();
+    await expect(shape.locator('[data-shape="feed"]')).toHaveClass(/selected/);
+    const size = () => page.evaluate(() => new Promise((res) => {
+        const i = document.querySelector('#previewImgBox img');
+        const done = () => res([i.naturalWidth, i.naturalHeight]);
+        if (i.complete && i.naturalWidth) done(); else i.onload = done;
+    }));
+    await expect(page.locator('#previewImgBox img')).toHaveCount(1);
+    expect(await size()).toEqual([1080, 1440]);
+
+    await shape.locator('[data-shape="story"]').click();
+    await expect(shape.locator('[data-shape="story"]')).toHaveClass(/selected/);
+    await expect(shape.locator('[data-shape="feed"]')).not.toHaveClass(/selected/);
+    await expect.poll(size).toEqual([1080, 1920]);
+    expect(dialogs).toBe(0);                            // confirm 창이 뜨지 않는다
+
+    // 닫으면 칩도 숨는다 — 팀·픽업 카드 미리보기에는 형태 선택이 없다
+    await page.evaluate(() => window.closePreview());
+    await expect(shape).toBeHidden();
 });

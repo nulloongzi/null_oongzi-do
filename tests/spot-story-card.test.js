@@ -238,3 +238,67 @@ describe('동호회 스토리 카드 (공용 generateStoryCard)', () => {
         await window.shareClubToStory({ name: 'no id' });
     });
 });
+
+// ── 공유 카드 규격 (docs/design-system.md §7) ──
+// 배치는 그리기와 분리돼 있어(spotCardLayout) 좌표로 검증한다. 측정은 mock(글자당 12px)이라
+// 실제 줄바꿈과 다르지만, '어떤 내용이든 QR 스텁을 덮지 않는다'는 불변식은 그대로 선다.
+const LONG = {
+    title: '가'.repeat(120), url: 'https://do.nulloongzi.com/?spot=x',
+    tags: Array.from({ length: 12 }, (_, i) => ({ t: '태그' + i + '가나다라마바사' })),
+    thisWeek: '나'.repeat(300), schedule: '다'.repeat(300), fee: '라'.repeat(300),
+    venue: '마'.repeat(100), address: '서울 송파구 ' + '바'.repeat(200)
+};
+
+describe('공유 카드 규격', () => {
+    test('두 규격: 스토리 9:16(1080×1920) · 피드 3:4(1080×1440)', () => {
+        const { window } = loadShare();
+        const C = window.SHARE_CARD;
+        assert.strictEqual(C.W, 1080);
+        assert.strictEqual(C.FORMATS.story.h, 1920);
+        assert.strictEqual(C.FORMATS.feed.h, 1440);
+        assert.strictEqual(C.W / C.FORMATS.feed.h, 3 / 4);
+    });
+
+    for (const format of ['story', 'feed']) {
+        test(format + ': 아주 긴 내용도 정보 카드가 QR 스텁을 덮지 않는다', () => {
+            const { window } = loadShare();
+            const L = window.spotCardLayout(LONG, format);
+            assert.ok(L.card.y + L.card.h <= L.stubTop - window.SHARE_CARD.GAP + 0.01,
+                'card bottom ' + (L.card.y + L.card.h) + ' > stub ' + L.stubTop);
+            // 머리글 아래 핀 자리는 남는다
+            assert.ok(L.card.y >= L.headerY + window.SHARE_CARD.HEADER_H + 120 - 0.01);
+        });
+
+        test(format + ': 짧은 내용이면 지도가 남는 세로를 먹는다 (빈 띠 없음)', () => {
+            const { window } = loadShare();
+            const L = window.spotCardLayout({ title: '짧은 팀', url: 'u' }, format);
+            // 정보 카드는 스텁 바로 위(간격 GAP)에 붙고, 그 위는 전부 지도다
+            assert.ok(Math.abs(L.card.y + L.card.h - (L.stubTop - window.SHARE_CARD.GAP)) < 0.01);
+            assert.strictEqual(L.map.y, 0);
+            assert.ok(Math.abs(L.map.h - (L.card.y + window.SHARE_CARD.OVERLAP)) < 0.01);
+        });
+
+        test(format + ': QR 타일은 아래 안전영역 안에 있다', () => {
+            const { window } = loadShare();
+            const fmt = window.SHARE_CARD.FORMATS[format];
+            const qrBottom = window.cardStubTop(fmt) + window.SHARE_CARD.STUB_PAD + fmt.qr + 20;
+            assert.ok(qrBottom <= fmt.h - fmt.bottom + 0.01);
+        });
+    }
+
+    test('피드 카드 생성 + 미리보기 폴백 + 계측', async () => {
+        const { window, els, tracks } = loadShare({ withQR: true });
+        const r = await window.shareFeedCard('spot', Object.assign({}, SPOT, { id: 'S1' }));
+        assert.strictEqual(r, 'feed_card');
+        assert.strictEqual(els.previewOverlay.style.display, 'flex');
+        const ev = tracks.find(t => t.name === 'share');
+        assert.ok(ev && ev.params.method === 'feed_card' && ev.params.spot_id === 'S1');
+    });
+
+    test('칩 문구에서 이모지를 뺀다 (캔버스 규칙)', () => {
+        const { window } = loadShare();
+        assert.strictEqual(window.storyStripEmoji('🌱 초보환영'), '초보환영');
+        assert.strictEqual(window.storyStripEmoji('🌐 English OK'), 'English OK');
+        assert.strictEqual(window.storyStripEmoji('반찬1 🍳'), '반찬1');
+    });
+});
