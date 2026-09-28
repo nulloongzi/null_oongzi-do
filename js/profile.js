@@ -48,6 +48,23 @@ window.generateRiceName = function () {
     return { base: selected.name, code: suffix, full: selected.name + "-" + suffix, color: selected.color };
 };
 
+// 예약 닉네임: 서비스 이름('누룽지'·'Nulloongzi'·'null_oongzi' …)은 공식 계정만 쓴다.
+// 공백·기호·대소문자를 걷어내고 비교한다. firestore.rules isReservedNickname 과 같은 목록 —
+// 실제로 막는 건 룰이고, 여기서는 저장 전에 이유를 알려줄 뿐이다.
+var RESERVED_NICK_RE = /(누룽지|nulloongzi|nuloongzi|nullongzi|nurungji|nurungzi|nuroongzi)/;
+window.isReservedNickname = function (name) {
+    return RESERVED_NICK_RE.test(String(name == null ? '' : name).toLowerCase().replace(/[^a-z0-9가-힣]/g, ''));
+};
+// 예약 닉네임을 쓸 수 있는 계정인가(운영자 또는 official_accounts/{uid}). 룰과 같은 기준.
+window.canUseReservedNickname = async function (user) {
+    if (!user || !window.firebaseDB) return false;
+    if (window.isAdmin) return true;
+    try {
+        var snap = await window.firebaseDoc(window.firebaseDB, 'official_accounts', user.uid).get();
+        return snap.exists;
+    } catch (e) { return false; }
+};
+
 window.checkDuplicateNickname = async function (nickname) {
     if (!window.firebaseDB) return false;
     var usersRef = window.firebaseDB.collection('users');
@@ -116,6 +133,36 @@ window.riceColorOf = function (riceName) {
     var found = riceData.find(function (r) { return r.name === riceName; });
     return found ? found.color : "#fff9c4";
 };
+
+// 밥도감 — 밥 종류 25가지를 모으는 도감. 번호는 riceData 순서, 희귀도는 뽑기 가중치
+// (50 흔함 · 10 드묾 · 1 전설). 밥친구 전체(나 포함)의 밥 종류 수로 상차림 단계를 매긴다.
+// 앱 lib/services/rice_dex.dart 와 같은 표 — 한쪽만 바꾸면 도감 번호가 어긋난다.
+var DEX_STAGES = [{ min: 1, lv: 1 }, { min: 2, lv: 2 }, { min: 6, lv: 3 }, { min: 13, lv: 4 }, { min: 25, lv: 5 }];
+window.riceDex = {
+    total: riceData.length,
+    list: function () {
+        return riceData.map(function (r, i) { return { no: i + 1, name: r.name, color: r.color, rarity: rarityOf(r.weight) }; });
+    },
+    // 밥 이름 → 도감 항목(없으면 null — 운영자 닉네임·옛 닉네임 등)
+    info: function (name) {
+        for (var i = 0; i < riceData.length; i++) {
+            if (riceData[i].name === name) return { no: i + 1, name: name, color: riceData[i].color, rarity: rarityOf(riceData[i].weight) };
+        }
+        return null;
+    },
+    // 닉네임("현미밥-a3k") → 밥 이름("현미밥")
+    riceOf: function (nickname) { return String(nickname || '').split('-')[0]; },
+    // 모은 종류 수 → { lv: 1~5, next: 다음 단계 lv | 0, need: 다음 단계까지 남은 종류 수 }
+    stage: function (n) {
+        var lv = 0, next = 0, need = 0;
+        for (var i = 0; i < DEX_STAGES.length; i++) {
+            if (n >= DEX_STAGES[i].min) lv = DEX_STAGES[i].lv;
+            else { next = DEX_STAGES[i].lv; need = DEX_STAGES[i].min - n; break; }
+        }
+        return { lv: lv, next: next, need: need };
+    }
+};
+function rarityOf(w) { return w >= 50 ? 'common' : (w >= 10 ? 'rare' : 'legend'); }
 
 window.renderProfileCard = function () {
     if (!window.currentProfileData) return;
@@ -188,6 +235,10 @@ window.editNickname = async function () {
             return;
         }
         try {
+            if (window.isReservedNickname(newName) && !(await window.canUseReservedNickname(window.currentUser))) {
+                alert(window.t('nickname_reserved'));
+                return;
+            }
             var isDup = await window.checkDuplicateNickname(newName);
             if (isDup) { alert("이미 누군가 사용 중인 이름입니다."); return; }
             var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
@@ -203,6 +254,8 @@ window.toggleProfileCard = function () {
     var overlay = document.getElementById('profileOverlay');
     var closing = overlay.style.display === 'flex';
     overlay.style.display = closing ? 'none' : 'flex';
+    // 열 때마다 첫 장(내 카드)부터 — 밥친구 장은 옆으로 넘겨서 연다 (js/friends.js)
+    if (!closing && window.resetProfilePager) window.resetProfilePager();
     // 로그인 게이트 상태에서 로그인 없이 닫으면: 작성 중이던 등록 폼을 복원하고 대기 해제
     if (closing && window._regResumePending) {
         window._regResumePending = false;

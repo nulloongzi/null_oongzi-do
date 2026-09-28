@@ -267,6 +267,31 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── 예약 닉네임 ──────────────────────────────────────────────
+    // '누룽지'·'Nulloongzi'·'null_oongzi' 같은 서비스 이름은 공식 계정만 쓴다 — 아무나 쓰면
+    // 운영자인 척할 수 있다. 공백·기호·대소문자를 걷어내고 비교해서 '누 룽 지', 'Null_Oongzi',
+    // 'NULL-oongzi' 도 걸린다. js/profile.js isReservedNickname · 앱 reservedNickname() 과
+    // 같은 목록이어야 한다(tests/reserved-nickname.test.js 가 대조한다).
+    function isReservedNickname(s) {
+      return s.lower().replace('[^a-z0-9가-힣]', '')
+               .matches('.*(누룽지|nulloongzi|nuloongzi|nullongzi|nurungji|nurungzi|nuroongzi).*');
+    }
+    // 예약 닉네임을 쓸 수 있는 계정: 운영자(admins) 또는 공식 계정 목록(official_accounts).
+    // 부계정을 admins 에 넣으면 팀 삭제 같은 운영 권한까지 생기므로 목록을 나눴다.
+    function canUseReservedNickname() {
+      return isAdmin()
+             || exists(/databases/$(database)/documents/official_accounts/$(request.auth.uid));
+    }
+    // 이 필드를 새로 쓰거나 바꿀 때만 본다 — 이미 쓰던 이름은 그대로 두고, 다른 필드를 고치는
+    // 쓰기(색상 등)도 막지 않는다.
+    function nicknameFieldOk(field) {
+      return !(field in request.resource.data)
+             || (resource != null && field in resource.data
+                 && request.resource.data[field] == resource.data[field])
+             || (request.resource.data[field] is string
+                 && (!isReservedNickname(request.resource.data[field]) || canUseReservedNickname()));
+    }
+
     // users: 공개 프로필 (닉네임/색상). email·bookmarks·customTeams는
     // private 서브컬렉션으로 분리하여 PIPA 위험(이메일 공개 덤프) 차단.
     match /users/{userId} {
@@ -277,7 +302,17 @@ service cloud.firestore {
                     && request.auth.uid == userId
                     && request.resource.data.keys().hasOnly([
                          'nickname', 'suffix', 'full_nickname', 'color', 'created_at'
-                       ]);
+                       ])
+                    && nicknameFieldOk('full_nickname')
+                    && nicknameFieldOk('nickname');
+    }
+
+    // official_accounts: 예약 닉네임을 쓸 수 있는 공식 계정(운영자 부계정 등).
+    // admins 와 같은 모양 — 본인 uid get 만, 쓰기는 콘솔/admin SDK 에서만.
+    match /official_accounts/{userId} {
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list: if false;
+      allow write: if false;
     }
 
     // users 비공개 프로필: 본인만 읽기/쓰기
@@ -348,6 +383,104 @@ service cloud.firestore {
     match /club_claim_requests/{requestId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    // ── 밥친구 ─────────────────────────────────────────────────────
+    // 운동 시간표는 사실상 '언제 어디에 있는지'라서, 친구는 서로 수락해야 맺어지고
+    // 찾는 길은 초대코드 하나뿐이다(밥이름 검색 없음). 익명 인증(무로그인 픽업 등록용)은 못 쓴다.
+    function isMember() {
+      return request.auth != null
+             && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+    }
+
+    // invite_codes/{CODE}: 초대코드 → 주인 uid.
+    //   · 코드를 알아야 신청할 수 있다 — list 는 막아 코드 목록을 긁어 가지 못하게.
+    //   · 6자, 헷갈리는 0·O·1·I 는 뺀 32자. 새 코드를 받으면 옛 코드 문서를 지운다(즉시 무효).
+    match /invite_codes/{code} {
+      allow get: if isMember();
+      allow list: if false;
+      allow create: if isMember()
+                    && code.matches('^[A-HJ-NP-Z2-9]{6}$')
+                    && request.resource.data.keys().hasOnly(['uid', 'created_at'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.created_at == request.time;
+      allow update: if false;
+      allow delete: if isMember() && resource.data.uid == request.auth.uid;
+    }
+
+    // friendships/{작은uid_큰uid}: 신청과 친구 관계를 한 문서로.
+    //   · 문서 id 가 두 uid 라 쌍마다 하나 — 중복 신청이 생기지 않는다.
+    //   · 신청(create)은 상대의 **현재** 초대코드를 들고 와야 한다. uid 만 알아서는 못 건다.
+    //   · 수락은 받은 사람만 pending → accepted 로. 다른 필드는 못 바꾼다.
+    //   · 거절·취소·끊기는 모두 삭제. 둘 중 누구든 조용히 지울 수 있다(상대에게 알리지 않음).
+    function friendPairOk(pairId, d) {
+      return d.members is list && d.members.size() == 2
+             && d.members[0] < d.members[1]
+             && pairId == d.members[0] + '_' + d.members[1];
+    }
+
+    match /friendships/{pairId} {
+      // get 은 id 에 내 uid 가 들어 있으면 연다 — 없는 문서인지 확인할 수 있어야 신청 전에
+      // '이미 신청했나'를 본다. 남의 쌍은 id 를 알아도 못 본다.
+      allow get: if isMember() && request.auth.uid in pairId.split('_');
+      allow list: if isMember() && request.auth.uid in resource.data.members;
+
+      allow create: if isMember()
+                    && friendPairOk(pairId, request.resource.data)
+                    && request.resource.data.keys().hasOnly([
+                         'members', 'requested_by', 'requested_to', 'status', 'code', 'created_at'
+                       ])
+                    && request.resource.data.requested_by == request.auth.uid
+                    && request.auth.uid in request.resource.data.members
+                    && request.resource.data.requested_to in request.resource.data.members
+                    && request.resource.data.requested_to != request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.created_at == request.time
+                    && request.resource.data.code is string
+                    && exists(/databases/$(database)/documents/invite_codes/$(request.resource.data.code))
+                    && get(/databases/$(database)/documents/invite_codes/$(request.resource.data.code)).data.uid
+                         == request.resource.data.requested_to;
+
+      allow update: if isMember()
+                    && resource.data.status == 'pending'
+                    && request.auth.uid == resource.data.requested_to
+                    && request.resource.data.status == 'accepted'
+                    && request.resource.data.accepted_at == request.time
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'accepted_at']);
+
+      allow delete: if isMember() && request.auth.uid in resource.data.members;
+    }
+
+    // users/{uid}/shared/lunchbox: 밥친구에게 보이는 도시락 사본(2단계).
+    //   · 비공개 도시락(private/profile)을 친구에게 여는 대신, 보이기로 켠 팀만 담은 사본을 둔다.
+    //     숨긴 팀은 처음부터 여기에 쓰지 않는다 — 받는 쪽 화면에서 가리는 게 아니라 데이터가 안 간다.
+    //   · 읽기는 본인과 **수락된** 밥친구만. 신청 중이거나 끊긴 사이는 못 본다.
+    //   · 쓰기는 본인만, 모양·크기를 제한한다(도시락은 5칸).
+    function isAcceptedFriend(other) {
+      let me = request.auth.uid;
+      let pid = me < other ? me + '_' + other : other + '_' + me;
+      let path = /databases/$(database)/documents/friendships/$(pid);
+      return exists(path) && get(path).data.status == 'accepted';
+    }
+
+    function sharedLunchboxValid() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['teams', 'custom', 'hide_all', 'updated_at'])
+          && d.teams is list && d.teams.size() <= 5
+          && d.custom is list && d.custom.size() <= 5
+          && d.hide_all is bool
+          && d.updated_at == request.time;
+    }
+
+    match /users/{userId}/shared/{docId} {
+      allow read: if isMember()
+                  && docId == 'lunchbox'
+                  && (request.auth.uid == userId || isAcceptedFriend(userId));
+      allow write: if isMember()
+                   && request.auth.uid == userId
+                   && docId == 'lunchbox'
+                   && (request.method == 'delete' || sharedLunchboxValid());
     }
 
     // 명시되지 않은 컬렉션은 기본적으로 차단 (catch-all 제거)

@@ -27,9 +27,12 @@
         try { return localStorage.getItem(LS_LAST_PROVIDER) || ''; } catch (e) { return ''; }
     };
 
-    // 리다이렉트 URI: 현재 origin+path(쿼리/해시 제외). 카카오/네이버 콘솔에 등록 필요.
+    // 리다이렉트 URI: 로그인 복귀 전용 주소(auth/callback/). 카카오/네이버 콘솔에 등록 필요.
+    // 루트(/)로 받으면 안 된다 — 앱이 루트를 App Link 로 열어서, 안드로이드에서는 제공자 화면에서
+    // 돌아오는 순간 앱이 열리고 웹 로그인이 끊긴다. 복귀 페이지는 쿼리를 들고 루트로 넘기고,
+    // 토큰 교환(카카오)은 authorize 때와 같은 이 주소를 redirect_uri 로 보낸다.
     function redirectUri() {
-        return window.location.origin + window.location.pathname;
+        return window.location.origin + '/auth/callback/';
     }
 
     function randToken() {
@@ -77,9 +80,10 @@
         window.location.href = url;
     };
 
+    // 처리 후 주소창에서 ?code=&state= 를 지운다(지금 페이지 경로 그대로 — 복귀 주소가 아니라).
     function cleanUrl() {
         try {
-            window.history.replaceState({}, document.title, redirectUri());
+            window.history.replaceState({}, document.title, window.location.pathname);
         } catch (e) {}
     }
 

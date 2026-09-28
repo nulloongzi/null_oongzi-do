@@ -304,6 +304,63 @@ describe('Phase 4: users 공개/비공개 분리 룰', () => {
     });
 });
 
+describe('예약 닉네임 — 누룽지·Nulloongzi·null_oongzi 는 공식 계정만', () => {
+    const USER = (uid, full, nick) => ({
+        nickname: nick || '현미밥', suffix: 'r1c', full_nickname: full, color: '#fac710', created_at: new Date()
+    });
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('official_accounts').doc('official-uid').set({ note: '운영자 부계정' });
+            await db.collection('users').doc('plain-uid').set(USER('plain-uid', '현미밥-p1a'));
+            await db.collection('users').doc('legacy-uid').set(USER('legacy-uid', '누룽지2'));   // 규칙 전부터 쓰던 이름
+            await db.collection('users').doc('admin-uid').set(USER('admin-uid', '현미밥-adm'));
+            await db.collection('users').doc('official-uid').set(USER('official-uid', '현미밥-off'));
+        });
+    });
+    const rename = (uid, name) => testEnv.authenticatedContext(uid).firestore()
+        .collection('users').doc(uid).update({ full_nickname: name });
+
+    for (const name of ['누룽지', '누룽지2', '누 룽 지', '진짜누룽지도', 'Nulloongzi', 'NULLOONGZI', 'null_oongzi', 'Null-Oongzi', 'nurungji', 'official nuloongzi']) {
+        test(`일반 계정은 '${name}' 으로 못 바꾼다`, async () => { await assertFails(rename('plain-uid', name)); });
+    }
+    test('일반 계정도 보통 이름은 바꿀 수 있다', async () => {
+        await assertSucceeds(rename('plain-uid', '배구하는현미'));
+        await assertSucceeds(rename('plain-uid', '누룽'));   // 부분 일치가 아니면 통과
+    });
+    test('새 프로필 생성(set)에서도 예약 닉네임은 거부', async () => {
+        const db = testEnv.authenticatedContext('new-uid').firestore();
+        await assertFails(db.collection('users').doc('new-uid').set(USER('new-uid', 'nulloongzi-abc')));
+        await assertFails(db.collection('users').doc('new-uid').set(USER('new-uid', '현미밥-abc', '누룽지')));
+        await assertSucceeds(db.collection('users').doc('new-uid').set(USER('new-uid', '현미밥-abc')));
+    });
+    test('운영자(admins)와 공식 계정(official_accounts)은 쓸 수 있다', async () => {
+        await assertSucceeds(rename('admin-uid', '누룽지'));
+        await assertSucceeds(rename('official-uid', '누룽지 부계'));
+    });
+    test('이미 쓰던 예약 닉네임은 그대로 두고 다른 필드는 고칠 수 있다', async () => {
+        const db = testEnv.authenticatedContext('legacy-uid').firestore();
+        await assertSucceeds(db.collection('users').doc('legacy-uid').update({ color: '#ffffff' }));
+        await assertSucceeds(db.collection('users').doc('legacy-uid').set(USER('legacy-uid', '누룽지2'), { merge: true }));
+        // 다른 예약 이름으로 바꾸는 건 안 된다
+        await assertFails(rename('legacy-uid', '누룽지3'));
+        await assertSucceeds(rename('legacy-uid', '평범한밥'));
+    });
+    test('문자열이 아닌 닉네임은 거부', async () => {
+        await assertFails(testEnv.authenticatedContext('plain-uid').firestore()
+            .collection('users').doc('plain-uid').update({ full_nickname: 123 }));
+    });
+    test('official_accounts: 본인 get 만, 목록·쓰기 불가', async () => {
+        const me = testEnv.authenticatedContext('official-uid').firestore();
+        await assertSucceeds(me.collection('official_accounts').doc('official-uid').get());
+        await assertFails(me.collection('official_accounts').get());
+        await assertFails(testEnv.authenticatedContext('plain-uid').firestore()
+            .collection('official_accounts').doc('official-uid').get());
+        await assertFails(testEnv.authenticatedContext('plain-uid').firestore()
+            .collection('official_accounts').doc('plain-uid').set({ note: 'me too' }));
+    });
+});
+
 describe('Phase 4: admins list 차단 + 본인 get만 허용', () => {
     test('PR-5: 비관리자도 자기 uid에 대한 admins/get 통과 (false 반환)', async () => {
         const ctx = testEnv.authenticatedContext('owner-uid');
@@ -812,6 +869,169 @@ describe('위치 공개 수준 — 대략만 고른 팀은 정확한 좌표를 �
             });
         });
         await assertFails(as('admin-uid').collection('clubs').doc('loc-2').update({ coordinates: EXACT }));
+    });
+});
+
+describe('밥친구 — 초대코드 · 신청 · 수락', () => {
+    const A = 'fa-uid', B = 'fb-uid', C = 'fc-uid';
+    const PAIR = [A, B].sort().join('_');
+    const as = (uid) => testEnv.authenticatedContext(uid).firestore();
+    const anon = () => testEnv.authenticatedContext('anon-uid', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+    // 룰이 created_at == request.time 을 요구한다 → 서버 시각으로 써야 통과
+    const ts = () => require('firebase/compat/app').default.firestore.FieldValue.serverTimestamp();
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('invite_codes').doc('BBBB22').set({ uid: B, created_at: new Date() });
+            await db.collection('invite_codes').doc('CCCC33').set({ uid: C, created_at: new Date() });
+            // 이미 친구인 쌍 (A-C)
+            const ac = [A, C].sort();
+            await db.collection('friendships').doc(ac.join('_')).set({
+                members: ac, requested_by: A, requested_to: C, status: 'accepted',
+                code: 'CCCC33', created_at: new Date(), accepted_at: new Date()
+            });
+        });
+    });
+
+    function req(from, to, code, over = {}) {
+        const m = [from, to].sort();
+        return Object.assign({
+            members: m, requested_by: from, requested_to: to, status: 'pending', code, created_at: ts()
+        }, over);
+    }
+
+    // ── 초대코드 ──
+    test('내 코드 만들기: 형식 맞고 uid=나 → 통과', async () => {
+        await assertSucceeds(as(A).collection('invite_codes').doc('AAAA22').set({ uid: A, created_at: ts() }));
+    });
+    test('남의 uid 로 코드 만들기 거부 (남 이름으로 신청을 받게 하는 위조)', async () => {
+        await assertFails(as(A).collection('invite_codes').doc('AAAA23').set({ uid: B, created_at: ts() }));
+    });
+    test('형식 밖 코드 거부 (소문자·0·O·1·I·길이)', async () => {
+        for (const bad of ['aaaa22', 'AAAA0O', 'AAAA1I', 'AAAAA', 'AAAAAAA']) {
+            await assertFails(as(A).collection('invite_codes').doc(bad).set({ uid: A, created_at: ts() }));
+        }
+    });
+    test('이미 있는 코드는 덮어쓸 수 없다 (가로채기 방지)', async () => {
+        await assertFails(as(A).collection('invite_codes').doc('BBBB22').set({ uid: A, created_at: ts() }));
+    });
+    test('코드로 주인 찾기는 되고, 목록 긁기는 안 된다', async () => {
+        await assertSucceeds(as(A).collection('invite_codes').doc('BBBB22').get());
+        await assertFails(as(A).collection('invite_codes').get());
+    });
+    test('익명 사용자는 코드를 못 본다', async () => {
+        await assertFails(anon().collection('invite_codes').doc('BBBB22').get());
+    });
+    test('코드 삭제는 주인만', async () => {
+        await assertFails(as(A).collection('invite_codes').doc('CCCC33').delete());
+    });
+
+    // ── 신청 ──
+    test('상대의 현재 코드를 들고 신청 → 통과', async () => {
+        await assertSucceeds(as(A).collection('friendships').doc(PAIR).set(req(A, B, 'BBBB22')));
+    });
+    test('코드가 상대 것이 아니면 거부 (uid 만 알아서는 못 건다)', async () => {
+        const ab2 = [A, 'fd-uid'].sort().join('_');
+        await assertFails(as(A).collection('friendships').doc(ab2).set(req(A, 'fd-uid', 'BBBB22')));
+    });
+    test('남을 신청자로 꾸미기 거부', async () => {
+        const bc = [B, C].sort().join('_');
+        await assertFails(as(A).collection('friendships').doc(bc).set(req(B, C, 'CCCC33')));
+    });
+    test('처음부터 accepted 로 만들기 거부', async () => {
+        const ax = [A, 'fx-uid'].sort().join('_');
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('invite_codes').doc('XXXX44').set({ uid: 'fx-uid', created_at: new Date() });
+        });
+        await assertFails(as(A).collection('friendships').doc(ax).set(req(A, 'fx-uid', 'XXXX44', { status: 'accepted' })));
+    });
+    test('문서 id 가 쌍과 다르면 거부', async () => {
+        await assertFails(as(A).collection('friendships').doc('wrong_id').set(req(A, B, 'BBBB22')));
+    });
+    test('익명 사용자는 신청 못 한다', async () => {
+        const an = ['anon-uid', B].sort().join('_');
+        await assertFails(anon().collection('friendships').doc(an).set(req('anon-uid', B, 'BBBB22')));
+    });
+
+    // ── 읽기 ──
+    test('당사자는 읽고, 제3자는 못 읽는다', async () => {
+        await assertSucceeds(as(B).collection('friendships').doc(PAIR).get());
+        await assertFails(as(C).collection('friendships').doc(PAIR).get());
+    });
+    test('내가 들어간 쌍의 없는 문서는 get 으로 확인할 수 있다', async () => {
+        const ae = [A, 'fe-uid'].sort().join('_');
+        await assertSucceeds(as(A).collection('friendships').doc(ae).get());
+    });
+    test('내 목록 조회(array-contains 나)는 되고, 전체 목록은 안 된다', async () => {
+        await assertSucceeds(as(A).collection('friendships').where('members', 'array-contains', A).get());
+        await assertFails(as(A).collection('friendships').get());
+    });
+
+    // ── 수락 ──
+    test('신청한 쪽은 스스로 수락 못 한다', async () => {
+        await assertFails(as(A).collection('friendships').doc(PAIR).update({ status: 'accepted', accepted_at: ts() }));
+    });
+    test('받은 쪽이 수락하면서 다른 필드는 못 바꾼다', async () => {
+        await assertFails(as(B).collection('friendships').doc(PAIR).update({ status: 'accepted', accepted_at: ts(), code: 'ZZZZ99' }));
+    });
+    test('받은 쪽 수락 → 통과', async () => {
+        await assertSucceeds(as(B).collection('friendships').doc(PAIR).update({ status: 'accepted', accepted_at: ts() }));
+    });
+    test('수락된 관계를 pending 으로 되돌리기 거부', async () => {
+        await assertFails(as(B).collection('friendships').doc(PAIR).update({ status: 'pending' }));
+    });
+
+    // ── 끊기 ──
+    test('제3자는 끊을 수 없고, 당사자는 조용히 끊는다', async () => {
+        await assertFails(as(C).collection('friendships').doc(PAIR).delete());
+        await assertSucceeds(as(A).collection('friendships').doc(PAIR).delete());
+    });
+});
+
+describe('밥친구 2단계 — 친구에게 보이는 도시락 사본', () => {
+    const A = 'sa-uid', B = 'sb-uid', P = 'sp-uid', X = 'sx-uid';
+    const as = (uid) => testEnv.authenticatedContext(uid).firestore();
+    const ts = () => require('firebase/compat/app').default.firestore.FieldValue.serverTimestamp();
+    const shared = (uid) => (db) => db.collection('users').doc(uid).collection('shared').doc('lunchbox');
+    const good = () => ({ teams: ['club-1', 'club-2'], custom: [{ name: '회사팀', schedule: '수 19:00-21:00' }], hide_all: false, updated_at: ts() });
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            const ab = [A, B].sort(), ap = [A, P].sort();
+            await db.collection('friendships').doc(ab.join('_')).set({ members: ab, requested_by: A, requested_to: B, status: 'accepted', code: 'X', created_at: new Date() });
+            await db.collection('friendships').doc(ap.join('_')).set({ members: ap, requested_by: P, requested_to: A, status: 'pending', code: 'X', created_at: new Date() });
+        });
+    });
+
+    test('본인은 쓰고 읽는다', async () => {
+        await assertSucceeds(shared(A)(as(A)).set(good()));
+        await assertSucceeds(shared(A)(as(A)).get());
+    });
+    test('수락된 밥친구는 읽는다', async () => {
+        await assertSucceeds(shared(A)(as(B)).get());
+    });
+    test('신청 중인 사이·모르는 사람은 못 읽는다', async () => {
+        await assertFails(shared(A)(as(P)).get());
+        await assertFails(shared(A)(as(X)).get());
+    });
+    test('남의 사본은 못 쓴다', async () => {
+        await assertFails(shared(A)(as(B)).set(good()));
+    });
+    test('모양 밖은 거부: 6칸 · 모르는 필드 · 시각 위조', async () => {
+        await assertFails(shared(A)(as(A)).set(Object.assign(good(), { teams: ['1', '2', '3', '4', '5', '6'] })));
+        await assertFails(shared(A)(as(A)).set(Object.assign(good(), { email: 'a@b.c' })));
+        await assertFails(shared(A)(as(A)).set(Object.assign(good(), { updated_at: new Date(0) })));
+    });
+    test('다른 이름의 문서는 못 만든다', async () => {
+        await assertFails(as(A).collection('users').doc(A).collection('shared').doc('other').set(good()));
+    });
+    test('끊으면 더는 못 읽는다', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('friendships').doc([A, B].sort().join('_')).delete();
+        });
+        await assertFails(shared(A)(as(B)).get());
     });
 });
 

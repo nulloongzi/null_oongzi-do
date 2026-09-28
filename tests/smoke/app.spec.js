@@ -250,7 +250,7 @@ test('신고: 인앱 모달이 열리고 사유 없이 보내면 막는다', asy
 // 포장하기 — html2canvas(DOM 복제 + transform:scale) 경로를 canvas 직접 렌더로 갈아탔다.
 // 회귀 지점 셋: 규격이 정확한가, 화면과 같은 도시락 그리드를 쓰는가,
 // 빈 칸에 입력 유도 문구("담아주세요")가 새어 나가지 않는가.
-test('포장하기: 두 규격이 정확한 크기로 렌더된다', async ({ page }) => {
+test('포장하기: 네임카드·식단표 두 장이 9:16 으로 렌더된다', async ({ page }) => {
     await page.goto('/');
 
     const out = await page.evaluate(async () => {
@@ -271,13 +271,15 @@ test('포장하기: 두 규격이 정확한 크기로 렌더된다', async ({ pa
             i.onload = () => res([i.naturalWidth, i.naturalHeight]);
             i.src = url;
         });
-        const story = await sizeOf(await window.renderMyCard(d, false));
-        const feed = await sizeOf(await window.renderMyCard(d, true));
-        return { story, feed, slots: d.slots, events: d.events.length, bg: d.bgColor };
+        const card = await sizeOf(await window.renderMyCard(d, 'card'));
+        const diet = await sizeOf(await window.renderMyCard(d, 'diet'));
+        return { card, diet, slots: d.slots, events: d.events.length, bg: d.bgColor, dex: d.dex.count, no: d.dex.mine.no };
     });
 
-    expect(out.story).toEqual([1080, 1920]);            // 9:16
-    expect(out.feed).toEqual([1080, 1350]);             // 4:5 — 인스타 피드 최대 세로
+    expect(out.card).toEqual([1080, 1920]);             // 9:16 — 둘 다 스토리 규격
+    expect(out.diet).toEqual([1080, 1920]);
+    expect(out.dex).toBe(1);                            // 밥친구 없이 나 혼자 = 혼밥
+    expect(out.no).toBe(1);                             // 현미밥 = 밥도감 No.01
     // 슬롯 순서는 화면 UI와 같다: 0=밥 1=국 2~4=반찬
     expect(out.slots[0]).toBe('GVT 배구클럽');
     expect(out.slots[2]).toBe('월요 리시브반');
@@ -306,4 +308,328 @@ test('포장하기: html2canvas 의존이 없다', async ({ page }) => {
     await page.goto('/');
     const has = await page.evaluate(() => typeof window.html2canvas !== 'undefined');
     expect(has).toBe(false);
+});
+
+// 밥친구(1단계): 🍚 팝업 두 장 + 도트 + 버블 배지. Firebase 없이 상태를 직접 넣어 화면 배선만 본다.
+test('밥친구: 로그인 전엔 한 장, 로그인하면 두 장 + 받은 신청 신호', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => window.toggleProfileCard());
+    // 도트가 숨은(로그아웃) 팝업도 세로 가운데 — auto 마진 가운데 정렬 회귀
+    {
+        const box = await page.locator('#pcPager').boundingBox();
+        const vh = page.viewportSize().height;
+        expect(Math.abs(box.y + box.height / 2 - vh / 2)).toBeLessThan(60);
+    }
+    await expect(page.locator('#pcDots')).toBeHidden();
+    await expect(page.locator('#friendsCard')).toBeHidden();
+    await page.evaluate(() => window.toggleProfileCard());
+
+    await page.evaluate(() => {
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { b: { name: '보리밥-k2', color: '#FFF59D' }, c: { name: '팥밥-q7', color: '#F8BBD0' } };
+        s.incoming = [{ id: 'b_me', other: 'b', doc: { status: 'pending' } }];
+        s.friends = [{ id: 'c_me', other: 'c', doc: { status: 'accepted' } }];
+        window.localStorage.removeItem('nurungji_seen_friend_req');
+        window.renderFriendsPage();
+        window.toggleProfileCard();
+    });
+
+    // 버블 배지 = 받은 신청 수
+    await expect(page.locator('#fabProfile .fab-badge')).toHaveText('1');
+    // 도트 두 개, 첫 장이 켜짐, 둘째 점은 새 소식으로 빛남
+    const dots = page.locator('#pcDots .pc-dot');
+    await expect(page.locator('#pcDots')).toBeVisible();
+    await expect(dots.nth(0)).toHaveClass(/on/);
+    await expect(dots.nth(1)).toHaveClass(/sig/);
+
+    // 둘째 장으로 넘기면 신청·친구가 보이고 신호는 꺼진다
+    await dots.nth(1).click();
+    await expect(page.locator('#friendsCard .fr-req')).toContainText('보리밥-k2');
+    await expect(page.locator('#friendsCard .fr-row')).toContainText('팥밥-q7');
+    await expect(dots.nth(1)).toHaveClass(/on/);
+    await expect(dots.nth(1)).not.toHaveClass(/sig/);
+
+    // 추가 화면: 형식 밖 코드는 바로 안내
+    await page.locator('#friendsCard .fr-add-top').click();
+    await page.locator('#frCodeInput').fill('abc');
+    await page.locator('#friendsCard .fr-form button[type="submit"]').click();
+    await expect(page.locator('#frLookupResult')).toContainText(/6자리|6 letters/);
+
+    // 다시 열면 첫 장부터
+    await page.evaluate(() => { window.toggleProfileCard(); window.toggleProfileCard(); });
+    await expect(dots.nth(0)).toHaveClass(/on/);
+});
+
+// 공유 카드: 실제 폰트로 측정해도(단위 테스트는 mock 측정) 아주 긴 내용이 QR 스텁을 덮지 않는다.
+// 칩이 줄 예산 밖에 있어서 태그가 많으면 넘치던 적이 있다 — 앱 테스트가 먼저 잡았다.
+test('공유 카드: 긴 내용도 QR 스텁을 덮지 않는다 (두 규격, 실측)', async ({ page }) => {
+    await page.goto('/');
+    const out = await page.evaluate(async () => {
+        await document.fonts.ready;
+        const long = {
+            title: '가'.repeat(120), url: 'https://do.nulloongzi.com/?spot=x',
+            tags: Array.from({ length: 12 }, (_, i) => ({ t: '태그' + i + ' 가나다라마바사' })),
+            thisWeek: '나'.repeat(300), schedule: '다'.repeat(300), fee: '라'.repeat(300),
+            venue: '마'.repeat(100), address: '서울 송파구 ' + '바'.repeat(200)
+        };
+        return ['story', 'feed'].map((f) => {
+            const L = window.spotCardLayout(long, f);
+            return { f, cardBottom: L.card.y + L.card.h, limit: L.stubTop - window.SHARE_CARD.GAP };
+        });
+    });
+    for (const r of out) expect(r.cardBottom, r.f).toBeLessThanOrEqual(r.limit + 0.01);
+});
+
+// 포장하기: 미리보기 위 카드 칩(앱 share_image_screen 과 같은 두 칸). 기본은 네임카드,
+// 식단표 칩을 누르면 그 자리에서 다시 그린다. 둘 다 9:16.
+test('포장하기: 카드 칩으로 네임카드 ↔ 식단표를 바꾼다', async ({ page }) => {
+    await page.goto('/');
+    let dialogs = 0;
+    page.on('dialog', (d) => { dialogs++; d.dismiss(); });
+    await page.evaluate(() => {
+        window.currentProfileData = { full_nickname: '현미밥-a3z', nickname: '현미밥', bookmarks: [null, null, null, null, null] };
+        window.findClub = () => null;
+        window.showShareOptions();
+    });
+    const shape = page.locator('#previewShape');
+    await expect(shape).toBeVisible();
+    await expect(shape.locator('[data-shape="card"]')).toHaveClass(/selected/);
+    const src = () => page.evaluate(() => { const i = document.querySelector('#previewImgBox img'); return i ? i.src.length : 0; });
+    const size = () => page.evaluate(() => new Promise((res) => {
+        const i = document.querySelector('#previewImgBox img');
+        const done = () => res([i.naturalWidth, i.naturalHeight]);
+        if (i.complete && i.naturalWidth) done(); else i.onload = done;
+    }));
+    await expect(page.locator('#previewImgBox img')).toHaveCount(1);
+    expect(await size()).toEqual([1080, 1920]);
+    const before = await src();
+
+    await shape.locator('[data-shape="diet"]').click();
+    await expect(shape.locator('[data-shape="diet"]')).toHaveClass(/selected/);
+    await expect(shape.locator('[data-shape="card"]')).not.toHaveClass(/selected/);
+    await expect.poll(src).not.toBe(before);             // 다른 그림으로 다시 그렸다
+    expect(await size()).toEqual([1080, 1920]);
+    expect(dialogs).toBe(0);                             // confirm 창이 뜨지 않는다
+    await expect(page.locator('#previewFriends')).toHaveCount(0);   // '밥친구 포함' 스위치는 없어졌다
+
+    // 닫으면 칩도 숨는다 — 팀·픽업 카드 미리보기에는 형태 선택이 없다
+    await page.evaluate(() => window.closePreview());
+    await expect(shape).toBeHidden();
+});
+
+// 밥친구 2단계: 첫 친구 때 '보일 팀' 확인 → 친구 상세에서 식단표 겹쳐 보기 → 도시락 눈 스위치.
+// Firebase 없이 상태·친구 사본을 직접 넣어 화면 배선만 본다(숨긴 팀이 사본에 안 들어가는 건 단위 테스트).
+test('밥친구 2단계: 보일 팀 확인 · 겹쳐 보기 · 눈 스위치', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentProfileData = {
+            full_nickname: '현미밥-a3k', nickname: '현미밥', created_at: new Date('2026-07-01'),
+            bookmarks: ['t1', 'custom_1', null, null, null],
+            customTeams: { custom_1: { id: 'custom_1', name: '회사팀', schedule: '수 19:00-21:00', isCustom: true } }
+        };
+        const clubs = { t1: { id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00' }, t2: { id: 't2', name: '송파 토요 픽업', schedule: '토 14:00-17:00' } };
+        const orig = window.findClub;
+        window.findClub = (id) => clubs[id] || (window.currentProfileData.customTeams[id]) || (orig && orig(id));
+        window.confirmFriendShare = (hidden) => { window._confirmed = hidden; window.currentProfileData.friend_share_ok = true; window.currentProfileData.friend_hidden = hidden; return Promise.resolve(); };
+        window.setFriendHidden = (id, h) => { window._hid = [id, h]; return Promise.resolve(); };
+        window.loadFriendLunchbox = () => Promise.resolve({ status: 'ok', updatedMs: 1, teams: [{ id: 't2', name: '송파 토요 픽업', schedule: '토 14:00-17:00', slot: 0 }] });
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { c: { name: '팥밥-q7', color: '#F8BBD0' } };
+        s.friends = [{ id: 'c_me', other: 'c', doc: { status: 'accepted' } }];
+        window.updateProfileUI(true);
+        window.renderFriendsPage();
+        window.toggleProfileCard();
+    });
+    await page.locator('#pcDots .pc-dot').nth(1).click();
+
+    // 확인 카드: 도시락 팀이 체크된 채로. 회사팀을 끄고 확인 → 숨긴 목록으로 넘어간다
+    const confirm = page.locator('#friendsCard .fr-confirm');
+    await expect(confirm).toBeVisible();
+    await expect(confirm.locator('input[type=checkbox]')).toHaveCount(2);
+    await confirm.locator('label', { hasText: '회사팀' }).locator('input').uncheck();
+    await confirm.locator('button').click();
+    await expect.poll(() => page.evaluate(() => window._confirmed)).toEqual(['custom_1']);
+    await expect(page.locator('#friendsCard .fr-confirm')).toHaveCount(0);
+    await expect(page.locator('#friendsCard .fr-vis')).toBeVisible();
+
+    // 친구 상세: 친구 도시락 칩 + 겹쳐 보기(친구 칸 채움 · 내 칸 점선)
+    await page.locator('#friendsCard .fr-row', { hasText: '팥밥-q7' }).click();
+    await expect(page.locator('#friendsCard .fr-chip')).toContainText('송파 토요 픽업');
+    await expect(page.locator('#friendsCard .fr-tt-blk.fr')).toHaveCount(1);
+    await expect(page.locator('#friendsCard .fr-tt-blk.me')).toHaveCount(2);   // 토 잠실 + 수 회사팀
+
+    // 도시락 편집: 채운 칸마다 눈 스위치
+    await page.evaluate(() => { window.toggleProfileCard(); window.openLunchbox(); window.toggleEditMode(); });
+    const eyes = page.locator('#lunchboxGrid .lb-eye');
+    await expect(eyes).toHaveCount(2);
+    await eyes.first().click();
+    await expect.poll(() => page.evaluate(() => window._hid)).toEqual(['t1', true]);
+});
+
+test('밥친구 3단계: 합석 줄 · 합석 단계 · 🍚 버블', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentProfileData = {
+            full_nickname: '현미밥-a3k', nickname: '현미밥', created_at: new Date('2026-07-01'),
+            bookmarks: ['t1', 't3', 't4', null, null], customTeams: {},
+            friend_share_ok: true, friend_hidden: ['t4']
+        };
+        const clubs = {
+            t1: { id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00' },
+            t3: { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00' },
+            t4: { id: 't4', name: '숨긴 팀', schedule: '목 20:00-22:00' },
+            t5: { id: 't5', name: '다른 팀', schedule: '토 19:00-22:00' }
+        };
+        const orig = window.findClub;
+        window.findClub = (id) => clubs[id] || (orig && orig(id));
+        const lb = {
+            c: { status: 'ok', updatedMs: 1, teams: ['t1', 't3', 't4'].map((id, i) => ({ id, name: clubs[id].name, schedule: clubs[id].schedule, slot: i })) },
+            d: { status: 'ok', updatedMs: 1, teams: [{ id: 't5', name: '다른 팀', schedule: clubs.t5.schedule, slot: 0 }] }
+        };
+        window.peekFriendLunchbox = (o) => lb[o];
+        window.loadFriendLunchbox = (o) => Promise.resolve(lb[o]);
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { c: { name: '팥밥-q7', color: '#F8BBD0' }, d: { name: '흑미밥-z9', color: '#FFF176' } };
+        s.friends = [
+            { id: 'd_me', other: 'd', doc: { status: 'accepted' } },
+            { id: 'c_me', other: 'c', doc: { status: 'accepted' } }
+        ];
+        window.updateProfileUI(true);
+        window.renderFriendsPage();
+    });
+
+    // 🍚 버블: 처음 합석하게 된 친구(같은 팀 2개 → 한 그릇)가 있으면 단계 색 테두리 + 둘째 도트 신호.
+    // 숨긴 목요일 팀은 세지 않는다. 움직이는 효과(김)는 없다.
+    const fab = page.locator('#fabProfile');
+    await expect(fab).toHaveClass(/fab-warm/);
+    await expect(fab).toHaveClass(/warm-2/);
+    await expect(fab.locator('.fab-steam, i')).toHaveCount(0);
+
+    await page.evaluate(() => window.toggleProfileCard());
+    await expect(page.locator('#pcDots .pc-dot').nth(1)).toHaveClass(/sig/);
+    await page.locator('#pcDots .pc-dot').nth(1).click();
+    // 밥친구 장을 봤으면 알림은 꺼진다 — 같은 친구로는 다시 뜨지 않는다(처음 한 번만)
+    await expect(fab).not.toHaveClass(/fab-warm/);
+    await page.evaluate(() => window.renderFriendsPage());
+    await expect(fab).not.toHaveClass(/fab-warm/);
+    // 이번 주 합석 줄에는 합석하는 친구만, 목록은 합석 많은 순
+    const strip = page.locator('#friendsCard .fr-meal-strip .fr-meal');
+    await expect(strip).toHaveCount(1);
+    await expect(strip.first()).toContainText('팥밥-q7');
+    // 같은 팀 2개(잠실·강동) → 한 그릇: 밥그릇이 2/3 차오른 아바타
+    await expect(strip.first().locator('.fr-av.warm-2 svg clipPath')).toHaveCount(1);
+    // 효과 없이 단계 색 테두리만
+    await expect(strip.first().locator('.fr-steam, .fr-crumb')).toHaveCount(0);
+    const anim = await strip.first().locator('.fr-av').evaluate((e) => window.getComputedStyle(e).animationName);
+    expect(anim).toBe('none');
+    const golden = await page.evaluate(() => window.t('fr_warm_2'));
+    await expect(page.locator('#friendsCard .fr-row').first()).toContainText(golden);
+
+    // 상세: 겹쳐 보기 위에 합석 칸 두 개
+    await page.locator('#friendsCard .fr-row', { hasText: '팥밥-q7' }).click();
+    await expect(page.locator('#friendsCard .fr-tt-blk.gs')).toHaveCount(2);
+    const tag = await page.evaluate(() => window.tf('fr_meal_tier', { tier: window.t('fr_warm_2'), n: 2 }));
+    await expect(page.locator('#friendsCard .fr-warm-tag')).toHaveText(tag);
+
+    // 전부 숨기기로 바꾸면 합석도 없다 (서로 공개한 팀끼리만)
+    await page.evaluate(() => { window.currentProfileData.friend_hide_all = true; window.syncFriendsBadge(); });
+    expect(await page.evaluate(() => window.friendMeal('c').n)).toBe(0);
+    await expect(fab).not.toHaveClass(/fab-warm/);
+});
+// 밥친구 4단계: 포장하기 '밥친구 포함' 스위치. 합석 친구가 없으면 잠기고, 있으면 켜서 다시 그린다.
+// 같은 상태로 친구 상세의 합석 목록(글)도 본다.
+test('밥친구 4단계: 포장하기 밥도감 · 합석 목록', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentProfileData = {
+            full_nickname: '현미밥-a3k', nickname: '현미밥', created_at: new Date('2026-07-01'),
+            bookmarks: ['t1', 't3', null, null, null], customTeams: {}, friend_share_ok: true, friend_hidden: []
+        };
+        const clubs = {
+            t1: { id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00' },
+            t3: { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00' }
+        };
+        const orig = window.findClub;
+        window.findClub = (id) => clubs[id] || (orig && orig(id));
+        window._lb = {};
+        window.peekFriendLunchbox = (o) => window._lb[o];
+        window.loadFriendLunchbox = (o) => Promise.resolve(window._lb[o] || { status: 'none', teams: [] });
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { c: { name: '팥밥-q7', color: '#F8BBD0' }, d: { name: '흑미밥-z9', color: '#FFF176' } };
+        s.friends = [{ id: 'c_me', other: 'c', doc: { status: 'accepted' } }, { id: 'd_me', other: 'd', doc: { status: 'accepted' } }];
+        window.updateProfileUI(true);
+        window.renderFriendsPage();
+        window.showShareOptions();
+    });
+    // 밥도감: 나(현미밥) + 밥친구 전체의 밥 종류. 도감 밖 이름(팥밥)은 세지 않는다.
+    // 합석 여부·'식단표 전부 숨기기'와 상관없이 밥 종류만 나간다 — 친구 이름·팀·일정은 카드에 없다.
+    await expect(page.locator('#previewImgBox img')).toHaveCount(1);
+    const dex = await page.evaluate(async () => {
+        const rices = await window.loadFriendRices();
+        const d = window.buildMyCardData(rices);
+        const l = window.myCardLayout(d, 'card');
+        return {
+            rices, count: d.dex.count, lv: d.dex.stage.lv, owned: Object.keys(d.dex.owned).sort(),
+            dexBot: l.dex.y + l.dex.h, limit: l.stubTop - window.SHARE_CARD.GAP, bento: l.bento.h,
+            idTop: l.identity.y, headBot: l.fmt.top + window.SHARE_CARD.HEADER_H
+        };
+    });
+    expect(dex.rices).toEqual(['팥밥', '흑미밥']);
+    expect(dex.count).toBe(2);
+    expect(dex.lv).toBe(2);                                  // 밥상
+    expect(dex.owned).toEqual(['현미밥', '흑미밥']);
+    // 실제 폰트로 배치해도 밥도감이 스텁 위에 붙고 도시락통은 최소치 이상, 신원은 머리글 아래
+    expect(dex.dexBot).toBeLessThanOrEqual(dex.limit + 0.01);
+    expect(dex.bento).toBeGreaterThanOrEqual(280);
+    expect(dex.idTop).toBeGreaterThanOrEqual(dex.headBot);
+    await page.evaluate(() => window.closePreview());
+
+    // 합석 친구(c)의 보일 팀 사본. 전부 숨긴 친구(d)는 합석 목록에도 없다.
+    await page.evaluate(() => {
+        window._lb.c = { status: 'ok', updatedMs: 1, teams: [{ id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00', slot: 0 }, { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00', slot: 1 }] };
+        window._lb.d = { status: 'hidden', updatedMs: 1, teams: [] };
+    });
+
+    // 친구 상세: 겹쳐 보기 아래 합석 목록을 글로 (요일 → 시각 순)
+    await page.evaluate(() => { window.toggleProfileCard(); window.renderFriendsPage(); });
+    await page.locator('#pcDots .pc-dot').nth(1).click();
+    await expect(page.locator('#friendsCard .fr-meal-hint')).toBeVisible();
+    await page.locator('#friendsCard .fr-row', { hasText: '팥밥-q7' }).click();
+    const sess = page.locator('#friendsCard .fr-sess');
+    await expect(sess).toHaveCount(2);
+    await expect(sess.nth(0).locator('b')).toHaveText(/20–22$/);   // 화
+    await expect(sess.nth(0).locator('span')).toHaveText('강동 화요반');
+    await expect(sess.nth(1).locator('span')).toHaveText('잠실 배구회');
+});
+
+// 로그인 복귀 전용 주소: 쿼리를 그대로 들고 루트로 넘긴다(루트의 social-auth.js 가 처리).
+// 앱이 루트를 App Link 로 열기 때문에 제공자는 이 주소로 돌려보낸다 — docs: auth/callback/index.html
+test('로그인 복귀 주소(/auth/callback/)는 쿼리를 들고 루트로 넘긴다', async ({ page }) => {
+    await page.goto('/auth/callback/?error=access_denied&state=naver_smoke');
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+    // 루트가 ?error=&state= 를 받아 처리하고 주소를 정리한다(취소 안내 후 쿼리 제거)
+    page.on('dialog', (d) => d.dismiss());
+    await expect.poll(() => new URL(page.url()).search).toBe('');
+});
+
+// 로그인 시작: 두 제공자 모두 복귀 주소가 /auth/callback/ 이어야 한다(루트면 앱이 가로챈다).
+test('소셜 로그인은 /auth/callback/ 으로 돌아오도록 요청한다', async ({ page }) => {
+    await page.goto('/');
+    const seen = [];
+    await page.route(/^https:\/\/(nid\.naver\.com|kauth\.kakao\.com)\//, (route) => {
+        seen.push(route.request().url());
+        route.fulfill({ status: 200, contentType: 'text/html', body: 'stub' });
+    });
+    for (const fn of ['loginWithNaver', 'loginWithKakao']) {
+        await page.evaluate((f) => window[f](), fn);
+        await expect.poll(() => seen.length).toBeGreaterThan(fn === 'loginWithNaver' ? 0 : 1);
+        await page.goto('/');
+    }
+    for (const u of seen) {
+        expect(new URL(u).searchParams.get('redirect_uri')).toBe('http://localhost:4173/auth/callback/');
+    }
 });

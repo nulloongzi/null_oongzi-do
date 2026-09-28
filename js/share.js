@@ -7,9 +7,16 @@
 // 레이아웃 박스를 바꾸지 않아 배치가 어긋나고 빈 칸 안내문구까지 그대로 나갔다.
 // showShareOptions / generateShareImage 는 my-card.js 에서 정의한다.
 
+// 포장 형태 칩(내 카드 전용)을 숨긴다. 팀·픽업 카드 미리보기엔 형태 선택이 없다.
+function hidePreviewShape() {
+    var row = document.getElementById('previewShape');
+    if (row) row.hidden = true;
+}
+
 window.closePreview = function () {
     var overlay = document.getElementById('previewOverlay');
     overlay.style.display = 'none';
+    hidePreviewShape();
 
     // 메모리 절약을 위해 기존 이미지 삭제
     document.getElementById('previewImgBox').innerHTML = "";
@@ -158,12 +165,12 @@ window.sharePickup = function (spot) {
 };
 
 // ══════════════════════════════════════════════════════════════════════════
-// 인스타 스토리 카드 (9:16 PNG) + 네이티브 브리지 (탭=딥링크)
+// 공유 카드 (스토리 9:16 · 피드 3:4 PNG) + 네이티브 브리지 (탭=딥링크)
 // ──────────────────────────────────────────────────────────────────────────
-// 픽업 스팟을 따뜻한 누룽지 톤 9:16 카드로 그려 인스타 스토리에 공유한다.
-//  - 셸(Flutter WebView): window.NativeShare 로 카드 PNG + ?spot= 딥링크를 넘겨
-//    네이티브 IG 스토리 공유(스티커 탭 → 딥링크). 계약 JSON은 아래 shareSpotToStory.
-//  - 일반 브라우저: 카드 미리보기/저장(QR 포함) 폴백. (탭=링크는 네이티브에서만 가능)
+// 팀·픽업을 따뜻한 누룽지 톤 카드로 그린다. 규격·토큰은 docs/design-system.md §7.
+//  - 스토리(9:16): 셸(Flutter WebView)이면 window.NativeShare 로 카드 PNG + 딥링크를 넘겨
+//    네이티브 IG 스토리 공유(스티커 탭 → 딥링크). 일반 브라우저는 미리보기/저장(QR 포함).
+//  - 피드(3:4): 미리보기/저장 — 인스타 피드·카톡에 이미지로 올리는 용도.
 // 카드는 <canvas> 2D로 직접 그린다 — html2canvas 대비 결정적·동기적이고 QR 픽셀 제어가 쉽다.
 // 캔버스 텍스트는 HTML이 아니므로 사용자 입력(제목/메모)도 XSS 위험이 없다(escape 불필요).
 // QR은 window.qrcode(qrcode-generator, CDN) 사용 — 미로드 시 QR 없이 텍스트만 그려 폴백.
@@ -285,20 +292,382 @@ function storyFindNearestStation(lat, lng) {
     });
 }
 
-// 정규화된 data로 9:16 누룽지 스토리 카드 생성 (Promise<dataURL>).
-// C 미감: 따뜻한 누룽지 텍스처 배경 + 일러스트 지도 패널(핀 + 가까운 지하철역) + 정보 카드 + QR.
-// data: { title, url, lat, lng, verified, accent, icon, tags:[{t,bg,fg}],
-//         thisWeek, thisWeekBadge, schedule, fee, venue, address }
-window.generateStoryCard = function (data) {
-    var W = window.STORY_CARD_W, H = window.STORY_CARD_H;
-    var FONT = '"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif';
-    var DARK = '#4e342e', BROWN = '#8d6e63', YELLOW = '#fac710';
-    var accent = data.accent || '#13a89e';
-    var pad = 80;
-    var canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    var ctx = canvas.getContext('2d');
+// ── 공유 카드 키트 ─────────────────────────────────────────────────────────
+// 팀·픽업 카드(아래)와 내 카드(js/my-card.js)가 같은 규격·토큰·머리글·푸터를 쓴다.
+// 숫자는 docs/design-system.md §7 과 앱 lib/widgets/share_card_kit.dart 와 같아야 한다 —
+// 한쪽만 바꾸면 같은 카드가 플랫폼마다 달라진다.
+var CARD = {
+    W: 1080,
+    M: 80,                      // 좌우 여백 → 본문 폭 920
+    FORMATS: {
+        // 스토리: 위는 프로필·진행바, 아래는 답장바가 덮는다(인스타 UI) → 글·QR은 250 안쪽에.
+        // 그 띠를 비워두지 않는다 — 위는 히어로(지도·밥색), 아래는 티켓 스텁이 채운다.
+        story: { h: 1920, top: 250, bottom: 250, qr: 172 },
+        // 피드 3:4: 인스타 피드·그리드가 3:4를 그대로 보여준다(2025~). 덮는 UI가 없다.
+        feed: { h: 1440, top: 72, bottom: 72, qr: 148 }
+    },
+    HEADER_H: 64,               // 머리글 알약 높이
+    OVERLAP: 72,                // 본문 카드가 히어로 아랫단을 덮는 깊이
+    GAP: 32,                    // 블록 사이
+    STUB_PAD: 36,               // 스텁 절취선 ↔ QR 타일
+    C: {
+        cream: '#FBF3E2', card: '#FFFDF8', ink: '#3D2C22', dark: '#4E342E',
+        brown: '#8D6E63', sub: '#A99A8C', yellow: '#FAC710', teal: '#12A89E',
+        hair: 'rgba(141,110,99,0.28)', qr: '#1C140D'
+    },
+    FONT: '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif'
+};
+window.SHARE_CARD = CARD;
 
+function cardFormat(format) { return CARD.FORMATS[format === 'feed' ? 'feed' : 'story']; }
+function cardFont(px, wt) { return wt + ' ' + px + 'px ' + CARD.FONT; }
+// 스텁 윗단(절취선) y. QR 타일 아래끝이 아래 안전선에 닿게 놓는다.
+function cardStubTop(fmt) { return fmt.h - fmt.bottom - (CARD.STUB_PAD + fmt.qr + 20); }
+
+// 그림자 두 단계만 쓴다 — 카드(큰 것)와 알약·QR 타일(작은 것).
+function cardShadow(ctx, small) {
+    ctx.shadowColor = small ? 'rgba(93,64,55,0.12)' : 'rgba(93,64,55,0.15)';
+    ctx.shadowBlur = small ? 16 : 32;
+    ctx.shadowOffsetY = small ? 4 : 8;
+}
+function cardNoShadow(ctx) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+
+function cardBackground(ctx, h) {
+    ctx.fillStyle = CARD.C.cream; ctx.fillRect(0, 0, CARD.W, h);
+}
+
+// 알약 하나(흰 바탕 + 작은 그림자). 머리글·지역·역 표시가 같은 모양을 쓴다.
+function cardPill(ctx, x, y, w, h) {
+    storyRoundRect(ctx, x, y, w, h, h / 2);
+    ctx.fillStyle = '#fff'; cardShadow(ctx, true); ctx.fill(); cardNoShadow(ctx);
+}
+
+// 머리글: 흰 알약 안에 로고 44 + 워드마크 30/800. 히어로(지도·밥색) 위에 얹혀도 읽힌다.
+// right: 같은 줄 오른쪽 끝에 붙일 알약 글(지역 등, 선택). 반환: 알약 아래끝 y.
+function cardHeader(ctx, y, logo, right) {
+    var h = CARD.HEADER_H, M = CARD.M, brand = window.t ? window.t('brand') : '누룽지도';
+    ctx.font = cardFont(30, 800);
+    var w = 10 + 44 + 14 + ctx.measureText(brand).width + 26;
+    cardPill(ctx, M, y, w, h);
+    var cx = M + 10 + 22, cy = y + h / 2;
+    if (logo) {
+        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(logo, cx - 22, cy - 22, 44, 44); ctx.restore();
+    } else {
+        cardVolley(ctx, cx, cy, 15, CARD.C.yellow);
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = CARD.C.ink;
+    ctx.fillText(brand, M + 10 + 44 + 14, cy + 1);
+    if (right) {
+        ctx.font = cardFont(28, 700);
+        var maxW = CARD.W - M * 2 - w - 24;
+        var txt = storyWrapLines(ctx, right, maxW - 80, 1)[0] || '';
+        var rw = ctx.measureText(txt).width + 80, rx = CARD.W - M - rw;
+        cardPill(ctx, rx, y, rw, h);
+        cardIcoPin(ctx, rx + 20, y + 17, 30, CARD.C.brown);
+        ctx.fillStyle = CARD.C.ink; ctx.fillText(txt, rx + 58, cy + 1);
+    }
+    ctx.textBaseline = 'top';
+    return y + h;
+}
+
+// 스텁 푸터: 전폭 패널 + 절취선(양끝 반원 홈 + 점선) + QR 타일 + SCAN · CTA · URL.
+// 스토리는 링크가 안 걸리는 매체라 QR이 유일한 유입 경로 — 표 한 장을 떼어 가는 은유.
+// QR 라이브러리가 없으면(CDN 차단) 타일 없이 글만 왼쪽부터.
+function cardStub(ctx, fmt, url, cta) {
+    var M = CARD.M, q = fmt.qr, top = cardStubTop(fmt), W = CARD.W;
+    ctx.save(); ctx.shadowColor = 'rgba(93,64,55,0.10)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = -4;
+    ctx.fillStyle = CARD.C.card; ctx.fillRect(0, top, W, fmt.h - top); ctx.restore();
+    // 홈: 배경색 반원으로 파낸다
+    ctx.fillStyle = CARD.C.cream;
+    ctx.beginPath(); ctx.arc(0, top, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W, top, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.setLineDash([14, 12]); ctx.strokeStyle = CARD.C.hair; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(40, top); ctx.lineTo(W - 40, top); ctx.stroke(); ctx.restore();
+
+    var tileY = top + CARD.STUB_PAD;
+    var probe = ctx.canvas && ctx.canvas.ownerDocument ? ctx.canvas.ownerDocument.createElement('canvas') : null;
+    var haveQR = !!window.qrcode;
+    if (probe && probe.getContext) { probe.width = probe.height = 8; haveQR = storyDrawQR(probe.getContext('2d'), url, 0, 0, 8); }
+    if (haveQR) {
+        storyRoundRect(ctx, M, tileY, q + 20, q + 20, 18);
+        ctx.fillStyle = '#fff'; cardShadow(ctx, true); ctx.fill(); cardNoShadow(ctx);
+        storyDrawQR(ctx, url, M + 10, tileY + 10, q);
+    }
+    var tx = haveQR ? M + q + 20 + 40 : M, tw = W - M - tx;
+    ctx.font = cardFont(34, 800);
+    var ctaLines = storyWrapLines(ctx, cta || '', tw, 2);
+    var blockH = 30 + ctaLines.length * 42 + 8 + 30;           // SCAN + CTA + URL
+    var y = tileY + (q + 20 - blockH) / 2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.font = cardFont(22, 700); ctx.fillStyle = CARD.C.sub;
+    ctx.fillText('S C A N', tx, y);
+    y += 30;
+    ctx.font = cardFont(34, 800); ctx.fillStyle = CARD.C.ink;
+    for (var i = 0; i < ctaLines.length; i++) { ctx.fillText(ctaLines[i], tx, y); y += 42; }
+    y += 8;
+    ctx.font = cardFont(26, 500); ctx.fillStyle = CARD.C.brown;
+    var shown = String(url).replace(/^https?:\/\//, '').replace(/\/$/, '');
+    ctx.fillText(storyWrapLines(ctx, shown, tw, 1)[0] || '', tx, y);
+}
+
+// ── 벡터 아이콘 (캔버스 안 이모지 금지 — 앱 캔버스에서 □로 깨진다) ──
+function cardStroke(ctx, c, lw) { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; }
+function cardVolley(ctx, cx, cy, r, c) {
+    cardStroke(ctx, c, r * 0.14);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx - r * 0.2, cy - r * 0.1, r * 1.1, -0.5, 0.7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx + r * 0.5, cy + r * 0.6, r * 1.1, 3.3, 4.4); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx - r * 0.4, cy + r * 0.7, r * 1.1, 1.5, 2.6); ctx.stroke();
+}
+function cardIcoCal(ctx, x, y, s, c) {
+    cardStroke(ctx, c, s * 0.08);
+    storyRoundRect(ctx, x + s * 0.1, y + s * 0.16, s * 0.8, s * 0.72, s * 0.13); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s * 0.1, y + s * 0.36); ctx.lineTo(x + s * 0.9, y + s * 0.36); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s * 0.32, y + s * 0.06); ctx.lineTo(x + s * 0.32, y + s * 0.24);
+    ctx.moveTo(x + s * 0.68, y + s * 0.06); ctx.lineTo(x + s * 0.68, y + s * 0.24); ctx.stroke();
+}
+function cardIcoWon(ctx, x, y, s, c) {
+    cardStroke(ctx, c, s * 0.08);
+    ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.4, 0, Math.PI * 2); ctx.stroke();
+    // ₩ 를 선으로: W 한 획 + 가로줄 둘 (글꼴에 기대지 않는다)
+    ctx.beginPath();
+    ctx.moveTo(x + s * 0.3, y + s * 0.32); ctx.lineTo(x + s * 0.39, y + s * 0.68);
+    ctx.lineTo(x + s * 0.5, y + s * 0.42); ctx.lineTo(x + s * 0.61, y + s * 0.68);
+    ctx.lineTo(x + s * 0.7, y + s * 0.32); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s * 0.28, y + s * 0.47); ctx.lineTo(x + s * 0.72, y + s * 0.47); ctx.stroke();
+}
+function cardIcoPin(ctx, x, y, s, c) {
+    cardStroke(ctx, c, s * 0.08);
+    ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.4, s * 0.28, Math.PI * 0.85, Math.PI * 0.15, false);
+    ctx.lineTo(x + s / 2, y + s * 0.9); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.4, s * 0.11, 0, Math.PI * 2); ctx.stroke();
+}
+function cardIcoSub(ctx, x, y, s, c) {
+    cardStroke(ctx, c, s * 0.08);
+    storyRoundRect(ctx, x + s * 0.18, y + s * 0.12, s * 0.64, s * 0.6, s * 0.16); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s * 0.18, y + s * 0.44); ctx.lineTo(x + s * 0.82, y + s * 0.44); ctx.stroke();
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + s * 0.34, y + s * 0.58, s * 0.05, 0, Math.PI * 2);
+    ctx.arc(x + s * 0.66, y + s * 0.58, s * 0.05, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x + s * 0.3, y + s * 0.74); ctx.lineTo(x + s * 0.22, y + s * 0.9);
+    ctx.moveTo(x + s * 0.7, y + s * 0.74); ctx.lineTo(x + s * 0.78, y + s * 0.9); ctx.stroke();
+}
+function cardCheckBadge(ctx, cx, cy, r) {
+    ctx.fillStyle = CARD.C.teal; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    cardStroke(ctx, '#fff', r * 0.23);
+    ctx.beginPath(); ctx.moveTo(cx - r * 0.45, cy); ctx.lineTo(cx - r * 0.13, cy + r * 0.36); ctx.lineTo(cx + r * 0.5, cy - r * 0.36); ctx.stroke();
+}
+
+// my-card.js 가 쓰는 키트
+window.cardFormat = cardFormat;
+window.cardFont = cardFont;
+window.cardStubTop = cardStubTop;
+window.cardShadow = cardShadow;
+window.cardNoShadow = cardNoShadow;
+window.cardBackground = cardBackground;
+window.cardPill = cardPill;
+window.cardHeader = cardHeader;
+window.cardStub = cardStub;
+window.cardVolley = cardVolley;
+
+// ── 팀·픽업 카드 ───────────────────────────────────────────────────────────
+// 구조: 전폭 지도(히어로, 탄력) / 정보 카드(지도 아랫단을 덮음) / 티켓 스텁(QR).
+// 지도가 남는 세로를 흡수한다 — 고정 좌표로 두면 짧은 팀은 아래가 비고, 긴 픽업은
+// 정보 카드가 QR을 덮었다(2026-09 이전 카드의 실제 버그).
+// 지도 최소 높이(맨 위 ~ 정보 카드 윗단): 머리글 + 핀이 들어갈 자리.
+var SPOT_MAP_MIN = { story: 640, feed: 440 };
+// 정보가 넘치면 이 순서로 줄 수를 줄인다. QR을 덮는 것보다 말줄임이 낫다.
+var SPOT_BUDGETS = [
+    { title: 2, week: 2, row: 2, chips: 3 },
+    { title: 2, week: 1, row: 1, chips: 2 },
+    { title: 1, week: 1, row: 1, chips: 1 }
+];
+var SPOT_INFO = { pad: 48, titleFs: 60, titleLh: 70, chipH: 52, chipFs: 28, chipPad: 22, chipGap: 12, rowIcon: 36, rowFs: 32, rowLh: 44, rowGap: 14 };
+
+// 정보 카드 내용 측정 → { h, title, chips, week, rows }. 그리기와 같은 값을 쓴다.
+function spotMeasureInfo(ctx, data, budget) {
+    var S = SPOT_INFO, iw = CARD.W - CARD.M * 2 - S.pad * 2;
+    ctx.font = cardFont(S.titleFs, 800);
+    var title = storyWrapLines(ctx, data.title || (window.t ? window.t('sh_club_fallback') : ''), iw - (data.verified ? 60 : 0), budget.title);
+    var h = title.length * S.titleLh;
+
+    ctx.font = cardFont(S.chipFs, 700);
+    var chips = [], cx = 0, row = 0, tags = data.tags || [];
+    for (var i = 0; i < tags.length; i++) {
+        var w = Math.min(iw, ctx.measureText(tags[i].t).width + S.chipPad * 2);
+        if (cx + w > iw && cx > 0) { row++; cx = 0; }
+        if (row >= budget.chips) { row = budget.chips - 1; break; }   // 넘치는 칩은 뺀다
+        chips.push({ tag: tags[i], x: cx, row: row, w: w });
+        cx += w + S.chipGap;
+    }
+    var chipRows = chips.length ? row + 1 : 0;
+    if (chipRows) h += 20 + chipRows * S.chipH + (chipRows - 1) * S.chipGap;
+
+    var week = null;
+    if (data.thisWeek) {
+        ctx.font = cardFont(30, 700);
+        week = { badge: data.thisWeekBadge || (window.t ? window.t('pk_thisweek_badge') : '이번주'), lines: storyWrapLines(ctx, data.thisWeek, iw - 40, budget.week) };
+        week.h = 20 + 40 + 12 + week.lines.length * 40 + 20;
+        h += 24 + week.h;
+    }
+
+    var defs = [['cal', data.schedule], ['won', data.fee], ['pin', data.venue ? data.venue + (data.address ? ' · ' + data.address : '') : data.address]];
+    var rows = [];
+    ctx.font = cardFont(S.rowFs, 500);
+    for (var k = 0; k < defs.length; k++) {
+        if (!defs[k][1]) continue;
+        var ln = storyWrapLines(ctx, defs[k][1], iw - S.rowIcon - 20, budget.row);
+        rows.push({ icon: defs[k][0], lines: ln, h: Math.max(S.rowIcon, ln.length * S.rowLh) });
+    }
+    if (rows.length) {
+        h += 24;
+        for (var r = 0; r < rows.length; r++) h += rows[r].h + (r ? S.rowGap : 0);
+    }
+    return { h: h + S.pad * 2, title: title, chips: chips, chipRows: chipRows, week: week, rows: rows, iw: iw };
+}
+
+// 배치 계산(그리기와 분리 — 테스트가 좌표로 겹침을 검증한다).
+function spotLayout(ctx, data, format) {
+    var fmt = cardFormat(format), key = format === 'feed' ? 'feed' : 'story';
+    var stubTop = cardStubTop(fmt);
+    var cardBot = stubTop - CARD.GAP;
+    var info = null, cardY = 0;
+    for (var b = 0; b < SPOT_BUDGETS.length; b++) {
+        info = spotMeasureInfo(ctx, data, SPOT_BUDGETS[b]);
+        cardY = cardBot - info.h;
+        if (cardY >= SPOT_MAP_MIN[key] - CARD.OVERLAP) break;
+    }
+    // 가장 빠듯한 예산으로도 모자라면 지도를 더 줄인다 — QR을 덮지 않는 게 먼저다.
+    // 머리글 아래 핀 자리(120)는 남긴다.
+    cardY = Math.max(cardY, fmt.top + CARD.HEADER_H + 120);
+    return {
+        fmt: fmt, headerY: fmt.top, stubTop: stubTop, info: info,
+        map: { x: 0, y: 0, w: CARD.W, h: cardY + CARD.OVERLAP },
+        card: { x: CARD.M, y: cardY, w: CARD.W - CARD.M * 2, h: info.h }
+    };
+}
+window.spotCardLayout = function (data, format) {
+    var c = document.createElement('canvas');
+    return spotLayout(c.getContext('2d'), data, format);
+};
+
+// 전폭 일러스트 지도. 좌표로 시드를 잡아 장소마다 고유하고 안정적이다.
+// 요소는 560 높이 기준 비율로 그리고, 더 크면 한 벌을 아래로 이어 붙인다(지도가 비지 않게).
+function spotDrawMap(ctx, m, L, data, station, accent) {
+    var W = m.w, H = m.h;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+    ctx.fillStyle = '#F7EDD6'; ctx.fillRect(0, 0, W, H);
+    var seed = Math.floor(Math.abs((Math.round((data.lat || 37.55) * 1e4) * 73856093) ^ (Math.round((data.lng || 126.98) * 1e4) * 19349663))) % 2147483647 || 12345;
+    function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+    var TILE = 560;
+    for (var ty = 0; ty < H; ty += TILE) {
+        var flip = (ty / TILE) % 2 === 1;
+        var ox = flip ? W * 0.18 : 0;
+        ctx.fillStyle = '#DBE4BF'; ctx.beginPath(); ctx.ellipse((W * 0.78 + ox) % W, ty + TILE * 0.3, 170, 130, 0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#C3D29A';
+        for (var t = 0; t < 4; t++) { ctx.beginPath(); ctx.arc((W * 0.72 + ox) % W + t * 34, ty + TILE * 0.24 + (t % 2) * 30, 11, 0, Math.PI * 2); ctx.fill(); }
+        var blocks = [[0.06, 0.12, 130, 92], [0.28, 0.08, 104, 82], [0.08, 0.42, 112, 74], [0.3, 0.46, 118, 88], [0.55, 0.12, 92, 80], [0.56, 0.52, 104, 74], [0.82, 0.64, 118, 84], [0.14, 0.74, 98, 70], [0.66, 0.84, 110, 76]];
+        for (var i = 0; i < blocks.length; i++) {
+            var bl = blocks[i]; ctx.fillStyle = rnd() > 0.5 ? '#ECDFBB' : '#E6D6AC';
+            storyRoundRect(ctx, (W * bl[0] + ox) % W + (rnd() - 0.5) * 24, ty + TILE * bl[1] + (rnd() - 0.5) * 18, bl[2], bl[3], 10); ctx.fill();
+        }
+    }
+    // 물길: 지도 아랫단(정보 카드 뒤)으로 흘러 나간다
+    ctx.fillStyle = '#D7E6E4'; ctx.beginPath();
+    ctx.moveTo(0, H * 0.78); ctx.bezierCurveTo(W * 0.28, H * 0.7, W * 0.34, H * 0.92, W * 0.62, H * 0.88);
+    ctx.lineTo(W * 0.62, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+    var roadY = H * 0.55;
+    function road() { ctx.beginPath(); ctx.moveTo(-20, roadY + 40); ctx.bezierCurveTo(W * 0.35, roadY - 30, W * 0.5, roadY + 70, W + 20, roadY - 20); ctx.stroke(); }
+    cardStroke(ctx, '#FDF8EC', 32); road();
+    ctx.beginPath(); ctx.moveTo(W * 0.42, -20); ctx.bezierCurveTo(W * 0.47, H * 0.4, W * 0.38, H * 0.6, W * 0.44, H + 20); ctx.stroke();
+    ctx.save(); cardStroke(ctx, '#E8CF94', 4); ctx.setLineDash([16, 18]); road(); ctx.restore();
+    // 아랫단을 크림으로 살짝 녹여 정보 카드와 이어지게
+    var fade = ctx.createLinearGradient(0, H - 200, 0, H);
+    fade.addColorStop(0, 'rgba(251,243,226,0)'); fade.addColorStop(1, 'rgba(251,243,226,1)');
+    ctx.fillStyle = fade; ctx.fillRect(0, H - 200, W, 200);
+    ctx.restore();
+
+    // 핀: 머리글 아래 ~ 정보 카드 윗단 사이 가운데. 아래 알약(가까운 역·장소)은 자리가 날 때만.
+    var visTop = L.headerY + CARD.HEADER_H, visBot = L.card.y;
+    var geo = station && station.name
+        ? station.name + (station.distance ? ' · ' + station.distance + 'm · 도보 ' + Math.max(1, Math.round(station.distance / 67)) + '분' : '')
+        : (data.venue || '');
+    var geoH = geo && visBot - visTop > 360 ? 56 + 28 : 0;
+    var px = W / 2, py = visTop + (visBot - visTop - geoH) / 2 - 20, pr = 52;
+    ctx.fillStyle = 'rgba(93,64,55,0.14)'; ctx.beginPath(); ctx.ellipse(px, py + 82, 40, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); cardShadow(ctx, false); ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.moveTo(px - 30, py + 14); ctx.lineTo(px + 30, py + 14); ctx.lineTo(px, py + 80); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 34, 0, Math.PI * 2); ctx.fill();
+    cardVolley(ctx, px, py, 22, accent);
+    if (geoH) {
+        ctx.font = cardFont(28, 700);
+        var gw = Math.min(W - CARD.M * 2, ctx.measureText(geo).width + 80), gx = (W - gw) / 2, gy = visBot - 28 - 56;
+        cardPill(ctx, gx, gy, gw, 56);
+        (station && station.name ? cardIcoSub : cardIcoPin)(ctx, gx + 20, gy + 13, 30, accent);
+        ctx.fillStyle = CARD.C.ink; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        ctx.fillText(storyWrapLines(ctx, geo, gw - 80, 1)[0] || '', gx + 60, gy + 29); ctx.textBaseline = 'top';
+    }
+}
+
+function spotDrawInfo(ctx, r, info, data) {
+    var S = SPOT_INFO, ix = r.x + S.pad, iw = info.iw, INK = CARD.C.ink;
+    storyRoundRect(ctx, r.x, r.y, r.w, r.h, 28);
+    ctx.fillStyle = CARD.C.card; cardShadow(ctx, false); ctx.fill(); cardNoShadow(ctx);
+    var y = r.y + S.pad;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.font = cardFont(S.titleFs, 800); ctx.fillStyle = INK;
+    for (var i = 0; i < info.title.length; i++) {
+        ctx.fillText(info.title[i], ix, y + 2);
+        if (i === 0 && data.verified) cardCheckBadge(ctx, ix + ctx.measureText(info.title[0]).width + 34, y + S.titleLh / 2, 22);
+        y += S.titleLh;
+    }
+    if (info.chipRows) {
+        y += 20;
+        ctx.font = cardFont(S.chipFs, 700); ctx.textBaseline = 'middle';
+        for (var c = 0; c < info.chips.length; c++) {
+            var ch = info.chips[c], cx = ix + ch.x, cy = y + ch.row * (S.chipH + S.chipGap);
+            ctx.fillStyle = ch.tag.bg || '#F4ECDB'; storyRoundRect(ctx, cx, cy, ch.w, S.chipH, S.chipH / 2); ctx.fill();
+            ctx.fillStyle = ch.tag.fg || CARD.C.brown;
+            ctx.fillText(storyWrapLines(ctx, ch.tag.t, ch.w - S.chipPad * 2, 1)[0] || '', cx + S.chipPad, cy + S.chipH / 2 + 1);
+        }
+        ctx.textBaseline = 'top';
+        y += info.chipRows * S.chipH + (info.chipRows - 1) * S.chipGap;
+    }
+    if (info.week) {
+        y += 24;
+        var wk = info.week;
+        ctx.fillStyle = 'rgba(250,199,16,0.22)'; storyRoundRect(ctx, ix, y, iw, wk.h, 18); ctx.fill();
+        ctx.font = cardFont(24, 800); var bw = ctx.measureText(wk.badge).width + 32;
+        ctx.fillStyle = CARD.C.yellow; storyRoundRect(ctx, ix + 20, y + 20, bw, 40, 20); ctx.fill();
+        ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.fillText(wk.badge, ix + 36, y + 41); ctx.textBaseline = 'top';
+        ctx.font = cardFont(30, 700);
+        for (var w = 0; w < wk.lines.length; w++) ctx.fillText(wk.lines[w], ix + 20, y + 72 + w * 40);
+        y += wk.h;
+    }
+    if (info.rows.length) {
+        y += 24;
+        for (var k = 0; k < info.rows.length; k++) {
+            var row = info.rows[k];
+            if (k) y += S.rowGap;
+            var ico = row.icon === 'cal' ? cardIcoCal : (row.icon === 'won' ? cardIcoWon : cardIcoPin);
+            ico(ctx, ix, y + (S.rowLh - S.rowIcon) / 2, S.rowIcon, CARD.C.brown);
+            ctx.font = cardFont(S.rowFs, 500); ctx.fillStyle = CARD.C.dark; ctx.textBaseline = 'middle';
+            for (var l = 0; l < row.lines.length; l++) ctx.fillText(row.lines[l], ix + S.rowIcon + 20, y + S.rowLh / 2 + l * S.rowLh);
+            ctx.textBaseline = 'top';
+            y += row.h;
+        }
+    }
+}
+
+// 정규화된 data로 팀·픽업 카드 생성 (Promise<dataURL>). format: 'story'(9:16, 기본) | 'feed'(3:4).
+// data: { title, url, lat, lng, verified, accent, tags:[{t,bg,fg}], thisWeek, thisWeekBadge,
+//         schedule, fee, venue, address }
+window.generateStoryCard = function (data, format) {
+    var fmt = cardFormat(format);
+    var canvas = document.createElement('canvas');
+    canvas.width = CARD.W; canvas.height = fmt.h;
+    var ctx = canvas.getContext('2d');
     var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     return fontsReady.catch(function () { }).then(function () {
         return Promise.all([
@@ -306,184 +675,32 @@ window.generateStoryCard = function (data) {
             storyFindNearestStation(data.lat, data.lng)
         ]);
     }).then(function (res) {
-        var logo = res[0], station = res[1];
-
-        // ===== 리디자인 카드 (에디토리얼 일러스트 지도 + 라인 아이콘) =====
-        var INK = '#3d2c22', SUB = '#a99a8c', accentC = accent;
-        var brand = window.t ? window.t('brand') : '누룽지도';
-        var url = data.url;
-        function rr(x, y, w, h, r) { storyRoundRect(ctx, x, y, w, h, r); }
-        function sh(a, blur, dy) { ctx.shadowColor = 'rgba(93,64,55,' + a + ')'; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy; }
-        function nosh() { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
-        function strk(c, lw) { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; }
-        function icoCal(x, y, s, c) { strk(c, s * 0.08); rr(x + s * 0.1, y + s * 0.16, s * 0.8, s * 0.72, s * 0.13); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + s * 0.1, y + s * 0.36); ctx.lineTo(x + s * 0.9, y + s * 0.36); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + s * 0.32, y + s * 0.06); ctx.lineTo(x + s * 0.32, y + s * 0.24); ctx.moveTo(x + s * 0.68, y + s * 0.06); ctx.lineTo(x + s * 0.68, y + s * 0.24); ctx.stroke(); }
-        function icoWon(x, y, s, c) { strk(c, s * 0.08); ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.4, 0, 7); ctx.stroke(); ctx.font = '700 ' + (s * 0.5) + 'px ' + FONT; ctx.fillStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('\u20A9', x + s / 2, y + s / 2 + s * 0.03); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; }
-        function icoPin(x, y, s, c) { strk(c, s * 0.08); ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.4, s * 0.28, Math.PI * 0.85, Math.PI * 0.15, false); ctx.lineTo(x + s / 2, y + s * 0.9); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.arc(x + s / 2, y + s * 0.4, s * 0.11, 0, 7); ctx.stroke(); }
-        function icoSub(x, y, s, c) { strk(c, s * 0.08); rr(x + s * 0.18, y + s * 0.12, s * 0.64, s * 0.6, s * 0.16); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + s * 0.18, y + s * 0.44); ctx.lineTo(x + s * 0.82, y + s * 0.44); ctx.stroke(); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + s * 0.34, y + s * 0.58, s * 0.05, 0, 7); ctx.arc(x + s * 0.66, y + s * 0.58, s * 0.05, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + s * 0.3, y + s * 0.74); ctx.lineTo(x + s * 0.22, y + s * 0.9); ctx.moveTo(x + s * 0.7, y + s * 0.74); ctx.lineTo(x + s * 0.78, y + s * 0.9); ctx.stroke(); }
-        function volley(cx, cy, r, c) { strk(c, r * 0.12); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(cx - r * 0.2, cy - r * 0.1, r * 1.1, -0.5, 0.7); ctx.stroke(); ctx.beginPath(); ctx.arc(cx + r * 0.5, cy + r * 0.6, r * 1.1, 3.3, 4.4); ctx.stroke(); ctx.beginPath(); ctx.arc(cx - r * 0.4, cy + r * 0.7, r * 1.1, 1.5, 2.6); ctx.stroke(); }
-
-        // 배경: 절제된 크림 + 은은한 웜 비네트
-        ctx.fillStyle = '#fbf3e2'; ctx.fillRect(0, 0, W, H);
-        var vg = ctx.createRadialGradient(W / 2, H * 0.42, 200, W / 2, H * 0.42, H * 0.7);
-        vg.addColorStop(0, 'rgba(255,252,240,0.6)'); vg.addColorStop(1, 'rgba(240,226,196,0.5)');
-        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-
-        // 브랜드 헤더 (로고 타일 + 워드마크)
-        ctx.font = '800 50px ' + FONT;
-        var wmW = ctx.measureText(brand).width, tile = 64, tgap = 18;
-        var total = tile + tgap + wmW, hsx = (W - total) / 2, hty = 118;
-        ctx.save(); sh(0.16, 14, 6); ctx.fillStyle = logo ? '#ffffff' : YELLOW; rr(hsx, hty, tile, tile, 18); ctx.fill(); ctx.restore();
-        if (logo) {
-            ctx.save(); rr(hsx, hty, tile, tile, 18); ctx.clip();
-            ctx.drawImage(logo, hsx, hty, tile, tile);
-            ctx.restore();
-        } else {
-            volley(hsx + tile / 2, hty + tile / 2, 20, '#fff');
-        }
-        ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-        ctx.fillText(brand, hsx + tile + tgap, hty + tile / 2 + 1); ctx.textBaseline = 'top';
-
-        // ===== 히어로: 에디토리얼 일러스트 지도 =====
-        var mx = pad, my = 252, mw = W - pad * 2, mh = 560, PANEL_R = 28;
-        ctx.save(); sh(0.15, 36, 18); ctx.fillStyle = '#fff'; rr(mx, my, mw, mh, PANEL_R); ctx.fill(); ctx.restore();
-        ctx.save(); rr(mx, my, mw, mh, PANEL_R); ctx.clip();
-        ctx.fillStyle = '#f7edd6'; ctx.fillRect(mx, my, mw, mh);
-        // 실제 좌표로 시드 (장소마다 고유·안정)
-        var mseed = Math.floor(Math.abs((Math.round((data.lat || 37.55) * 1e4) * 73856093) ^ (Math.round((data.lng || 126.98) * 1e4) * 19349663))) % 2147483647 || 12345;
-        function mr() { mseed = (mseed * 1103515245 + 12345) & 0x7fffffff; return mseed / 0x7fffffff; }
-        // 공원 + 나무
-        ctx.fillStyle = '#dbe4bf'; ctx.beginPath(); ctx.ellipse(mx + mw * 0.78, my + mh * 0.3, 150, 120, 0.3, 0, 7); ctx.fill();
-        ctx.fillStyle = '#c3d29a'; for (var tI = 0; tI < 4; tI++) { ctx.beginPath(); ctx.arc(mx + mw * 0.72 + tI * 34, my + mh * 0.24 + (tI % 2) * 30, 11, 0, 7); ctx.fill(); }
-        // 물길
-        ctx.fillStyle = '#d7e6e4'; ctx.beginPath();
-        ctx.moveTo(mx, my + mh * 0.72); ctx.bezierCurveTo(mx + mw * 0.28, my + mh * 0.64, mx + mw * 0.34, my + mh * 0.9, mx + mw * 0.62, my + mh * 0.86);
-        ctx.lineTo(mx + mw * 0.62, my + mh); ctx.lineTo(mx, my + mh); ctx.closePath(); ctx.fill();
-        // 구획 블록 (좌표 시드로 약간 변주)
-        var blocks = [[0.08, 0.12, 120, 88], [0.3, 0.1, 96, 78], [0.1, 0.4, 104, 70], [0.32, 0.44, 110, 84], [0.55, 0.14, 86, 76], [0.53, 0.5, 96, 70], [0.8, 0.62, 110, 80], [0.16, 0.7, 92, 66]];
-        for (var bI = 0; bI < blocks.length; bI++) { var b = blocks[bI]; ctx.fillStyle = mr() > 0.5 ? '#ecdfbb' : '#e6d6ac'; rr(mx + mw * b[0] + (mr() - 0.5) * 20, my + mh * b[1] + (mr() - 0.5) * 16, b[2], b[3], 10); ctx.fill(); }
-        // 도로 (곡선 리본) + 점선 센터라인
-        strk('#fdf8ec', 30);
-        ctx.beginPath(); ctx.moveTo(mx - 20, my + mh * 0.58); ctx.bezierCurveTo(mx + mw * 0.35, my + mh * 0.5, mx + mw * 0.5, my + mh * 0.66, mx + mw + 20, my + mh * 0.52); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(mx + mw * 0.42, my - 20); ctx.bezierCurveTo(mx + mw * 0.46, my + mh * 0.4, mx + mw * 0.38, my + mh * 0.6, mx + mw * 0.44, my + mh + 20); ctx.stroke();
-        ctx.save(); strk('#e8cf94', 4); ctx.setLineDash([16, 18]);
-        ctx.beginPath(); ctx.moveTo(mx - 20, my + mh * 0.58); ctx.bezierCurveTo(mx + mw * 0.35, my + mh * 0.5, mx + mw * 0.5, my + mh * 0.66, mx + mw + 20, my + mh * 0.52); ctx.stroke();
-        ctx.restore();
-        ctx.restore();
-
-        // 지역 pill (상단, 한 번만)
-        var region = storyRegion(data.address);
-        if (region) {
-            ctx.font = '700 27px ' + FONT; var rw = ctx.measureText(region).width + 72;
-            ctx.save(); sh(0.12, 8, 4); ctx.fillStyle = '#fff'; rr(mx + (mw - rw) / 2, my + 24, rw, 54, 27); ctx.fill(); ctx.restore();
-            icoPin(mx + (mw - rw) / 2 + 18, my + 24 + 13, 28, BROWN);
-            ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(region, mx + (mw - rw) / 2 + 52, my + 24 + 28); ctx.textBaseline = 'top';
-        }
-
-        // 핀 (중앙, 라인아트 배구공)
-        var px = mx + mw / 2, py = my + mh * 0.48, pr = 52;
-        ctx.fillStyle = 'rgba(93,64,55,0.14)'; ctx.beginPath(); ctx.ellipse(px, py + 82, 40, 12, 0, 0, 7); ctx.fill();
-        ctx.save(); sh(0.22, 16, 8); ctx.fillStyle = accentC;
-        ctx.beginPath(); ctx.moveTo(px - 30, py + 14); ctx.lineTo(px + 30, py + 14); ctx.lineTo(px, py + 80); ctx.closePath(); ctx.fill();
-        ctx.beginPath(); ctx.arc(px, py, pr, 0, 7); ctx.fill(); ctx.restore();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 34, 0, 7); ctx.fill();
-        volley(px, py, 22, accentC);
-
-        // 지오 힌트 pill (하단): 가까운 역 우선 → 장소명
-        var stTxt = '', stIsSub = false;
-        if (station && station.name) { var walk = station.distance ? Math.max(1, Math.round(station.distance / 67)) : 0; stTxt = station.name + (station.distance ? ' \u00B7 ' + station.distance + 'm \u00B7 \uB3C4\uBCF4 ' + walk + '\uBD84' : ''); stIsSub = true; }
-        else if (data.venue) { stTxt = data.venue; }
-        if (stTxt) {
-            ctx.font = '700 30px ' + FONT; var sw = Math.min(mw - 40, ctx.measureText(stTxt).width + 82);
-            var ssx = mx + (mw - sw) / 2, ssy = my + mh - 82;
-            ctx.save(); sh(0.16, 10, 5); ctx.fillStyle = '#fff'; rr(ssx, ssy, sw, 60, 30); ctx.fill(); ctx.restore();
-            if (stIsSub) icoSub(ssx + 20, ssy + 15, 30, accentC); else icoPin(ssx + 20, ssy + 15, 30, accentC);
-            ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(stTxt, ssx + 58, ssy + 31); ctx.textBaseline = 'top';
-        }
-
-        // ===== 정보 카드 (콘텐츠 맞춤 높이 + 존 중앙) =====
-        var cardX = pad, cardW = W - pad * 2, cpad = 56, ix = cardX + cpad, iw = cardW - cpad * 2;
-        ctx.font = '800 64px ' + FONT;
-        var titleLines = storyWrapLines(ctx, data.title || (window.t ? window.t('sh_club_fallback') : ''), iw - (data.verified ? 66 : 0), 2);
-        var titleH = titleLines.length * 76;
-        var chips = data.tags || [];
-        var chipH = 54, chipPad = 22, chipGap = 12;
-        ctx.font = '600 30px ' + FONT;
-        var chipLayout = [], ccx = 0, crow = 0;
-        for (var k = 0; k < chips.length; k++) { var cw = ctx.measureText(chips[k].t).width + chipPad * 2; if (ccx + cw > iw && ccx > 0) { crow++; ccx = 0; } chipLayout.push({ t: chips[k], x: ccx, row: crow, w: cw }); ccx += cw + chipGap; }
-        var chipRows = chips.length ? crow + 1 : 0;
-        var chipsH = chipRows ? (chipRows * chipH + (chipRows - 1) * chipGap + 30) : 0;
-        var twLines = null, bannerBodyH = 0, twBadge = '';
-        if (data.thisWeek) { ctx.font = '700 32px ' + FONT; twLines = storyWrapLines(ctx, data.thisWeek, iw - 44, 2); twBadge = data.thisWeekBadge || (window.t ? window.t('pk_thisweek_badge') : '이번주'); bannerBodyH = 76 + twLines.length * 42 + 16; }
-        var bannerH = twLines ? bannerBodyH + 28 : 0;
-        ctx.font = '500 36px ' + FONT;
-        var infoDefs = [['cal', data.schedule, 2], ['won', data.fee, 1], ['pin', data.venue ? (data.venue + (data.address ? ' \u00B7 ' + data.address : '')) : data.address, 2]];
-        var infoItems = [], infoH = 0;
-        for (var q = 0; q < infoDefs.length; q++) { if (!infoDefs[q][1]) continue; var ln = storyWrapLines(ctx, infoDefs[q][1], iw - 62, infoDefs[q][2]); infoItems.push({ icon: infoDefs[q][0], lines: ln }); infoH += Math.max(54, ln.length * 46) + 18; }
-        var contentH = titleH + chipsH + bannerH + infoH;
-        var cardH = contentH + cpad * 2 - 6;
-        var zoneTop = my + mh + 34, zoneBot = 1444;
-        var cardY = Math.round(Math.max(zoneTop, Math.min(zoneBot - cardH, zoneTop + (zoneBot - zoneTop - cardH) / 2)));
-        ctx.save(); sh(0.15, 40, 20); ctx.fillStyle = '#fffdf8'; rr(cardX, cardY, cardW, cardH, 28); ctx.fill(); ctx.restore();
-
-        var y = cardY + cpad;
-        ctx.fillStyle = INK; ctx.font = '800 64px ' + FONT;
-        for (var ti = 0; ti < titleLines.length; ti++) {
-            ctx.fillText(titleLines[ti], ix, y);
-            if (ti === 0 && data.verified) { var tw0 = ctx.measureText(titleLines[0]).width; ctx.fillStyle = '#12a89e'; ctx.beginPath(); ctx.arc(ix + tw0 + 34, y + 34, 22, 0, 7); ctx.fill(); strk('#fff', 5); ctx.beginPath(); ctx.moveTo(ix + tw0 + 24, y + 34); ctx.lineTo(ix + tw0 + 31, y + 42); ctx.lineTo(ix + tw0 + 45, y + 26); ctx.stroke(); ctx.fillStyle = INK; }
-            y += 76;
-        }
-        y += 8;
-        if (chipRows) {
-            ctx.font = '600 30px ' + FONT; ctx.textBaseline = 'middle';
-            for (var ci = 0; ci < chipLayout.length; ci++) { var it = chipLayout[ci], cxx = ix + it.x, cyy = y + it.row * (chipH + chipGap); ctx.fillStyle = it.t.bg || '#f4ecdb'; rr(cxx, cyy, it.w, chipH, chipH / 2); ctx.fill(); ctx.fillStyle = it.t.fg || BROWN; ctx.fillText(it.t.t, cxx + chipPad, cyy + chipH / 2 + 1); }
-            ctx.textBaseline = 'top'; y += chipRows * chipH + (chipRows - 1) * chipGap + 30;
-        }
-        if (twLines) {
-            ctx.fillStyle = 'rgba(250,199,16,0.22)'; rr(ix, y, iw, bannerBodyH, 18); ctx.fill();
-            ctx.font = '800 27px ' + FONT; var badgeW = ctx.measureText(twBadge).width + 30;
-            ctx.fillStyle = YELLOW; rr(ix + 22, y + 20, badgeW, 42, 21); ctx.fill();
-            ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.fillText(twBadge, ix + 22 + 15, y + 20 + 22); ctx.textBaseline = 'top';
-            ctx.font = '700 32px ' + FONT; var ly = y + 76; for (var bi = 0; bi < twLines.length; bi++) { ctx.fillText(twLines[bi], ix + 22, ly); ly += 42; }
-            y += bannerH;
-        }
-        for (var iiI = 0; iiI < infoItems.length; iiI++) {
-            var ic = infoItems[iiI].icon;
-            if (ic === 'cal') icoCal(ix, y - 2, 40, BROWN); else if (ic === 'won') icoWon(ix, y - 2, 40, BROWN); else icoPin(ix, y - 2, 40, BROWN);
-            ctx.fillStyle = DARK; ctx.font = '500 36px ' + FONT; ctx.textBaseline = 'middle';
-            var lines = infoItems[iiI].lines, iy = y + 20;
-            for (var li = 0; li < lines.length; li++) { ctx.fillText(lines[li], ix + 62, iy); iy += 46; }
-            ctx.textBaseline = 'top'; y += Math.max(54, lines.length * 46) + 18;
-        }
-
-        // ===== 푸터: QR + CTA =====
-        var footH = 210, qrSize = 190, footY = 1670 - footH, qrX = pad, qrY = footY + (footH - qrSize) / 2;
-        ctx.save(); sh(0.14, 16, 8); ctx.fillStyle = '#fff'; rr(qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 18); ctx.fill(); ctx.restore();
-        var haveQR = storyDrawQR(ctx, url, qrX, qrY, qrSize);
-        if (!haveQR) { ctx.fillStyle = BROWN; ctx.font = '700 24px ' + FONT; ctx.textBaseline = 'middle'; ctx.fillText(brand, qrX + 8, qrY + qrSize / 2); ctx.textBaseline = 'top'; }
-        var tx = qrX + qrSize + 50;
-        ctx.fillStyle = SUB; ctx.font = '700 24px ' + FONT; ctx.fillText('S C A N', tx, footY + 30);
-        ctx.fillStyle = INK; ctx.font = '800 42px ' + FONT;
-        var ctaLines = storyWrapLines(ctx, window.t ? window.t('sh_card_cta') : '', W - pad - tx, 2);
-        var fy = footY + 66;
-        for (var cl = 0; cl < ctaLines.length; cl++) { ctx.fillText(ctaLines[cl], tx, fy); fy += 50; }
-        ctx.fillStyle = BROWN; ctx.font = '500 27px ' + FONT; fy += 4;
-        ctx.fillText(String(url).replace(/^https?:\/\//, '').replace(/\/$/, ''), tx, fy);
-
+        var L = spotLayout(ctx, data, format);
+        cardBackground(ctx, fmt.h);
+        spotDrawMap(ctx, L.map, L, data, res[1], data.accent || CARD.C.teal);
+        cardHeader(ctx, L.headerY, res[0], storyRegion(data.address));
+        spotDrawInfo(ctx, L.card, L.info, data);
+        cardStub(ctx, fmt, data.url, window.t ? window.t('sh_card_cta') : '');
         ctx.textBaseline = 'alphabetic';
         return canvas.toDataURL('image/png');
     });
 };
 
-// 픽업 스팟 → 카드 data 정규화
+// 픽업 스팟 → 카드 data 정규화. 칩 문구의 이모지는 뺀다(캔버스 규칙).
+function storyStripEmoji(s) {
+    return String(s == null ? '' : s).replace(/(?:[\u{1F000}-\u{1FAFF}]|[\u{2600}-\u{27BF}]|\u{FE0F}|\u{200D})/gu, '').replace(/\s{2,}/g, ' ').trim();
+}
+window.storyStripEmoji = storyStripEmoji;
+
 function storySpotData(spot) {
     var tags = [];
-    if (window.pkSportLabel) tags.push({ t: window.pkSportLabel(spot.sport), bg: '#fac710', fg: '#4e342e' });
-    if (window.pkLevelLabel) tags.push({ t: window.pkLevelLabel(spot.level), bg: '#f0ece2', fg: '#6d6258' });
-    if (spot.beginner_friendly && window.t) tags.push({ t: window.t('pk_beginner_ok'), bg: '#e7f6e7', fg: '#2e7d32' });
-    if (spot.english_ok && window.t) tags.push({ t: window.t('pk_english_ok'), bg: '#e6f0fb', fg: '#1565c0' });
+    if (window.pkSportLabel) tags.push({ t: storyStripEmoji(window.pkSportLabel(spot.sport)), bg: '#fac710', fg: '#4e342e' });
+    if (window.pkLevelLabel) tags.push({ t: storyStripEmoji(window.pkLevelLabel(spot.level)), bg: '#f0ece2', fg: '#6d6258' });
+    if (spot.beginner_friendly && window.t) tags.push({ t: storyStripEmoji(window.t('pk_beginner_ok')), bg: '#e7f6e7', fg: '#2e7d32' });
+    if (spot.english_ok && window.t) tags.push({ t: storyStripEmoji(window.t('pk_english_ok')), bg: '#e6f0fb', fg: '#1565c0' });
     return {
         title: spot.title, url: window.buildSpotShareUrl(spot.id),
-        lat: spot.lat, lng: spot.lng, accent: '#13a89e', icon: '🏐',
+        lat: spot.lat, lng: spot.lng, accent: '#13a89e',
         tags: tags, thisWeek: spot.this_week,
         schedule: spot.schedule || spot.schedule_text, fee: spot.fee_info,
         venue: spot.venue_name, address: spot.address
@@ -497,15 +714,15 @@ function storyClubData(club) {
     for (var i = 0; i < tgt.length && i < 4; i++) tags.push({ t: tgt[i], bg: '#f0ece2', fg: '#6d6258' });
     return {
         title: club.name, url: window.buildClubShareUrl(club.id),
-        lat: club.lat, lng: club.lng, accent: '#fac710', icon: '🏐',
+        lat: club.lat, lng: club.lng, accent: '#fac710',
         verified: !!club.is_verified, tags: tags,
         schedule: club.schedule, fee: club.price,
         venue: '', address: club.address
     };
 }
 
-window.generateSpotStoryCard = function (spot) { return window.generateStoryCard(storySpotData(spot)); };
-window.generateClubStoryCard = function (club) { return window.generateStoryCard(storyClubData(club)); };
+window.generateSpotStoryCard = function (spot, format) { return window.generateStoryCard(storySpotData(spot), format); };
+window.generateClubStoryCard = function (club, format) { return window.generateStoryCard(storyClubData(club), format); };
 
 // 카드 미리보기 오버레이(브라우저 폴백) — 기존 previewOverlay/저장 버튼 재사용.
 function showStoryCardPreview(dataUrl) {
@@ -517,6 +734,7 @@ function showStoryCardPreview(dataUrl) {
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         return;
     }
+    hidePreviewShape();
     previewBox.innerHTML = '';
     var img = document.createElement('img');
     img.src = dataUrl;
@@ -568,6 +786,26 @@ window.shareClubToStory = function (club) {
     }).catch(function (e) {
         console.error('스토리 카드 공유 실패, 기본 공유로 폴백:', e);
         if (window.shareClub) window.shareClub(club);
+        return 'fallback';
+    });
+};
+
+// 팀·픽업 피드 카드(3:4) → 미리보기(저장 버튼). 셸이든 브라우저든 같은 길 — 피드는 IG 스티커가 아니다.
+window.shareFeedCard = function (kind, item) {
+    if (!item || !item.id) return Promise.resolve();
+    var isClub = kind === 'club';
+    var gen = isClub ? window.generateClubStoryCard(item, 'feed') : window.generateSpotStoryCard(item, 'feed');
+    return gen.then(function (dataUrl) {
+        showStoryCardPreview(dataUrl);
+        if (window.track) {
+            var p = { method: 'feed_card' };
+            p[isClub ? 'club_id' : 'spot_id'] = item.id;
+            window.track('share', p);
+        }
+        return 'feed_card';
+    }).catch(function (e) {
+        console.error('피드 카드 생성 실패:', e);
+        alert(window.t('sh_run_fail') || '');
         return 'fallback';
     });
 };
@@ -648,6 +886,10 @@ window.openShareMenu = function (kind, item) {
     var sHint = document.createElement('div'); sHint.className = 'share-menu-hint'; sHint.textContent = T('sh_menu_story_hint'); storyBtn.appendChild(sHint);
     storyBtn.onclick = function () { close(); startStoryShare(kind, item, url); };
     menu.appendChild(storyBtn);
+    // 🖼 피드 이미지 (3:4) — 인스타 피드·카톡에 이미지로 올리는 용도. 미리보기에서 저장.
+    addItem(T('sh_menu_feed'), false, function () {
+        window.shareFeedCard(kind, item);
+    });
     // 💬 카카오톡 (기존 카카오 우선 폴백 체인)
     addItem(T('sh_menu_kakao'), false, function () {
         if (isClub) { if (window.shareClub) window.shareClub(item); }

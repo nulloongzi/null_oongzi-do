@@ -23,7 +23,8 @@ const MIME = {
 
 http.createServer((req, res) => {
     const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath));
+    // GitHub Pages 처럼 '/폴더/' 는 그 폴더의 index.html (예: /auth/callback/)
+    let file = path.normalize(path.join(ROOT, urlPath.endsWith('/') ? urlPath + 'index.html' : urlPath));
     if (!file.startsWith(ROOT)) { // 경로 탈출 방지
         res.writeHead(403).end();
         return;

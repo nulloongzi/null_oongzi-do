@@ -76,7 +76,7 @@
 | 7 | Firebase **App Check** 도입 | 🟡 클라이언트 골격 완료 (8f6ddd7) | `index.html`, `js/firebase-init.js` | reCAPTCHA v3. **콘솔에서 사이트 키 발급 → `RECAPTCHA_V3_SITE_KEY` 입력 → enforcement** 단계 남음 (아래 "App Check 활성화 절차") |
 | 8 | Firestore rule **필드 단위 검증** | ✅ 완료 (c80afc7) | `firestore.rules` `clubFieldsValid()` | name(≤80)/target(≤40)/address(≤250)/price/schedule/urgent_msg/contact/coordinates 타입·길이. create+owner update 적용, admin 우회. 테스트 8건 |
 | 9 | **CSP** 헤더 (meta) | ⏸ 보류 | `index.html` | inline handler 多 → `unsafe-inline` 불가피, 효과 약함. 가성비 낮아 스킵 |
-| 10 | CDN **SRI** 해시 | ⏸ 보류 | `index.html` script src | pretendard/html2canvas 버전 미고정 → SRI 깨짐 위험. 버전 고정 선행 필요 |
+| 10 | CDN **SRI** 해시 | ⏸ 보류 | `index.html` script src | pretendard 는 `@1.3.9` 로 고정됨(2026-09, design-system §2), html2canvas 는 `index.html` 에서 빠졌다(공유 카드는 canvas 직접 렌더). 막던 이유가 없어졌으니 SRI 적용은 별건으로 진행 가능 |
 | 11 | Cloud Functions 응답 raw `error.message` 제거 | ✅ 완료 (c80afc7) | `functions/index.js` | verificationAction(공개) + chatbot* 7개 일반화. console.error 로그 유지 |
 | 12 | `generateId` → crypto 난수 | ✅ 완료 (c80afc7) | `js/registration.js` | `crypto.getRandomValues` 12자, 구형 폴백 유지 |
 | 13 | 사용자당 클럽 생성 rate limit | ⏸ 보류 | Cloud Function | onCall createClub로 서버 전용 전환 필요(클라 흐름 변경·stale client 영향). App Check enforcement가 자동화 abuse를 상당 커버하므로 후순위 |
