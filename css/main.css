@@ -2151,31 +2151,6 @@
             background: var(--nurungji-yellow);
         }
 
-        /* '밥친구 포함' 스위치 칩 */
-        .preview-shape .chip.tog { display: inline-flex; align-items: center; gap: 6px; }
-        .preview-shape .chip.tog i {
-            width: 26px;
-            height: 16px;
-            border-radius: 999px;
-            background: #d8cbb6;
-            position: relative;
-            transition: background 0.15s;
-        }
-        .preview-shape .chip.tog i::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #fff;
-            transition: left 0.15s;
-        }
-        .preview-shape .chip.tog.on { background: var(--nurungji-yellow); }
-        .preview-shape .chip.tog.on i { background: #8d6e63; }
-        .preview-shape .chip.tog.on i::after { left: 12px; }
-        .preview-shape .chip.tog[disabled] { opacity: 0.5; cursor: not-allowed; }
 
         .preview-img-box.is-loading img {
             opacity: 0.45;
