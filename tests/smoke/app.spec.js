@@ -455,3 +455,63 @@ test('밥친구 2단계: 보일 팀 확인 · 겹쳐 보기 · 눈 스위치', a
     await eyes.first().click();
     await expect.poll(() => page.evaluate(() => window._hid)).toEqual(['t1', true]);
 });
+
+test('밥친구 3단계: 겸상 줄 · 익힘 효과 · 🍚 버블', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentProfileData = {
+            full_nickname: '현미밥-a3k', nickname: '현미밥', created_at: new Date('2026-07-01'),
+            bookmarks: ['t1', 't3', 't4', null, null], customTeams: {},
+            friend_share_ok: true, friend_hidden: ['t4']
+        };
+        const clubs = {
+            t1: { id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00' },
+            t3: { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00' },
+            t4: { id: 't4', name: '숨긴 팀', schedule: '목 20:00-22:00' },
+            t5: { id: 't5', name: '다른 팀', schedule: '토 19:00-22:00' }
+        };
+        const orig = window.findClub;
+        window.findClub = (id) => clubs[id] || (orig && orig(id));
+        const lb = {
+            c: { status: 'ok', updatedMs: 1, teams: ['t1', 't3', 't4'].map((id, i) => ({ id, name: clubs[id].name, schedule: clubs[id].schedule, slot: i })) },
+            d: { status: 'ok', updatedMs: 1, teams: [{ id: 't5', name: '다른 팀', schedule: clubs.t5.schedule, slot: 0 }] }
+        };
+        window.peekFriendLunchbox = (o) => lb[o];
+        window.loadFriendLunchbox = (o) => Promise.resolve(lb[o]);
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { c: { name: '팥밥-q7', color: '#F8BBD0' }, d: { name: '흑미밥-z9', color: '#FFF176' } };
+        s.friends = [
+            { id: 'd_me', other: 'd', doc: { status: 'accepted' } },
+            { id: 'c_me', other: 'c', doc: { status: 'accepted' } }
+        ];
+        window.updateProfileUI(true);
+        window.renderFriendsPage();
+    });
+
+    // 🍚 버블: 토·화 겸상 2회 → 노릇 (숨긴 목요일 팀은 세지 않는다)
+    const fab = page.locator('#fabProfile');
+    await expect(fab).toHaveClass(/fab-warm/);
+    await expect(fab).toHaveClass(/warm-2/);
+    await expect(fab.locator('.fab-steam i')).toHaveCount(2);
+
+    await page.evaluate(() => window.toggleProfileCard());
+    await page.locator('#pcDots .pc-dot').nth(1).click();
+    // 이번 주 겸상 줄에는 겸상하는 친구만, 목록은 겸상 많은 순
+    const strip = page.locator('#friendsCard .fr-meal-strip .fr-meal');
+    await expect(strip).toHaveCount(1);
+    await expect(strip.first()).toContainText('팥밥-q7');
+    await expect(strip.first().locator('.fr-warm.big.warm-2')).toHaveCount(1);
+    const golden = await page.evaluate(() => window.t('fr_warm_2'));
+    await expect(page.locator('#friendsCard .fr-row').first()).toContainText(golden);
+
+    // 상세: 겹쳐 보기 위에 겸상 칸 두 개
+    await page.locator('#friendsCard .fr-row', { hasText: '팥밥-q7' }).click();
+    await expect(page.locator('#friendsCard .fr-tt-blk.gs')).toHaveCount(2);
+    const tag = await page.evaluate(() => window.tf('fr_meal_tier', { tier: window.t('fr_warm_2'), n: 2 }));
+    await expect(page.locator('#friendsCard .fr-warm-tag')).toHaveText(tag);
+
+    // 전부 숨기기로 바꾸면 겸상도 없다 (서로 공개한 팀끼리만)
+    await page.evaluate(() => { window.currentProfileData.friend_hide_all = true; window.syncFriendsBadge(); });
+    await expect(fab).not.toHaveClass(/fab-warm/);
+});

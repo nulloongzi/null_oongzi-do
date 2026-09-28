@@ -318,6 +318,33 @@
         b.textContent = n > 9 ? '9+' : String(n);
         b.setAttribute('aria-label', TF('fr_badge_aria', { n: n }));
     }
+    // 이번 주 겸상 친구가 있으면 🍚 버블에도 김과 금빛 테두리(가장 높은 익힘 단계).
+    function syncFabWarmth() {
+        var fab = document.getElementById('fabProfile');
+        if (!fab) return;
+        var tier = 0;
+        if (state.uid && window.friendMeal) {
+            state.friends.forEach(function (f) { tier = Math.max(tier, window.friendMeal(f.other).tier); });
+        }
+        fab.classList.remove('warm-1', 'warm-2', 'warm-3');
+        fab.classList.toggle('fab-warm', tier > 0);
+        var steam = fab.querySelector('.fab-steam');
+        if (!tier) {
+            if (steam) steam.remove();
+            fab.removeAttribute('title');
+            return;
+        }
+        fab.classList.add('warm-' + tier);
+        fab.title = T('fr_meal_fab');
+        if (!steam) {
+            steam = el('span', 'fab-steam');
+            steam.setAttribute('aria-hidden', 'true');
+            steam.appendChild(el('i'));
+            steam.appendChild(el('i'));
+            fab.appendChild(steam);
+        }
+    }
+    window.syncFriendsBadge = function () { syncBadge(); syncFabWarmth(); };
 
     // 팝업을 열 때마다 첫 장부터. auth.js 의 toggleProfileCard 가 부른다.
     window.resetProfilePager = function () {
@@ -371,6 +398,20 @@
         a.innerHTML = BOWL;   // 고정 SVG — 사용자 입력 아님
         return a;
     }
+    // 익힘 효과를 두른 아바타. big 이 아니면 테두리 색만 — 목록 스크롤이 요란하지 않게.
+    //   1 뜸: 옅은 테두리 + 김 한 줄 · 2 노릇: 금빛 테두리가 숨 쉬듯 · 3 누룽지: 도는 갈색 테두리 + 부스러기
+    function warmAvatar(color, size, tier, big) {
+        var a = avatar(color, size);
+        if (!tier) return a;
+        var w = el('div', 'fr-warm warm-' + tier + (big ? ' big' : ''));
+        w.appendChild(a);
+        if (big) {
+            for (var i = 0; i < Math.min(tier, 2); i++) w.appendChild(el('i', 'fr-steam s' + i));
+            if (tier === 3) for (var k = 0; k < 5; k++) w.appendChild(el('i', 'fr-crumb c' + k));
+        }
+        return w;
+    }
+    function mealOf(uid) { return window.friendMeal ? window.friendMeal(uid) : { n: 0, tier: 0, overlaps: [] }; }
     function profileOf(uid) { return state.profiles[uid] || { name: '…', color: '#F3E9D2' }; }
     function fmtDate(t) {
         var ms = toMillis(t);
@@ -407,6 +448,7 @@
         if (card) card.hidden = !loggedIn;
         if (dots) dots.hidden = !loggedIn;
         syncBadge();
+        syncFabWarmth();
         syncDots();
         var body = document.getElementById('friendsBody');
         if (!body || !loggedIn) { syncPagerHeight(0); return; }
@@ -473,6 +515,25 @@
 
         if (window.needsFriendShareConfirm && window.needsFriendShareConfirm()) body.appendChild(shareConfirmCard());
 
+        var hot = state.friends.map(function (x) { return { x: x, m: mealOf(x.other) }; })
+            .filter(function (v) { return v.m.n > 0; })
+            .sort(function (a, b) { return b.m.n - a.m.n; });
+        if (hot.length) {
+            body.appendChild(el('div', 'fr-label', T('fr_meal_title')));
+            var strip = el('div', 'fr-meal-strip');
+            hot.forEach(function (v) {
+                var p = profileOf(v.x.other);
+                var b = el('button', 'fr-meal');
+                b.type = 'button';
+                b.onclick = function () { go('detail', { detailId: v.x.id }); };
+                b.appendChild(warmAvatar(p.color, 48, v.m.tier, true));
+                b.appendChild(el('b', null, p.name));
+                b.appendChild(el('span', 'warm-' + v.m.tier, TF('fr_meal_tier', { tier: T('fr_warm_' + v.m.tier), n: v.m.n })));
+                strip.appendChild(b);
+            });
+            body.appendChild(strip);
+        }
+
         if (!state.friends.length) {
             var empty = el('div', 'fr-empty-box');
             empty.appendChild(el('b', null, T('fr_empty_title')));
@@ -481,20 +542,25 @@
             body.appendChild(empty);
         } else {
             var list = el('div', 'fr-list');
+            // 겸상 많은 순, 같으면 이름순
             state.friends.slice().sort(function (a, b) {
-                return profileOf(a.other).name.localeCompare(profileOf(b.other).name, 'ko');
+                return (mealOf(b.other).n - mealOf(a.other).n) ||
+                    profileOf(a.other).name.localeCompare(profileOf(b.other).name, 'ko');
             }).forEach(function (x) {
                 var p = profileOf(x.other);
+                var meal = mealOf(x.other);
                 var row = el('button', 'fr-row');
                 row.type = 'button';
                 row.onclick = function () { go('detail', { detailId: x.id }); };
-                row.appendChild(avatar(p.color, 38));
+                row.appendChild(warmAvatar(p.color, 38, meal.tier, false));
                 var meta = el('div', 'fr-meta');
                 meta.appendChild(el('b', null, p.name));
                 var since = fmtDate(x.doc.accepted_at);
                 var changed = window.isFriendLunchboxChanged && window.isFriendLunchboxChanged(x.other);
                 if (changed) meta.firstChild.appendChild(el('i', 'fr-changed-dot'));
-                meta.appendChild(el('span', null, changed ? T('fr_lb_changed') : (since ? TF('fr_since', { d: since }) : T('fr_friend'))));
+                meta.appendChild(el('span', null, changed ? T('fr_lb_changed')
+                    : meal.n ? TF('fr_meal_tier', { tier: T('fr_warm_' + meal.tier), n: meal.n })
+                        : (since ? TF('fr_since', { d: since }) : T('fr_friend'))));
                 row.appendChild(meta);
                 row.appendChild(el('span', 'fr-chev', '›'));
                 list.appendChild(row);
@@ -708,7 +774,9 @@
             host.appendChild(el('div', 'fr-label', T('fr_tt_title')));
             var tt = el('div', 'fr-tt-host');
             host.appendChild(tt);
-            window.renderFriendTimetable(tt, window.myFriendEvents(), window.friendSharePure.scheduleEvents(r.teams));
+            var meal = mealOf(other);
+            window.renderFriendTimetable(tt, window.myFriendEvents(), window.friendSharePure.scheduleEvents(r.teams), meal.overlaps);
+            if (!meal.n) host.appendChild(el('p', 'fr-note center', T('fr_meal_zero')));
         });
     }
 
@@ -719,9 +787,11 @@
         body.appendChild(header(p.name, function () { go('list'); }));
         var mini = el('div', 'fr-mini');
         mini.style.background = p.color;
-        mini.appendChild(avatar('#FFFFFF', 56));
+        var meal = mealOf(x.other);
+        mini.appendChild(warmAvatar('#FFFFFF', 56, meal.tier, true));
         var t = el('div', 'fr-meta');
         t.appendChild(el('b', null, p.name));
+        if (meal.tier) t.appendChild(el('em', 'fr-warm-tag warm-' + meal.tier, TF('fr_meal_tier', { tier: T('fr_warm_' + meal.tier), n: meal.n })));
         var since = fmtDate(x.doc.accepted_at);
         t.appendChild(el('span', null, since ? TF('fr_since', { d: since }) : T('fr_friend')));
         mini.appendChild(t);

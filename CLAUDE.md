@@ -15,7 +15,7 @@ js/                 ← 기능별 JS 모듈
   auth.js           ← 인증 (Google/Email)
   profile.js        ← 프로필 카드, 닉네임
   friends.js        ← 밥친구 (🍚 팝업 둘째 장: 초대코드·신청·수락·끊기)
-  friends-share.js  ← 밥친구 식단표 공유 (보일 팀 사본·눈 스위치·겹쳐 보기)
+  friends-share.js  ← 밥친구 식단표 공유 (보일 팀 사본·눈 스위치·겹쳐 보기·겸상/익힘)
   lunchbox.js       ← 도시락 (localStorage 폴백 포함)
   map-core.js       ← 카카오맵 마커/클러스터
   club-detail.js    ← 클럽 상세 바텀시트

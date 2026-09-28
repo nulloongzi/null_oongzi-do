@@ -57,7 +57,36 @@
         });
         return out;
     }
-    window.friendSharePure = { buildSharedLunchbox: buildSharedLunchbox, sharedEqual: sharedEqual, scheduleEvents: scheduleEvents };
+    // 겸상: 같은 동호회(id) · 같은 요일 · 30분 이상 겹치는 시간. 직접 추가한 팀은 같은 팀인지
+    // 알 수 없어서 넣지 않는다. mine/theirs 는 [{id, events:[{day,start,end}]}] — 양쪽 모두
+    // 친구에게 공개한 팀이어야 한다(숨긴 팀까지 세면 두 사람의 숫자가 달라져 숨긴 팀이 드러난다).
+    var MEAL_MIN_H = 0.5;
+    function mealOverlaps(mine, theirs) {
+        var out = [], seen = {};
+        (mine || []).forEach(function (m) {
+            (theirs || []).forEach(function (o) {
+                if (!m.id || m.id !== o.id) return;
+                (m.events || []).forEach(function (a) {
+                    (o.events || []).forEach(function (b) {
+                        if (a.day !== b.day) return;
+                        var s = Math.max(a.start, b.start), e = Math.min(a.end, b.end);
+                        if (e - s < MEAL_MIN_H) return;
+                        var k = m.id + '|' + a.day + '|' + s + '|' + e;
+                        if (seen[k]) return;
+                        seen[k] = 1;
+                        out.push({ id: m.id, day: a.day, start: s, end: e });
+                    });
+                });
+            });
+        });
+        return out;
+    }
+    // 익힘 단계: 한 주 겸상 횟수 → 0 생쌀 · 1 뜸 · 2 노릇 · 3 누룽지(3회 이상)
+    function warmthTier(n) { return n >= 3 ? 3 : n >= 2 ? 2 : n >= 1 ? 1 : 0; }
+    window.friendSharePure = {
+        buildSharedLunchbox: buildSharedLunchbox, sharedEqual: sharedEqual, scheduleEvents: scheduleEvents,
+        mealOverlaps: mealOverlaps, warmthTier: warmthTier
+    };
 
     function prof() { return window.currentProfileData; }
     function uid() { return window.friendState && window.friendState.uid; }
@@ -121,6 +150,9 @@
             if (sharedEqual(want, lastShared)) return;
             var doc = { teams: want.teams, custom: want.custom, hide_all: want.hide_all, updated_at: window.firebaseServerTimestamp() };
             return sharedRef(u).set(doc).then(function () { lastShared = want; });
+        }).then(function () {
+            // 내 공개 팀이 바뀌면 겸상도 바뀐다 — 🍚 버블의 익힘 효과를 다시 맞춘다
+            if (window.syncFriendsBadge) window.syncFriendsBadge();
         }).catch(function (e) { console.warn('밥친구 도시락 공유 실패:', e && e.message); });
     };
     window.resetFriendShareCache = function () { lastShared = null; lastLoadedFor = null; friendCache = {}; };
@@ -186,14 +218,36 @@
         return scheduleEvents(entries);
     };
 
+    // ── 겸상 · 익힘 ─────────────────────────────────────────────
+    // 내 쪽은 친구에게 실제로 보이는 팀만 센다 — 확인 전이거나 전부 숨기기면 겸상도 없다.
+    function clubEntry(id) {
+        var c = window.findClub ? window.findClub(id) : null;
+        return c ? { id: id, events: scheduleEvents([{ name: c.name || '', schedule: c.schedule || '' }]) } : null;
+    }
+    window.myMealTeams = function () {
+        var p = prof();
+        if (!p || !p.friend_share_ok || p.friend_hide_all) return [];
+        return buildSharedLunchbox(p.bookmarks, p.customTeams, p.friend_hidden, false).teams
+            .map(clubEntry).filter(Boolean);
+    };
+    // 친구 한 명과의 이번 주 겸상 { n, tier, overlaps }. 친구 도시락은 캐시(loadFriendLunchbox)에서.
+    window.friendMeal = function (other) {
+        var r = window.peekFriendLunchbox(other);
+        if (!r || r.status !== 'ok') return { n: 0, tier: 0, overlaps: [] };
+        var theirs = r.teams.filter(function (t) { return !t.isCustom; }).map(function (t) { return clubEntry(t.id); }).filter(Boolean);
+        var ov = mealOverlaps(window.myMealTeams(), theirs);
+        return { n: ov.length, tier: warmthTier(ov.length), overlaps: ov };
+    };
+
     // ── 겹쳐 보기 식단표 (DOM) ──────────────────────────────────
-    // 친구 칸은 도시락 색으로 채우고, 내 칸은 점선. 겸상 표시는 3단계에서 이 위에 얹는다.
+    // 친구 칸은 도시락 색으로 채우고, 내 칸은 점선, 겸상 칸은 금빛으로 맨 위에 얹는다.
     var FILL = ['#FDE293', '#FABD7B', '#B3D099', '#EB9E88', '#C68ED3'];
     var RAIL = ['#FBC02D', '#F57C00', '#689F38', '#D84315', '#8E24AA'];
     var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
-    window.renderFriendTimetable = function (host, mine, theirs) {
+    window.renderFriendTimetable = function (host, mine, theirs, meals) {
         host.innerHTML = '';
+        meals = meals || [];
         var all = mine.concat(theirs);
         if (!theirs.length) {
             var p = document.createElement('p');
@@ -243,6 +297,14 @@
                 b.className = 'fr-tt-blk ' + cls;
                 b.style.top = ((e.start - h0) / span * 100) + '%';
                 b.style.height = Math.max(4, (e.end - e.start) / span * 100) + '%';
+                if (cls === 'gs') {
+                    b.title = window.t('fr_tt_meal_legend') + ' · ' + day + ' ' + fmtH(e.start) + '–' + fmtH(e.end);
+                    var g = document.createElement('span');
+                    g.textContent = window.t('fr_tt_meal');
+                    b.appendChild(g);
+                    col.appendChild(b);
+                    return;
+                }
                 if (cls === 'fr') {
                     b.style.background = FILL[e.slot % 5];
                     b.style.borderLeftColor = RAIL[e.slot % 5];
@@ -255,6 +317,7 @@
             }
             theirs.filter(function (e) { return e.day === day; }).forEach(function (e) { block(e, 'fr'); });
             mine.filter(function (e) { return e.day === day; }).forEach(function (e) { block(e, 'me'); });
+            meals.filter(function (e) { return e.day === day; }).forEach(function (e) { block(e, 'gs'); });
             body.appendChild(col);
         });
         box.appendChild(body);
@@ -262,9 +325,10 @@
 
         var legend = document.createElement('div');
         legend.className = 'fr-tt-legend';
-        legend.innerHTML = '<span><i class="me"></i></span><span><i class="fr"></i></span>';
+        legend.innerHTML = '<span><i class="me"></i></span><span><i class="fr"></i></span>' + (meals.length ? '<span><i class="gs"></i></span>' : '');
         legend.children[0].appendChild(document.createTextNode(window.t('fr_tt_me')));
         legend.children[1].appendChild(document.createTextNode(window.t('fr_tt_friend')));
+        if (meals.length) legend.children[2].appendChild(document.createTextNode(window.t('fr_tt_meal_legend')));
         host.appendChild(legend);
     };
     function fmtH(v) {

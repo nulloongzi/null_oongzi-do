@@ -56,3 +56,38 @@ describe('식단표 이벤트', () => {
         assert.deepStrictEqual(ev, [{ day: '토', start: 19, end: 22, name: 'A', slot: 3 }]);
     });
 });
+
+describe('겸상 · 익힘 (3단계)', () => {
+    const ev = (day, start, end) => ({ day, start, end });
+    test('같은 팀 · 같은 요일 · 30분 이상 겹치면 겸상', () => {
+        const mine = [{ id: 'a', events: [ev('월', 19, 22), ev('수', 20, 22)] }];
+        const theirs = [{ id: 'a', events: [ev('월', 19, 22), ev('수', 21.75, 23)] }];
+        const ov = P.mealOverlaps(mine, theirs);
+        assert.equal(ov.length, 1);   // 수요일은 15분만 겹쳐 빠진다
+        assert.deepEqual({ ...ov[0] }, { id: 'a', day: '월', start: 19, end: 22 });
+    });
+    test('다른 팀이면 같은 시간이어도 겸상이 아니다', () => {
+        const ov = P.mealOverlaps([{ id: 'a', events: [ev('월', 19, 22)] }], [{ id: 'b', events: [ev('월', 19, 22)] }]);
+        assert.equal(ov.length, 0);
+    });
+    test('id 없는 팀(직접 추가)은 세지 않는다', () => {
+        const ov = P.mealOverlaps([{ id: '', events: [ev('월', 19, 22)] }], [{ id: '', events: [ev('월', 19, 22)] }]);
+        assert.equal(ov.length, 0);
+    });
+    test('겹치는 시간만 잘라 한 번씩 센다 (중복 없음)', () => {
+        const mine = [{ id: 'a', events: [ev('토', 14, 17)] }, { id: 'a', events: [ev('토', 14, 17)] }];
+        const theirs = [{ id: 'a', events: [ev('토', 15, 18)] }];
+        const ov = P.mealOverlaps(mine, theirs);
+        assert.equal(ov.length, 1);
+        assert.equal(ov[0].start, 15);
+        assert.equal(ov[0].end, 17);
+    });
+    test('양쪽이 대칭이다 (나 → 친구, 친구 → 나 같은 횟수)', () => {
+        const x = [{ id: 'a', events: [ev('월', 19, 22)] }, { id: 'b', events: [ev('금', 20, 22)] }];
+        const y = [{ id: 'a', events: [ev('월', 20, 23)] }, { id: 'b', events: [ev('금', 18, 21)] }];
+        assert.equal(P.mealOverlaps(x, y).length, P.mealOverlaps(y, x).length);
+    });
+    test('익힘 단계: 0 생쌀 · 1 뜸 · 2 노릇 · 3회 이상 누룽지', () => {
+        assert.deepEqual([0, 1, 2, 3, 4, 9].map(P.warmthTier), [0, 1, 2, 3, 3, 3]);
+    });
+});
