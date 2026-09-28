@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>누룽지도 로그인</title>
+<!--
+  카카오·네이버 로그인 복귀 주소(redirect_uri).
+
+  왜 루트(/)가 아닌 전용 경로인가: 앱이 공유 링크(/?club= 등)를 열려고 do.nulloongzi.com 을
+  App Link 로 선언해 두었다. 로그인 복귀를 루트로 받으면, 제공자 화면에서 버튼을 누른 뒤
+  돌아오는 순간 안드로이드가 그 주소를 앱에 넘겨 웹 로그인이 끊긴다.
+  앱은 루트 경로(/)만 열고(AndroidManifest android:path="/"), 안드로이드 15+ 는
+  assetlinks.json 의 동적 규칙이 이 경로와 ?state= 를 제외한다.
+
+  여기서는 쿼리를 그대로 들고 루트로 넘기기만 한다 — 같은 도메인 안의 이동이라 브라우저에 남고,
+  루트의 js/social-auth.js 가 ?code=&state= 를 처리한다(토큰 교환의 redirect_uri 는 이 주소).
+-->
+<script>
+    window.location.replace('/' + window.location.search + window.location.hash);
+</script>
+</head>
+<body>
+<noscript><a href="/">누룽지도로 돌아가기</a></noscript>
+</body>
+</html>

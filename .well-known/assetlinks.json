@@ -1,6 +1,8 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.nulloongzi.nulloongzido",
@@ -8,6 +10,41 @@
         "39:8F:07:A9:BB:46:E4:41:11:6C:34:DB:A2:E8:CB:D7:C5:1B:5B:FF:4D:9E:AE:F2:7A:12:98:55:9A:59:47:7D",
         "52:57:06:75:CE:4E:93:E6:B2:1A:03:27:70:E9:54:D5:45:91:30:8C:AE:89:38:33:BD:C3:67:76:CD:AA:6E:0A"
       ]
+    },
+    "relation_extensions": {
+      "delegate_permission/common.handle_all_urls": {
+        "dynamic_app_link_components": [
+          {
+            "?": {
+              "state": "*"
+            },
+            "exclude": true
+          },
+          {
+            "?": {
+              "code": "*"
+            },
+            "exclude": true
+          },
+          {
+            "?": {
+              "error": "*"
+            },
+            "exclude": true
+          },
+          {
+            "/": "/auth/*",
+            "exclude": true
+          },
+          {
+            "/": "/"
+          },
+          {
+            "/": "*",
+            "exclude": true
+          }
+        ]
+      }
     }
   }
 ]

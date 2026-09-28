@@ -595,3 +595,13 @@ test('밥친구 4단계: 포장하기 밥친구 포함 · 겸상 목록', async 
     await expect(sess.nth(0).locator('span')).toHaveText('강동 화요반');
     await expect(sess.nth(1).locator('span')).toHaveText('잠실 배구회');
 });
+
+// 로그인 복귀 전용 주소: 쿼리를 그대로 들고 루트로 넘긴다(루트의 social-auth.js 가 처리).
+// 앱이 루트를 App Link 로 열기 때문에 제공자는 이 주소로 돌려보낸다 — docs: auth/callback/index.html
+test('로그인 복귀 주소(/auth/callback/)는 쿼리를 들고 루트로 넘긴다', async ({ page }) => {
+    await page.goto('/auth/callback/?error=access_denied&state=naver_smoke');
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+    // 루트가 ?error=&state= 를 받아 처리하고 주소를 정리한다(취소 안내 후 쿼리 제거)
+    page.on('dialog', (d) => d.dismiss());
+    await expect.poll(() => new URL(page.url()).search).toBe('');
+});
