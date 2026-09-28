@@ -593,6 +593,16 @@
         fr_tt_me: { ko: '나', en: 'Me' },
         fr_tt_friend: { ko: '밥친구', en: 'Friend' },
         fr_tt_empty: { ko: '보여줄 운동 시간이 없어요.', en: 'No workout times to show.' },
+        fr_tt_meal: { ko: '겸상', en: 'Both' },
+        fr_tt_meal_legend: { ko: '겸상', en: 'Together' },
+        fr_meal_title: { ko: '이번 주 겸상', en: 'Eating together this week' },
+        fr_meal_tier: { ko: '{tier} · 겸상 주 {n}회', en: '{tier} · together {n}×/week' },
+        fr_meal_zero: { ko: '같은 팀에서 같은 시간에 운동하면 겸상이에요.', en: 'Same team, same time = eating together.' },
+        fr_meal_fab: { ko: '이번 주 겸상하는 밥친구가 있어요', en: 'You play with bap friends this week' },
+        fr_warm_0: { ko: '생쌀', en: 'Raw rice' },
+        fr_warm_1: { ko: '뜸', en: 'Steaming' },
+        fr_warm_2: { ko: '노릇', en: 'Golden' },
+        fr_warm_3: { ko: '누룽지', en: 'Nurungji' },
         lb_eye_on: { ko: '밥친구에게 보임 (누르면 숨기기)', en: 'Visible to friends (tap to hide)' },
         lb_eye_off: { ko: '밥친구에게 숨김 (누르면 보이기)', en: 'Hidden from friends (tap to show)' }
     };
