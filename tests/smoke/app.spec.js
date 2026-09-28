@@ -462,7 +462,7 @@ test('밥친구 2단계: 보일 팀 확인 · 겹쳐 보기 · 눈 스위치', a
     await expect.poll(() => page.evaluate(() => window._hid)).toEqual(['t1', true]);
 });
 
-test('밥친구 3단계: 겸상 줄 · 익힘 효과 · 🍚 버블', async ({ page }) => {
+test('밥친구 3단계: 합석 줄 · 합석 단계 · 🍚 버블', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => {
         window.currentProfileData = {
@@ -495,35 +495,47 @@ test('밥친구 3단계: 겸상 줄 · 익힘 효과 · 🍚 버블', async ({ p
         window.renderFriendsPage();
     });
 
-    // 🍚 버블: 토·화 겸상 2회 → 노릇 (숨긴 목요일 팀은 세지 않는다)
+    // 🍚 버블: 처음 합석하게 된 친구(같은 팀 2개 → 한 그릇)가 있으면 단계 색 테두리 + 둘째 도트 신호.
+    // 숨긴 목요일 팀은 세지 않는다. 움직이는 효과(김)는 없다.
     const fab = page.locator('#fabProfile');
     await expect(fab).toHaveClass(/fab-warm/);
     await expect(fab).toHaveClass(/warm-2/);
-    await expect(fab.locator('.fab-steam i')).toHaveCount(2);
+    await expect(fab.locator('.fab-steam, i')).toHaveCount(0);
 
     await page.evaluate(() => window.toggleProfileCard());
+    await expect(page.locator('#pcDots .pc-dot').nth(1)).toHaveClass(/sig/);
     await page.locator('#pcDots .pc-dot').nth(1).click();
-    // 이번 주 겸상 줄에는 겸상하는 친구만, 목록은 겸상 많은 순
+    // 밥친구 장을 봤으면 알림은 꺼진다 — 같은 친구로는 다시 뜨지 않는다(처음 한 번만)
+    await expect(fab).not.toHaveClass(/fab-warm/);
+    await page.evaluate(() => window.renderFriendsPage());
+    await expect(fab).not.toHaveClass(/fab-warm/);
+    // 이번 주 합석 줄에는 합석하는 친구만, 목록은 합석 많은 순
     const strip = page.locator('#friendsCard .fr-meal-strip .fr-meal');
     await expect(strip).toHaveCount(1);
     await expect(strip.first()).toContainText('팥밥-q7');
-    await expect(strip.first().locator('.fr-warm.big.warm-2')).toHaveCount(1);
+    // 같은 팀 2개(잠실·강동) → 한 그릇: 밥그릇이 2/3 차오른 아바타
+    await expect(strip.first().locator('.fr-av.warm-2 svg clipPath')).toHaveCount(1);
+    // 효과 없이 단계 색 테두리만
+    await expect(strip.first().locator('.fr-steam, .fr-crumb')).toHaveCount(0);
+    const anim = await strip.first().locator('.fr-av').evaluate((e) => window.getComputedStyle(e).animationName);
+    expect(anim).toBe('none');
     const golden = await page.evaluate(() => window.t('fr_warm_2'));
     await expect(page.locator('#friendsCard .fr-row').first()).toContainText(golden);
 
-    // 상세: 겹쳐 보기 위에 겸상 칸 두 개
+    // 상세: 겹쳐 보기 위에 합석 칸 두 개
     await page.locator('#friendsCard .fr-row', { hasText: '팥밥-q7' }).click();
     await expect(page.locator('#friendsCard .fr-tt-blk.gs')).toHaveCount(2);
     const tag = await page.evaluate(() => window.tf('fr_meal_tier', { tier: window.t('fr_warm_2'), n: 2 }));
     await expect(page.locator('#friendsCard .fr-warm-tag')).toHaveText(tag);
 
-    // 전부 숨기기로 바꾸면 겸상도 없다 (서로 공개한 팀끼리만)
+    // 전부 숨기기로 바꾸면 합석도 없다 (서로 공개한 팀끼리만)
     await page.evaluate(() => { window.currentProfileData.friend_hide_all = true; window.syncFriendsBadge(); });
+    expect(await page.evaluate(() => window.friendMeal('c').n)).toBe(0);
     await expect(fab).not.toHaveClass(/fab-warm/);
 });
-// 밥친구 4단계: 포장하기 '밥친구 포함' 스위치. 겸상 친구가 없으면 잠기고, 있으면 켜서 다시 그린다.
-// 같은 상태로 친구 상세의 겸상 목록(글)도 본다.
-test('밥친구 4단계: 포장하기 밥친구 포함 · 겸상 목록', async ({ page }) => {
+// 밥친구 4단계: 포장하기 '밥친구 포함' 스위치. 합석 친구가 없으면 잠기고, 있으면 켜서 다시 그린다.
+// 같은 상태로 친구 상세의 합석 목록(글)도 본다.
+test('밥친구 4단계: 포장하기 밥친구 포함 · 합석 목록', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => {
         window.currentProfileData = {
@@ -549,10 +561,10 @@ test('밥친구 4단계: 포장하기 밥친구 포함 · 겸상 목록', async 
     });
     const tog = page.locator('#previewFriends');
     await expect(tog).toBeVisible();
-    await expect(tog).toBeDisabled();                       // 겸상 친구 없음 → 잠김
+    await expect(tog).toBeDisabled();                       // 합석 친구 없음 → 잠김
     await expect(tog).toHaveAttribute('aria-checked', 'false');
 
-    // 겸상 친구가 생기면 켤 수 있다. 전부 숨긴 친구(d)는 카드에 넣지 않는다.
+    // 합석 친구가 생기면 켤 수 있다. 전부 숨긴 친구(d)는 카드에 넣지 않는다.
     await page.evaluate(() => {
         window._lb.c = { status: 'ok', updatedMs: 1, teams: [{ id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00', slot: 0 }, { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00', slot: 1 }] };
         window._lb.d = { status: 'hidden', updatedMs: 1, teams: [] };
@@ -584,7 +596,7 @@ test('밥친구 4단계: 포장하기 밥친구 포함 · 겸상 목록', async 
     await expect(tog).toHaveAttribute('aria-checked', 'true');
     await page.evaluate(() => window.closePreview());
 
-    // 친구 상세: 겹쳐 보기 아래 겸상 목록을 글로 (요일 → 시각 순)
+    // 친구 상세: 겹쳐 보기 아래 합석 목록을 글로 (요일 → 시각 순)
     await page.evaluate(() => { window.toggleProfileCard(); window.renderFriendsPage(); });
     await page.locator('#pcDots .pc-dot').nth(1).click();
     await expect(page.locator('#friendsCard .fr-meal-hint')).toBeVisible();
