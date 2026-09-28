@@ -48,6 +48,23 @@ window.generateRiceName = function () {
     return { base: selected.name, code: suffix, full: selected.name + "-" + suffix, color: selected.color };
 };
 
+// 예약 닉네임: 서비스 이름('누룽지'·'Nulloongzi'·'null_oongzi' …)은 공식 계정만 쓴다.
+// 공백·기호·대소문자를 걷어내고 비교한다. firestore.rules isReservedNickname 과 같은 목록 —
+// 실제로 막는 건 룰이고, 여기서는 저장 전에 이유를 알려줄 뿐이다.
+var RESERVED_NICK_RE = /(누룽지|nulloongzi|nuloongzi|nullongzi|nurungji|nurungzi|nuroongzi)/;
+window.isReservedNickname = function (name) {
+    return RESERVED_NICK_RE.test(String(name == null ? '' : name).toLowerCase().replace(/[^a-z0-9가-힣]/g, ''));
+};
+// 예약 닉네임을 쓸 수 있는 계정인가(운영자 또는 official_accounts/{uid}). 룰과 같은 기준.
+window.canUseReservedNickname = async function (user) {
+    if (!user || !window.firebaseDB) return false;
+    if (window.isAdmin) return true;
+    try {
+        var snap = await window.firebaseDoc(window.firebaseDB, 'official_accounts', user.uid).get();
+        return snap.exists;
+    } catch (e) { return false; }
+};
+
 window.checkDuplicateNickname = async function (nickname) {
     if (!window.firebaseDB) return false;
     var usersRef = window.firebaseDB.collection('users');
@@ -188,6 +205,10 @@ window.editNickname = async function () {
             return;
         }
         try {
+            if (window.isReservedNickname(newName) && !(await window.canUseReservedNickname(window.currentUser))) {
+                alert(window.t('nickname_reserved'));
+                return;
+            }
             var isDup = await window.checkDuplicateNickname(newName);
             if (isDup) { alert("이미 누군가 사용 중인 이름입니다."); return; }
             var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
