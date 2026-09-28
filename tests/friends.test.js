@@ -73,3 +73,15 @@ describe('관계', () => {
         assert.deepStrictEqual(JSON.parse(JSON.stringify(r.outgoing.map(x => x.other))), ['c']);
     });
 });
+
+describe('하루 신청 상한', () => {
+    test('30건 — 구상안과 같은 숫자', () => { assert.equal(P.MAX_REQ_PER_DAY, 30); });
+    test('같은 날이면 세고, 날이 바뀌면 0 부터', () => {
+        const day = new Date(2026, 8, 28, 23, 50).getTime();
+        const raw = JSON.stringify({ d: P.dayKey(day), n: 7 });
+        assert.equal(P.countToday(raw, day), 7);
+        assert.equal(P.countToday(raw, day + 20 * 60 * 1000), 0);   // 자정 넘김
+        assert.equal(P.countToday(null, day), 0);
+        assert.equal(P.countToday('{broken', day), 0);
+    });
+});

@@ -25,6 +25,7 @@
     var CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
     var PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;   // 신청은 7일 뒤 조용히 사라진다
     var MAX_FRIENDS = 100;
+    var MAX_REQ_PER_DAY = 30;   // 스팸 방지 — 룰로는 셀 수 없어 이 기기에서만 센다
 
     function makeInviteCode(rand) {
         rand = rand || randomInt;
@@ -47,6 +48,11 @@
         return CODE_RE.test(s) ? s : '';
     }
     function pairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+    // 하루 신청 횟수: localStorage 에 { d: '2026-9-28', n } 로 둔다. 날이 바뀌면 0 부터.
+    function dayKey(now) { var d = new Date(now); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+    function countToday(raw, now) {
+        try { var v = JSON.parse(raw || '{}'); return v && v.d === dayKey(now) ? (Number(v.n) || 0) : 0; } catch (e) { return 0; }
+    }
     function toMillis(t) {
         if (!t) return 0;
         if (typeof t.toMillis === 'function') return t.toMillis();
@@ -79,6 +85,7 @@
 
     window.friendsPure = {
         CODE_ALPHABET: CODE_ALPHABET, CODE_LEN: CODE_LEN, PENDING_TTL_MS: PENDING_TTL_MS, MAX_FRIENDS: MAX_FRIENDS,
+        MAX_REQ_PER_DAY: MAX_REQ_PER_DAY, dayKey: dayKey, countToday: countToday,
         makeInviteCode: makeInviteCode, normalizeCode: normalizeCode, pairId: pairId,
         isExpired: isExpired, partition: partition
     };
@@ -193,13 +200,19 @@
             return create();
         });
         function create() {
+            if (requestsToday() >= MAX_REQ_PER_DAY) return Promise.reject(new Error(T('fr_err_daily')));
             var m = [me, toUid].sort();
             return ref.set({
                 members: m, requested_by: me, requested_to: toUid,
                 status: 'pending', code: code, created_at: ts()
-            }).then(function () { track('friend_request_send'); return 'sent'; });
+            }).then(function () { bumpRequestsToday(); track('friend_request_send'); return 'sent'; });
         }
     };
+    var REQ_DAY_KEY = 'nurungji_friend_req_day';
+    function requestsToday() { try { return countToday(localStorage.getItem(REQ_DAY_KEY), Date.now()); } catch (e) { return 0; } }
+    function bumpRequestsToday() {
+        try { localStorage.setItem(REQ_DAY_KEY, JSON.stringify({ d: dayKey(Date.now()), n: requestsToday() + 1 })); } catch (e) { }
+    }
 
     window.acceptFriend = function (id) {
         return db().collection('friendships').doc(id).update({ status: 'accepted', accepted_at: ts() })
@@ -522,6 +535,7 @@
             .sort(function (a, b) { return b.m.n - a.m.n; });
         if (hot.length) {
             body.appendChild(el('div', 'fr-label', T('fr_meal_title')));
+            body.appendChild(el('p', 'fr-note fr-meal-hint', T('fr_meal_hint')));   // 겸상이 낯선 사람에게 한 줄
             var strip = el('div', 'fr-meal-strip');
             hot.forEach(function (v) {
                 var p = profileOf(v.x.other);
@@ -778,7 +792,17 @@
             host.appendChild(tt);
             var meal = mealOf(other);
             window.renderFriendTimetable(tt, window.myFriendEvents(), window.friendSharePure.scheduleEvents(r.teams), meal.overlaps);
-            if (!meal.n) host.appendChild(el('p', 'fr-note center', T('fr_meal_zero')));
+            if (!meal.n) { host.appendChild(el('p', 'fr-note center', T('fr_meal_zero'))); return; }
+            // 겸상 목록을 글로 한 번 더 — 표만으로는 요일·시각을 읽기 어렵다
+            var ses = el('div', 'fr-sess-list');
+            window.friendSharePure.sortOverlaps(meal.overlaps).forEach(function (o) {
+                var row = el('div', 'fr-sess');
+                row.appendChild(el('b', null, (window.i18nDay ? window.i18nDay(o.day) : o.day) + ' ' + window.friendSharePure.fmtRange(o.start, o.end)));
+                var c = window.findClub ? window.findClub(o.id) : null;
+                row.appendChild(el('span', null, c ? (c.name || '') : ''));
+                ses.appendChild(row);
+            });
+            host.appendChild(ses);
         });
     }
 

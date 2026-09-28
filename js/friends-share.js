@@ -83,9 +83,28 @@
     }
     // 익힘 단계: 한 주 겸상 횟수 → 0 생쌀 · 1 뜸 · 2 노릇 · 3 누룽지(3회 이상)
     function warmthTier(n) { return n >= 3 ? 3 : n >= 2 ? 2 : n >= 1 ? 1 : 0; }
+    // 포장하기 카드에 넣을 밥친구: 겸상 있는 친구만, 전부 숨긴 친구는 빼고, 겸상 많은 순(같으면 이름순) 최대 max.
+    function pickCardFriends(entries, max) {
+        return (entries || []).filter(function (f) { return f && f.n > 0 && !f.hidden; })
+            .sort(function (a, b) { return (b.n - a.n) || String(a.name).localeCompare(String(b.name), 'ko'); })
+            .slice(0, max || 4);
+    }
+    // 겸상 목록 정렬(요일 → 시작 시각) · 시각 표기 "19–22" / "19:30–22"
+    var DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일'];
+    function sortOverlaps(list) {
+        return (list || []).slice().sort(function (a, b) {
+            return (DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)) || (a.start - b.start);
+        });
+    }
+    function fmtHour(v) {
+        var h = Math.floor(v), m = Math.round((v - h) * 60);
+        return m ? h + ':' + (m < 10 ? '0' : '') + m : String(h);
+    }
+    function fmtRange(a, b) { return fmtHour(a) + '–' + fmtHour(b); }
     window.friendSharePure = {
         buildSharedLunchbox: buildSharedLunchbox, sharedEqual: sharedEqual, scheduleEvents: scheduleEvents,
-        mealOverlaps: mealOverlaps, warmthTier: warmthTier
+        mealOverlaps: mealOverlaps, warmthTier: warmthTier, pickCardFriends: pickCardFriends,
+        sortOverlaps: sortOverlaps, fmtRange: fmtRange
     };
 
     function prof() { return window.currentProfileData; }

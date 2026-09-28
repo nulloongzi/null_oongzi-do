@@ -91,3 +91,24 @@ describe('겸상 · 익힘 (3단계)', () => {
         assert.deepEqual([0, 1, 2, 3, 4, 9].map(P.warmthTier), [0, 1, 2, 3, 3, 3]);
     });
 });
+
+describe('포장하기 밥친구 · 겸상 목록 (4단계)', () => {
+    test('pickCardFriends: 겸상 있는 친구만, 전부 숨긴 친구 제외, 겸상 많은 순 최대 4', () => {
+        const out = P.pickCardFriends([
+            { name: '가', n: 1, tier: 1 }, { name: '나', n: 0, tier: 0 }, { name: '다', n: 3, tier: 3 },
+            { name: '라', n: 2, tier: 2, hidden: true }, { name: '마', n: 2, tier: 2 }, { name: '바', n: 1, tier: 1 }, { name: '사', n: 1, tier: 1 }
+        ]);
+        assert.deepEqual(out.map((f) => f.name), ['다', '마', '가', '바']);
+        assert.deepEqual(P.pickCardFriends([], 4), []);
+        assert.deepEqual(P.pickCardFriends(null), []);
+    });
+    test('sortOverlaps: 요일 → 시작 시각', () => {
+        const out = P.sortOverlaps([{ day: '토', start: 19, end: 22 }, { day: '월', start: 20, end: 22 }, { day: '월', start: 19, end: 21 }]);
+        assert.deepEqual(out.map((o) => o.day + o.start), ['월19', '월20', '토19']);
+    });
+    test('fmtRange: 정시는 시만, 아니면 분까지', () => {
+        assert.equal(P.fmtRange(19, 22), '19–22');
+        assert.equal(P.fmtRange(19.5, 22), '19:30–22');
+        assert.equal(P.fmtRange(9.25, 10.75), '9:15–10:45');
+    });
+});
