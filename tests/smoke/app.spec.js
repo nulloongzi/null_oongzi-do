@@ -250,7 +250,7 @@ test('신고: 인앱 모달이 열리고 사유 없이 보내면 막는다', asy
 // 포장하기 — html2canvas(DOM 복제 + transform:scale) 경로를 canvas 직접 렌더로 갈아탔다.
 // 회귀 지점 셋: 규격이 정확한가, 화면과 같은 도시락 그리드를 쓰는가,
 // 빈 칸에 입력 유도 문구("담아주세요")가 새어 나가지 않는가.
-test('포장하기: 두 규격이 정확한 크기로 렌더된다', async ({ page }) => {
+test('포장하기: 네임카드·식단표 두 장이 9:16 으로 렌더된다', async ({ page }) => {
     await page.goto('/');
 
     const out = await page.evaluate(async () => {
@@ -271,13 +271,15 @@ test('포장하기: 두 규격이 정확한 크기로 렌더된다', async ({ pa
             i.onload = () => res([i.naturalWidth, i.naturalHeight]);
             i.src = url;
         });
-        const story = await sizeOf(await window.renderMyCard(d, false));
-        const feed = await sizeOf(await window.renderMyCard(d, true));
-        return { story, feed, slots: d.slots, events: d.events.length, bg: d.bgColor };
+        const card = await sizeOf(await window.renderMyCard(d, 'card'));
+        const diet = await sizeOf(await window.renderMyCard(d, 'diet'));
+        return { card, diet, slots: d.slots, events: d.events.length, bg: d.bgColor, dex: d.dex.count, no: d.dex.mine.no };
     });
 
-    expect(out.story).toEqual([1080, 1920]);            // 9:16
-    expect(out.feed).toEqual([1080, 1440]);             // 3:4 — 인스타 피드·그리드(2025~)
+    expect(out.card).toEqual([1080, 1920]);             // 9:16 — 둘 다 스토리 규격
+    expect(out.diet).toEqual([1080, 1920]);
+    expect(out.dex).toBe(1);                            // 밥친구 없이 나 혼자 = 혼밥
+    expect(out.no).toBe(1);                             // 현미밥 = 밥도감 No.01
     // 슬롯 순서는 화면 UI와 같다: 0=밥 1=국 2~4=반찬
     expect(out.slots[0]).toBe('GVT 배구클럽');
     expect(out.slots[2]).toBe('월요 리시브반');
@@ -379,9 +381,9 @@ test('공유 카드: 긴 내용도 QR 스텁을 덮지 않는다 (두 규격, �
     for (const r of out) expect(r.cardBottom, r.f).toBeLessThanOrEqual(r.limit + 0.01);
 });
 
-// 포장하기: confirm() 대신 미리보기 위 형태 칩(앱 share_image_screen 과 같은 두 칸).
-// 기본 피드형(3:4) → 스토리형 칩을 누르면 그 자리에서 9:16 으로 다시 그린다.
-test('포장하기: 형태 칩으로 피드(3:4) ↔ 스토리(9:16)를 바꾼다', async ({ page }) => {
+// 포장하기: 미리보기 위 카드 칩(앱 share_image_screen 과 같은 두 칸). 기본은 네임카드,
+// 식단표 칩을 누르면 그 자리에서 다시 그린다. 둘 다 9:16.
+test('포장하기: 카드 칩으로 네임카드 ↔ 식단표를 바꾼다', async ({ page }) => {
     await page.goto('/');
     let dialogs = 0;
     page.on('dialog', (d) => { dialogs++; d.dismiss(); });
@@ -392,20 +394,24 @@ test('포장하기: 형태 칩으로 피드(3:4) ↔ 스토리(9:16)를 바꾼�
     });
     const shape = page.locator('#previewShape');
     await expect(shape).toBeVisible();
-    await expect(shape.locator('[data-shape="feed"]')).toHaveClass(/selected/);
+    await expect(shape.locator('[data-shape="card"]')).toHaveClass(/selected/);
+    const src = () => page.evaluate(() => { const i = document.querySelector('#previewImgBox img'); return i ? i.src.length : 0; });
     const size = () => page.evaluate(() => new Promise((res) => {
         const i = document.querySelector('#previewImgBox img');
         const done = () => res([i.naturalWidth, i.naturalHeight]);
         if (i.complete && i.naturalWidth) done(); else i.onload = done;
     }));
     await expect(page.locator('#previewImgBox img')).toHaveCount(1);
-    expect(await size()).toEqual([1080, 1440]);
+    expect(await size()).toEqual([1080, 1920]);
+    const before = await src();
 
-    await shape.locator('[data-shape="story"]').click();
-    await expect(shape.locator('[data-shape="story"]')).toHaveClass(/selected/);
-    await expect(shape.locator('[data-shape="feed"]')).not.toHaveClass(/selected/);
-    await expect.poll(size).toEqual([1080, 1920]);
-    expect(dialogs).toBe(0);                            // confirm 창이 뜨지 않는다
+    await shape.locator('[data-shape="diet"]').click();
+    await expect(shape.locator('[data-shape="diet"]')).toHaveClass(/selected/);
+    await expect(shape.locator('[data-shape="card"]')).not.toHaveClass(/selected/);
+    await expect.poll(src).not.toBe(before);             // 다른 그림으로 다시 그렸다
+    expect(await size()).toEqual([1080, 1920]);
+    expect(dialogs).toBe(0);                             // confirm 창이 뜨지 않는다
+    await expect(page.locator('#previewFriends')).toHaveCount(0);   // '밥친구 포함' 스위치는 없어졌다
 
     // 닫으면 칩도 숨는다 — 팀·픽업 카드 미리보기에는 형태 선택이 없다
     await page.evaluate(() => window.closePreview());
@@ -535,7 +541,7 @@ test('밥친구 3단계: 합석 줄 · 합석 단계 · 🍚 버블', async ({ p
 });
 // 밥친구 4단계: 포장하기 '밥친구 포함' 스위치. 합석 친구가 없으면 잠기고, 있으면 켜서 다시 그린다.
 // 같은 상태로 친구 상세의 합석 목록(글)도 본다.
-test('밥친구 4단계: 포장하기 밥친구 포함 · 합석 목록', async ({ page }) => {
+test('밥친구 4단계: 포장하기 밥도감 · 합석 목록', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => {
         window.currentProfileData = {
@@ -559,42 +565,34 @@ test('밥친구 4단계: 포장하기 밥친구 포함 · 합석 목록', async 
         window.renderFriendsPage();
         window.showShareOptions();
     });
-    const tog = page.locator('#previewFriends');
-    await expect(tog).toBeVisible();
-    await expect(tog).toBeDisabled();                       // 합석 친구 없음 → 잠김
-    await expect(tog).toHaveAttribute('aria-checked', 'false');
+    // 밥도감: 나(현미밥) + 밥친구 전체의 밥 종류. 도감 밖 이름(팥밥)은 세지 않는다.
+    // 합석 여부·'식단표 전부 숨기기'와 상관없이 밥 종류만 나간다 — 친구 이름·팀·일정은 카드에 없다.
+    await expect(page.locator('#previewImgBox img')).toHaveCount(1);
+    const dex = await page.evaluate(async () => {
+        const rices = await window.loadFriendRices();
+        const d = window.buildMyCardData(rices);
+        const l = window.myCardLayout(d, 'card');
+        return {
+            rices, count: d.dex.count, lv: d.dex.stage.lv, owned: Object.keys(d.dex.owned).sort(),
+            dexBot: l.dex.y + l.dex.h, limit: l.stubTop - window.SHARE_CARD.GAP, bento: l.bento.h,
+            idTop: l.identity.y, headBot: l.fmt.top + window.SHARE_CARD.HEADER_H
+        };
+    });
+    expect(dex.rices).toEqual(['팥밥', '흑미밥']);
+    expect(dex.count).toBe(2);
+    expect(dex.lv).toBe(2);                                  // 밥상
+    expect(dex.owned).toEqual(['현미밥', '흑미밥']);
+    // 실제 폰트로 배치해도 밥도감이 스텁 위에 붙고 도시락통은 최소치 이상, 신원은 머리글 아래
+    expect(dex.dexBot).toBeLessThanOrEqual(dex.limit + 0.01);
+    expect(dex.bento).toBeGreaterThanOrEqual(280);
+    expect(dex.idTop).toBeGreaterThanOrEqual(dex.headBot);
+    await page.evaluate(() => window.closePreview());
 
-    // 합석 친구가 생기면 켤 수 있다. 전부 숨긴 친구(d)는 카드에 넣지 않는다.
+    // 합석 친구(c)의 보일 팀 사본. 전부 숨긴 친구(d)는 합석 목록에도 없다.
     await page.evaluate(() => {
         window._lb.c = { status: 'ok', updatedMs: 1, teams: [{ id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00', slot: 0 }, { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00', slot: 1 }] };
         window._lb.d = { status: 'hidden', updatedMs: 1, teams: [] };
-        window.selectMyCardShape('story');
     });
-    await expect(tog).toBeEnabled();
-    const size = () => page.evaluate(() => new Promise((res) => {
-        const i = document.querySelector('#previewImgBox img');
-        const done = () => res([i.naturalWidth, i.naturalHeight]);
-        if (i.complete && i.naturalWidth) done(); else i.onload = done;
-    }));
-    await expect.poll(size).toEqual([1080, 1920]);
-    await tog.click();
-    await expect(tog).toHaveAttribute('aria-checked', 'true');
-    await expect(tog).toHaveClass(/on/);
-    await expect.poll(size).toEqual([1080, 1920]);
-    const picked = await page.evaluate(() => window.buildMyCardData(true).friends.map((f) => [f.name, f.n, f.tier]));
-    expect(picked).toEqual([['팥밥-q7', 2, 2]]);
-    // 실제 폰트로 배치해도 밥친구 칸이 스텁 위에 붙고 도시락통은 최소치 이상
-    const L = await page.evaluate(() => {
-        const l = window.myCardLayout(window.buildMyCardData(true), false);
-        return { frBot: l.friends.y + l.friends.h, limit: l.stubTop - window.SHARE_CARD.GAP, bento: l.bento.h };
-    });
-    expect(L.frBot).toBeLessThanOrEqual(L.limit + 0.01);
-    expect(L.bento).toBeGreaterThanOrEqual(320);
-    // 피드로 바꿔도 스위치 상태는 남는다
-    await page.locator('#previewShape [data-shape="feed"]').click();
-    await expect.poll(size).toEqual([1080, 1440]);
-    await expect(tog).toHaveAttribute('aria-checked', 'true');
-    await page.evaluate(() => window.closePreview());
 
     // 친구 상세: 겹쳐 보기 아래 합석 목록을 글로 (요일 → 시각 순)
     await page.evaluate(() => { window.toggleProfileCard(); window.renderFriendsPage(); });

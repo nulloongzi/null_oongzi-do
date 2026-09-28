@@ -170,11 +170,20 @@
             var d = snap.exists ? snap.data() : {};
             var name = d.full_nickname || d.nickname || T('fr_unknown');
             var rice = d.nickname || String(name).split('-')[0];
-            var p = { name: name, color: d.color || (window.riceColorOf ? window.riceColorOf(rice) : '#FFF9C4') };
+            var p = { name: name, rice: rice, color: d.color || (window.riceColorOf ? window.riceColorOf(rice) : '#FFF9C4') };
             state.profiles[uid] = p;
             return p;
         }).catch(function () { return { name: T('fr_unknown'), color: '#FFF9C4' }; });
     }
+
+    // 밥도감용: 밥친구 전체의 밥 이름. 프로필을 아직 안 받은 친구는 받아서 센다.
+    // 나가는 건 밥 종류뿐 — 친구 이름·팀·일정은 카드에 없다.
+    window.loadFriendRices = function () {
+        if (!state.uid || !state.friends.length) return Promise.resolve([]);
+        return Promise.all(state.friends.map(function (f) { return loadProfile(f.other); })).then(function (ps) {
+            return ps.map(function (p) { return p.rice || String(p.name || '').split('-')[0]; });
+        });
+    };
 
     // 코드 → 주인. 결과 status: ok | self | friend | sent | received | not_found | invalid
     window.lookupInviteCode = function (raw) {

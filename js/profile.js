@@ -134,6 +134,36 @@ window.riceColorOf = function (riceName) {
     return found ? found.color : "#fff9c4";
 };
 
+// 밥도감 — 밥 종류 25가지를 모으는 도감. 번호는 riceData 순서, 희귀도는 뽑기 가중치
+// (50 흔함 · 10 드묾 · 1 전설). 밥친구 전체(나 포함)의 밥 종류 수로 상차림 단계를 매긴다.
+// 앱 lib/services/rice_dex.dart 와 같은 표 — 한쪽만 바꾸면 도감 번호가 어긋난다.
+var DEX_STAGES = [{ min: 1, lv: 1 }, { min: 2, lv: 2 }, { min: 6, lv: 3 }, { min: 13, lv: 4 }, { min: 25, lv: 5 }];
+window.riceDex = {
+    total: riceData.length,
+    list: function () {
+        return riceData.map(function (r, i) { return { no: i + 1, name: r.name, color: r.color, rarity: rarityOf(r.weight) }; });
+    },
+    // 밥 이름 → 도감 항목(없으면 null — 운영자 닉네임·옛 닉네임 등)
+    info: function (name) {
+        for (var i = 0; i < riceData.length; i++) {
+            if (riceData[i].name === name) return { no: i + 1, name: name, color: riceData[i].color, rarity: rarityOf(riceData[i].weight) };
+        }
+        return null;
+    },
+    // 닉네임("현미밥-a3k") → 밥 이름("현미밥")
+    riceOf: function (nickname) { return String(nickname || '').split('-')[0]; },
+    // 모은 종류 수 → { lv: 1~5, next: 다음 단계 lv | 0, need: 다음 단계까지 남은 종류 수 }
+    stage: function (n) {
+        var lv = 0, next = 0, need = 0;
+        for (var i = 0; i < DEX_STAGES.length; i++) {
+            if (n >= DEX_STAGES[i].min) lv = DEX_STAGES[i].lv;
+            else { next = DEX_STAGES[i].lv; need = DEX_STAGES[i].min - n; break; }
+        }
+        return { lv: lv, next: next, need: need };
+    }
+};
+function rarityOf(w) { return w >= 50 ? 'common' : (w >= 10 ? 'rare' : 'legend'); }
+
 window.renderProfileCard = function () {
     if (!window.currentProfileData) return;
 
