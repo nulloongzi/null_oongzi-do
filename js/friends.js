@@ -25,6 +25,7 @@
     var CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
     var PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;   // 신청은 7일 뒤 조용히 사라진다
     var MAX_FRIENDS = 100;
+    var MAX_REQ_PER_DAY = 30;   // 스팸 방지 — 룰로는 셀 수 없어 이 기기에서만 센다
 
     function makeInviteCode(rand) {
         rand = rand || randomInt;
@@ -47,6 +48,11 @@
         return CODE_RE.test(s) ? s : '';
     }
     function pairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+    // 하루 신청 횟수: localStorage 에 { d: '2026-9-28', n } 로 둔다. 날이 바뀌면 0 부터.
+    function dayKey(now) { var d = new Date(now); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+    function countToday(raw, now) {
+        try { var v = JSON.parse(raw || '{}'); return v && v.d === dayKey(now) ? (Number(v.n) || 0) : 0; } catch (e) { return 0; }
+    }
     function toMillis(t) {
         if (!t) return 0;
         if (typeof t.toMillis === 'function') return t.toMillis();
@@ -79,6 +85,7 @@
 
     window.friendsPure = {
         CODE_ALPHABET: CODE_ALPHABET, CODE_LEN: CODE_LEN, PENDING_TTL_MS: PENDING_TTL_MS, MAX_FRIENDS: MAX_FRIENDS,
+        MAX_REQ_PER_DAY: MAX_REQ_PER_DAY, dayKey: dayKey, countToday: countToday,
         makeInviteCode: makeInviteCode, normalizeCode: normalizeCode, pairId: pairId,
         isExpired: isExpired, partition: partition
     };
@@ -120,29 +127,41 @@
             });
     }
 
+    // 진행 중인 발급이 있으면 그걸 기다린다 — 겹쳐 부르면(재렌더마다) 코드가 두 개 발급되고
+    // 하나는 프로필에 없는데도 룰이 받아 주는 '유령 코드'가 된다.
+    var codeInFlight = null;
     window.ensureMyInviteCode = function () {
         var uid = state.uid;
         if (!uid || !db()) return Promise.reject(new Error('login'));
         if (state.myCode) return Promise.resolve(state.myCode);
-        return privateRef(uid).get().then(function (snap) {
+        if (codeInFlight) return codeInFlight;
+        codeInFlight = privateRef(uid).get().then(function (snap) {
             var c = snap.exists ? (snap.data() || {}).invite_code : null;
             if (c) return c;
             return claimNewCode(uid).then(function (code) {
                 return privateRef(uid).set({ invite_code: code }, { merge: true }).then(function () { return code; });
             });
-        }).then(function (code) { state.myCode = code; return code; });
+        }).then(function (code) {
+            codeInFlight = null;
+            if (state.uid === uid) state.myCode = code;
+            return code;
+        }, function (e) { codeInFlight = null; throw e; });
+        return codeInFlight;
     };
 
     // 새 코드 받기: 새 코드를 먼저 잡고, 저장하고, 옛 코드를 지운다(순서가 바뀌면 코드가 없는 순간이 생긴다).
     window.regenerateInviteCode = function () {
-        var uid = state.uid, old = state.myCode;
-        return claimNewCode(uid).then(function (code) {
+        var uid = state.uid;
+        // 화면이 옛 코드를 모르면(로드 실패) 서버의 것을 읽어 지운다 — 옛 코드가 살아남으면 안 된다
+        var oldP = state.myCode ? Promise.resolve(state.myCode)
+            : privateRef(uid).get().then(function (snap) { return snap.exists ? (snap.data() || {}).invite_code : null; }).catch(function () { return null; });
+        return oldP.then(function (old) { return claimNewCode(uid).then(function (code) {
             return privateRef(uid).set({ invite_code: code }, { merge: true }).then(function () {
                 state.myCode = code;
                 if (old) return db().collection('invite_codes').doc(old).delete().catch(function () { }).then(function () { return code; });
                 return code;
             });
-        });
+        }); });
     };
 
     function loadProfile(uid) {
@@ -193,15 +212,23 @@
             return create();
         });
         function create() {
+            if (requestsToday() >= MAX_REQ_PER_DAY) return Promise.reject(new Error(T('fr_err_daily')));
             var m = [me, toUid].sort();
             return ref.set({
                 members: m, requested_by: me, requested_to: toUid,
                 status: 'pending', code: code, created_at: ts()
-            }).then(function () { track('friend_request_send'); return 'sent'; });
+            }).then(function () { bumpRequestsToday(); track('friend_request_send'); return 'sent'; });
         }
     };
+    // 기기 저장 키는 계정별 — 한 기기에서 계정을 바꿔도 '오늘 신청 수'·'본 신청'이 섞이지 않게
+    function reqDayKey() { return 'nurungji_friend_req_day:' + (state.uid || ''); }
+    function requestsToday() { try { return countToday(localStorage.getItem(reqDayKey()), Date.now()); } catch (e) { return 0; } }
+    function bumpRequestsToday() {
+        try { localStorage.setItem(reqDayKey(), JSON.stringify({ d: dayKey(Date.now()), n: requestsToday() + 1 })); } catch (e) { }
+    }
 
     window.acceptFriend = function (id) {
+        if (state.friends.length >= MAX_FRIENDS) return Promise.reject(new Error(T('fr_err_full')));
         return db().collection('friendships').doc(id).update({ status: 'accepted', accepted_at: ts() })
             .then(function () { track('friend_accept'); });
     };
@@ -230,7 +257,15 @@
     }
     function stopListener() {
         if (unsub) { unsub(); unsub = null; }
+        codeInFlight = null;
     }
+
+    // 동호회 목록(loadAllClubs)이 첫 친구 스냅샷보다 늦게 오면 친구 도시락이 빈 채로 캐시된다
+    // → app.js 가 목록을 받은 뒤 부른다. '보일 팀' 확인 카드도 그때 팀 이름이 채워진다.
+    window.refreshFriendLunchboxes = function () {
+        if (!state.uid || !window.loadFriendLunchbox) return Promise.resolve();
+        return Promise.all(state.friends.map(function (f) { return window.loadFriendLunchbox(f.other, true); })).then(render);
+    };
 
     // ── 로그인 연동 ─────────────────────────────────────────────
     // auth.js setupAuthListener 가 부른다. user=null 이면 로그아웃·익명.
@@ -252,10 +287,10 @@
     };
 
     // ── 팝업 두 장 · 도트 ───────────────────────────────────────
-    var SEEN_KEY = 'nurungji_seen_friend_req';
-    function seenIds() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch (e) { return []; } }
+    function seenKey() { return 'nurungji_seen_friend_req:' + (state.uid || ''); }
+    function seenIds() { try { return JSON.parse(localStorage.getItem(seenKey()) || '[]'); } catch (e) { return []; } }
     function markSeen() {
-        try { localStorage.setItem(SEEN_KEY, JSON.stringify(state.incoming.map(function (x) { return x.id; }))); } catch (e) { }
+        try { localStorage.setItem(seenKey(), JSON.stringify(state.incoming.map(function (x) { return x.id; }))); } catch (e) { }
     }
     function hasUnseen() {
         var seen = seenIds();
@@ -279,7 +314,8 @@
     };
     function onFriendsPageShown() {
         markSeen();
-        track('friends_open');
+        // goProfilePage 와 스크롤 핸들러가 둘 다 부른다 → 팝업 열기당 한 번만 센다
+        if (!state.shownTracked) { state.shownTracked = true; track('friends_open'); }
     }
     function syncDots(page) {
         var dots = document.getElementById('pcDots');
@@ -350,7 +386,7 @@
 
     // 팝업을 열 때마다 첫 장부터. auth.js 의 toggleProfileCard 가 부른다.
     window.resetProfilePager = function () {
-        state.view = 'list'; state.confirm = null;
+        state.view = 'list'; state.confirm = null; state.shownTracked = false; state.typed = '';
         render();
         requestAnimationFrame(function () { window.goProfilePage(0, false); });
     };
@@ -505,10 +541,10 @@
                 meta.appendChild(el('span', null, T('fr_req_sub')));
                 row.appendChild(meta);
                 var acts = el('div', 'fr-acts');
-                acts.appendChild(btn(T('fr_reject'), 'ghost', function () { window.removeFriendship(x.id, 'reject'); }));
+                acts.appendChild(btn(T('fr_reject'), 'ghost', function () { window.removeFriendship(x.id, 'reject').catch(function () { toast(T('fr_err_generic')); }); }));
                 acts.appendChild(btn(T('fr_accept'), 'yellow', function () {
                     window.acceptFriend(x.id).then(function () { toast(TF('fr_accepted_toast', { name: p.name })); })
-                        .catch(function () { toast(T('fr_err_generic')); });
+                        .catch(function (err) { toast((err && err.message && err.message !== 'login') ? err.message : T('fr_err_generic')); });
                 }));
                 row.appendChild(acts);
                 body.appendChild(row);
@@ -522,6 +558,7 @@
             .sort(function (a, b) { return b.m.n - a.m.n; });
         if (hot.length) {
             body.appendChild(el('div', 'fr-label', T('fr_meal_title')));
+            body.appendChild(el('p', 'fr-note fr-meal-hint', T('fr_meal_hint')));   // 겸상이 낯선 사람에게 한 줄
             var strip = el('div', 'fr-meal-strip');
             hot.forEach(function (v) {
                 var p = profileOf(v.x.other);
@@ -580,7 +617,7 @@
                 meta.appendChild(el('b', null, p.name));
                 meta.appendChild(el('span', null, T('fr_waiting')));
                 row.appendChild(meta);
-                row.appendChild(btn(T('fr_cancel'), 'ghost small', function () { window.removeFriendship(x.id, 'cancel'); }));
+                row.appendChild(btn(T('fr_cancel'), 'ghost small', function () { window.removeFriendship(x.id, 'cancel').catch(function () { toast(T('fr_err_generic')); }); }));
                 body.appendChild(row);
             });
         }
@@ -624,6 +661,7 @@
                     .catch(function () { render(); toast(T('fr_err_generic')); });
             })
             : btn(T('fr_regen'), 'ghost small', function () { state.confirm = 'regen'; render(); });
+        if (!state.myCode) regen.disabled = true;   // 아직 못 받은 코드는 바꿀 수 없다(옛 코드가 살아남는다)
         row.appendChild(regen);
         body.appendChild(row);
         if (state.confirm === 'regen') body.appendChild(el('p', 'fr-note', T('fr_regen_note')));
@@ -644,7 +682,9 @@
         input.maxLength = 8;
         input.placeholder = T('fr_code_ph');
         input.setAttribute('aria-label', T('fr_code_ph'));
-        if (state.lookup && state.lookup.code) input.value = state.lookup.code;
+        // 코드 발급이 끝나면 render() 가 다시 그린다 — 그때 입력 중이던 글자가 날아가지 않게 state 에 둔다
+        input.value = state.lookup && state.lookup.code ? state.lookup.code : (state.typed || '');
+        input.addEventListener('input', function () { state.typed = input.value; });
         form.appendChild(input);
         var find = el('button', 'fr-btn yellow', T('fr_find'));
         find.type = 'submit';
@@ -690,7 +730,7 @@
                 e.currentTarget.disabled = true;
                 window.sendFriendRequest(r.code, r.uid).then(function (out) {
                     r.status = out === 'accepted' || out === 'friend' ? 'friend' : 'sent';
-                    toast(T(out === 'accepted' ? 'fr_accepted_short' : 'fr_sent_toast'));
+                    toast(T(out === 'accepted' ? 'fr_accepted_short' : out === 'friend' ? 'fr_lk_friend' : 'fr_sent_toast'));
                     renderLookup(box);
                 }).catch(function (err) {
                     toast((err && err.message && err.message !== 'login') ? err.message : T('fr_err_generic'));
@@ -709,23 +749,26 @@
         box.appendChild(el('b', null, T('fr_share_title')));
         box.appendChild(el('p', null, T('fr_share_body')));
         var list = el('div', 'fr-checks');
-        var ids = [];
+        var ids = [], unresolved = false;
         (p.bookmarks || []).slice(0, 5).forEach(function (id) {
             if (id == null) return;
-            var team = window.findClub ? window.findClub(id) : null;
-            if (!team) return;
+            var team = (window.findClub ? window.findClub(id) : null) || (p.customTeams && p.customTeams[id]);
+            // 동호회 목록이 아직 안 왔거나 실패했으면 이 팀을 보여줄 수 없다 — 그 상태로 '이대로 보이기'를
+            // 누르면 못 본 팀까지 공개되므로 버튼을 두지 않는다(목록이 오면 refreshFriendLunchboxes 가 다시 그린다)
+            if (!team) { unresolved = true; return; }
             ids.push(id);
             var lab = el('label', 'fr-check');
             var cb = el('input');
             cb.type = 'checkbox';
-            cb.checked = (p.friend_hidden || []).indexOf(id) === -1;
+            cb.checked = (p.friend_hidden || []).map(String).indexOf(String(id)) === -1;
             cb.value = id;
             lab.appendChild(cb);
             lab.appendChild(el('span', null, (team.isCustom ? '🍙 ' : '') + (team.name || '')));
             list.appendChild(lab);
         });
-        if (!ids.length) list.appendChild(el('p', 'fr-note', T('fr_share_none')));
+        if (!ids.length && !unresolved) list.appendChild(el('p', 'fr-note', T('fr_share_none')));
         box.appendChild(list);
+        if (unresolved) { box.appendChild(el('p', 'fr-note', T('fr_loading'))); return box; }
         box.appendChild(btn(T('fr_share_ok'), 'yellow', function (e) {
             e.currentTarget.disabled = true;
             var hidden = [];
@@ -778,7 +821,17 @@
             host.appendChild(tt);
             var meal = mealOf(other);
             window.renderFriendTimetable(tt, window.myFriendEvents(), window.friendSharePure.scheduleEvents(r.teams), meal.overlaps);
-            if (!meal.n) host.appendChild(el('p', 'fr-note center', T('fr_meal_zero')));
+            if (!meal.n) { host.appendChild(el('p', 'fr-note center', T('fr_meal_zero'))); return; }
+            // 겸상 목록을 글로 한 번 더 — 표만으로는 요일·시각을 읽기 어렵다
+            var ses = el('div', 'fr-sess-list');
+            window.friendSharePure.sortOverlaps(meal.overlaps).forEach(function (o) {
+                var row = el('div', 'fr-sess');
+                row.appendChild(el('b', null, (window.i18nDay ? window.i18nDay(o.day) : o.day) + ' ' + window.friendSharePure.fmtRange(o.start, o.end)));
+                var c = window.findClub ? window.findClub(o.id) : null;
+                row.appendChild(el('span', null, c ? (c.name || '') : ''));
+                ses.appendChild(row);
+            });
+            host.appendChild(ses);
         });
     }
 

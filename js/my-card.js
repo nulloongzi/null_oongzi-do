@@ -47,7 +47,17 @@
     var ROW_FR = [0.8, 1.2]; // 아래(밥·국)가 더 크다 — 화면 UI와 같은 비율
     var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
+    // 밥친구(4단계): 스토리는 도시락통 아래 '이번 주 겸상' 칸, 피드는 신원 줄 오른쪽에
+    // 얼굴 겹침 + 알약. 숫자는 docs/design-system.md §7-4, 앱 my_card.dart 와 같다.
+    var FR = { max: 4, storyH: 264, storyAv: 96, feedAv: 72, feedStep: 48, feedGap: 32, feedMinW: 168 };   // feedMinW: 알약이 넘치지 않는 묶음 최소 폭
+    // 익힘 단계 색 — 화면(css .fr-warm / 앱 warm_avatar.dart)과 같은 값
+    var WARM_RING = ['', '#F1D9A6', '#F5B82E', '#A0522D'];
+    var WARM_INK = ['#8D6E63', '#8D6E63', '#B7791F', '#8B4513'];
+    var BOWL_D = 'M12 4.6c-1.9 0-3.2 1-3.9 2.2-1-.4-2.4.3-2.4 1.7 0 .9.7 1.5 1.4 1.5h9.8c.7 0 1.4-.6 1.4-1.5 0-1.4-1.4-2.1-2.4-1.7-.7-1.2-2-2.2-3.9-2.2zM4.2 11.6h15.6c0 3.1-2.5 5.6-5.8 6.2v.9c0 .4-.3.7-.7.7h-2.6c-.4 0-.7-.3-.7-.7v-.9c-3.3-.6-5.8-3.1-5.8-6.2z';   // 밥그릇 벡터(friends.js 아바타와 같은 모양) — 캔버스엔 이모지를 쓰지 않는다
+
     function fnt(px, wt) { return window.cardFont(px, wt); }
+    function T(k) { return window.t ? window.t(k) : k; }
+    function TF(k, p) { return window.tf ? window.tf(k, p) : k; }
     function rr(ctx, x, y, w, h, r) { window.storyRoundRect(ctx, x, y, w, h, r); }
 
     // 한 줄 말줄임
@@ -92,7 +102,21 @@
 
     // ── 데이터 수집 ────────────────────────────────────────────────
     // 화면에 보이는 것과 같은 슬롯을 쓴다(편집 중이면 tempSlots).
-    window.buildMyCardData = function () {
+    // 카드에 넣을 밥친구: 이번 주 겸상하는 친구만, 겸상 많은 순 최대 4명.
+    // 나가는 건 밥이름·색·익힘 단계뿐 — 친구의 팀·요일·시간은 카드에 없다.
+    // '식단표 전부 숨기기'를 켠 친구는 목록에 있어도 넣지 않는다(밖으로 나가는 이미지라 더 보수적으로).
+    window.myCardFriends = function () {
+        var s = window.friendState;
+        if (!s || !s.uid || !window.friendMeal || !window.friendSharePure) return [];
+        return window.friendSharePure.pickCardFriends(s.friends.map(function (f) {
+            var p = s.profiles[f.other] || {};
+            var m = window.friendMeal(f.other);
+            var lb = window.peekFriendLunchbox ? window.peekFriendLunchbox(f.other) : null;
+            return { name: p.name || '', color: p.color || '#FFF9C4', tier: m.tier, n: m.n, hidden: !!(lb && lb.status === 'hidden') };
+        }), FR.max);
+    };
+
+    window.buildMyCardData = function (includeFriends) {
         var p = window.currentProfileData || {};
         var slots = (window.getShareSlots ? window.getShareSlots() : null) || [null, null, null, null, null];
 
@@ -143,6 +167,7 @@
             mainTeam: mainTeam,
             slots: names,
             events: events,
+            friends: includeFriends ? window.myCardFriends() : [],
             url: window.SITE_BASE_URL || 'https://do.nulloongzi.com/'
         };
     };
@@ -153,7 +178,7 @@
     //   · 스토리 9:16 — 신원은 가운데 세로 스택, 본문은 도시락통(탄력 440~760)
     //   · 피드 3:4   — 신원은 가로 한 줄, 본문은 도시락통(고정) + 식단표(탄력)
     // 남는 세로는 밥색 필드가 먹는다 — 빈 크림 띠를 남기지 않는다.
-    var BENTO = { storyMin: 440, storyMax: 760, feedH: 360, feedMinH: 300, dietMin: 320 };
+    var BENTO = { storyMin: 440, storyMax: 760, feedH: 360, feedMinH: 300, dietMin: 320, storyMinFr: 320 };
     var ID_STORY = { emblem: 136, gapE: 28, name: 72, nameMin: 44, gapN: 12, joined: 34, gapJ: 28, pill: 60 };
     var ID_FEED = { emblem: 120, gap: 32, name: 56, nameMin: 36, joined: 30, gapJ: 14, pill: 52 };
 
@@ -177,17 +202,22 @@
         var stubTop = window.cardStubTop(fmt);
         var headBot = fmt.top + SC.HEADER_H;
         var bodyBot = stubTop - SC.GAP;
+        var nFr = d.friends ? Math.min(FR.max, d.friends.length) : 0;
         if (!feed) {
             var idH = identityStoryH(d);
-            var minTop = headBot + 40 + idH + 48;               // 신원 아래 최소 간격 48
-            var bentoH = Math.max(BENTO.storyMin, Math.min(BENTO.storyMax, bodyBot - minTop));
-            var cardY = bodyBot - bentoH;
+            // 밥친구 칸이 들어오면 신원 위아래 간격을 줄이고(40/48 → 24/24) 도시락통 최소치도 낮춘다.
+            // 도시락통이 탄력 요소라 그만큼 줄어들 뿐, 빈 곳은 생기지 않는다.
+            var minTop = headBot + (nFr ? 24 : 40) + idH + (nFr ? 24 : 48);
+            var bentoBot = nFr ? bodyBot - FR.storyH - SC.GAP : bodyBot;
+            var bentoH = Math.max(nFr ? BENTO.storyMinFr : BENTO.storyMin, Math.min(BENTO.storyMax, bentoBot - minTop));
+            var cardY = bentoBot - bentoH;
             return {
                 fmt: fmt, stubTop: stubTop, headerY: fmt.top,
                 field: { h: cardY + SC.OVERLAP },
                 // 신원은 머리글 ~ 도시락통 사이 가운데 (남는 세로가 위아래로 고르게)
                 identity: { x: SC.M, y: headBot + (cardY - headBot - idH) / 2, w: PAD_W, h: idH },
                 bento: { x: SC.M, y: cardY, w: PAD_W, h: bentoH },
+                friends: nFr ? { x: SC.M, y: bentoBot + SC.GAP, w: PAD_W, h: FR.storyH } : null,
                 diet: null
             };
         }
@@ -197,11 +227,14 @@
         var bH = BENTO.feedH;
         if (bodyBot - (bY + bH + 24) < BENTO.dietMin) bH = BENTO.feedMinH;
         var dY = bY + bH + 24;
+        // 피드는 세로가 빠듯해 칸을 따로 두지 않고, 신원 줄 오른쪽에 얼굴 겹침 + 알약. 식단표 크기는 그대로.
+        var cw = nFr ? Math.max(FR.feedAv + FR.feedStep * (nFr - 1), FR.feedMinW) : 0, ch = FR.feedAv + 8 + 30;
         return {
             fmt: fmt, stubTop: stubTop, headerY: fmt.top,
             field: { h: bY + SC.OVERLAP },
             identity: { x: SC.M, y: idY, w: PAD_W, h: fid },
             bento: { x: SC.M, y: bY, w: PAD_W, h: bH },
+            friends: nFr ? { x: SC.M + PAD_W - cw, y: idY + (fid - ch) / 2, w: cw, h: ch } : null,
             diet: { x: SC.M, y: dY, w: PAD_W, h: bodyBot - dY }
         };
     };
@@ -211,9 +244,10 @@
         window.cardBackground(ctx, L.fmt.h);
         drawField(ctx, L.field.h, d);
         window.cardHeader(ctx, L.headerY, logo);
-        if (feed) drawIdentityFeed(ctx, L.identity, d, logo); else drawIdentityStory(ctx, L.identity, d, logo);
+        if (feed) drawIdentityFeed(ctx, L.identity, d, logo, L.friends); else drawIdentityStory(ctx, L.identity, d, logo);
         drawBento(ctx, L.bento, d, feed);
         if (L.diet) drawTimetable(ctx, L.diet, d);
+        if (L.friends) { if (feed) drawFriendCluster(ctx, L.friends, d); else drawFriends(ctx, L.friends, d); }
         window.cardStub(ctx, L.fmt, d.url, window.t('mc_cta') || '내 밥이름 만들러 가기');
     }
 
@@ -279,10 +313,11 @@
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     }
 
-    function drawIdentityFeed(ctx, r, d, logo) {
+    function drawIdentityFeed(ctx, r, d, logo, fr) {
         var I = ID_FEED;
         emblem(ctx, r.x + I.emblem / 2, r.y + r.h / 2, I.emblem, logo);
-        var tx = r.x + I.emblem + I.gap, tw = r.x + r.w - tx;
+        // 오른쪽에 밥친구 얼굴이 오면 이름 폭을 그만큼 줄인다
+        var tx = r.x + I.emblem + I.gap, tw = (fr ? fr.x - FR.feedGap : r.x + r.w) - tx;
         var textH = I.name + 8 + (d.joined ? 6 + I.joined : 0) + (d.mainTeam ? I.gapJ + I.pill : 0);
         var y = r.y + (r.h - textH) / 2;
         fitFont(ctx, d.nickname, tw, I.name, I.nameMin, 800);
@@ -368,6 +403,70 @@
         var sy = y + h / 2 + 10 - (lines.length - 1) * lh / 2;
         for (var i = 0; i < lines.length; i++) ctx.fillText(lines[i], x + w / 2 + 5, sy + i * lh);
         ctx.restore();
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    }
+
+    // ── 밥친구 (4단계) ──────────────────────────────────────────
+    function drawBowl(ctx, cx, cy, s) {
+        if (typeof window.Path2D !== 'function') return;
+        var k = s / 24;
+        ctx.save(); ctx.translate(cx - s / 2, cy - s / 2); ctx.scale(k, k);
+        ctx.fillStyle = INK; ctx.fill(new window.Path2D(BOWL_D)); ctx.restore();
+    }
+    // 아바타: 익힘 테두리(누룽지는 갈색·금빛이 도는 테두리) → 흰 틈 → 밥 색 얼굴 + 밥그릇.
+    function drawFriendAvatar(ctx, cx, cy, size, f, ringW, gapW) {
+        var r0 = size / 2, tier = Math.max(0, Math.min(3, f.tier || 0));
+        if (tier) {
+            ctx.beginPath(); ctx.arc(cx, cy, r0 + gapW + ringW, 0, Math.PI * 2);
+            var fill = WARM_RING[tier];
+            var g = tier === 3 && typeof ctx.createConicGradient === 'function' ? ctx.createConicGradient(0, cx, cy) : null;
+            if (g && g.addColorStop) {   // 오래된 브라우저엔 conic 이 없다 → 단색 갈색
+                ['#8B4513', '#F5B82E', '#C9772B', '#6D3B1A', '#F5B82E', '#8B4513'].forEach(function (c, i, a) { g.addColorStop(i / (a.length - 1), c); });
+                fill = g;
+            }
+            ctx.fillStyle = fill; ctx.fill();
+        }
+        ctx.beginPath(); ctx.arc(cx, cy, r0 + gapW, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, r0, 0, Math.PI * 2); ctx.fillStyle = f.color || '#FFF9C4'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, r0 - 1.5, 0, Math.PI * 2);
+        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.stroke();
+        drawBowl(ctx, cx, cy, size * 0.58);
+    }
+    // 스토리: 도시락통 아래 '이번 주 겸상' 칸. 얼굴 + 밥이름 + 익힘 단계·겸상 횟수.
+    function drawFriends(ctx, r, d) {
+        card(ctx, r);
+        var ip = 32, ix = r.x + ip, iw = r.w - ip * 2;
+        var list = d.friends.slice(0, FR.max), n = list.length;
+        sectionTitle(ctx, ix, r.y + ip, T('mc_friends_title'), TF('mc_friends_n', { n: n }), iw);
+        var top = r.y + ip + 32 + 16, cw = iw / n;
+        for (var i = 0; i < n; i++) {
+            var f = list[i], cx = ix + cw * i + cw / 2;
+            drawFriendAvatar(ctx, cx, top + FR.storyAv / 2, FR.storyAv, f, 5, 4);
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = fnt(24, 700); ctx.fillStyle = INK;
+            ctx.fillText(ellip(ctx, f.name, cw - 16), cx, top + FR.storyAv + 8 + 15);
+            ctx.font = fnt(22, 700); ctx.fillStyle = WARM_INK[f.tier] || WARM_INK[0];
+            ctx.fillText(ellip(ctx, T('fr_warm_' + f.tier) + ' · ' + TF('mc_meal_n', { n: f.n }), cw - 16), cx, top + FR.storyAv + 8 + 30 + 4 + 11);
+        }
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    }
+    // 피드: 신원 줄 오른쪽에 얼굴 겹침(흰 테두리로 구분) + '이번 주 겸상 N' 알약.
+    function drawFriendCluster(ctx, r, d) {
+        var list = d.friends.slice(0, FR.max), n = list.length, best = 0;
+        // 얼굴 줄은 묶음 안에서 가운데(묶음이 알약 폭만큼 넓을 수 있다)
+        var ax = r.x + (r.w - (FR.feedAv + FR.feedStep * (n - 1))) / 2;
+        for (var i = 0; i < n; i++) {
+            drawFriendAvatar(ctx, ax + FR.feedAv / 2 + FR.feedStep * i, r.y + FR.feedAv / 2, FR.feedAv, list[i], 3, 3);
+            best = Math.max(best, list[i].tier || 0);
+        }
+        var label = TF('mc_friends_pill', { n: n });
+        ctx.font = fnt(20, 800);
+        var pw = ctx.measureText(label).width + 28, py = r.y + FR.feedAv + 8;
+        // 알약은 본문 폭 안에 (긴 영어 문구도 오른쪽 여백을 넘지 않게)
+        var px = Math.max(window.SHARE_CARD.M, Math.min(W - window.SHARE_CARD.M - pw, r.x + r.w / 2 - pw / 2));
+        window.cardPill(ctx, px, py, pw, 30);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = WARM_INK[best];
+        ctx.fillText(label, px + pw / 2, py + 16);
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     }
 
@@ -487,12 +586,30 @@
     // 골라야 했고, 취소가 곧 선택이라 헷갈렸다. 앱(share_image_screen)처럼 미리보기 위에
     // 칩 두 개를 두고, 누르면 그 자리에서 다시 그린다. 기본은 앱과 같은 피드형.
     var shapeRenderSeq = 0;
+    // '밥친구 포함' 스위치(기본 꺼짐). 겸상하는 밥친구가 없으면 흐리게 잠긴다.
+    var includeFriends = false, currentMode = 'feed';
+
+    function syncFriendsToggle() {
+        var b = document.getElementById('previewFriends');
+        if (!b) return;
+        var n = window.myCardFriends ? window.myCardFriends().length : 0;
+        if (!n) includeFriends = false;
+        b.disabled = !n;
+        b.title = n ? '' : T('mc_friends_none');
+        b.classList.toggle('on', includeFriends);
+        b.setAttribute('aria-checked', includeFriends ? 'true' : 'false');
+    }
+    window.toggleMyCardFriends = function () {
+        includeFriends = !includeFriends;
+        if (window.track) window.track('mycard_friends', { on: includeFriends ? 1 : 0 });
+        window.generateShareImage(currentMode);
+    };
 
     function setShapeChips(mode) {
         var row = document.getElementById('previewShape');
         if (!row) return;
         row.hidden = false;
-        var chips = row.querySelectorAll('.chip');
+        var chips = row.querySelectorAll('.chip[data-shape]');
         for (var i = 0; i < chips.length; i++) {
             var on = chips[i].getAttribute('data-shape') === mode;
             chips[i].classList.toggle('selected', on);
@@ -511,13 +628,15 @@
 
     window.generateShareImage = async function (mode) {
         mode = mode === 'story' ? 'story' : 'feed';
+        currentMode = mode;
         var seq = ++shapeRenderSeq;
         var box = document.getElementById('previewImgBox');
         try {
             if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
             setShapeChips(mode);
+            syncFriendsToggle();
             if (box) box.classList.add('is-loading');
-            var url = await window.renderMyCard(window.buildMyCardData(), mode === 'feed');
+            var url = await window.renderMyCard(window.buildMyCardData(includeFriends), mode === 'feed');
             // 칩을 빠르게 번갈아 누르면 늦게 끝난 렌더가 최신 선택을 덮는다 — 마지막 것만 쓴다.
             if (seq !== shapeRenderSeq) return;
             box.innerHTML = '';

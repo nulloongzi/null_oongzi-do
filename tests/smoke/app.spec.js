@@ -312,6 +312,12 @@ test('포장하기: html2canvas 의존이 없다', async ({ page }) => {
 test('밥친구: 로그인 전엔 한 장, 로그인하면 두 장 + 받은 신청 신호', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => window.toggleProfileCard());
+    // 도트가 숨은(로그아웃) 팝업도 세로 가운데 — auto 마진 가운데 정렬 회귀
+    {
+        const box = await page.locator('#pcPager').boundingBox();
+        const vh = page.viewportSize().height;
+        expect(Math.abs(box.y + box.height / 2 - vh / 2)).toBeLessThan(60);
+    }
     await expect(page.locator('#pcDots')).toBeHidden();
     await expect(page.locator('#friendsCard')).toBeHidden();
     await page.evaluate(() => window.toggleProfileCard());
@@ -514,4 +520,78 @@ test('밥친구 3단계: 겸상 줄 · 익힘 효과 · 🍚 버블', async ({ p
     // 전부 숨기기로 바꾸면 겸상도 없다 (서로 공개한 팀끼리만)
     await page.evaluate(() => { window.currentProfileData.friend_hide_all = true; window.syncFriendsBadge(); });
     await expect(fab).not.toHaveClass(/fab-warm/);
+});
+// 밥친구 4단계: 포장하기 '밥친구 포함' 스위치. 겸상 친구가 없으면 잠기고, 있으면 켜서 다시 그린다.
+// 같은 상태로 친구 상세의 겸상 목록(글)도 본다.
+test('밥친구 4단계: 포장하기 밥친구 포함 · 겸상 목록', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentProfileData = {
+            full_nickname: '현미밥-a3k', nickname: '현미밥', created_at: new Date('2026-07-01'),
+            bookmarks: ['t1', 't3', null, null, null], customTeams: {}, friend_share_ok: true, friend_hidden: []
+        };
+        const clubs = {
+            t1: { id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00' },
+            t3: { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00' }
+        };
+        const orig = window.findClub;
+        window.findClub = (id) => clubs[id] || (orig && orig(id));
+        window._lb = {};
+        window.peekFriendLunchbox = (o) => window._lb[o];
+        window.loadFriendLunchbox = (o) => Promise.resolve(window._lb[o] || { status: 'none', teams: [] });
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { c: { name: '팥밥-q7', color: '#F8BBD0' }, d: { name: '흑미밥-z9', color: '#FFF176' } };
+        s.friends = [{ id: 'c_me', other: 'c', doc: { status: 'accepted' } }, { id: 'd_me', other: 'd', doc: { status: 'accepted' } }];
+        window.updateProfileUI(true);
+        window.renderFriendsPage();
+        window.showShareOptions();
+    });
+    const tog = page.locator('#previewFriends');
+    await expect(tog).toBeVisible();
+    await expect(tog).toBeDisabled();                       // 겸상 친구 없음 → 잠김
+    await expect(tog).toHaveAttribute('aria-checked', 'false');
+
+    // 겸상 친구가 생기면 켤 수 있다. 전부 숨긴 친구(d)는 카드에 넣지 않는다.
+    await page.evaluate(() => {
+        window._lb.c = { status: 'ok', updatedMs: 1, teams: [{ id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00', slot: 0 }, { id: 't3', name: '강동 화요반', schedule: '화 20:00-22:00', slot: 1 }] };
+        window._lb.d = { status: 'hidden', updatedMs: 1, teams: [] };
+        window.selectMyCardShape('story');
+    });
+    await expect(tog).toBeEnabled();
+    const size = () => page.evaluate(() => new Promise((res) => {
+        const i = document.querySelector('#previewImgBox img');
+        const done = () => res([i.naturalWidth, i.naturalHeight]);
+        if (i.complete && i.naturalWidth) done(); else i.onload = done;
+    }));
+    await expect.poll(size).toEqual([1080, 1920]);
+    await tog.click();
+    await expect(tog).toHaveAttribute('aria-checked', 'true');
+    await expect(tog).toHaveClass(/on/);
+    await expect.poll(size).toEqual([1080, 1920]);
+    const picked = await page.evaluate(() => window.buildMyCardData(true).friends.map((f) => [f.name, f.n, f.tier]));
+    expect(picked).toEqual([['팥밥-q7', 2, 2]]);
+    // 실제 폰트로 배치해도 밥친구 칸이 스텁 위에 붙고 도시락통은 최소치 이상
+    const L = await page.evaluate(() => {
+        const l = window.myCardLayout(window.buildMyCardData(true), false);
+        return { frBot: l.friends.y + l.friends.h, limit: l.stubTop - window.SHARE_CARD.GAP, bento: l.bento.h };
+    });
+    expect(L.frBot).toBeLessThanOrEqual(L.limit + 0.01);
+    expect(L.bento).toBeGreaterThanOrEqual(320);
+    // 피드로 바꿔도 스위치 상태는 남는다
+    await page.locator('#previewShape [data-shape="feed"]').click();
+    await expect.poll(size).toEqual([1080, 1440]);
+    await expect(tog).toHaveAttribute('aria-checked', 'true');
+    await page.evaluate(() => window.closePreview());
+
+    // 친구 상세: 겹쳐 보기 아래 겸상 목록을 글로 (요일 → 시각 순)
+    await page.evaluate(() => { window.toggleProfileCard(); window.renderFriendsPage(); });
+    await page.locator('#pcDots .pc-dot').nth(1).click();
+    await expect(page.locator('#friendsCard .fr-meal-hint')).toBeVisible();
+    await page.locator('#friendsCard .fr-row', { hasText: '팥밥-q7' }).click();
+    const sess = page.locator('#friendsCard .fr-sess');
+    await expect(sess).toHaveCount(2);
+    await expect(sess.nth(0).locator('b')).toHaveText(/20–22$/);   // 화
+    await expect(sess.nth(0).locator('span')).toHaveText('강동 화요반');
+    await expect(sess.nth(1).locator('span')).toHaveText('잠실 배구회');
 });

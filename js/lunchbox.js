@@ -378,7 +378,7 @@ function appendFriendEye(div, teamId) {
         eye.type = 'button';
         eye.addEventListener('click', function (e) {
             e.stopPropagation();
-            window.setFriendHidden(teamId, !hidden).then(renderLunchboxGrid);
+            window.setFriendHidden(teamId, !hidden).then(renderLunchboxGrid, renderLunchboxGrid);   // 실패하면 되돌린 상태로
             renderLunchboxGrid();
         });
     }

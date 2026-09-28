@@ -16,6 +16,7 @@
     // 3. 데이터 로드 후 지도 초기화 + 딥링크 처리
     if (window.loadAllClubs) {
         window.loadAllClubs().then(function () {
+            if (window.refreshFriendLunchboxes) window.refreshFriendLunchboxes();   // 친구 스냅샷이 먼저 왔을 수 있다
             // 지도/필터 초기화: 실패해도 딥링크 착지는 별도로 진행한다
             try {
                 if (window.initMarkers) window.initMarkers();
