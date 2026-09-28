@@ -277,7 +277,7 @@ test('포장하기: 두 규격이 정확한 크기로 렌더된다', async ({ pa
     });
 
     expect(out.story).toEqual([1080, 1920]);            // 9:16
-    expect(out.feed).toEqual([1080, 1350]);             // 4:5 — 인스타 피드 최대 세로
+    expect(out.feed).toEqual([1080, 1440]);             // 3:4 — 인스타 피드·그리드(2025~)
     // 슬롯 순서는 화면 UI와 같다: 0=밥 1=국 2~4=반찬
     expect(out.slots[0]).toBe('GVT 배구클럽');
     expect(out.slots[2]).toBe('월요 리시브반');
