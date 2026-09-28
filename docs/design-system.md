@@ -19,9 +19,21 @@
 - CTA/포인트에만 옐로 `#FAC710` 사용(남발 금지). 경고성 정보는 `#FF7043`.
 
 ## 2. 타이포그래피
-- **폰트: Pretendard (가변)** — 웹·앱·마케팅 전부 동일. (앱 v2.0.0에서 통일 완료)
-- 제목 800(ExtraBold), 본문 400~500, 캡션 400.
+- **폰트: Pretendard 가변(Pretendard Variable) 하나** — 웹·앱·공유 카드·마케팅 전부 동일.
+  다른 글꼴을 들이지 않는다(목업·무드보드도 같은 폰트로 본다 — 대체 글꼴로 본 인상은 실제와 다르다).
+- 제목 800(ExtraBold), 본문 400~500, 캡션 400. 공유 카드 숫자는 표 7-3.
 - 한글 우선, 영문 병기 시 같은 폰트.
+
+| 어디 | 불러오는 방법 |
+|---|---|
+| 웹 `index.html` | jsDelivr npm `pretendard@1.3.9` 의 `variable/pretendardvariable.css` (전체 파일). 공유 카드를 canvas 로 그리므로 글자별 분할(dynamic-subset)은 쓰지 않는다 — 아직 안 받은 글자가 대체 폰트로 찍힌다 |
+| 웹 정적 페이지(`privacy`·`terms`·`guidelines`·`data-deletion`·`anchigi`) | 같은 버전의 `pretendardvariable-dynamic-subset.css` — 화면 글자만 쓰니 나눠 받아도 된다 |
+| 앱 | `assets/fonts/PretendardVariable.ttf` 번들(`pubspec.yaml` family `Pretendard`) — 네트워크 없이 같은 글꼴 |
+
+- 글꼴 스택(웹): `"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`.
+  CDN 이 막혀도 시스템 한글 글꼴로 떨어지게 이 순서를 지킨다.
+- 버전은 고정한다(`@1.3.9`). 올릴 때는 웹 두 링크와 앱 번들 파일을 같이 바꾼다.
+- 예외는 하나: 프로필 카드의 구글 로그인 표시(`.pc-provider-google`)는 옛 구글 로고 오마주라 Georgia 세리프를 쓴다.
 
 ## 3. 형태 규칙
 - 모서리: 카드/시트 28px, 버튼 14px, 칩 pill(완전 라운드).
