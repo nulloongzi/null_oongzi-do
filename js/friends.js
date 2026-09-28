@@ -221,6 +221,10 @@
                 state.loaded = true;
                 var others = [].concat(p.friends, p.incoming, p.outgoing).map(function (x) { return x.other; });
                 Promise.all(others.map(loadProfile)).then(render);
+                // 2단계: 친구 도시락 사본 — '도시락 바뀜' 표시와 둘째 도트 신호에 쓴다
+                if (window.loadFriendLunchbox) {
+                    Promise.all(p.friends.map(function (f) { return window.loadFriendLunchbox(f.other, true); })).then(render);
+                }
                 render();
             }, function (e) { console.warn('밥친구 구독 실패:', e && e.message); });
     }
@@ -236,11 +240,14 @@
             state.uid = null; state.loaded = false; state.myCode = null;
             state.friends = []; state.incoming = []; state.outgoing = [];
             state.view = 'list'; state.lookup = null;
+            if (window.resetFriendShareCache) window.resetFriendShareCache();
             render();
             return;
         }
         startListener(user.uid);
         resumeInviteLink();
+        // 다른 기기에서 도시락을 바꿨을 수 있다 → 사본을 지금 도시락에 맞춘다(같으면 쓰지 않음)
+        if (window.syncFriendShare) window.syncFriendShare();
         render();
     };
 
@@ -252,7 +259,9 @@
     }
     function hasUnseen() {
         var seen = seenIds();
-        return state.incoming.some(function (x) { return seen.indexOf(x.id) === -1; });
+        if (state.incoming.some(function (x) { return seen.indexOf(x.id) === -1; })) return true;
+        if (window.needsFriendShareConfirm && window.needsFriendShareConfirm()) return true;
+        return !!window.isFriendLunchboxChanged && state.friends.some(function (f) { return window.isFriendLunchboxChanged(f.other); });
     }
 
     function pager() { return document.getElementById('pcPager'); }
@@ -462,6 +471,8 @@
             });
         }
 
+        if (window.needsFriendShareConfirm && window.needsFriendShareConfirm()) body.appendChild(shareConfirmCard());
+
         if (!state.friends.length) {
             var empty = el('div', 'fr-empty-box');
             empty.appendChild(el('b', null, T('fr_empty_title')));
@@ -481,7 +492,9 @@
                 var meta = el('div', 'fr-meta');
                 meta.appendChild(el('b', null, p.name));
                 var since = fmtDate(x.doc.accepted_at);
-                meta.appendChild(el('span', null, since ? TF('fr_since', { d: since }) : T('fr_friend')));
+                var changed = window.isFriendLunchboxChanged && window.isFriendLunchboxChanged(x.other);
+                if (changed) meta.firstChild.appendChild(el('i', 'fr-changed-dot'));
+                meta.appendChild(el('span', null, changed ? T('fr_lb_changed') : (since ? TF('fr_since', { d: since }) : T('fr_friend'))));
                 row.appendChild(meta);
                 row.appendChild(el('span', 'fr-chev', '›'));
                 list.appendChild(row);
@@ -503,6 +516,7 @@
                 body.appendChild(row);
             });
         }
+        if (state.friends.length && window.isFriendHideAll) body.appendChild(visibilityRow());
     }
 
     function renderAdd(body) {
@@ -619,6 +633,85 @@
         box.appendChild(hit);
     }
 
+    // ── 2단계: 식단표 공유 조각 ──────────────────────────────────
+    // 첫 밥친구 때 '보일 팀' 확인. 기본이 전부 보이기라, 이걸 마치기 전에는 사본을 쓰지 않는다.
+    function shareConfirmCard() {
+        var p = window.currentProfileData || {};
+        var box = el('div', 'fr-confirm');
+        box.appendChild(el('b', null, T('fr_share_title')));
+        box.appendChild(el('p', null, T('fr_share_body')));
+        var list = el('div', 'fr-checks');
+        var ids = [];
+        (p.bookmarks || []).slice(0, 5).forEach(function (id) {
+            if (id == null) return;
+            var team = window.findClub ? window.findClub(id) : null;
+            if (!team) return;
+            ids.push(id);
+            var lab = el('label', 'fr-check');
+            var cb = el('input');
+            cb.type = 'checkbox';
+            cb.checked = (p.friend_hidden || []).indexOf(id) === -1;
+            cb.value = id;
+            lab.appendChild(cb);
+            lab.appendChild(el('span', null, (team.isCustom ? '🍙 ' : '') + (team.name || '')));
+            list.appendChild(lab);
+        });
+        if (!ids.length) list.appendChild(el('p', 'fr-note', T('fr_share_none')));
+        box.appendChild(list);
+        box.appendChild(btn(T('fr_share_ok'), 'yellow', function (e) {
+            e.currentTarget.disabled = true;
+            var hidden = [];
+            list.querySelectorAll('input[type=checkbox]').forEach(function (c) { if (!c.checked) hidden.push(c.value); });
+            window.confirmFriendShare(hidden).then(function () { render(); toast(T('fr_share_done')); })
+                .catch(function () { render(); toast(T('fr_err_generic')); });
+        }));
+        return box;
+    }
+
+    // '밥친구에게 내 식단표 보이기' 스위치 (끄면 친구에게는 네임카드만)
+    function visibilityRow() {
+        var on = !window.isFriendHideAll();
+        var row = el('label', 'fr-vis');
+        var meta = el('div', 'fr-meta');
+        meta.appendChild(el('b', null, T('fr_vis_title')));
+        meta.appendChild(el('span', null, T(on ? 'fr_vis_on' : 'fr_vis_off')));
+        row.appendChild(meta);
+        var sw = el('input', 'fr-switch');
+        sw.type = 'checkbox';
+        sw.setAttribute('role', 'switch');
+        sw.checked = on;
+        sw.onchange = function () {
+            window.setFriendHideAll(!sw.checked).then(render).catch(function () { toast(T('fr_err_generic')); });
+        };
+        row.appendChild(sw);
+        return row;
+    }
+
+    function renderFriendLunchbox(host, other) {
+        host.appendChild(el('p', 'fr-note center', T('fr_loading')));
+        window.loadFriendLunchbox(other, true).then(function (r) {
+            host.innerHTML = '';
+            if (r.status !== 'ok') {
+                host.appendChild(el('p', 'fr-note center', T(r.status === 'hidden' ? 'fr_lb_hidden' : 'fr_lb_none')));
+                return;
+            }
+            window.markFriendLunchboxSeen(other);
+            syncDots();
+            host.appendChild(el('div', 'fr-label', T('fr_lb_title')));
+            var chips = el('div', 'fr-chips');
+            if (!r.teams.length) chips.appendChild(el('span', 'fr-note', T('fr_lb_empty')));
+            r.teams.forEach(function (t) {
+                var c = el('span', 'fr-chip slot-' + (t.slot % 5), (t.isCustom ? '🍙 ' : '') + t.name);
+                chips.appendChild(c);
+            });
+            host.appendChild(chips);
+            host.appendChild(el('div', 'fr-label', T('fr_tt_title')));
+            var tt = el('div', 'fr-tt-host');
+            host.appendChild(tt);
+            window.renderFriendTimetable(tt, window.myFriendEvents(), window.friendSharePure.scheduleEvents(r.teams));
+        });
+    }
+
     function renderDetail(body) {
         var x = state.friends.filter(function (f) { return f.id === state.detailId; })[0];
         if (!x) { go('list'); return; }
@@ -633,7 +726,9 @@
         t.appendChild(el('span', null, since ? TF('fr_since', { d: since }) : T('fr_friend')));
         mini.appendChild(t);
         body.appendChild(mini);
-        body.appendChild(el('p', 'fr-note center', T('fr_diet_soon')));
+        var lb = el('div', 'fr-lb');
+        body.appendChild(lb);
+        renderFriendLunchbox(lb, x.other);
 
         var end = state.confirm === 'unfriend'
             ? btn(T('fr_unfriend_confirm'), 'danger', function () {

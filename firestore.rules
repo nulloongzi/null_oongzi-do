@@ -381,6 +381,37 @@ service cloud.firestore {
       allow delete: if isMember() && request.auth.uid in resource.data.members;
     }
 
+    // users/{uid}/shared/lunchbox: 밥친구에게 보이는 도시락 사본(2단계).
+    //   · 비공개 도시락(private/profile)을 친구에게 여는 대신, 보이기로 켠 팀만 담은 사본을 둔다.
+    //     숨긴 팀은 처음부터 여기에 쓰지 않는다 — 받는 쪽 화면에서 가리는 게 아니라 데이터가 안 간다.
+    //   · 읽기는 본인과 **수락된** 밥친구만. 신청 중이거나 끊긴 사이는 못 본다.
+    //   · 쓰기는 본인만, 모양·크기를 제한한다(도시락은 5칸).
+    function isAcceptedFriend(other) {
+      let me = request.auth.uid;
+      let pid = me < other ? me + '_' + other : other + '_' + me;
+      let path = /databases/$(database)/documents/friendships/$(pid);
+      return exists(path) && get(path).data.status == 'accepted';
+    }
+
+    function sharedLunchboxValid() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['teams', 'custom', 'hide_all', 'updated_at'])
+          && d.teams is list && d.teams.size() <= 5
+          && d.custom is list && d.custom.size() <= 5
+          && d.hide_all is bool
+          && d.updated_at == request.time;
+    }
+
+    match /users/{userId}/shared/{docId} {
+      allow read: if isMember()
+                  && docId == 'lunchbox'
+                  && (request.auth.uid == userId || isAcceptedFriend(userId));
+      allow write: if isMember()
+                   && request.auth.uid == userId
+                   && docId == 'lunchbox'
+                   && (request.method == 'delete' || sharedLunchboxValid());
+    }
+
     // 명시되지 않은 컬렉션은 기본적으로 차단 (catch-all 제거)
   }
 }

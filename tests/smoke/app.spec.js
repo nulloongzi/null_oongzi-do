@@ -405,3 +405,53 @@ test('포장하기: 형태 칩으로 피드(3:4) ↔ 스토리(9:16)를 바꾼�
     await page.evaluate(() => window.closePreview());
     await expect(shape).toBeHidden();
 });
+
+// 밥친구 2단계: 첫 친구 때 '보일 팀' 확인 → 친구 상세에서 식단표 겹쳐 보기 → 도시락 눈 스위치.
+// Firebase 없이 상태·친구 사본을 직접 넣어 화면 배선만 본다(숨긴 팀이 사본에 안 들어가는 건 단위 테스트).
+test('밥친구 2단계: 보일 팀 확인 · 겹쳐 보기 · 눈 스위치', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentProfileData = {
+            full_nickname: '현미밥-a3k', nickname: '현미밥', created_at: new Date('2026-07-01'),
+            bookmarks: ['t1', 'custom_1', null, null, null],
+            customTeams: { custom_1: { id: 'custom_1', name: '회사팀', schedule: '수 19:00-21:00', isCustom: true } }
+        };
+        const clubs = { t1: { id: 't1', name: '잠실 배구회', schedule: '토 19:00-22:00' }, t2: { id: 't2', name: '송파 토요 픽업', schedule: '토 14:00-17:00' } };
+        const orig = window.findClub;
+        window.findClub = (id) => clubs[id] || (window.currentProfileData.customTeams[id]) || (orig && orig(id));
+        window.confirmFriendShare = (hidden) => { window._confirmed = hidden; window.currentProfileData.friend_share_ok = true; window.currentProfileData.friend_hidden = hidden; return Promise.resolve(); };
+        window.setFriendHidden = (id, h) => { window._hid = [id, h]; return Promise.resolve(); };
+        window.loadFriendLunchbox = () => Promise.resolve({ status: 'ok', updatedMs: 1, teams: [{ id: 't2', name: '송파 토요 픽업', schedule: '토 14:00-17:00', slot: 0 }] });
+        const s = window.friendState;
+        s.uid = 'me'; s.loaded = true;
+        s.profiles = { c: { name: '팥밥-q7', color: '#F8BBD0' } };
+        s.friends = [{ id: 'c_me', other: 'c', doc: { status: 'accepted' } }];
+        window.updateProfileUI(true);
+        window.renderFriendsPage();
+        window.toggleProfileCard();
+    });
+    await page.locator('#pcDots .pc-dot').nth(1).click();
+
+    // 확인 카드: 도시락 팀이 체크된 채로. 회사팀을 끄고 확인 → 숨긴 목록으로 넘어간다
+    const confirm = page.locator('#friendsCard .fr-confirm');
+    await expect(confirm).toBeVisible();
+    await expect(confirm.locator('input[type=checkbox]')).toHaveCount(2);
+    await confirm.locator('label', { hasText: '회사팀' }).locator('input').uncheck();
+    await confirm.locator('button').click();
+    await expect.poll(() => page.evaluate(() => window._confirmed)).toEqual(['custom_1']);
+    await expect(page.locator('#friendsCard .fr-confirm')).toHaveCount(0);
+    await expect(page.locator('#friendsCard .fr-vis')).toBeVisible();
+
+    // 친구 상세: 친구 도시락 칩 + 겹쳐 보기(친구 칸 채움 · 내 칸 점선)
+    await page.locator('#friendsCard .fr-row', { hasText: '팥밥-q7' }).click();
+    await expect(page.locator('#friendsCard .fr-chip')).toContainText('송파 토요 픽업');
+    await expect(page.locator('#friendsCard .fr-tt-blk.fr')).toHaveCount(1);
+    await expect(page.locator('#friendsCard .fr-tt-blk.me')).toHaveCount(2);   // 토 잠실 + 수 회사팀
+
+    // 도시락 편집: 채운 칸마다 눈 스위치
+    await page.evaluate(() => { window.toggleProfileCard(); window.openLunchbox(); window.toggleEditMode(); });
+    const eyes = page.locator('#lunchboxGrid .lb-eye');
+    await expect(eyes).toHaveCount(2);
+    await eyes.first().click();
+    await expect.poll(() => page.evaluate(() => window._hid)).toEqual(['t1', true]);
+});

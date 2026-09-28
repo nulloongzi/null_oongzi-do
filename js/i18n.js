@@ -570,13 +570,31 @@
         fr_lk_friend: { ko: '이미 밥친구예요', en: 'Already friends' },
         fr_lk_sent: { ko: '신청했어요 · 수락을 기다리는 중', en: 'Request sent · waiting' },
         fr_lk_received: { ko: '나에게 먼저 신청했어요', en: 'They already sent you a request' },
-        fr_diet_soon: { ko: '곧 여기서 서로의 식단표를 겹쳐 볼 수 있어요.', en: 'Soon you’ll compare schedules here.' },
         fr_unfriend: { ko: '밥친구 끊기', en: 'Remove friend' },
         fr_unfriend_confirm: { ko: '끊기', en: 'Remove' },
         fr_unfriend_note: { ko: '상대에게 알리지 않아요. 서로의 목록에서 사라져요.', en: 'They won’t be notified. You’ll disappear from each other’s list.' },
         fr_unfriended: { ko: '밥친구를 끊었어요', en: 'Friend removed' },
         fr_err_generic: { ko: '잠시 후 다시 시도해 주세요.', en: 'Please try again in a moment.' },
-        fr_err_full: { ko: '밥친구는 100명까지예요.', en: 'You can have up to 100 bap friends.' }
+        fr_err_full: { ko: '밥친구는 100명까지예요.', en: 'You can have up to 100 bap friends.' },
+        fr_share_title: { ko: '밥친구에게 보일 팀을 골라주세요', en: 'Choose teams your bap friends can see' },
+        fr_share_body: { ko: '체크한 팀과 그 운동 시간이 모든 밥친구에게 보여요. 나중에 도시락 편집의 눈 버튼으로 바꿀 수 있어요.', en: 'Checked teams and their times are visible to all bap friends. Change later with the eye button in lunchbox edit.' },
+        fr_share_none: { ko: '도시락에 담은 팀이 아직 없어요.', en: 'No teams in your lunchbox yet.' },
+        fr_share_ok: { ko: '이대로 보이기', en: 'Share these' },
+        fr_share_done: { ko: '밥친구에게 식단표를 보여줘요', en: 'Your schedule is now visible to bap friends' },
+        fr_vis_title: { ko: '밥친구에게 내 식단표 보이기', en: 'Show my schedule to bap friends' },
+        fr_vis_on: { ko: '켜짐 · 숨길 팀은 도시락 편집에서 눈 버튼으로', en: 'On · hide teams with the eye in lunchbox edit' },
+        fr_vis_off: { ko: '꺼짐 · 밥친구에게는 네임카드만 보여요', en: 'Off · friends only see your name card' },
+        fr_lb_changed: { ko: '도시락이 바뀌었어요', en: 'Lunchbox updated' },
+        fr_lb_title: { ko: '도시락', en: 'Lunchbox' },
+        fr_lb_empty: { ko: '보여주는 팀이 없어요', en: 'No teams shared' },
+        fr_lb_none: { ko: '아직 식단표를 공개하지 않았어요.', en: 'Hasn’t shared a schedule yet.' },
+        fr_lb_hidden: { ko: '식단표를 숨겨 두었어요.', en: 'Schedule is hidden.' },
+        fr_tt_title: { ko: '식단표 겹쳐 보기', en: 'Schedules side by side' },
+        fr_tt_me: { ko: '나', en: 'Me' },
+        fr_tt_friend: { ko: '밥친구', en: 'Friend' },
+        fr_tt_empty: { ko: '보여줄 운동 시간이 없어요.', en: 'No workout times to show.' },
+        lb_eye_on: { ko: '밥친구에게 보임 (누르면 숨기기)', en: 'Visible to friends (tap to hide)' },
+        lb_eye_off: { ko: '밥친구에게 숨김 (누르면 보이기)', en: 'Hidden from friends (tap to show)' }
     };
 
     // "{name}" 같은 토큰을 치환하는 헬퍼. window.t(key)와 함께 사용.
