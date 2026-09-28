@@ -195,6 +195,8 @@ function saveLunchboxToDB() {
                 bookmarks: slots,
                 customTeams: window.currentProfileData.customTeams || {}
             }, { merge: true }).catch(function (e) { console.error("Firebase save failed, but UI applied:", e); });
+            // 밥친구에게 보이는 사본도 맞춘다 (js/friends-share.js)
+            if (window.syncFriendShare) window.syncFriendShare();
         }
     } else {
         // localStorage fallback
@@ -233,6 +235,7 @@ window.bookmarkTeam = async function (teamId) {
                     bookmarks: slots,
                     customTeams: window.currentProfileData.customTeams || {}
                 }, { merge: true }).catch(function (e) { console.error("Firebase update failed, but optimistic UI applied:", e); });
+                if (window.syncFriendShare) window.syncFriendShare();
             }
         } else {
             // localStorage fallback
@@ -302,6 +305,7 @@ function renderLunchboxGrid() {
                 nameSpan.textContent = displayName;
                 div.appendChild(nameSpan);
                 div.classList.add('filled');
+                appendFriendEye(div, teamId);
 
                 if (isEditMode) {
                     var delBtn = document.createElement('div');
@@ -354,6 +358,32 @@ function renderLunchboxGrid() {
     }
 }
 window.renderLunchboxGrid = renderLunchboxGrid;
+
+// 밥친구에게 보이기(눈 스위치). 로그인했을 때만. 편집 모드에서만 바꿀 수 있고,
+// 숨긴 칸은 평소에도 빗금 + 작은 눈 표시로 남아 나에게는 계속 보인다.
+// 설정 하나로 모든 밥친구에게 같게 — js/friends-share.js.
+var EYE_ON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>';
+var EYE_OFF = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+function appendFriendEye(div, teamId) {
+    if (!window.currentProfileData || !window.isFriendHidden) return;
+    var hidden = window.isFriendHidden(teamId);
+    if (hidden) div.classList.add('fr-hidden');
+    if (!isEditMode && !hidden) return;
+    var eye = document.createElement(isEditMode ? 'button' : 'span');
+    eye.className = 'lb-eye' + (hidden ? ' off' : '');
+    eye.innerHTML = hidden ? EYE_OFF : EYE_ON;   // 고정 SVG — 사용자 입력 아님
+    eye.setAttribute('aria-label', window.t(hidden ? 'lb_eye_off' : 'lb_eye_on'));
+    eye.title = window.t(hidden ? 'lb_eye_off' : 'lb_eye_on');
+    if (isEditMode) {
+        eye.type = 'button';
+        eye.addEventListener('click', function (e) {
+            e.stopPropagation();
+            window.setFriendHidden(teamId, !hidden).then(renderLunchboxGrid);
+            renderLunchboxGrid();
+        });
+    }
+    div.appendChild(eye);
+}
 
 function renderCombinedSchedule() {
     var container = document.getElementById('dietPlanBody');

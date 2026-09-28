@@ -931,3 +931,49 @@ describe('밥친구 — 초대코드 · 신청 · 수락', () => {
         await assertSucceeds(as(A).collection('friendships').doc(PAIR).delete());
     });
 });
+
+describe('밥친구 2단계 — 친구에게 보이는 도시락 사본', () => {
+    const A = 'sa-uid', B = 'sb-uid', P = 'sp-uid', X = 'sx-uid';
+    const as = (uid) => testEnv.authenticatedContext(uid).firestore();
+    const ts = () => require('firebase/compat/app').default.firestore.FieldValue.serverTimestamp();
+    const shared = (uid) => (db) => db.collection('users').doc(uid).collection('shared').doc('lunchbox');
+    const good = () => ({ teams: ['club-1', 'club-2'], custom: [{ name: '회사팀', schedule: '수 19:00-21:00' }], hide_all: false, updated_at: ts() });
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            const ab = [A, B].sort(), ap = [A, P].sort();
+            await db.collection('friendships').doc(ab.join('_')).set({ members: ab, requested_by: A, requested_to: B, status: 'accepted', code: 'X', created_at: new Date() });
+            await db.collection('friendships').doc(ap.join('_')).set({ members: ap, requested_by: P, requested_to: A, status: 'pending', code: 'X', created_at: new Date() });
+        });
+    });
+
+    test('본인은 쓰고 읽는다', async () => {
+        await assertSucceeds(shared(A)(as(A)).set(good()));
+        await assertSucceeds(shared(A)(as(A)).get());
+    });
+    test('수락된 밥친구는 읽는다', async () => {
+        await assertSucceeds(shared(A)(as(B)).get());
+    });
+    test('신청 중인 사이·모르는 사람은 못 읽는다', async () => {
+        await assertFails(shared(A)(as(P)).get());
+        await assertFails(shared(A)(as(X)).get());
+    });
+    test('남의 사본은 못 쓴다', async () => {
+        await assertFails(shared(A)(as(B)).set(good()));
+    });
+    test('모양 밖은 거부: 6칸 · 모르는 필드 · 시각 위조', async () => {
+        await assertFails(shared(A)(as(A)).set(Object.assign(good(), { teams: ['1', '2', '3', '4', '5', '6'] })));
+        await assertFails(shared(A)(as(A)).set(Object.assign(good(), { email: 'a@b.c' })));
+        await assertFails(shared(A)(as(A)).set(Object.assign(good(), { updated_at: new Date(0) })));
+    });
+    test('다른 이름의 문서는 못 만든다', async () => {
+        await assertFails(as(A).collection('users').doc(A).collection('shared').doc('other').set(good()));
+    });
+    test('끊으면 더는 못 읽는다', async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('friendships').doc([A, B].sort().join('_')).delete();
+        });
+        await assertFails(shared(A)(as(B)).get());
+    });
+});
