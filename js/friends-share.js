@@ -81,9 +81,17 @@
         });
         return out;
     }
-    // 익힘 단계: 한 주 합석 횟수 → 0 생쌀 · 1 뜸 · 2 노릇 · 3 누룽지(3회 이상)
-    function warmthTier(n) { return n >= 3 ? 3 : n >= 2 ? 2 : n >= 1 ? 1 : 0; }
-    // 포장하기 카드에 넣을 밥친구: 합석 있는 친구만, 전부 숨긴 친구는 빼고, 합석 많은 순(같으면 이름순) 최대 max.
+    // 합석 단계: 같이 다니는 팀 수 → 1 한 숟갈 · 2 한 그릇 · 3 한솥밥(3팀 이상).
+    // 한 주 횟수로 세지 않는다 — 주 3회 하는 팀 하나를 같이 다니는 것도 팀 하나다.
+    function warmthTier(teams) { return teams >= 3 ? 3 : teams >= 2 ? 2 : teams >= 1 ? 1 : 0; }
+    // 합석 칸 목록 → 같이 다니는 팀 수(동호회 id 중복 제거)
+    function mealTeams(overlaps) {
+        var ids = [];
+        (overlaps || []).forEach(function (o) { if (ids.indexOf(o.id) === -1) ids.push(o.id); });
+        return ids.length;
+    }
+    // 포장하기 카드에 넣을 밥친구: 합석 있는 친구만, 전부 숨긴 친구는 빼고, 같은 팀 많은 순(같으면 이름순) 최대 max.
+    // n 은 같이 다니는 팀 수다.
     function pickCardFriends(entries, max) {
         return (entries || []).filter(function (f) { return f && f.n > 0 && !f.hidden; })
             .sort(function (a, b) { return (b.n - a.n) || String(a.name).localeCompare(String(b.name), 'ko'); })
@@ -103,7 +111,7 @@
     function fmtRange(a, b) { return fmtHour(a) + '–' + fmtHour(b); }
     window.friendSharePure = {
         buildSharedLunchbox: buildSharedLunchbox, sharedEqual: sharedEqual, scheduleEvents: scheduleEvents,
-        mealOverlaps: mealOverlaps, warmthTier: warmthTier, pickCardFriends: pickCardFriends,
+        mealOverlaps: mealOverlaps, warmthTier: warmthTier, mealTeams: mealTeams, pickCardFriends: pickCardFriends,
         sortOverlaps: sortOverlaps, fmtRange: fmtRange
     };
 
@@ -176,7 +184,7 @@
             var doc = { teams: want.teams, custom: want.custom, hide_all: want.hide_all, updated_at: window.firebaseServerTimestamp() };
             return sharedRef(u).set(doc).then(function () { lastShared = want; });
         }).then(function () {
-            // 내 공개 팀이 바뀌면 합석도 바뀐다 — 🍚 버블의 익힘 효과를 다시 맞춘다
+            // 내 공개 팀이 바뀌면 합석도 바뀐다 — 🍚 버블 알림를 다시 맞춘다
             if (window.syncFriendsBadge) window.syncFriendsBadge();
         }).catch(function (e) { console.warn('밥친구 도시락 공유 실패:', e && e.message); });
     };
@@ -245,7 +253,7 @@
         return scheduleEvents(entries);
     };
 
-    // ── 합석 · 익힘 ─────────────────────────────────────────────
+    // ── 합석 ─────────────────────────────────────────────
     // 내 쪽은 친구에게 실제로 보이는 팀만 센다 — 확인 전이거나 전부 숨기기면 합석도 없다.
     function clubEntry(id) {
         var c = window.findClub ? window.findClub(id) : null;
@@ -260,10 +268,12 @@
     // 친구 한 명과의 이번 주 합석 { n, tier, overlaps }. 친구 도시락은 캐시(loadFriendLunchbox)에서.
     window.friendMeal = function (other) {
         var r = window.peekFriendLunchbox(other);
-        if (!r || r.status !== 'ok') return { n: 0, tier: 0, overlaps: [] };
+        if (!r || r.status !== 'ok') return { n: 0, teams: 0, tier: 0, overlaps: [] };
         var theirs = r.teams.filter(function (t) { return !t.isCustom; }).map(function (t) { return clubEntry(t.id); }).filter(Boolean);
         var ov = mealOverlaps(window.myMealTeams(), theirs);
-        return { n: ov.length, tier: warmthTier(ov.length), overlaps: ov };
+        var teams = mealTeams(ov);
+        // n: 합석 칸 수(겹쳐 보기·합석 목록용) · teams: 같이 다니는 팀 수(단계 기준)
+        return { n: ov.length, teams: teams, tier: warmthTier(teams), overlaps: ov };
     };
 
     // ── 겹쳐 보기 식단표 (DOM) ──────────────────────────────────

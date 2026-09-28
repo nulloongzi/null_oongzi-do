@@ -462,7 +462,7 @@ test('밥친구 2단계: 보일 팀 확인 · 겹쳐 보기 · 눈 스위치', a
     await expect.poll(() => page.evaluate(() => window._hid)).toEqual(['t1', true]);
 });
 
-test('밥친구 3단계: 합석 줄 · 익힘 효과 · 🍚 버블', async ({ page }) => {
+test('밥친구 3단계: 합석 줄 · 합석 단계 · 🍚 버블', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => {
         window.currentProfileData = {
@@ -495,7 +495,7 @@ test('밥친구 3단계: 합석 줄 · 익힘 효과 · 🍚 버블', async ({ p
         window.renderFriendsPage();
     });
 
-    // 🍚 버블: 처음 합석하게 된 친구(토·화 2회 → 노릇)가 있으면 단계 색 테두리 + 둘째 도트 신호.
+    // 🍚 버블: 처음 합석하게 된 친구(같은 팀 2개 → 한 그릇)가 있으면 단계 색 테두리 + 둘째 도트 신호.
     // 숨긴 목요일 팀은 세지 않는다. 움직이는 효과(김)는 없다.
     const fab = page.locator('#fabProfile');
     await expect(fab).toHaveClass(/fab-warm/);
@@ -513,7 +513,8 @@ test('밥친구 3단계: 합석 줄 · 익힘 효과 · 🍚 버블', async ({ p
     const strip = page.locator('#friendsCard .fr-meal-strip .fr-meal');
     await expect(strip).toHaveCount(1);
     await expect(strip.first()).toContainText('팥밥-q7');
-    await expect(strip.first().locator('.fr-warm.big.warm-2')).toHaveCount(1);
+    // 같은 팀 2개(잠실·강동) → 한 그릇: 밥그릇이 2/3 차오른 아바타
+    await expect(strip.first().locator('.fr-av.warm-2 svg clipPath')).toHaveCount(1);
     // 효과 없이 단계 색 테두리만
     await expect(strip.first().locator('.fr-steam, .fr-crumb')).toHaveCount(0);
     const anim = await strip.first().locator('.fr-av').evaluate((e) => window.getComputedStyle(e).animationName);

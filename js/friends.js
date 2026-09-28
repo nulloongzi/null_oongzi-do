@@ -357,7 +357,7 @@
         b.textContent = n > 9 ? '9+' : String(n);
         b.setAttribute('aria-label', TF('fr_badge_aria', { n: n }));
     }
-    // 이번 주 합석 친구가 있으면 🍚 버블에도 김과 금빛 테두리(가장 높은 익힘 단계).
+    // 처음 합석하게 된 밥친구가 있으면 🍚 버블에 단계 색 테두리(가장 높은 합석 단계).
     // 합석 알림은 처음 한 번만: 어떤 밥친구와 처음 합석하게 됐을 때 🍚 버블 테두리와 둘째 도트로
     // 알리고, 밥친구 장을 열면 꺼진다. 이미 본 합석 친구는 다시 알리지 않는다(계정별로 기기에 둔다).
     function mealSeenKey() { return 'nurungji_meal_seen:' + (state.uid || ''); }
@@ -434,23 +434,30 @@
         return b;
     }
     var BOWL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#3D2C22" d="M12 4.6c-1.9 0-3.2 1-3.9 2.2-1-.4-2.4.3-2.4 1.7 0 .9.7 1.5 1.4 1.5h9.8c.7 0 1.4-.6 1.4-1.5 0-1.4-1.4-2.1-2.4-1.7-.7-1.2-2-2.2-3.9-2.2zM4.2 11.6h15.6c0 3.1-2.5 5.6-5.8 6.2v.9c0 .4-.3.7-.7.7h-2.6c-.4 0-.7-.3-.7-.7v-.9c-3.3-.6-5.8-3.1-5.8-6.2z"/></svg>';
-    function avatar(color, size) {
-        var a = el('div', 'fr-av');
+    function avatar(color, size, tier) {
+        var a = el('div', 'fr-av' + (tier ? ' warm-' + tier : ''));
         a.style.background = color || '#FFF9C4';
         if (size) { a.style.width = size + 'px'; a.style.height = size + 'px'; }
-        a.innerHTML = BOWL;   // 고정 SVG — 사용자 입력 아님
+        a.innerHTML = tier ? fillBowl(tier) : BOWL;   // 고정 SVG — 사용자 입력 아님
         return a;
     }
-    // 익힘 효과를 두른 아바타. big 이 아니면 테두리 색만 — 목록 스크롤이 요란하지 않게.
-    //   1 뜸: 옅은 테두리 + 김 한 줄 · 2 노릇: 금빛 테두리가 숨 쉬듯 · 3 누룽지: 도는 갈색 테두리 + 부스러기
-    function warmAvatar(color, size, tier, big) {
-        var a = avatar(color, size);
-        if (!tier) return a;
-        var w = el('div', 'fr-warm warm-' + tier + (big ? ' big' : ''));
-        w.appendChild(a);
-        return w;
+    // 합석 단계는 밥그릇이 차오르는 양으로 보여준다: 한 숟갈 1/3 · 한 그릇 2/3 · 한솥밥 가득.
+    // 테두리·빛남 같은 장식 없이 그릇 안에서만. 색은 앱 _BowlPainter · 공유 카드와 같다.
+    var BOWL_D = 'M12 4.6c-1.9 0-3.2 1-3.9 2.2-1-.4-2.4.3-2.4 1.7 0 .9.7 1.5 1.4 1.5h9.8c.7 0 1.4-.6 1.4-1.5 0-1.4-1.4-2.1-2.4-1.7-.7-1.2-2-2.2-3.9-2.2zM4.2 11.6h15.6c0 3.1-2.5 5.6-5.8 6.2v.9c0 .4-.3.7-.7.7h-2.6c-.4 0-.7-.3-.7-.7v-.9c-3.3-.6-5.8-3.1-5.8-6.2z';
+    var BOWL_TOP = 4.6, BOWL_BOT = 19.4;
+    var MEAL_FILL = ['', '#F1D9A6', '#F5B82E', '#E0A800'];
+    var MEAL_LEVEL = [0, 1 / 3, 2 / 3, 1];
+    var bowlSeq = 0;
+    function fillBowl(tier) {
+        var id = 'frb' + (++bowlSeq);
+        var y = BOWL_BOT - (BOWL_BOT - BOWL_TOP) * MEAL_LEVEL[tier];
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><defs><clipPath id="' + id + '"><path d="' + BOWL_D + '"/></clipPath></defs>' +
+            '<g clip-path="url(#' + id + ')"><rect width="24" height="24" fill="#3D2C22" opacity=".28"/>' +
+            '<rect x="0" y="' + y.toFixed(2) + '" width="24" height="24" fill="' + MEAL_FILL[tier] + '"/></g>' +
+            '<path d="' + BOWL_D + '" fill="none" stroke="#3D2C22" stroke-width="1.2"/></svg>';
     }
-    function mealOf(uid) { return window.friendMeal ? window.friendMeal(uid) : { n: 0, tier: 0, overlaps: [] }; }
+    function warmAvatar(color, size, tier) { return avatar(color, size, tier); }
+    function mealOf(uid) { return window.friendMeal ? window.friendMeal(uid) : { n: 0, teams: 0, tier: 0, overlaps: [] }; }
     function profileOf(uid) { return state.profiles[uid] || { name: '…', color: '#F3E9D2' }; }
     function fmtDate(t) {
         var ms = toMillis(t);
@@ -555,8 +562,8 @@
         if (window.needsFriendShareConfirm && window.needsFriendShareConfirm()) body.appendChild(shareConfirmCard());
 
         var hot = state.friends.map(function (x) { return { x: x, m: mealOf(x.other) }; })
-            .filter(function (v) { return v.m.n > 0; })
-            .sort(function (a, b) { return b.m.n - a.m.n; });
+            .filter(function (v) { return v.m.teams > 0; })
+            .sort(function (a, b) { return (b.m.teams - a.m.teams) || (b.m.n - a.m.n); });
         if (hot.length) {
             body.appendChild(el('div', 'fr-label', T('fr_meal_title')));
             body.appendChild(el('p', 'fr-note fr-meal-hint', T('fr_meal_hint')));   // 합석이 낯선 사람에게 한 줄
@@ -566,9 +573,9 @@
                 var b = el('button', 'fr-meal');
                 b.type = 'button';
                 b.onclick = function () { go('detail', { detailId: v.x.id }); };
-                b.appendChild(warmAvatar(p.color, 48, v.m.tier, true));
+                b.appendChild(warmAvatar(p.color, 48, v.m.tier));
                 b.appendChild(el('b', null, p.name));
-                b.appendChild(el('span', 'warm-' + v.m.tier, TF('fr_meal_tier', { tier: T('fr_warm_' + v.m.tier), n: v.m.n })));
+                b.appendChild(el('span', 'warm-' + v.m.tier, TF('fr_meal_tier', { tier: T('fr_warm_' + v.m.tier), n: v.m.teams })));
                 strip.appendChild(b);
             });
             body.appendChild(strip);
@@ -584,7 +591,7 @@
             var list = el('div', 'fr-list');
             // 합석 많은 순, 같으면 이름순
             state.friends.slice().sort(function (a, b) {
-                return (mealOf(b.other).n - mealOf(a.other).n) ||
+                return (mealOf(b.other).teams - mealOf(a.other).teams) ||
                     profileOf(a.other).name.localeCompare(profileOf(b.other).name, 'ko');
             }).forEach(function (x) {
                 var p = profileOf(x.other);
@@ -592,14 +599,14 @@
                 var row = el('button', 'fr-row');
                 row.type = 'button';
                 row.onclick = function () { go('detail', { detailId: x.id }); };
-                row.appendChild(warmAvatar(p.color, 38, meal.tier, false));
+                row.appendChild(warmAvatar(p.color, 38, meal.tier));
                 var meta = el('div', 'fr-meta');
                 meta.appendChild(el('b', null, p.name));
                 var since = fmtDate(x.doc.accepted_at);
                 var changed = window.isFriendLunchboxChanged && window.isFriendLunchboxChanged(x.other);
                 if (changed) meta.firstChild.appendChild(el('i', 'fr-changed-dot'));
                 meta.appendChild(el('span', null, changed ? T('fr_lb_changed')
-                    : meal.n ? TF('fr_meal_tier', { tier: T('fr_warm_' + meal.tier), n: meal.n })
+                    : meal.teams ? TF('fr_meal_tier', { tier: T('fr_warm_' + meal.tier), n: meal.teams })
                         : (since ? TF('fr_since', { d: since }) : T('fr_friend'))));
                 row.appendChild(meta);
                 row.appendChild(el('span', 'fr-chev', '›'));
@@ -844,10 +851,10 @@
         var mini = el('div', 'fr-mini');
         mini.style.background = p.color;
         var meal = mealOf(x.other);
-        mini.appendChild(warmAvatar('#FFFFFF', 56, meal.tier, true));
+        mini.appendChild(warmAvatar('#FFFFFF', 56, meal.tier));
         var t = el('div', 'fr-meta');
         t.appendChild(el('b', null, p.name));
-        if (meal.tier) t.appendChild(el('em', 'fr-warm-tag warm-' + meal.tier, TF('fr_meal_tier', { tier: T('fr_warm_' + meal.tier), n: meal.n })));
+        if (meal.tier) t.appendChild(el('em', 'fr-warm-tag warm-' + meal.tier, TF('fr_meal_tier', { tier: T('fr_warm_' + meal.tier), n: meal.teams })));
         var since = fmtDate(x.doc.accepted_at);
         t.appendChild(el('span', null, since ? TF('fr_since', { d: since }) : T('fr_friend')));
         mini.appendChild(t);
