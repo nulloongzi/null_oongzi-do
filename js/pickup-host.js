@@ -74,6 +74,7 @@
         document.getElementById('pkModalTitle').innerText = window.t('pk_create_title');
         document.getElementById('pkSubmitBtn').innerText = window.t('pk_create_submit');
         TEXT_FIELDS.forEach(function (id) { setVal(id, ''); });
+        window.setReelInputLocked(document.getElementById('pkReel'), false); // 숨김 스팟 편집 흔적 해제
         selectChipByVal('pkSportChips', '6s');
         selectChipByVal('pkLevelChips', 'any');
         selectChipByVal('pkExpireChips', '1m');
@@ -105,6 +106,8 @@
         setVal('pkReel',
             (spot.insta_reels && spot.insta_reels.length ? spot.insta_reels
                 : (spot.insta_reel ? [spot.insta_reel] : [])).join('\n'));
+        // 운영자가 릴스를 숨긴 스팟은 입력칸을 잠근다(로드 때 걷어내서 칸이 비어 있다 — 저장하면 원본이 지워진다).
+        window.setReelInputLocked(document.getElementById('pkReel'), spot.reels_hidden === true);
         selectChipByVal('pkSportChips', spot.sport || '6s');
         selectChipByVal('pkLevelChips', spot.level || 'any');
         selectChipByVal('pkExpireChips', spot.expire_at ? '1m' : 'always');
@@ -181,15 +184,17 @@
 
         // 릴스/게시물 링크 (선택): 공개 인스타 permalink만
         // 멀티 릴스(앱 패리티): 한 줄에 하나, 각각 검증. reel=첫 항목(단일 호환).
-        var reelLines = getVal('pkReel').split('\n');
-        var reels = [];
-        for (var rl = 0; rl < reelLines.length; rl++) {
-            var rlv = reelLines[rl].trim();
-            if (!rlv) continue;
-            var sr = window.sanitizeInstaPostUrl(rlv);
-            if (!sr) { alert(window.t('insta_reel_invalid')); return; }
-            if (reels.indexOf(sr) === -1) reels.push(sr);
+        // 잠긴 칸(운영자가 숨긴 스팟)은 릴스 필드를 보내지 않는다.
+        var reelEl = document.getElementById('pkReel');
+        var reelsLocked = !!(reelEl && reelEl.disabled);
+        var reelResult = window.collectReelLines(reelsLocked ? '' : getVal('pkReel'));
+        if (reelResult.error) {
+            alert(reelResult.error === 'too_many'
+                ? window.tf('reels_too_many', { max: window.MAX_REELS })
+                : window.t('insta_reel_invalid'));
+            return;
         }
+        var reels = reelResult.reels;
         var reel = reels.length ? reels[0] : '';
 
         var beginnerChip = document.getElementById('pkBeginnerChip');
@@ -216,6 +221,10 @@
             notes: getVal('pkNotes'),
             expire_at: computeExpireAt(selectedVal('pkExpireChips', '1m'))
         };
+        if (reelsLocked) {
+            delete fields.insta_reel;
+            delete fields.insta_reels;
+        }
 
         // source는 관리자만 건드린다. 일반 사용자가 남의 curated 항목을 수정할 때
         // 이 키를 보내면 표시가 지워져 삭제요청 통로가 사라지므로, 아예 넣지 않는다.

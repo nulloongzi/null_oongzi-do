@@ -121,6 +121,8 @@
         reg_reel_ph: { ko: '한 줄에 하나씩: https://www.instagram.com/reel/...', en: 'One per line: https://www.instagram.com/reel/...' },
         reels_more_label: { ko: '릴스 더 보기', en: 'More reels' },
         reels_hide: { ko: '접기', en: 'Hide' },
+        reels_too_many: { ko: '릴스는 최대 {max}개까지 올릴 수 있어요.', en: 'You can add up to {max} reels.' },
+        reels_hidden_notice: { ko: '운영자가 이 릴스를 숨겼어요. 문의는 누룽지도 운영팀으로 해 주세요.', en: 'Reels were hidden by the moderators. Please contact the Nulloongzido team.' },
         insta_reel_title: { ko: '📷 인스타 릴스 · 게시물', en: '📷 Instagram reel · post' },
         insta_reel_open: { ko: '탭하면 인스타그램에서 봐요', en: 'Tap to view on Instagram' },
         fs_keyword_label: { ko: '🔎 키워드', en: '🔎 Keyword' },

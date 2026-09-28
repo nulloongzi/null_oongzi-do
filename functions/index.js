@@ -921,6 +921,12 @@ function reportDoneBlockId() {
     return (process.env.REPORT_DONE_BLOCK_ID || "").trim();
 }
 
+// '릴스 숨김' 버튼 블록 (스킬: chatbotReportHideReels). 같은 방식의 선택 설정 —
+// 비어 있으면 카드에 버튼이 안 붙을 뿐 나머지는 그대로 동작한다.
+function reportHideReelsBlockId() {
+    return (process.env.REPORT_HIDE_REELS_BLOCK_ID || "").trim();
+}
+
 var REPORT_REASON_LABELS = {
     wrong_info: "정보가 틀림",
     closed: "운영 종료/해체",
@@ -1033,6 +1039,7 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
             : "";
 
         var doneBlockId = reportDoneBlockId();
+        var hideReelsBlockId = reportHideReelsBlockId();
 
         // 블록 ID가 아직 없으면 버튼 대신 텍스트로 — 콘솔 설정 전에도 목록은 보여야 한다.
         if (!doneBlockId) {
@@ -1066,16 +1073,26 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
             var desc = kindLabel + " · " + reportReasonLabel(d.reason) + "\n" + dateStr;
             if (d.detail) desc += "\n" + String(d.detail).slice(0, 60);
             if (d.notify_failed) desc += "\n⚠️ 알림 미발송";
+            var buttons = [{
+                label: "✅ 처리완료",
+                action: "block",
+                blockId: doneBlockId,
+                extra: { report_id: d._id, target_name: d.target_name || "" }
+            }];
+            // 엉뚱한·부적절한 릴스를 건 팀/스팟: 콘솔을 열지 않고 카톡에서 바로 내린다.
+            if (hideReelsBlockId && pure.reportTargetCollection(d.kind)) {
+                buttons.push({
+                    label: "🙈 릴스 숨김",
+                    action: "block",
+                    blockId: hideReelsBlockId,
+                    extra: { report_id: d._id, target_name: d.target_name || "" }
+                });
+            }
             return {
                 title: (d.notify_failed ? "⚠️ " : "") + (d.target_name || d.target_id || "대상 없음"),
                 description: desc,
                 thumbnail: { imageUrl: DEFAULT_THUMB },
-                buttons: [{
-                    label: "✅ 처리완료",
-                    action: "block",
-                    blockId: doneBlockId,
-                    extra: { report_id: d._id, target_name: d.target_name || "" }
-                }]
+                buttons: buttons
             };
         });
 
@@ -1159,6 +1176,62 @@ exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
             version: "2.0",
             template: { outputs: [{ simpleText: { text: "신고 처리 중 오류가 발생했습니다." } }] }
         });
+    }
+});
+
+// ── 스킬 9-1: 신고 대상의 릴스 숨김 ──
+// 팀 관리자·픽업 소유자가 팀과 상관없는 릴스를 걸었을 때, 팀 자체는 두고 릴스만 내린다.
+// reels_hidden 은 firestore.rules 가 관리자·소유자의 변경을 막으므로 본인이 다시 켤 수 없다.
+// 릴스 URL 은 지우지 않는다 — 오판이면 콘솔에서 reels_hidden 만 false 로 되돌리면 된다.
+// 신고는 처리 완료로 닫는다(무엇으로 처리했는지 resolution 에 남긴다).
+exports.chatbotReportHideReels = onRequest(CHATBOT_OPTS, async function (req, res) {
+    function reply(text) {
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: text } }] } });
+    }
+    try {
+        if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
+        var auth = await isAllowedKakaoUser(req);
+        if (!auth.allowed) { res.json(unauthorizedResponse()); return; }
+
+        var clientExtra = (req.body.action && req.body.action.clientExtra) || {};
+        var params = (req.body.action && req.body.action.params) || {};
+        var reportId = clientExtra.report_id || params.report_id;
+        if (!reportId) { reply("처리할 신고 id가 없습니다. '신고관리'로 다시 시도해주세요."); return; }
+
+        var reportRef = db.collection("reports").doc(String(reportId));
+        var reportSnap = await reportRef.get();
+        if (!reportSnap.exists) { reply("해당 신고를 찾을 수 없습니다."); return; }
+        var d = reportSnap.data() || {};
+        var col = pure.reportTargetCollection(d.kind);
+        if (!col || !d.target_id) { reply("신고 대상을 알 수 없습니다."); return; }
+
+        var targetRef = db.collection(col).doc(String(d.target_id));
+        var targetSnap = await targetRef.get();
+        if (!targetSnap.exists) { reply("대상이 이미 삭제되었습니다: " + (d.target_name || d.target_id)); return; }
+
+        var who = auth.userId || "unknown";
+        var batch = db.batch();
+        batch.update(targetRef, {
+            reels_hidden: true,
+            reels_hidden_at: admin.firestore.FieldValue.serverTimestamp(),
+            reels_hidden_by: who
+        });
+        if (d.status === "open") {
+            batch.update(reportRef, {
+                status: "resolved",
+                resolution: "reels_hidden",
+                resolved_at: admin.firestore.FieldValue.serverTimestamp(),
+                resolved_by: who
+            });
+        }
+        await batch.commit();
+        console.log("릴스 숨김 - report_id:", reportId, "target:", col + "/" + d.target_id);
+
+        reply("🙈 릴스를 숨겼습니다.\n대상: " + (d.target_name || d.target_id)
+            + "\n되돌리려면 콘솔에서 " + col + "/" + d.target_id + " 의 reels_hidden 을 false 로 바꿔주세요.");
+    } catch (error) {
+        console.error("chatbotReportHideReels 오류:", error);
+        reply("릴스 숨김 처리 중 오류가 발생했습니다.");
     }
 });
 
@@ -1973,9 +2046,8 @@ exports.adminReassignOwner = onCall(async function (request) {
         throw new HttpsError("internal", "사용자 조회 중 오류가 발생했습니다.");
     }
     try {
-        await db.collection("clubs").doc(clubId).update({
-            registered_by: userRecord.uid
-        });
+        // registered_by 만 바꾸면 admins 에 남은 기존 관리자가 권한을 그대로 쥔다.
+        await db.collection("clubs").doc(clubId).update(pure.reassignOwnerUpdate(userRecord.uid));
     } catch (e) {
         console.error("adminReassignOwner clubs.update 오류:", e);
         throw new HttpsError("internal", "팀 소유자 업데이트 중 오류가 발생했습니다.");

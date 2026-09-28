@@ -595,6 +595,35 @@ describe('reportKindLabel', () => {
     });
 });
 
+describe('reportTargetCollection', () => {
+    test('신고 종류 → 대상 컬렉션', () => {
+        assert.strictEqual(pure.reportTargetCollection('club'), 'clubs');
+        assert.strictEqual(pure.reportTargetCollection('pickup'), 'pickup_games');
+    });
+    test('카톡 제보·모르는 값은 대상 문서가 없다 → 릴스 숨김 버튼을 붙이지 않는다', () => {
+        assert.strictEqual(pure.reportTargetCollection('chatbot'), null);
+        assert.strictEqual(pure.reportTargetCollection(''), null);
+        assert.strictEqual(pure.reportTargetCollection(undefined), null);
+        assert.strictEqual(pure.reportTargetCollection('__proto__'), null);
+    });
+});
+
+describe('reassignOwnerUpdate', () => {
+    test('소유자와 관리자 명단을 새 사람 한 명으로 함께 바꾼다', () => {
+        assert.deepStrictEqual(pure.reassignOwnerUpdate(' new-uid '), { registered_by: 'new-uid', admins: ['new-uid'] });
+    });
+    test('결과를 clubAdminUids 로 읽으면 새 소유자만 남는다 — 기존 관리자가 권한을 쥔 채 남지 않는다', () => {
+        const before = { registered_by: 'bad', admins: ['bad', 'other'] };
+        const after = Object.assign({}, before, pure.reassignOwnerUpdate('new-uid'));
+        assert.deepStrictEqual(pure.clubAdminUids(after), ['new-uid']);
+        assert.strictEqual(pure.canManageClub(after, 'bad'), false);
+    });
+    test('빈 uid 는 null', () => {
+        assert.strictEqual(pure.reassignOwnerUpdate(''), null);
+        assert.strictEqual(pure.reassignOwnerUpdate(null), null);
+    });
+});
+
 describe('parsePublicReport', () => {
     test('키워드를 떼고 내용만 남긴다', () => {
         const r = pure.parsePublicReport('제보 GVT 운동 시간이 바뀌었어요');

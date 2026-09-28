@@ -152,6 +152,7 @@ Firestore 가 흔들려 키를 못 읽으면 **문을 열어둔다.** 닫으면 
 | `인증관리` | 대기 중 인증 요청 카드 + 승인/거절 | 거절확정 (코드에 박힘) | ✅ 동작 |
 | `팀관리` | 팀 목록 + 삭제 | 3개 (코드에 박힘) | ✅ 동작 |
 | `신고관리` | 미처리 신고 목록 + 처리완료 | `REPORT_DONE_BLOCK_ID` | ✅ 동작 |
+| `신고관리` → 🙈 릴스 숨김 | 신고 대상 팀/스팟의 릴스만 내리고 신고를 닫음 | `REPORT_HIDE_REELS_BLOCK_ID` | ⏳ 블록 미등록 (아래 남은 작업) |
 | `클레임관리` | 소유권 클레임 + 승인/거절 | `CLAIM_APPROVE_BLOCK_ID` · `CLAIM_REJECT_BLOCK_ID` | ✅ 동작 |
 | `관리자관리` | 팀 관리자 권한 신청 + 승인/거절 | `ADMIN_APPROVE_BLOCK_ID` · `ADMIN_REJECT_BLOCK_ID` | ✅ 동작 |
 
@@ -197,6 +198,29 @@ Firestore 가 흔들려 키를 못 읽으면 **문을 열어둔다.** 닫으면 
 > 블록 ID 는 콘솔 화면에 따로 표시되는 항목이 없다. **블록 편집 화면 주소의
 > `/intent/<id>` 부분**이 그 값이다(2026-09-16 확인). `⋯` 메뉴에는 컨텍스트·이벤트·
 > Callback 설정만 있다.
+
+---
+
+## 남은 작업: 신고관리에 🙈 릴스 숨김 버튼 붙이기
+
+팀 관리자·픽업 소유자가 팀과 상관없는(또는 부적절한) 릴스를 걸었을 때, 팀은 두고
+릴스만 내리는 버튼이다. 누르면 대상 문서에 `reels_hidden: true` 가 켜지고 신고는
+`resolved`(`resolution: "reels_hidden"`)로 닫힌다. 웹·앱은 이 값이 켜진 문서의
+릴스·커버를 그리지 않고, 수정 폼의 릴스 칸을 잠근다. `firestore.rules` 가 관리자·소유자의
+`reels_hidden` 변경을 막으므로 본인이 다시 켤 수 없다.
+
+릴스 URL 은 지우지 않는다. 오판이었다면 Firebase 콘솔에서 해당 문서의
+`reels_hidden` 을 `false` 로 바꾸면 그대로 돌아온다.
+
+1. 스킬 등록: `신고릴스숨김` → `chatbotReportHideReels`
+2. 블록 생성: `신고릴스숨김` (버튼 전용, 발화 없음) → 스킬 데이터 사용 → 신고릴스숨김.
+   파라미터 `report_id` (string)는 `신고처리` 블록과 같다.
+3. 블록 ID(편집 화면 주소의 `/intent/<id>`)를 `functions/.env.nulloongzi-do` 의
+   `REPORT_HIDE_REELS_BLOCK_ID=` 에 넣는다 (주석으로 준비돼 있다).
+4. 재배포: `firebase deploy --only functions:chatbotReports,functions:chatbotReportHideReels --project nulloongzi-do`
+5. 확인: `신고관리` 카드에 `✅ 처리완료` 옆으로 `🙈 릴스 숨김` 이 뜨면 끝.
+
+블록 ID 가 비어 있어도 배포는 된다 — 카드에 버튼만 안 붙는다.
 
 ---
 

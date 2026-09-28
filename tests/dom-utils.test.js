@@ -291,3 +291,65 @@ describe('XSS payload regression matrix (end-to-end through escapeHtml)', () => 
         });
     }
 });
+
+// ── 릴스 모더레이션: 개수 상한 · 운영자 숨김 ──
+// vm 샌드박스의 객체는 realm 이 달라 deepStrictEqual 이 프로토타입에서 어긋난다 → JSON 으로 비교.
+const J = (v) => JSON.parse(JSON.stringify(v));
+
+describe('collectReelLines', () => {
+    const { collectReelLines, MAX_REELS } = sandbox.window;
+
+    test('줄마다 permalink 로 정규화하고 중복·빈 줄을 버린다', () => {
+        const r = collectReelLines('https://instagram.com/reels/A1/\n\n  https://www.instagram.com/reel/A1/?x=1 \nhttps://www.instagram.com/p/B2/');
+        assert.deepStrictEqual(J(r), { reels: ['https://www.instagram.com/reel/A1/', 'https://www.instagram.com/p/B2/'] });
+    });
+
+    test('한 줄이라도 permalink 가 아니면 invalid', () => {
+        assert.deepStrictEqual(J(collectReelLines('https://www.instagram.com/reel/A1/\nhttps://evil.example/reel/A2/')), { error: 'invalid' });
+    });
+
+    test('빈 입력은 빈 목록', () => {
+        assert.deepStrictEqual(J(collectReelLines('')), { reels: [] });
+        assert.deepStrictEqual(J(collectReelLines(null)), { reels: [] });
+    });
+
+    test('상한(10)까지는 통과, 넘으면 too_many — firestore.rules reelFieldsValid 와 같은 값', () => {
+        assert.strictEqual(MAX_REELS, 10);
+        const lines = (n) => Array.from({ length: n }, (_, i) => 'https://www.instagram.com/reel/C' + i + '/').join('\n');
+        assert.strictEqual(collectReelLines(lines(10)).reels.length, 10);
+        assert.deepStrictEqual(J(collectReelLines(lines(11))), { error: 'too_many' });
+    });
+
+    test('중복은 상한 계산 전에 하나로 친다', () => {
+        const same = Array.from({ length: 12 }, () => 'https://www.instagram.com/reel/SAME/').join('\n');
+        assert.strictEqual(collectReelLines(same).reels.length, 1);
+    });
+});
+
+describe('stripHiddenReels', () => {
+    const { stripHiddenReels } = sandbox.window;
+
+    test('운영자가 숨긴 문서는 릴스·커버를 걷어내고 플래그는 남긴다', () => {
+        const d = {
+            name: 'X', reels_hidden: true,
+            insta_reel: 'https://www.instagram.com/reel/A/',
+            insta_reels: ['https://www.instagram.com/reel/A/'],
+            insta_reel_covers: { A: 'https://firebasestorage.googleapis.com/x' }
+        };
+        stripHiddenReels(d);
+        assert.deepStrictEqual(J(d), { name: 'X', reels_hidden: true, insta_reel: '', insta_reels: [], insta_reel_covers: {} });
+    });
+
+    test('숨김이 아니면 그대로 — true 가 아닌 값(문자열 등)도 숨김으로 치지 않는다', () => {
+        const d = { insta_reels: ['https://www.instagram.com/reel/A/'], reels_hidden: 'true' };
+        stripHiddenReels(d);
+        assert.strictEqual(d.insta_reels.length, 1);
+        const e = { insta_reels: ['https://www.instagram.com/reel/A/'] };
+        stripHiddenReels(e);
+        assert.strictEqual(e.insta_reels.length, 1);
+    });
+
+    test('null 안전', () => {
+        assert.strictEqual(stripHiddenReels(null), null);
+    });
+});

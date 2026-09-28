@@ -814,3 +814,109 @@ describe('위치 공개 수준 — 대략만 고른 팀은 정확한 좌표를 �
         await assertFails(as('admin-uid').collection('clubs').doc('loc-2').update({ coordinates: EXACT }));
     });
 });
+
+describe('릴스 모더레이션 — 운영자 숨김 · 커버는 서버만 · 개수 상한', () => {
+    const REEL = 'https://www.instagram.com/reel/ABC/';
+    const COVER = 'https://firebasestorage.googleapis.com/v0/b/x/o/reel_covers%2FABC.jpg?alt=media&token=t';
+    const reels = (n) => Array.from({ length: n }, (_, i) => 'https://www.instagram.com/reel/R' + i + '/');
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('clubs').doc('rm-hidden').set({
+                name: '숨김팀', admins: ['rm-mgr'], registered_by: 'rm-mgr', is_verified: false,
+                insta_reel: REEL, insta_reels: [REEL], insta_reel_covers: { ABC: COVER }, reels_hidden: true
+            });
+            await db.collection('clubs').doc('rm-open').set({
+                name: '보통팀', admins: ['rm-mgr'], registered_by: 'rm-mgr', is_verified: false,
+                insta_reel: REEL, insta_reels: [REEL], insta_reel_covers: { ABC: COVER }
+            });
+            await db.collection('pickup_games').doc('rm-pk-hidden').set({
+                owner_uid: 'rm-pk-owner', title: '숨김 픽업', insta_reels: [REEL], reels_hidden: true
+            });
+            await db.collection('pickup_games').doc('rm-pk-open').set({
+                owner_uid: 'rm-pk-owner', title: '보통 픽업', insta_reels: [REEL]
+            });
+        });
+    });
+
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+
+    // ── 팀 관리자 ──
+    test('관리자는 숨김을 스스로 풀 수 없다', async () => {
+        await assertFails(as('rm-mgr').collection('clubs').doc('rm-hidden').update({ reels_hidden: false }));
+    });
+
+    test('관리자는 숨김 필드를 빼고 문서를 통째로 덮어써서 풀 수도 없다', async () => {
+        await assertFails(as('rm-mgr').collection('clubs').doc('rm-hidden').set({
+            name: '숨김팀', admins: ['rm-mgr'], registered_by: 'rm-mgr', is_verified: false,
+            insta_reel: REEL, insta_reels: [REEL], insta_reel_covers: { ABC: COVER }
+        }));
+    });
+
+    test('숨긴 팀도 릴스 외 내용은 계속 고칠 수 있다', async () => {
+        await assertSucceeds(as('rm-mgr').collection('clubs').doc('rm-hidden').update({ price: '월 2만원' }));
+    });
+
+    test('숨긴 팀의 관리자가 릴스를 바꿔 넣어도 숨김은 유지된다(릴스 변경 자체는 허용)', async () => {
+        await assertSucceeds(as('rm-mgr').collection('clubs').doc('rm-hidden').update({ insta_reels: [REEL] }));
+    });
+
+    test('관리자는 스스로 숨김을 켤 수도 없다 — 운영자 전용 필드', async () => {
+        await assertFails(as('rm-mgr').collection('clubs').doc('rm-open').update({ reels_hidden: true }));
+    });
+
+    test('관리자는 커버 맵을 바꿀 수 없다 — 아무 이미지나 커버로 띄우는 우회 차단', async () => {
+        await assertFails(as('rm-mgr').collection('clubs').doc('rm-open').update({
+            insta_reel_covers: { ABC: 'https://evil.example/x.jpg' }
+        }));
+    });
+
+    test('새 팀은 커버·숨김 해제 값을 들고 만들어질 수 없다', async () => {
+        const base = { name: '새팀', registered_by: 'rm-new', is_verified: false };
+        await assertFails(as('rm-new').collection('clubs').doc('rm-c1').set(Object.assign({}, base, {
+            insta_reel_covers: { ABC: 'https://evil.example/x.jpg' }
+        })));
+        await assertFails(as('rm-new').collection('clubs').doc('rm-c2').set(Object.assign({}, base, { reels_hidden: 'no' })));
+        await assertSucceeds(as('rm-new').collection('clubs').doc('rm-c3').set(Object.assign({}, base, {
+            insta_reel: REEL, insta_reels: [REEL], reels_hidden: false
+        })));
+    });
+
+    test('릴스는 10개까지 — 11개면 거부', async () => {
+        await assertSucceeds(as('rm-mgr').collection('clubs').doc('rm-open').update({ insta_reels: reels(10) }));
+        await assertFails(as('rm-mgr').collection('clubs').doc('rm-open').update({ insta_reels: reels(11) }));
+    });
+
+    test('insta_reel 은 200자 이하 문자열', async () => {
+        await assertFails(as('rm-mgr').collection('clubs').doc('rm-open').update({ insta_reel: 'x'.repeat(201) }));
+        await assertFails(as('rm-mgr').collection('clubs').doc('rm-open').update({ insta_reels: 'not-a-list' }));
+    });
+
+    test('운영자는 숨김을 켜고 끌 수 있다', async () => {
+        await assertSucceeds(as('admin-uid').collection('clubs').doc('rm-open').update({ reels_hidden: true }));
+        await assertSucceeds(as('admin-uid').collection('clubs').doc('rm-open').update({ reels_hidden: false }));
+    });
+
+    // ── 픽업 소유자 (익명 등록 가능 → 더 열려 있는 쪽) ──
+    test('픽업 소유자는 숨김을 풀 수 없고, 내용은 고칠 수 있다', async () => {
+        await assertFails(as('rm-pk-owner').collection('pickup_games').doc('rm-pk-hidden').update({ reels_hidden: false }));
+        await assertSucceeds(as('rm-pk-owner').collection('pickup_games').doc('rm-pk-hidden').update({ notes: '이번 주 쉼' }));
+    });
+
+    test('픽업 소유자는 커버를 쓸 수 없고 릴스 상한도 같다', async () => {
+        await assertFails(as('rm-pk-owner').collection('pickup_games').doc('rm-pk-open').update({
+            insta_reel_covers: { ABC: 'https://evil.example/x.jpg' }
+        }));
+        await assertFails(as('rm-pk-owner').collection('pickup_games').doc('rm-pk-open').update({ insta_reels: reels(11) }));
+    });
+
+    test('새 픽업은 커버를 들고 만들어질 수 없다', async () => {
+        await assertFails(as('rm-pk-new').collection('pickup_games').doc('rm-pk-c1').set({
+            owner_uid: 'rm-pk-new', title: '새 픽업', insta_reel_covers: { ABC: COVER }
+        }));
+        await assertFails(as('rm-pk-new').collection('pickup_games').doc('rm-pk-c2').set({
+            owner_uid: 'rm-pk-new', title: '새 픽업', reels_hidden: true
+        }));
+    });
+});

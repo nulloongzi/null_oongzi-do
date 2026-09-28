@@ -178,6 +178,8 @@ async function handle(event) {
     var after = event.data && event.data.after;
     if (!after || !after.exists) return; // 삭제
     var d = after.data() || {};
+    // 운영자가 숨긴 문서는 커버를 새로 받지 않는다 — 숨긴 게시물의 이미지를 우리 Storage 로 끌어오지 않게.
+    if (d.reels_hidden === true) return;
     var urls = reelUrls(d);
     if (!urls.length) return;
 

@@ -60,6 +60,7 @@
                         if (d.contact.insta) d.insta = d.contact.insta;
                         if (d.contact.link) d.link = d.contact.link;
                     }
+                    if (window.stripHiddenReels) window.stripHiddenReels(d);
                     return d;
                 });
 

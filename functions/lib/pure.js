@@ -304,6 +304,16 @@ function removeClubAdmin(club, uid) {
     return { admins: next, removed: true, reason: null };
 }
 
+// 운영자 소유자 재할당. registered_by 만 바꾸면 admins 배열이 있는 팀에서는
+// 기존 관리자가 권한을 그대로 쥔다(규칙은 admins 를 먼저 본다). 그래서 명단도
+// 새 소유자 한 명으로 바꾼다 — 이게 문제 있는 관리자를 확실히 빼는 길이다.
+// 다른 관리자를 다시 넣고 싶으면 새 소유자가 관리자 신청 승인 흐름을 다시 탄다.
+function reassignOwnerUpdate(uid) {
+    var u = String(uid == null ? "" : uid).trim();
+    if (!u) return null;
+    return { registered_by: u, admins: [u] };
+}
+
 // ── 위치 공개 수준 ───────────────────────────────────────────────
 // 팀은 대개 학교·구민 체육관을 빌려 쓴다. 장소와 시간표를 함께 공개하면
 // "그 체육관 그 시간에 누가 쓰는지"가 누구에게나 보인다 — 대관에서 밀린
@@ -468,6 +478,14 @@ function skillKeyMatches(provided, keys) {
 // 모르는 값을 전부 '동호회' 로 보여주면 대상이 특정되지 않은 글을 보고
 // 운영자가 어느 팀인지 찾아 헤맨다.
 var REPORT_KIND_LABEL = { club: "동호회", pickup: "픽업", chatbot: "카톡 제보" };
+// 신고 대상 문서의 컬렉션. 신고의 kind 는 규칙이 'club'|'pickup' 로 묶는다.
+var REPORT_KIND_COLLECTION = { club: "clubs", pickup: "pickup_games" };
+
+function reportTargetCollection(kind) {
+    var k = String(kind == null ? "" : kind);
+    return Object.prototype.hasOwnProperty.call(REPORT_KIND_COLLECTION, k) ? REPORT_KIND_COLLECTION[k] : null;
+}
+
 function reportKindLabel(kind) {
     return REPORT_KIND_LABEL[String(kind == null ? "" : kind)] || "동호회";
 }
@@ -544,6 +562,8 @@ module.exports = {
     skillKeyOk: skillKeyOk,
     skillKeyMatches: skillKeyMatches,
     reportKindLabel: reportKindLabel,
+    reportTargetCollection: reportTargetCollection,
+    reassignOwnerUpdate: reassignOwnerUpdate,
     parsePublicReport: parsePublicReport,
     PUBLIC_REPORT_MAX: PUBLIC_REPORT_MAX,
     escapeHtml: escapeHtml,
