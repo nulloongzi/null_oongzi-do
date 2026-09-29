@@ -229,6 +229,29 @@ test('데이터 신뢰도: 상세에 최종 확인일 + 신고 버튼', async ({
     expect(trust.line).toMatch(/\d{4}\.\d{1,2}\.\d{1,2}/);
 });
 
+// 첫 연락(물꼬): 보낼 문구를 먼저 보여주고, 복사한 채로 그 팀의 인스타 DM 창을 연다.
+test('첫 연락: DM 시트가 팀 이름을 넣은 첫 인사와 ig.me 링크를 보여주고 연락으로 센다', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveTitle(/Nulloongzi-do/i);
+    await page.evaluate(() => {
+        window.__c = [];
+        window.track = (n, p) => window.__c.push([n, p]);
+        window.openDmSheet({ handle: 'smoke_crew', team: '스모크 <b>클럽</b>', clubId: 'smoke-club', hasReel: 0 });
+    });
+    const sheet = page.locator('.share-menu');
+    await expect(sheet.locator('.dm-preview')).toContainText('스모크 <b>클럽</b>'); // 팀 이름은 글자 그대로(마크업 아님)
+    await expect(sheet.locator('.dm-preview')).toContainText(/누룽지도|Nulloongzi-do/);
+    const go = sheet.locator('a.share-menu-item');
+    await expect(go).toHaveAttribute('href', 'https://ig.me/m/smoke_crew');
+    await expect(go).toHaveAttribute('target', '_blank');
+    // 새 창 이동은 막고 onclick(복사·계측)만 확인
+    await page.evaluate(() => { document.querySelector('.share-menu a.share-menu-item').addEventListener('click', (e) => e.preventDefault()); });
+    await go.click();
+    const names = await page.evaluate(() => window.__c.map((c) => c[0] + ':' + (c[1].channel || c[1].type || '')));
+    expect(names).toEqual(['dm_template_copy:', 'club_contact:dm', 'contact_click:instagram_dm']);
+    await expect(page.locator('.share-menu')).toHaveCount(0); // 누르면 닫힌다
+});
+
 // 신고는 mailto가 아니라 인앱 모달이어야 한다(모바일 메일앱 전환 = 이탈).
 // 사유 없이 제출하면 막히는지까지 — 사유 enum 은 firestore.rules 가 강제하므로
 // 클라이언트가 빈 값을 올려보내면 규칙에서 조용히 거부된다.
