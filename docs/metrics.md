@@ -54,8 +54,6 @@
 | `lang_switch` | KO↔EN 수동 전환 | `to` | `i18n.js` `toggleLang` / `i18n.dart` `toggleLang` |
 | 사용자 속성 `ui_lang` | 시작 시 + 전환 시 | `ko` \| `en` | `i18n.js` / `main.dart`·`i18n.dart` |
 | `sign_up` | **소셜 첫 로그인도** (`isNewUser`) | `method` | `auth.js`·`social-auth.js` / `login_screen.dart` |
-| `dm_template_copy` | 클럽 상세 '💬 인스타 DM 보내기' → '문구 복사하고 DM 열기' | `club_id`, `source:'club'` | `club-detail.js` `openDmSheet` / `dm_sheet.dart` |
-| (같은 탭) `contact_click` · `club_contact` | 위와 동시에 — NSM 에 들어간다 | `channel:'instagram_dm'` · `type:'dm'` | 같은 곳 |
 
 그 밖의 이벤트(조회·연락·공유·등록·밥친구 등)는 코드의 `track(` / `Track.event(` 를 grep 하면 전부 나온다.
 **새 이벤트는 웹·앱이 같은 이름·같은 파라미터**로 보낸다 — 플랫폼 비교가 그걸로 된다.
