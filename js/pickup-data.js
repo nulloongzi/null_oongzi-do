@@ -30,6 +30,7 @@
                         if (exp && exp.getTime() < now) return;
                     }
                     if (d.coordinates) { d.lat = d.coordinates.lat; d.lng = d.coordinates.lng; }
+                    if (window.stripHiddenReels) window.stripHiddenReels(d);
                     spots.push(d);
                 });
                 window.pickupGames = spots;

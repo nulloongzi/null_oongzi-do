@@ -55,6 +55,51 @@
         return 'https://www.instagram.com/' + type + '/' + m[2] + '/';
     };
 
+    // 문서 하나에 붙일 수 있는 릴스 수. firestore.rules 의 reelFieldsValid · 앱 Sanitize.maxReels 와 같다.
+    window.MAX_REELS = 10;
+
+    // 운영자가 릴스를 숨긴 문서(reels_hidden: true)에서 릴스·커버를 걷어낸다. 로드 직후 한 번 적용해서
+    // 상세·지도 링·계측(has_reel)·수정 폼 어디에서도 숨긴 릴스가 새어 나오지 않게 한다.
+    // reels_hidden 은 그대로 둔다 — 수정 폼이 '운영자가 숨김' 안내를 띄우는 근거.
+    window.stripHiddenReels = function (d) {
+        if (d && d.reels_hidden === true) {
+            d.insta_reel = '';
+            d.insta_reels = [];
+            d.insta_reel_covers = {};
+        }
+        return d;
+    };
+
+    // 릴스 입력(한 줄에 하나) → { reels } | { error: 'invalid' | 'too_many' }.
+    // 각 줄을 permalink 로 정규화하고 중복은 하나로 친다. 팀·픽업 폼 공용.
+    window.collectReelLines = function (text) {
+        var lines = String(text == null ? '' : text).split('\n');
+        var reels = [];
+        for (var i = 0; i < lines.length; i++) {
+            var v = lines[i].trim();
+            if (!v) continue;
+            var s = window.sanitizeInstaPostUrl(v);
+            if (!s) return { error: 'invalid' };
+            if (reels.indexOf(s) === -1) reels.push(s);
+        }
+        if (reels.length > window.MAX_REELS) return { error: 'too_many' };
+        return { reels: reels };
+    };
+
+    // 운영자가 숨긴 문서를 수정할 때 릴스 입력칸을 잠근다. 잠긴 칸은 저장 때 릴스 필드를
+    // 아예 보내지 않는다(폼 쪽 책임) — 빈 값으로 덮으면 운영자가 숨김을 풀 때 되돌릴 게 없다.
+    window.setReelInputLocked = function (el, locked) {
+        if (!el) return;
+        if (el.dataset.origPlaceholder === undefined) el.dataset.origPlaceholder = el.placeholder || '';
+        el.disabled = !!locked;
+        if (locked) {
+            el.value = '';
+            el.placeholder = window.t ? window.t('reels_hidden_notice') : '';
+        } else {
+            el.placeholder = el.dataset.origPlaceholder;
+        }
+    };
+
     // 업로드 파일명을 안전한 형식으로 변환. 디렉터리 구분자/공백/특수문자 차단.
     // 결과 길이는 80자 이하로 제한 (Storage rules의 fileName 100자 한도 여유).
     window.sanitizeFilename = function (value) {

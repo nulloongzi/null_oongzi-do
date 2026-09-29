@@ -143,7 +143,7 @@ const text = (res) => JSON.stringify(res.payload);
 const ADMIN_SKILLS = [
     'chatbotPending', 'chatbotApprove', 'chatbotRejectAsk', 'chatbotRejectConfirm',
     'chatbotTeamList', 'chatbotTeamDeleteAsk', 'chatbotTeamDelete',
-    'chatbotReports', 'chatbotReportDone',
+    'chatbotReports', 'chatbotReportDone', 'chatbotReportHideReels',
     'chatbotAdminRequests', 'chatbotAdminApprove', 'chatbotAdminReject',
     'chatbotClaims', 'chatbotClaimApprove', 'chatbotClaimReject'
 ];

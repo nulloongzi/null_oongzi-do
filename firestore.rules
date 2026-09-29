@@ -33,6 +33,36 @@ service cloud.firestore {
           == (('admins' in resource.data) ? resource.data.admins : []);
     }
 
+    // 릴스 필드 — 팀·픽업 공통.
+    //
+    // 개수 상한(10)은 js/dom-utils.js 의 MAX_REELS · 앱 Sanitize.maxReels 와 같다.
+    // 어긋나면 폼은 통과시켰는데 저장이 거부된다.
+    // 룰은 리스트 원소를 돌며 검사할 수 없어서 원소 형식은 클라이언트가 걸러
+    // 쓰고, 화면은 그릴 때 permalink 화이트리스트로 한 번 더 거른다.
+    function reelFieldsValid(d) {
+      return (!('insta_reel' in d) || (d.insta_reel is string && d.insta_reel.size() <= 200))
+          && (!('insta_reels' in d) || (d.insta_reels is list && d.insta_reels.size() <= 10))
+          && (!('reels_hidden' in d) || d.reels_hidden is bool);
+    }
+
+    // 운영자가 내린 릴스 숨김(reels_hidden)과 커버 캐시(insta_reel_covers)는
+    // 팀 관리자·픽업 소유자가 건드릴 수 없다.
+    //   · reels_hidden — 본인이 풀 수 있으면 숨김이 아니다.
+    //   · insta_reel_covers — Functions(admin SDK)만 채운다. 클라이언트가 쓸 수
+    //     있으면 인스타를 거치지 않은 아무 이미지 URL이나 커버로 앱 화면에
+    //     그대로 뜬다. 화면의 링크 화이트리스트가 이미지에는 적용되지 않는다.
+    // get() 기본값으로 비교해서, 필드를 건드리지 않는 update 는 그대로 통과한다.
+    function moderationUnchanged() {
+      return request.resource.data.get('reels_hidden', false) == resource.data.get('reels_hidden', false)
+          && request.resource.data.get('insta_reel_covers', null) == resource.data.get('insta_reel_covers', null);
+    }
+
+    // 새로 만드는 문서가 숨김 해제 상태나 커버를 들고 들어오지 못하게 한다.
+    function moderationFreshOnCreate() {
+      return request.resource.data.get('reels_hidden', false) == false
+          && !('insta_reel_covers' in request.resource.data);
+    }
+
     // 팀 문서 필드 타입·길이 검증 (doc 비대화·잘못된 타입 주입 방지).
     // 존재하는 필드에 대해서만 검사 — 부분 update(merge)도 통과.
     function clubFieldsValid() {
@@ -55,6 +85,7 @@ service cloud.firestore {
           // 관리자 정원 3명. 넘는 배열이 들어오면 그 자체가 잘못된 쓰기다.
           && (!('admins' in d) || (d.admins is list && d.admins.size() <= 3))
           && (!('location_precision' in d) || d.location_precision in ['exact', 'area'])
+          && reelFieldsValid(d)
           && areaCoordsCoarse();
     }
 
@@ -103,6 +134,7 @@ service cloud.firestore {
           && (!('notes' in d) || (d.notes is string && d.notes.size() <= 600))
           && (!('insta' in d) || (d.insta is string && d.insta.size() <= 80))
           && (!('region' in d) || (d.region is string && d.region.size() <= 20))
+          && reelFieldsValid(d)
           // 'curated' = 공개 인스타 정보로 시딩된 항목(본인 등록 아님).
           // UI가 출처를 밝히고 삭제 요청 통로를 띄우는 근거 — 옵트아웃 모델의 최소 조건.
           && (!('source' in d) || (d.source is string && d.source.size() <= 20))
@@ -129,6 +161,7 @@ service cloud.firestore {
                         || (request.resource.data.admins is list
                             && request.resource.data.admins.size() == 1
                             && request.auth.uid in request.resource.data.admins))
+                    && moderationFreshOnCreate()
                     && clubFieldsValid();
 
       // 업데이트: 운영자는 모든 필드(신뢰), 팀 관리자는 is_verified/registered_by/
@@ -150,6 +183,7 @@ service cloud.firestore {
                         && request.resource.data.is_verified == resource.data.is_verified
                         && request.resource.data.registered_by == resource.data.registered_by
                         && adminsUnchanged()
+                        && moderationUnchanged()
                         && clubFieldsValid()));
 
       // 삭제: 운영자 또는 팀 관리자
@@ -167,12 +201,14 @@ service cloud.firestore {
                     && request.resource.data.owner_uid == request.auth.uid
                     && request.resource.data.title is string
                     && request.resource.data.title.size() > 0
+                    && moderationFreshOnCreate()
                     && pickupFieldsValid();
 
-      // 수정: 소유자(owner_uid 보존) 또는 관리자
+      // 수정: 소유자(owner_uid·운영자 숨김 보존) 또는 관리자
       allow update: if (request.auth != null
                         && resource.data.owner_uid == request.auth.uid
                         && request.resource.data.owner_uid == resource.data.owner_uid
+                        && moderationUnchanged()
                         && pickupFieldsValid())
                     || isAdmin();
 

@@ -205,6 +205,7 @@ window.openRegistrationModal = function (isUrgent) {
         var submitBtn = document.getElementById('regSubmitBtn');
         if (submitBtn) submitBtn.innerText = window.t('reg_submit');
         window.setRegTargetValue(''); // 칩/메모 초기화
+        window.setReelInputLocked(document.getElementById('regReel'), false); // 숨김 팀 편집 흔적 해제
         document.getElementById('regModalTitle').innerText = isUrgent ? window.t('reg_title_urgent') : window.t('reg_title');
         // 관리자 전용 필드는 신규 등록 시에는 숨김
         var ownerGroup = document.getElementById('adminOwnerGroup');
@@ -275,6 +276,9 @@ window.openEditModal = function (club) {
         document.getElementById('regReel').value =
             (club.insta_reels && club.insta_reels.length ? club.insta_reels
                 : (club.insta_reel ? [club.insta_reel] : [])).join('\n');
+        // 운영자가 릴스를 숨긴 팀은 입력칸을 잠근다. 로드 때 릴스를 걷어냈으므로 운영자에게도
+        // 빈 칸이다 — 열어두면 저장 한 번에 숨긴 원본이 지워진다. 해제는 콘솔에서 reels_hidden 을 끈다.
+        window.setReelInputLocked(document.getElementById('regReel'), club.reels_hidden === true);
 
         // 관리자 전용: 소유자 지정 필드
         var ownerGroup = document.getElementById('adminOwnerGroup');
@@ -550,15 +554,17 @@ window.submitRegistration = async function () {
     var insta = document.getElementById('regInsta').value.trim();
     var link = document.getElementById('regLink').value.trim();
     // 멀티 릴스(앱 패리티): 한 줄에 하나, 각각 permalink 검증. reel=첫 항목(웹 호환 단일).
-    var reelLines = document.getElementById('regReel').value.split('\n');
-    var reels = [];
-    for (var rl = 0; rl < reelLines.length; rl++) {
-        var rlv = reelLines[rl].trim();
-        if (!rlv) continue;
-        var rlsafe = window.sanitizeInstaPostUrl(rlv);
-        if (!rlsafe) { window.showRegError(window.t('insta_reel_invalid')); return; }
-        if (reels.indexOf(rlsafe) === -1) reels.push(rlsafe);
+    // 잠긴 칸(운영자가 숨긴 팀)은 릴스 필드를 보내지 않는다.
+    var reelEl = document.getElementById('regReel');
+    var reelsLocked = !!reelEl.disabled;
+    var reelResult = window.collectReelLines(reelsLocked ? '' : reelEl.value);
+    if (reelResult.error) {
+        window.showRegError(reelResult.error === 'too_many'
+            ? window.tf('reels_too_many', { max: window.MAX_REELS })
+            : window.t('insta_reel_invalid'));
+        return;
     }
+    var reels = reelResult.reels;
     var reel = reels.length ? reels[0] : '';
     var is_urgent = false;
     var urgent_msg = "";
@@ -684,6 +690,10 @@ window.submitRegistration = async function () {
                 // guidelines.html 2-3 의 '최종 확인일'이 이 값이다.
                 last_verified_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date()
             };
+            if (reelsLocked) {
+                delete updatePayload.insta_reel;
+                delete updatePayload.insta_reels;
+            }
 
             // 관리자 전용: 소유자 지정. users.email이 비공개 서브컬렉션으로
             // 옮겨졌으므로 Cloud Function adminReassignOwner(onCall)를 호출하여
@@ -727,9 +737,15 @@ window.submitRegistration = async function () {
                 existing.contact = { insta: insta, link: link };
                 existing.insta = insta;
                 existing.link = link;
-                existing.insta_reel = reel;
-                existing.insta_reels = reels;
-                if (newOwnerUid) existing.registered_by = newOwnerUid;
+                if (!reelsLocked) {
+                    existing.insta_reel = reel;
+                    existing.insta_reels = reels;
+                }
+                // adminReassignOwner 는 관리자 명단도 새 소유자 한 명으로 바꾼다.
+                if (newOwnerUid) {
+                    existing.registered_by = newOwnerUid;
+                    existing.admins = [newOwnerUid];
+                }
             }
         } else {
             // 신규 등록 모드
