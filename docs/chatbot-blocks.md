@@ -152,7 +152,7 @@ Firestore 가 흔들려 키를 못 읽으면 **문을 열어둔다.** 닫으면 
 | `인증관리` | 대기 중 인증 요청 카드 + 승인/거절 | 거절확정 (코드에 박힘) | ✅ 동작 |
 | `팀관리` | 팀 목록 + 삭제 | 3개 (코드에 박힘) | ✅ 동작 |
 | `신고관리` | 미처리 신고 목록 + 처리완료 | `REPORT_DONE_BLOCK_ID` | ✅ 동작 |
-| `신고관리` → 🙈 릴스 숨김 | 신고 대상 팀/스팟의 릴스만 내리고 신고를 닫음 | `REPORT_HIDE_REELS_BLOCK_ID` | ⏳ 블록 미등록 (아래 남은 작업) |
+| `신고관리` → 🙈 릴스 숨김 | 신고 대상 팀/스팟의 릴스만 내리고 신고를 닫음 | `REPORT_HIDE_REELS_BLOCK_ID` | ✅ 블록 `6abb02f7f9ce1361981e54fa` (2026-09-29) |
 | `클레임관리` | 소유권 클레임 + 승인/거절 | `CLAIM_APPROVE_BLOCK_ID` · `CLAIM_REJECT_BLOCK_ID` | ✅ 동작 |
 | `관리자관리` | 팀 관리자 권한 신청 + 승인/거절 | `ADMIN_APPROVE_BLOCK_ID` · `ADMIN_REJECT_BLOCK_ID` | ✅ 동작 |
 
