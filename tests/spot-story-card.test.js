@@ -302,3 +302,23 @@ describe('공유 카드 규격', () => {
         assert.strictEqual(window.storyStripEmoji('반찬1 🍳'), '반찬1');
     });
 });
+
+// 모집 대상 → 표시 태그. 괄호 안 메모를 띄어쓰기로 쪼개면 `(구력` `1년` `있는분)` 같은
+// 조각 칩이 나온다(실제 화면). 앱 test/target_tags_test.dart 와 같은 기대값.
+describe('targetTagParts — 괄호 메모는 한 덩어리', () => {
+    const J = (v) => JSON.parse(JSON.stringify(v));
+    test('실제 사례', () => {
+        const { window } = loadShare();
+        const p = J(window.targetTagParts('성인 대학생 여성전용 (구력 1년 이상+전국대회 출전경험 있는분)'));
+        assert.deepStrictEqual(p.words, ['성인', '대학생', '여성전용']);
+        assert.deepStrictEqual(p.notes, ['구력 1년 이상+전국대회 출전경험 있는분']);
+    });
+    test('쉼표 · 빈 값 · 짝 없는 괄호 · 괄호 여러 개', () => {
+        const { window } = loadShare();
+        assert.deepStrictEqual(J(window.targetTagParts('성인, 대학생')), { words: ['성인', '대학생'], notes: [] });
+        assert.deepStrictEqual(J(window.targetTagParts(null)), { words: [], notes: [] });
+        assert.deepStrictEqual(J(window.targetTagParts('성인 ( )')).notes, []);
+        assert.deepStrictEqual(J(window.targetTagParts('성인 (초보 환영')).words, ['성인', '초보', '환영']);
+        assert.deepStrictEqual(J(window.targetTagParts('(남녀 무관) 성인 (주 2회 참석)')), { words: ['성인'], notes: ['남녀 무관', '주 2회 참석'] });
+    });
+});

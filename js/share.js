@@ -707,10 +707,27 @@ function storySpotData(spot) {
     };
 }
 
+// 모집 대상 → 표시 태그. 단어는 띄어쓰기·쉼표로 나누고 괄호 안 메모는 한 덩어리로 둔다.
+// 예전엔 전부 띄어쓰기로 쪼개 `(구력` `1년` `있는분)` 같은 조각 칩이 나왔다.
+// 앱 lib/services/target_parse.dart targetTagParts 와 같은 규칙.
+function targetTagParts(target) {
+    var notes = [];
+    var base = String(target || '').replace(/\(([^()]*)\)/g, function (m, n) {
+        n = n.trim();
+        if (n) notes.push(n);
+        return ' ';
+    });
+    var words = base.split(/[,\s]+/).map(function (w) { return w.replace(/[()]/g, ''); })
+        .filter(function (w) { return w; });
+    return { words: words, notes: notes };
+}
+window.targetTagParts = targetTagParts;
+
 // 동호회 → 카드 data 정규화
 function storyClubData(club) {
     var tags = [];
-    var tgt = (club.target || '').split(/[,\s]+/).filter(function (x) { return x; });
+    var parts = targetTagParts(club.target);
+    var tgt = parts.words.concat(parts.notes);
     for (var i = 0; i < tgt.length && i < 4; i++) tags.push({ t: tgt[i], bg: '#f0ece2', fg: '#6d6258' });
     return {
         title: club.name, url: window.buildClubShareUrl(club.id),
