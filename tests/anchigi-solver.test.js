@@ -6,7 +6,7 @@
 // vm 샌드박스에서 돌린다. DOM·localStorage 는 렌더가 터지지 않을 만큼만 흉내 낸다.
 // 검증 대상은 렌더가 아니라 솔버(solveRound)와 명단 모델이다.
 
-const { test, describe, beforeEach } = require('node:test');
+const { test, describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -411,7 +411,25 @@ describe('고정(핀)', () => {
     });
 });
 
+/** 결정적 난수(mulberry32). 솔버는 Math.random 으로 동점을 가르므로 공정성 검사는 시드를 고정한다. */
+function seededRandom(seed) {
+    let a = seed >>> 0;
+    return function () {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
 describe('공정성', () => {
+    // 무작위 그대로 두면 편차가 대부분 3, 가끔(약 3~12%) 4 가 나와 CI 가 들쭉날쭉 실패했다(2026-09-29).
+    // 샌드박스는 호스트 Math 를 그대로 쓰므로 이 테스트 동안만 Math.random 을 시드 고정하고 되돌린다.
+    let realRandom;
+    beforeEach(() => { realRandom = Math.random; Math.random = seededRandom(20260929); });
+    afterEach(() => { Math.random = realRandom; });
+
     test('여러 라운드를 돌려도 출전 편차가 벌어지지 않는다', () => {
         const people = roster(15, V6_MAIN);
         box.sport = 'v6';
