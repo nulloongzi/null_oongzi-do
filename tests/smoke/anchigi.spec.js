@@ -15,6 +15,14 @@
 
 const { test, expect } = require('@playwright/test');
 
+// 안치기는 '지금 시각에 해당하는 경기'를 자동으로 고른다(anchigi.html currentGameIndex —
+// 브라우저 현지 시각 vs 일정. 기본 일정은 14:00 부터 15분 경기). 벽시계 그대로 두면
+// 14:15~14:30 에 돌린 CI 가 '경기 2'를 보고 실패했다(2026-09-29). 모든 경기 시간 밖인
+// 오전 9시로 Date 만 고정한다 — 타이머는 그대로 흐른다(setFixedTime).
+test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-01-01T09:00:00'));
+});
+
 // 정적 서버가 안 주는 것(파비콘 등)의 404 는 우리 코드 문제가 아니다.
 const RESOURCE_404 = /Failed to load resource|favicon/i;
 
