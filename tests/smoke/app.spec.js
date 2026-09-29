@@ -29,6 +29,20 @@ test('로드: 타이틀 + 앱 자체 페이지 에러 0', async ({ page }) => {
     expect(errors, errors.map(String).join('\n')).toEqual([]);
 });
 
+test('계측: 로컬·자동화 브라우저에서는 애널리틱스를 켜지 않는다 (track 은 no-op)', async ({ page }) => {
+    // CI 스모크가 실제 GA 에 신규 사용자로 잡혀 first_visit·배너 지표를 부풀렸다(2026-09).
+    await page.goto('/');
+    await expect(page).toHaveTitle(/Nulloongzi-do/i);
+    const state = await page.evaluate(() => ({
+        analytics: !!window.firebaseAnalytics,
+        trackIsFn: typeof window.track === 'function',
+        propsIsFn: typeof window.setTrackUserProps === 'function'
+    }));
+    expect(state).toEqual({ analytics: false, trackIsFn: true, propsIsFn: true });
+    // 꺼져 있어도 호출은 안전해야 한다
+    await page.evaluate(() => { window.track('filter_apply', { scope: 'club' }); window.setTrackUserProps({ ui_lang: 'en' }); });
+});
+
 test('패리티 DOM: 핵심 UI 요소 존재', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#map')).toBeAttached();

@@ -80,7 +80,7 @@ Firestore 스키마, Firestore 보안 규칙, Cloud Functions, 애널리틱스 �
 | 급구(십시일반) = Google Forms | **인앱 토글** (`is_urgent` / `urgent_msg`) | `js/club-detail.js` |
 | 필터 추가 (P1, 2027) | **있음** — 지역·요일·대상 칩, English OK 토글, 픽업 레벨 4단계 + 자가선택 가이드 | `index.html`, `js/pickup-filter.js` |
 | 공유 링크·OG·딥링크 (P2, 2027~28) | **있음** — OG 태그 8개, `?club=` / `?spot=` 딥링크, 카카오 리치카드, 스토리 카드+QR, App Links | `js/share.js` |
-| 성과 지표 정의 없음 | **정의됨** — NSM = 주당 길찾기 클릭 수. 퍼널 이벤트 계측 완료 | `docs/PHILOSOPHY.md` |
+| 성과 지표 정의 없음 | **정의됨** — NSM = 주당 연락한 사용자 수(`contact_click`·`get_directions`). 퍼널 이벤트 계측 완료 | `docs/metrics.md` |
 | 앱이 웹뷰 래핑인가? | **네이티브 Flutter** | `lib/main.dart` |
 | 이용약관 없음 (P0) | 초판 시점 맞음 → **2026-09-03 작성 완료** | `terms.html` |
 | 운영 기준 문서 없음 (P0) | 초판 시점 맞음 → **2026-09-03 작성 완료** | `guidelines.html` |
@@ -269,7 +269,7 @@ NSM이 "주당 길찾기 클릭 수"인데 픽업 상세에는 주소 복사만 
 | 등록 팀 수 | ~46 | 200+ |
 | 갱신율(90일 내 확인) | **측정 불가** (5-2 필요) | 70%+ |
 | 커버 광역시도 | 6~7 | 17 |
-| NSM(주당 길찾기 클릭) | 계측 중 | 기준선부터 확보 |
+| NSM(주당 연락한 사용자) | 기준선 확보(2026-09, `docs/metrics.md`) | 기준선 대비 추이 |
 | 영어 지원 팀 | 미집계 | 30+ |
 
 **팀 수보다 갱신율이 중요하다.** 400팀인데 절반이 유령이면 200팀 정확한 것보다 못하다.
@@ -315,5 +315,5 @@ NSM이 "주당 길찾기 클릭 수"인데 픽업 상세에는 주소 복사만 
 - 링크트리: https://linktr.ee/paulyoo999 · YouTube: https://www.youtube.com/@ifhungryVB
 - Instagram: https://www.instagram.com/null_oongzi
 - 경쟁 앱: https://play.google.com/store/apps/details?id=com.wevolley.app
-- 관련 문서: `docs/PHILOSOPHY.md`(제품 철학·NSM) · `docs/OPEN-QUESTIONS.md`(결정 로그) ·
+- 관련 문서: `docs/PHILOSOPHY.md`(제품 철학) · `docs/metrics.md`(NSM·계측 기준) · `docs/OPEN-QUESTIONS.md`(결정 로그) ·
   `terms.html` · `guidelines.html` · 앱 레포 `docs/feature-parity.md`

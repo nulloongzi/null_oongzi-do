@@ -12,6 +12,7 @@
         window.pkEnglishOnly = !window.pkEnglishOnly;
         if (el) el.classList.toggle('on', window.pkEnglishOnly);
         refreshPickupViews();
+        trackPickupFilter();
     };
 
     // 지역 필터 (리스트 헤더 셀렉트). '' = 전체
@@ -19,6 +20,7 @@
     window.setPkRegion = function (val) {
         window.pkRegion = val || '';
         refreshPickupViews();
+        trackPickupFilter();
     };
 
     // 레벨 필터 (리스트 헤더 셀렉트). '' = 전체
@@ -26,7 +28,19 @@
     window.setPkLevel = function (val) {
         window.pkLevel = val || '';
         refreshPickupViews();
+        trackPickupFilter();
     };
+
+    // 사용자가 픽업 필터를 바꿀 때마다(딥링크 착지 재현은 deep_link_open 으로 따로 센다). 앱과 같은 스키마.
+    function trackPickupFilter() {
+        if (!window.track) return;
+        window.track('filter_apply', {
+            scope: 'pickup',
+            region: window.pkRegion,
+            level: window.pkLevel,
+            english: window.pkEnglishOnly ? 1 : 0
+        });
+    }
 
     function refreshPickupViews() {
         window.renderPickupList();
@@ -60,10 +74,12 @@
 
     window.sharePickupList = function () {
         var url = window.pickupListShareUrl();
+        var tag = window.withShareUtm || function (u) { return u; };
         if (navigator.share) {
-            navigator.share({ title: window.t('pk_list_title'), url: url }).catch(function () { });
+            navigator.share({ title: window.t('pk_list_title'), url: tag(url, 'os_sheet') }).catch(function () { });
             return;
         }
+        url = tag(url, 'copy');
         if (navigator.clipboard) {
             navigator.clipboard.writeText(url).then(function () {
                 alert(window.t('pk_list_link_copied'));

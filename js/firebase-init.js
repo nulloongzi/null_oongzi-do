@@ -39,7 +39,13 @@
         if (typeof firebase.functions === "function") {
             functions = firebase.functions();
         }
-        if (typeof firebase.analytics === "function") {
+        // 로컬 개발·CI 스모크(Playwright)·자동화 브라우저는 계측하지 않는다.
+        // 새 브라우저마다 신규 사용자로 잡혀 first_visit·배너 지표를 부풀렸다(2026-09 분석:
+        // 커밋 많은 날 웹 신규 +80~150, 참여 사용자 한 자릿수).
+        var host = location.hostname;
+        var isLocal = host === "localhost" || host === "127.0.0.1" || host === "" || host === "[::1]";
+        var isAutomated = !!(typeof navigator !== "undefined" && navigator.webdriver);
+        if (typeof firebase.analytics === "function" && !isLocal && !isAutomated) {
             analytics = firebase.analytics();
         }
         console.log("Firebase compat SDK 연결 성공!");
@@ -55,6 +61,15 @@
         try {
             if (window.firebaseAnalytics) {
                 window.firebaseAnalytics.logEvent(eventName, params || {});
+            }
+        } catch (e) { /* 차단 환경 무시 */ }
+    };
+
+    // 사용자 속성(모든 이벤트에 붙는 차원). 예: ui_lang — 외국인 교두보를 KO/EN 으로 나눠 본다.
+    window.setTrackUserProps = function (props) {
+        try {
+            if (window.firebaseAnalytics && window.firebaseAnalytics.setUserProperties) {
+                window.firebaseAnalytics.setUserProperties(props || {});
             }
         } catch (e) { /* 차단 환경 무시 */ }
     };

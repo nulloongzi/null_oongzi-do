@@ -782,12 +782,16 @@
 
         window.applyI18n();
 
+        if (window.setTrackUserProps) window.setTrackUserProps({ ui_lang: lang });
+
         // 동적 UI(바텀시트 등) 재렌더링 신호
         document.dispatchEvent(new CustomEvent('nurungji:langchange', { detail: { lang: lang } }));
     };
 
     window.toggleLang = function () {
-        window.setLang(window.currentLang === 'ko' ? 'en' : 'ko');
+        var to = window.currentLang === 'ko' ? 'en' : 'ko';
+        window.setLang(to);
+        if (window.track) window.track('lang_switch', { to: to });
     };
 
     // 초기 적용 (이 스크립트는 body 하단에서 로드되므로 UI DOM은 이미 존재)
@@ -795,4 +799,6 @@
     if (document.body) document.body.classList.toggle('lang-en', window.currentLang === 'en');
     document.title = window.t('brand');
     window.applyI18n();
+    // 모든 이벤트를 화면 언어로 나눠 볼 수 있게 (외국인 교두보 계측)
+    if (window.setTrackUserProps) window.setTrackUserProps({ ui_lang: window.currentLang });
 })();

@@ -65,9 +65,13 @@ window.loginWithGoogle = async function () {
         window.showAuthLoadingDelayed(800, 'auth_signing_in', 'auth_signing_in_desc', 'google');
     }
     try {
-        await firebase.auth().signInWithPopup(provider);
+        var cred = await firebase.auth().signInWithPopup(provider);
         if (window.rememberLoginProvider) window.rememberLoginProvider('google');
         if (window.track) window.track('login', { method: 'google' });
+        // 소셜 첫 로그인 = 가입. 예전엔 이메일 가입만 sign_up 을 보내 가입이 크게 과소집계됐다.
+        if (window.track && cred && cred.additionalUserInfo && cred.additionalUserInfo.isNewUser) {
+            window.track('sign_up', { method: 'google' });
+        }
     } catch (error) {
         if (window.hideAuthLoading) window.hideAuthLoading();
         alert(window.t('au_login_fail') + error.message);
