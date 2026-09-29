@@ -129,6 +129,20 @@ describe('buildSpotShareUrl', () => {
     });
 });
 
+describe('withShareUtm', () => {
+    test('쿼리가 있으면 &, 없으면 ? 로 share/<medium> 을 붙인다', () => {
+        const { window } = loadShare();
+        assert.strictEqual(
+            window.withShareUtm('https://do.nulloongzi.com/?club=A', 'kakao'),
+            'https://do.nulloongzi.com/?club=A&utm_source=share&utm_medium=kakao'
+        );
+        assert.strictEqual(
+            window.withShareUtm('https://do.nulloongzi.com/', 'card_qr'),
+            'https://do.nulloongzi.com/?utm_source=share&utm_medium=card_qr'
+        );
+    });
+});
+
 describe('generateSpotStoryCard', () => {
     test('9:16 PNG dataURL을 반환한다 (QR 있음)', async () => {
         const { window } = loadShare({ withQR: true });
@@ -161,7 +175,7 @@ describe('shareSpotToStory — 네이티브 브리지(셸)', () => {
         const payload = JSON.parse(window.posted[0]);
         assert.strictEqual(payload.type, 'ig_story');
         assert.ok(payload.stickerImage.startsWith('data:image/png'), 'stickerImage=PNG dataURL');
-        assert.strictEqual(payload.contentUrl, 'https://do.nulloongzi.com/?spot=ABC123xyz');
+        assert.strictEqual(payload.contentUrl, 'https://do.nulloongzi.com/?spot=ABC123xyz&utm_source=share&utm_medium=ig_story');
         assert.strictEqual(payload.topColor, '#fff8e1');
         assert.strictEqual(payload.bottomColor, '#fac710');
 
@@ -219,7 +233,7 @@ describe('동호회 스토리 카드 (공용 generateStoryCard)', () => {
         assert.strictEqual(result, 'ig_story');
         const payload = JSON.parse(window.posted[0]);
         assert.strictEqual(payload.type, 'ig_story');
-        assert.strictEqual(payload.contentUrl, 'https://do.nulloongzi.com/?club=GVT123');
+        assert.strictEqual(payload.contentUrl, 'https://do.nulloongzi.com/?club=GVT123&utm_source=share&utm_medium=ig_story');
         assert.ok(payload.stickerImage.startsWith('data:image/png'));
         const ev = tracks.find(t => t.name === 'share');
         assert.ok(ev && ev.params.method === 'ig_story' && ev.params.club_id === 'GVT123');

@@ -307,6 +307,14 @@ window.openClubDetail = function (id, opts) {
         sheetTitleEl.appendChild(document.createTextNode(' '));
         sheetTitleEl.appendChild(instaLink);
     }
+    // 첫 연락: 인스타 DM + 첫 인사 문구 (핸들 있는 팀만)
+    var dmBtn = document.getElementById('btnDmClub');
+    if (dmBtn) {
+        dmBtn.style.display = safeInsta ? '' : 'none';
+        dmBtn.onclick = safeInsta ? function () {
+            window.openDmSheet({ handle: safeInsta, team: club.name, clubId: club.id, hasReel: hasReel });
+        } : null;
+    }
     document.getElementById('sheetPrice').innerText = club.price ? window.i18nPrice(club.price) : window.t('no_fee');
     document.getElementById('sheetAddressVal').value = club.address;
 
@@ -613,6 +621,84 @@ window.closeBottomSheet = function () {
 // Copy address
 document.getElementById('btnCopy').onclick = function () {
     window.copyAddress(document.getElementById('sheetAddressVal').value);
+};
+
+// ── 첫 연락 문구 (인스타 DM) ──
+// 물꼬의 마지막 한 걸음: 연락 버튼까지는 오는데(조회자의 약 35%) 첫 DM 이 어색해서 멈춘다.
+// 보낼 말을 먼저 보여주고, 복사한 채로 그 팀의 DM 창(ig.me/m/<핸들>)을 연다. 앱 detail_sheet.dart 와 같은 흐름·문구.
+window.dmTemplate = function (team) {
+    return window.t('dm_template').replace('{team}', team || window.t('dm_team_fallback'));
+};
+
+function copyText(text) {
+    function fallback() {
+        var ta = document.createElement('textarea'); // input 은 줄바꿈을 버린다
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { /* 무시 */ }
+        document.body.removeChild(ta);
+    }
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(fallback);
+        else fallback();
+    } catch (e) { fallback(); }
+}
+
+window.openDmSheet = function (o) {
+    if (!o || !o.handle) return;
+    var T = window.t;
+    var text = window.dmTemplate(o.team);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'share-menu-overlay';
+    function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    var box = document.createElement('div');
+    box.className = 'share-menu';
+    var title = document.createElement('div');
+    title.className = 'share-menu-title';
+    title.textContent = T('dm_title');
+    box.appendChild(title);
+    var preview = document.createElement('div');
+    preview.className = 'dm-preview';
+    preview.textContent = text; // 팀 이름은 사용자 입력 — textContent 로만
+    box.appendChild(preview);
+    var hint = document.createElement('div');
+    hint.className = 'dm-hint';
+    hint.textContent = T('dm_hint');
+    box.appendChild(hint);
+
+    // <a> 로 여는 이유: 클릭 한 번(사용자 제스처) 안에서 복사 + 새 창이 모두 막히지 않는다.
+    // 인스타 인앱 브라우저(릴스 유입의 대부분)에서는 ig.me 가 바로 DM 창으로 열린다.
+    var go = document.createElement('a');
+    go.className = 'share-menu-item primary';
+    go.href = 'https://ig.me/m/' + encodeURIComponent(o.handle);
+    go.target = '_blank';
+    go.rel = 'noopener noreferrer';
+    go.textContent = T('dm_go');
+    go.onclick = function () {
+        copyText(text);
+        if (window.track) {
+            window.track('dm_template_copy', { club_id: o.clubId, source: 'club' });
+            window.track('club_contact', { type: 'dm', club_id: o.clubId, has_reel: o.hasReel }); // 기존 대시보드 연속성
+            window.track('contact_click', { channel: 'instagram_dm', club_id: o.clubId, source: 'club' }); // NSM
+        }
+        setTimeout(close, 300); // 링크 기본 동작(새 창)이 먼저 일어나게
+    };
+    box.appendChild(go);
+
+    var cancel = document.createElement('button');
+    cancel.className = 'share-menu-cancel';
+    cancel.textContent = T('sh_menu_cancel');
+    cancel.onclick = close;
+    box.appendChild(cancel);
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
 };
 
 window.copyAddress = function (addr) {

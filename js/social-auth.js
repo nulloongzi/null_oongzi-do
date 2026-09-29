@@ -144,8 +144,12 @@
             var res = await callable(payload);
             var token = res && res.data && res.data.token;
             if (token) {
-                await firebase.auth().signInWithCustomToken(token);
+                var cred = await firebase.auth().signInWithCustomToken(token);
                 if (window.track) window.track('login', { method: provider });
+                // 서버는 커스텀 토큰만 만들고 계정은 첫 로그인 때 생긴다 → isNewUser 가 곧 가입
+                if (window.track && cred && cred.additionalUserInfo && cred.additionalUserInfo.isNewUser) {
+                    window.track('sign_up', { method: provider });
+                }
             } else {
                 stopLoading();
             }

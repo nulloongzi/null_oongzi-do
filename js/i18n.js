@@ -184,6 +184,13 @@
         sh_menu_copy: { ko: '🔗 링크 복사', en: '🔗 Copy link' },
         sh_menu_more: { ko: '📤 다른 앱으로 (DM 등)', en: '📤 More apps (DM, etc.)' },
         sh_menu_cancel: { ko: '닫기', en: 'Close' },
+        // 첫 연락 문구(물꼬) — 연락이 어색해서 멈추는 순간을 덜어준다. '누룽지도 보고'는 팀에게 지도가 닿았다는 신호이기도 하다.
+        btn_dm: { ko: '💬 인스타 DM 보내기', en: '💬 Message on Instagram' },
+        dm_title: { ko: '첫 인사, 이렇게 보내볼까요?', en: 'Say hi like this?' },
+        dm_hint: { ko: '문구는 복사해 둘게요. DM 창에서 붙여넣기만 하면 돼요.', en: "We'll copy it for you — just paste it in the DM." },
+        dm_go: { ko: '문구 복사하고 DM 열기', en: 'Copy & open DM' },
+        dm_template: { ko: '안녕하세요! 누룽지도 보고 연락드려요 🏐\n{team} 운동에 한번 가보고 싶은데, 처음 가도 괜찮을까요?', en: "Hi! I found {team} on Nulloongzi-do 🏐\nI'd love to join a session — is it okay to come as a newcomer?" },
+        dm_team_fallback: { ko: '팀', en: 'your team' },
         sh_menu_story_hint: { ko: '올린 뒤 링크 스티커로 붙여넣기 → 탭 1번 진입', en: 'Paste as a link sticker after posting → 1-tap entry' },
         sh_coach_title: { ko: '보는 사람이 한 번에 들어오게 하려면', en: 'Let viewers in with one tap' },
         sh_coach_steps: { ko: '① 스토리 편집에서 [스티커] → [링크]\n② 붙여넣기 (링크가 복사됐어요!)\n③ 끝 — 보는 사람은 스티커 탭 한 번으로 입장', en: '① In the editor: [Sticker] → [Link]\n② Paste (link is copied!)\n③ Done — viewers tap the sticker to enter' },
@@ -782,12 +789,16 @@
 
         window.applyI18n();
 
+        if (window.setTrackUserProps) window.setTrackUserProps({ ui_lang: lang });
+
         // 동적 UI(바텀시트 등) 재렌더링 신호
         document.dispatchEvent(new CustomEvent('nurungji:langchange', { detail: { lang: lang } }));
     };
 
     window.toggleLang = function () {
-        window.setLang(window.currentLang === 'ko' ? 'en' : 'ko');
+        var to = window.currentLang === 'ko' ? 'en' : 'ko';
+        window.setLang(to);
+        if (window.track) window.track('lang_switch', { to: to });
     };
 
     // 초기 적용 (이 스크립트는 body 하단에서 로드되므로 UI DOM은 이미 존재)
@@ -795,4 +806,6 @@
     if (document.body) document.body.classList.toggle('lang-en', window.currentLang === 'en');
     document.title = window.t('brand');
     window.applyI18n();
+    // 모든 이벤트를 화면 언어로 나눠 볼 수 있게 (외국인 교두보 계측)
+    if (window.setTrackUserProps) window.setTrackUserProps({ ui_lang: window.currentLang });
 })();

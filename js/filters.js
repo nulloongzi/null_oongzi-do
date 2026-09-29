@@ -35,6 +35,22 @@ window.applyFilters = function () {
     var keyword = document.getElementById('topSearchInput').value.trim();
     var filterCount = window.activeFilters.region.length + window.activeFilters.day.length + window.activeFilters.target.length;
 
+    // 필터 시트 '적용하기'(사용자 클릭)만 센다 — 탭 전환·딥링크·초기화 재적용은 제외.
+    // 6인제(외국인 교두보)·요일("무슨 요일에 할 곳?")이 실제로 쓰이는지 보는 계측. 앱 map_screen 과 같은 스키마.
+    var fsApply = window.event && window.event.type === 'click' &&
+        window.event.target && window.event.target.closest && window.event.target.closest('.btn-apply');
+    if (fsApply && window.track) {
+        var af = window.activeFilters;
+        window.track('filter_apply', {
+            scope: 'club',
+            region: af.region.join(','),
+            day: af.day.join(','),
+            target: af.target.join(','),
+            six: af.target.indexOf('6인제') !== -1 ? 1 : 0,
+            has_keyword: keyword ? 1 : 0
+        });
+    }
+
     // Update filter badge
     var badge = document.getElementById('filterBadge');
     if (badge) {

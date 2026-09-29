@@ -55,6 +55,14 @@ window.buildSpotShareUrl = function (id) {
     return window.SITE_BASE_URL + '?spot=' + encodeURIComponent(id);
 };
 
+// 공유 링크 출처 표시(UTM). 링크를 받은 사람이 들어오면 GA 기본 측정기준(세션 소스/매체,
+// 첫 사용자 소스/매체)에 'share / <medium>' 으로 잡힌다 → "건네준 링크·카드로 새로 들어온 사람"을
+// 맞춤 측정기준 없이 센다. medium: card_qr · ig_story · kakao · copy · os_sheet.
+// 앱 ShareService.withUtm 과 같은 값. 카드에 인쇄되는 글자는 건드리지 않는다(QR 에만 싣는다).
+window.withShareUtm = function (url, medium) {
+    return url + (url.indexOf('?') === -1 ? '?' : '&') + 'utm_source=share&utm_medium=' + medium;
+};
+
 window.initKakaoShare = function () {
     try {
         if (window.Kakao && !window.Kakao.isInitialized()) {
@@ -95,6 +103,7 @@ window.shareClub = function (club) {
     //    (JS SDK 도메인은 카드 '전송'만 허용 — 대표 도메인 미등록 시 카드는 떠도 탭이 안 열림)
     if (window.Kakao && window.Kakao.isInitialized() && window.Kakao.Share) {
         try {
+            var kUrl = window.withShareUtm(url, 'kakao');
             var desc = (club.target || '');
             if (club.schedule) desc += (desc ? ' · ' : '') + club.schedule;
             window.Kakao.Share.sendDefault({
@@ -103,10 +112,10 @@ window.shareClub = function (club) {
                     title: club.name || window.t('sh_club_fallback'),
                     description: desc || window.t('sh_view_on'),
                     imageUrl: window.SITE_BASE_URL + 'app_ui/nulloongzido%20logo_512px.png',
-                    link: { mobileWebUrl: url, webUrl: url }
+                    link: { mobileWebUrl: kUrl, webUrl: kUrl }
                 },
                 buttons: [
-                    { title: window.t('sh_view_club_btn'), link: { mobileWebUrl: url, webUrl: url } }
+                    { title: window.t('sh_view_club_btn'), link: { mobileWebUrl: kUrl, webUrl: kUrl } }
                 ]
             });
             if (window.track) window.track('share', { method: 'kakao', club_id: club.id });
@@ -118,14 +127,14 @@ window.shareClub = function (club) {
 
     // 2) OS 네이티브 공유 시트 (카카오 SDK 미초기화/미지원 시 폴백 — 일반 링크라 도메인 등록 불필요)
     if (navigator.share) {
-        navigator.share({ title: club.name || window.t('brand'), text: shareText, url: url })
+        navigator.share({ title: club.name || window.t('brand'), text: shareText, url: window.withShareUtm(url, 'os_sheet') })
             .catch(function () { /* 사용자 취소 등은 무시 */ });
         if (window.track) window.track('share', { method: 'web', club_id: club.id });
         return;
     }
 
     // 3) 링크 복사 폴백
-    copyShareLink(url);
+    copyShareLink(window.withShareUtm(url, 'copy'));
     if (window.track) window.track('share', { method: 'copy', club_id: club.id });
 };
 
@@ -141,26 +150,27 @@ window.sharePickup = function (spot) {
             var desc = window.pkSportLabel ? window.pkSportLabel(spot.sport) : (spot.sport || '');
             if (spot.schedule || spot.schedule_text) desc += ' · ' + (spot.schedule || spot.schedule_text);
             if (spot.this_week) desc += ' · ' + spot.this_week;
+            var kUrl = window.withShareUtm(url, 'kakao');
             window.Kakao.Share.sendDefault({
                 objectType: 'feed',
                 content: {
                     title: name,
                     description: desc || window.t('sh_view_on'),
                     imageUrl: window.SITE_BASE_URL + 'app_ui/nulloongzido%20logo_512px.png',
-                    link: { mobileWebUrl: url, webUrl: url }
+                    link: { mobileWebUrl: kUrl, webUrl: kUrl }
                 },
-                buttons: [{ title: window.t('sh_view_on'), link: { mobileWebUrl: url, webUrl: url } }]
+                buttons: [{ title: window.t('sh_view_on'), link: { mobileWebUrl: kUrl, webUrl: kUrl } }]
             });
             if (window.track) window.track('share', { method: 'kakao', spot_id: spot.id });
             return;
         } catch (e) { console.warn('카카오 공유 실패, 폴백:', e); }
     }
     if (navigator.share) {
-        navigator.share({ title: name, text: shareText, url: url }).catch(function () { });
+        navigator.share({ title: name, text: shareText, url: window.withShareUtm(url, 'os_sheet') }).catch(function () { });
         if (window.track) window.track('share', { method: 'web', spot_id: spot.id });
         return;
     }
-    copyShareLink(url);
+    copyShareLink(window.withShareUtm(url, 'copy'));
     if (window.track) window.track('share', { method: 'copy', spot_id: spot.id });
 };
 
@@ -386,13 +396,15 @@ function cardStub(ctx, fmt, url, cta) {
     ctx.beginPath(); ctx.moveTo(40, top); ctx.lineTo(W - 40, top); ctx.stroke(); ctx.restore();
 
     var tileY = top + CARD.STUB_PAD;
+    // QR 로 들어온 사람을 따로 센다(포장하기·팀 카드 = 떠나는 사람이 건네주는 물건). 인쇄 글자는 원래 url.
+    var qrUrl = window.withShareUtm ? window.withShareUtm(url, 'card_qr') : url;
     var probe = ctx.canvas && ctx.canvas.ownerDocument ? ctx.canvas.ownerDocument.createElement('canvas') : null;
     var haveQR = !!window.qrcode;
-    if (probe && probe.getContext) { probe.width = probe.height = 8; haveQR = storyDrawQR(probe.getContext('2d'), url, 0, 0, 8); }
+    if (probe && probe.getContext) { probe.width = probe.height = 8; haveQR = storyDrawQR(probe.getContext('2d'), qrUrl, 0, 0, 8); }
     if (haveQR) {
         storyRoundRect(ctx, M, tileY, q + 20, q + 20, 18);
         ctx.fillStyle = '#fff'; cardShadow(ctx, true); ctx.fill(); cardNoShadow(ctx);
-        storyDrawQR(ctx, url, M + 10, tileY + 10, q);
+        storyDrawQR(ctx, qrUrl, M + 10, tileY + 10, q);
     }
     var tx = haveQR ? M + q + 20 + 40 : M, tw = W - M - tx;
     ctx.font = cardFont(34, 800);
@@ -787,7 +799,7 @@ function shareStory(dataUrl, contentUrl, idObj) {
 window.shareSpotToStory = function (spot) {
     if (!spot || !spot.id) return Promise.resolve();
     return window.generateSpotStoryCard(spot).then(function (dataUrl) {
-        return shareStory(dataUrl, window.buildSpotShareUrl(spot.id), { spot_id: spot.id });
+        return shareStory(dataUrl, window.withShareUtm(window.buildSpotShareUrl(spot.id), 'ig_story'), { spot_id: spot.id });
     }).catch(function (e) {
         console.error('스토리 카드 공유 실패, 기본 공유로 폴백:', e);
         if (window.sharePickup) window.sharePickup(spot);
@@ -799,7 +811,7 @@ window.shareSpotToStory = function (spot) {
 window.shareClubToStory = function (club) {
     if (!club || !club.id) return Promise.resolve();
     return window.generateClubStoryCard(club).then(function (dataUrl) {
-        return shareStory(dataUrl, window.buildClubShareUrl(club.id), { club_id: club.id });
+        return shareStory(dataUrl, window.withShareUtm(window.buildClubShareUrl(club.id), 'ig_story'), { club_id: club.id });
     }).catch(function (e) {
         console.error('스토리 카드 공유 실패, 기본 공유로 폴백:', e);
         if (window.shareClub) window.shareClub(club);
@@ -840,7 +852,7 @@ function storyCopyLink(url) {
 // IG는 외부 앱이 탭 링크를 자동 삽입하는 걸 막으므로, 올린 사람이 '링크 스티커'를
 // 붙이면 보는 사람이 탭 1번에 입장 가능 → 그 마찰을 (링크 자동복사 + 1회 안내)로 최소화.
 function startStoryShare(kind, item, url) {
-    storyCopyLink(url);
+    storyCopyLink(window.withShareUtm(url, 'ig_story'));
     var go = function () {
         if (kind === 'club') { if (window.shareClubToStory) window.shareClubToStory(item); }
         else { if (window.shareSpotToStory) window.shareSpotToStory(item); }
@@ -914,13 +926,13 @@ window.openShareMenu = function (kind, item) {
     });
     // 🔗 링크 복사
     addItem(T('sh_menu_copy'), false, function () {
-        copyShareLink(url);
+        copyShareLink(window.withShareUtm(url, 'copy'));
         if (window.track) window.track('share', { method: 'copy', kind: kind });
     });
     // 📤 다른 앱(DM 등) — OS 공유시트
     if (navigator.share) {
         addItem(T('sh_menu_more'), false, function () {
-            navigator.share({ url: url, title: item.title || item.name || T('brand') }).catch(function () { });
+            navigator.share({ url: window.withShareUtm(url, 'os_sheet'), title: item.title || item.name || T('brand') }).catch(function () { });
             if (window.track) window.track('share', { method: 'os_sheet', kind: kind });
         });
     }

@@ -1923,6 +1923,13 @@
             color: #455a64;
         }
 
+        /* 첫 연락(인스타 DM) — 연락의 대부분이 인스타라 액션줄 맨 위 한 줄을 차지한다 */
+        .btn-dm {
+            flex-basis: 100%;
+            background: var(--nurungji-dark);
+            color: #fff;
+        }
+
         .btn-way {
             background: var(--nurungji-yellow);
             color: var(--nurungji-dark);
@@ -3337,6 +3344,31 @@
         .share-menu-item.primary {
             background: var(--nurungji-yellow);
             font-weight: 800;
+        }
+
+        a.share-menu-item {
+            text-decoration: none;
+            text-align: center;
+        }
+
+        /* 첫 인사 문구 미리보기 — 보낼 말을 먼저 보여준다 */
+        .dm-preview {
+            white-space: pre-line;
+            background: #fff8e1;
+            border: 1px dashed rgba(141, 110, 99, 0.45);
+            border-radius: 14px;
+            padding: 14px 16px;
+            font-size: 14.5px;
+            line-height: 1.6;
+            color: var(--nurungji-dark);
+            margin-bottom: 8px;
+        }
+
+        .dm-hint {
+            font-size: 12.5px;
+            color: #8d6e63;
+            text-align: center;
+            margin: 2px 0 12px;
         }
 
         .share-menu-hint {

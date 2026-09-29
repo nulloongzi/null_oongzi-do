@@ -29,6 +29,20 @@ test('로드: 타이틀 + 앱 자체 페이지 에러 0', async ({ page }) => {
     expect(errors, errors.map(String).join('\n')).toEqual([]);
 });
 
+test('계측: 로컬·자동화 브라우저에서는 애널리틱스를 켜지 않는다 (track 은 no-op)', async ({ page }) => {
+    // CI 스모크가 실제 GA 에 신규 사용자로 잡혀 first_visit·배너 지표를 부풀렸다(2026-09).
+    await page.goto('/');
+    await expect(page).toHaveTitle(/Nulloongzi-do/i);
+    const state = await page.evaluate(() => ({
+        analytics: !!window.firebaseAnalytics,
+        trackIsFn: typeof window.track === 'function',
+        propsIsFn: typeof window.setTrackUserProps === 'function'
+    }));
+    expect(state).toEqual({ analytics: false, trackIsFn: true, propsIsFn: true });
+    // 꺼져 있어도 호출은 안전해야 한다
+    await page.evaluate(() => { window.track('filter_apply', { scope: 'club' }); window.setTrackUserProps({ ui_lang: 'en' }); });
+});
+
 test('패리티 DOM: 핵심 UI 요소 존재', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#map')).toBeAttached();
@@ -213,6 +227,29 @@ test('데이터 신뢰도: 상세에 최종 확인일 + 신고 버튼', async ({
     // 문구는 KO/EN 로케일에 따라 달라지므로 언어 무관한 부분으로 검증한다
     expect(trust.line).toContain('⚠️');
     expect(trust.line).toMatch(/\d{4}\.\d{1,2}\.\d{1,2}/);
+});
+
+// 첫 연락(물꼬): 보낼 문구를 먼저 보여주고, 복사한 채로 그 팀의 인스타 DM 창을 연다.
+test('첫 연락: DM 시트가 팀 이름을 넣은 첫 인사와 ig.me 링크를 보여주고 연락으로 센다', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveTitle(/Nulloongzi-do/i);
+    await page.evaluate(() => {
+        window.__c = [];
+        window.track = (n, p) => window.__c.push([n, p]);
+        window.openDmSheet({ handle: 'smoke_crew', team: '스모크 <b>클럽</b>', clubId: 'smoke-club', hasReel: 0 });
+    });
+    const sheet = page.locator('.share-menu');
+    await expect(sheet.locator('.dm-preview')).toContainText('스모크 <b>클럽</b>'); // 팀 이름은 글자 그대로(마크업 아님)
+    await expect(sheet.locator('.dm-preview')).toContainText(/누룽지도|Nulloongzi-do/);
+    const go = sheet.locator('a.share-menu-item');
+    await expect(go).toHaveAttribute('href', 'https://ig.me/m/smoke_crew');
+    await expect(go).toHaveAttribute('target', '_blank');
+    // 새 창 이동은 막고 onclick(복사·계측)만 확인
+    await page.evaluate(() => { document.querySelector('.share-menu a.share-menu-item').addEventListener('click', (e) => e.preventDefault()); });
+    await go.click();
+    const names = await page.evaluate(() => window.__c.map((c) => c[0] + ':' + (c[1].channel || c[1].type || '')));
+    expect(names).toEqual(['dm_template_copy:', 'club_contact:dm', 'contact_click:instagram_dm']);
+    await expect(page.locator('.share-menu')).toHaveCount(0); // 누르면 닫힌다
 });
 
 // 신고는 mailto가 아니라 인앱 모달이어야 한다(모바일 메일앱 전환 = 이탈).
