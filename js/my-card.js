@@ -49,6 +49,11 @@
     var ROW_FR = [0.8, 1.2]; // 아래(밥·국)가 더 크다 — 화면 UI와 같은 비율
     var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
     var LEGEND_BLUE = '#81D4FA';   // 전설(밥아저씨) — 도감에서 혼자 다른 색이 맞다
+    // 규격: 9:16(1080×1920)이되 스토리 안전영역(위아래 250)을 다 비우지 않는다 — 위아래 140.
+    // 앱은 인스타 스토리에 '스티커'로 붙이고(배경 위에 축소돼 얹힌다) 웹은 이미지로 저장하니
+    // 250을 비워 두면 위아래 빈 띠만 남는다. 다만 저장본을 스토리 배경으로 꽉 채워 올리면
+    // 위는 진행 바·프로필 줄, 아래는 답장 바가 덮으니 위아래 조금씩(140) 남긴다.
+    var FMT = { h: 1920, top: 140, bottom: 140, qr: 172 };
 
     function fnt(px, wt) { return window.cardFont(px, wt); }
     function T(k) { return window.t ? window.t(k) : k; }
@@ -219,7 +224,7 @@
 
     // 배치 계산(그리기와 분리 — 테스트·앱이 같은 값을 쓴다). mode: 'card' | 'diet'
     window.myCardLayout = function (d, mode) {
-        var fmt = window.cardFormat('story');
+        var fmt = FMT;
         var SC = window.SHARE_CARD;
         var stubTop = window.cardStubTop(fmt);
         var headBot = fmt.top + SC.HEADER_H;
@@ -600,7 +605,7 @@
     window.renderMyCard = async function (data, mode) {
         mode = mode === 'diet' ? 'diet' : 'card';
         var c = document.createElement('canvas');
-        c.width = W; c.height = window.cardFormat('story').h;
+        c.width = W; c.height = FMT.h;
         var ctx = c.getContext('2d');
         // 번들 폰트가 늦게 오면 첫 렌더가 폴백 글꼴로 찍힌다.
         try {
