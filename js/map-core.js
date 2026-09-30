@@ -16,7 +16,7 @@ window.clusterer = new kakao.maps.MarkerClusterer({
         background: '#fac710', borderRadius: '50%',
         color: '#000', textAlign: 'center',
         fontWeight: 'bold', lineHeight: '40px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+        boxShadow: '0 2px 6px rgba(93,64,55,0.3)',
         fontSize: '14px'
     }]
 });
@@ -54,7 +54,7 @@ function buildReelBadgeEl() {
         'display:inline-flex;align-items:center;justify-content:center;vertical-align:text-bottom;' +
         'width:15px;height:15px;margin-left:4px;border-radius:50%;' +
         'background:linear-gradient(45deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5);' +
-        'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.25);');
+        'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(93,64,55,.25);');
     // 정적 재생 삼각형 SVG(사용자 입력 없음)
     b.innerHTML = '<svg width="8" height="8" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>';
     return b;
@@ -111,7 +111,7 @@ function showReelPeek(club) {
     var card = document.createElement('div');
     card.setAttribute('style',
         'width:88%;max-width:360px;max-height:80vh;overflow:auto;background:#fff;border-radius:20px;' +
-        'padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);');
+        'padding:14px;box-shadow:0 20px 50px rgba(93,64,55,.3);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);');
     var title = document.createElement('div');
     title.setAttribute('style', 'font-weight:800;color:#4e342e;margin:2px 4px 8px;');
     title.textContent = (club.is_urgent ? '🔥 ' : '') + (club.name || '');

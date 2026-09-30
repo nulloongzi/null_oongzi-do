@@ -41,6 +41,22 @@
 - 오버레이/딤: `rgba(93,64,55,.35)` (검정 아닌 갈색 딤).
 - 아이콘 모티프: 밥그릇 + 배구공(로고), 마커.
 
+### 3-1. 지도 화면 부품 (웹·앱 같은 값)
+| 부품 | 값 | 웹 | 앱 |
+|---|---|---|---|
+| 바텀시트(상세·필터·픽업 목록·공유) | 모서리 28 | `--radius-sheet` | `NurungjiRadius.sheet` |
+| 드래그 핸들 | 44×5, `#D8CFC6` | `--handle-color` | `NurungjiColors.handle` |
+| 모달 딤 | `rgba(93,64,55,.35)` | `--dim` | `NurungjiColors.dim` |
+| 지도 위 버튼(FAB) | 50, 모서리 20 — 둥근 사각형(원 아님) | `.fab-btn` | `_fab` · `NurungjiRadius.fab` |
+| 🍚 FAB | 55, 모서리 24 | `.fab-profile` | `NurungjiRadius.fabProfile` |
+| 등록 FAB | 브랜드 옐로 (주황은 급구·주의 전용) | `.fab-urgent` | `_fab(bg: 옐로)` |
+| 동호회/픽업 탭 | 바깥·안쪽 모두 pill | `.tab-bar` · `.tab-btn` | `_tabPill` |
+| 오늘 강조 | `#D84315` | `--today-color` | `NurungjiColors.today` |
+
+- 사진 위 스크림(릴스 커버 그라데이션·이미지 미리보기)만 검정을 허용한다 — 사진 색을 물들이지 않기 위해서.
+- 로고 비트맵: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일)를 쓴다.
+  원본은 앱 `assets/nulloongzido logo_without bg.png`(2048). 웹 PWA 아이콘은 같은 원본을 흰 바탕에 얹은 `assets/icon-192.png` · `icon-512.png`.
+
 ## 4. 보이스 & 토ン
 - 친근하고 가벼움. "밥이름·도시락" 같은 **음식 비유**가 브랜드 정체성.
 - 과장·전문용어 지양. 한 문장 = 한 메시지.

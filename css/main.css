@@ -34,6 +34,13 @@
             /* Softer and more diffused shadow */
             --shadow-sm: 0 4px 12px rgba(93, 64, 55, 0.12);
             --today-color: #d84315;
+            /* 앱 lib/theme.dart 와 같은 값 — 한쪽만 바꾸지 않는다 (docs/design-system.md) */
+            --chip-bg: #f0ece2;
+            --chip-fg: #6d6258;
+            --pickup-teal: #13a89e;
+            --handle-color: #d8cfc6;
+            --dim: rgba(93, 64, 55, 0.35);
+            --radius-sheet: 28px;
         }
 
         .search-container {
@@ -218,12 +225,13 @@
         }
 
 
+        /* 등록 FAB = 브랜드 옐로(CTA). 주황(--urgent-color)은 급구·주의 전용 — 앱과 같은 색 */
         .fab-urgent {
-            background: var(--urgent-color);
-            color: #fff;
+            background: rgba(250, 199, 16, 0.95);
+            color: var(--nurungji-dark);
             border-color: rgba(255, 255, 255, 0.4);
             font-size: 24px;
-            box-shadow: 0 6px 20px rgba(255, 112, 67, 0.4);
+            box-shadow: 0 6px 20px rgba(250, 199, 16, 0.4);
         }
 
         /* 앱 설치 유도 배너 (웹→앱 유입 깔때기) */
@@ -422,7 +430,7 @@
             -webkit-backdrop-filter: blur(16px);
             padding: 30px 20px;
             text-align: center;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 20px 50px rgba(93, 64, 55, 0.15);
             position: relative;
             border: 1px solid rgba(255, 255, 255, 0.7);
             border-radius: 28px;
@@ -935,7 +943,7 @@
             height: 20px;
             border-radius: 50%;
             background: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 1px 3px rgba(93, 64, 55, 0.2);
             transition: left 0.2s;
         }
 
@@ -1117,7 +1125,7 @@
             font-size: 14px;
             color: var(--nurungji-dark);
             background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 10px rgba(93, 64, 55, 0.05);
             border: 1px solid rgba(255, 255, 255, 1);
             transition: transform 0.2s, background 0.2s;
         }
@@ -1147,7 +1155,7 @@
             justify-content: center;
             gap: 12px;
             width: 100%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px rgba(93, 64, 55, 0.05);
             transition: transform 0.2s;
         }
 
@@ -1173,7 +1181,7 @@
             font-weight: 700;
             cursor: pointer;
             border: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px rgba(93, 64, 55, 0.08);
             transition: transform 0.2s;
         }
 
@@ -1257,7 +1265,7 @@
             cursor: pointer;
             transition: all 0.2s;
             font-weight: 700;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.05);
         }
 
         .lb-edit-btn.editing {
@@ -1301,7 +1309,7 @@
             transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
             border: 1px solid rgba(215, 204, 200, 0.5);
             position: relative;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 4px 12px rgba(93, 64, 55, 0.04);
         }
 
         .lb-cell:active {
@@ -1413,7 +1421,7 @@
             border: 1px solid rgba(255, 255, 255, 0.6);
             margin-top: 0;
             padding: 0 10px;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.02);
+            box-shadow: inset 0 2px 10px rgba(93, 64, 55, 0.02);
         }
 
         /* [수정] 열렸을 때 패딩과 마진 적용 */
@@ -1455,7 +1463,7 @@
         .diet-day-col.header {
             background: #d7ccc8;
             color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            text-shadow: 0 1px 2px rgba(93, 64, 55, 0.1);
         }
 
         .diet-body-wrapper {
@@ -1497,7 +1505,7 @@
             align-items: center;
             /* 세로 중앙 정렬 */
             border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.08);
             line-height: 1.1;
         }
 
@@ -1534,7 +1542,7 @@
             font-size: 12px;
             font-weight: 800;
             color: #333;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.2);
             border: 1px solid rgba(0, 0, 0, 0.1);
             white-space: nowrap;
             cursor: pointer;
@@ -1576,9 +1584,9 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             z-index: 200;
-            border-top-left-radius: 32px;
-            border-top-right-radius: 32px;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.08);
+            border-top-left-radius: var(--radius-sheet);
+            border-top-right-radius: var(--radius-sheet);
+            box-shadow: 0 -6px 28px rgba(93, 64, 55, 0.15);
             display: flex;
             flex-direction: column;
             transition: height 0.1s linear;
@@ -1600,7 +1608,7 @@
         .sheet-handle {
             width: 44px;
             height: 5px;
-            background: #e0e0e0;
+            background: var(--handle-color);
             border-radius: 3px;
         }
 
@@ -1660,7 +1668,7 @@
             background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%);
             border-radius: 0.25em;
             position: relative;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.15);
         }
 
         .instagram:before {
@@ -1849,7 +1857,7 @@
             font-weight: 700;
             line-height: 1.2;
             z-index: 5;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 4px rgba(93, 64, 55, 0.05);
             padding: 2px;
             overflow: hidden;
         }
@@ -1945,8 +1953,8 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             z-index: 300;
-            border-radius: 0 0 32px 32px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+            border-radius: 0 0 var(--radius-sheet) var(--radius-sheet);
+            box-shadow: 0 10px 40px rgba(93, 64, 55, 0.12);
             padding: 0;
             transform: translateY(-100%);
             transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2063,13 +2071,13 @@
             justify-content: center;
             cursor: grab;
             background: transparent;
-            border-radius: 0 0 32px 32px;
+            border-radius: 0 0 var(--radius-sheet) var(--radius-sheet);
         }
 
         .fs-handle {
             width: 44px;
             height: 5px;
-            background: #bdbdbd;
+            background: var(--handle-color);
             border-radius: 3px;
         }
 
@@ -2171,7 +2179,7 @@
             font-weight: 800;
             cursor: pointer;
             transition: transform 0.2s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(93, 64, 55, 0.3);
         }
 
         .btn-close {
@@ -2214,7 +2222,7 @@
             width: 90%;
             max-width: 400px;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(93, 64, 55, 0.1);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -2686,13 +2694,13 @@
             background: var(--glass-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border-radius: 16px;
+            border-radius: 999px;
             box-shadow: var(--shadow);
         }
 
         .tab-btn {
             padding: 7px 22px;
-            border-radius: 13px;
+            border-radius: 999px;
             font-size: 14px;
             font-weight: 800;
             color: #9e8e84;
@@ -2732,8 +2740,8 @@
             background: rgba(255, 255, 255, 0.96);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
+            border-top-left-radius: var(--radius-sheet);
+            border-top-right-radius: var(--radius-sheet);
             box-shadow: 0 -8px 30px rgba(93, 64, 55, 0.15);
             display: flex;
             flex-direction: column;
@@ -3288,7 +3296,7 @@
         .share-menu-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.45);
+            background: var(--dim);
             z-index: 100000;
             display: flex;
             align-items: flex-end;
@@ -3299,9 +3307,9 @@
             width: 100%;
             max-width: 480px;
             background: #fff;
-            border-radius: 24px 24px 0 0;
+            border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
             padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 -8px 30px rgba(93, 64, 55, 0.2);
             animation: shareMenuUp 0.2s ease;
         }
 

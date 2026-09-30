@@ -615,7 +615,7 @@
                 await document.fonts.ready;
             }
         } catch (e) { /* 폰트 API 없으면 그냥 그린다 */ }
-        var logo = await window.storyLoadImage('./nulloongzido logo_512px.png');
+        var logo = await window.storyLoadImage('./assets/logo-512.png');
         drawCard(ctx, data, mode, logo);
         return c.toDataURL('image/png');
     };

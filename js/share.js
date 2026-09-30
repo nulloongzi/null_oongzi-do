@@ -683,7 +683,7 @@ window.generateStoryCard = function (data, format) {
     var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     return fontsReady.catch(function () { }).then(function () {
         return Promise.all([
-            storyLoadImage('./nulloongzido logo_512px.png'),
+            storyLoadImage('./assets/logo-512.png'),
             storyFindNearestStation(data.lat, data.lng)
         ]);
     }).then(function (res) {
