@@ -1,7 +1,11 @@
 # 누룽지도 디자인 시스템 (마케팅·프로덕트 공통)
 
-> 웹·앱·마케팅 에셋(스토어 이미지·블로그·인스타·릴스)이 **한 톤**으로 보이게 하는 고정 규칙.
-> 소스 진실: 웹 `css/main.css :root`, 앱 `lib/theme.dart`. 마케팅 에셋은 이 문서를 따른다.
+> 웹·앱·마케팅 에셋(스토어 이미지·블로그·인스타·릴스)·브랜드 사이트가 **한 톤**으로 보이게 하는 고정 규칙.
+> 값의 구현: 웹 `css/main.css :root`, 앱 `lib/theme.dart`. 마케팅 에셋은 이 문서를 따른다.
+>
+> **이 문서가 유일한 원본이다.** 앱(`null_oongzi-do-app`)·브랜드 사이트(`nulloongzi.github.io`) 저장소에는
+> 여기로 가는 안내만 둔다 — 두 벌로 두었더니 7-2·7-4 가 서로 달라졌다(2026-09).
+> 규칙을 바꾸는 PR 은 이 파일을 먼저 고치고, 같은 값을 웹 `:root` 와 앱 `theme.dart` 에 함께 반영한다.
 
 ## 1. 컬러 팔레트 (누룽지 톤)
 | 토큰 | HEX | 용도 |
@@ -29,6 +33,7 @@
 | 웹 `index.html` | jsDelivr npm `pretendard@1.3.9` 의 `variable/pretendardvariable.css` (전체 파일). 공유 카드를 canvas 로 그리므로 글자별 분할(dynamic-subset)은 쓰지 않는다 — 아직 안 받은 글자가 대체 폰트로 찍힌다 |
 | 웹 정적 페이지(`privacy`·`terms`·`guidelines`·`data-deletion`·`anchigi`) | 같은 버전의 `pretendardvariable-dynamic-subset.css` — 화면 글자만 쓰니 나눠 받아도 된다 |
 | 앱 | `assets/fonts/PretendardVariable.ttf` 번들(`pubspec.yaml` family `Pretendard`) — 네트워크 없이 같은 글꼴 |
+| 브랜드 사이트(`nulloongzi.github.io`) | 같은 버전(`v1.3.9`)의 dynamic-subset — 캔버스를 안 쓰는 정적 페이지 |
 
 - 글꼴 스택(웹): `"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`.
   CDN 이 막혀도 시스템 한글 글꼴로 떨어지게 이 순서를 지킨다.
@@ -106,7 +111,7 @@
 | 최소 글자 | 20px (스토리를 폰에서 볼 때 약 7pt — 이보다 작으면 읽히지 않는다) |
 | 모서리 | 카드 28, 칸 16, 칩·알약 완전 라운드 |
 | 그림자 | `0 8 32 rgba(93,64,55,.15)` 하나. 알약·QR 타일은 `0 4 16 rgba(93,64,55,.12)` |
-| 머리글 | 로고 원 56 + 워드마크 34/800, 좌측 기준선(80)에 붙임 |
+| 머리글 | 흰 알약 안에 로고 원 44 + 워드마크 30/800, 좌측 기준선(80)에 붙임. 로고 비트맵은 §3-1 |
 | 푸터 | 헤어라인 + QR(스토리 172 · 피드 148, 흰 타일 여백 10) + SCAN · CTA 34/800 · URL 26/500 |
 
 - **캔버스 안에는 이모지를 쓰지 않는다.** 앱 캔버스는 이모지가 □로 깨진다. 아이콘은 벡터로 그린다.
@@ -142,3 +147,11 @@
 - 시간대 성향: 시작 17시 이후 저녁형 · 12시 이후 낮형 · 그 전 아침형, 많은 쪽.
 - 시간표: 나머지 세로 전부(탄력). 칸 제목은 빼고(헤드라인이 제목) 블록 색 = 도시락 칸 색.
 - 스텁 CTA: '같이 뛸 팀 찾기'
+
+### 7-5. 밥친구 합석 단계 (화면·카드 공통)
+- 합석 단계 = 같이 다니는 팀 수: 1 한 숟갈 · 2 한 그릇 · 3팀 이상 한솥밥.
+- 아바타 속 밥그릇이 차오르는 양으로 보여준다(1/3 · 2/3 · 가득). 테두리·빛남 같은 장식은 없다.
+  - 채움 색: 한 숟갈 `#F1D9A6` · 한 그릇 `#F5B82E` · 한솥밥 `#E0A800`
+  - 글자: 한 그릇 `#B7791F` · 한솥밥 `#9A6B00`
+- 🍚 FAB 의 '처음 합석' 알림만 단계 색 테두리를 쓴다(§3-1 모양 그대로).
+- 구현: 웹 `js/friends.js`(`MEAL_FILL`) · `css/main.css`(`.warm-2`·`.warm-3`) · 앱 `lib/widgets/warm_avatar.dart`(`warmRing`·`warmInk`).
