@@ -18,6 +18,9 @@
 (앱 CI 가 같은 이름의 웹 브랜치와 맞춰 본다. 없으면 웹 main 과 비교). 생성된 두 파일은 손으로 고치지 않는다.
 아래 표의 HEX 는 읽기 편하라고 옮겨 둔 것 — 다르면 JSON 이 맞다.
 
+코드로 잴 수 있는 규칙(검정 그림자 금지 등)은 `tests/design-rules.test.js` · 앱 `test/design_rules_test.dart` 가 매 CI 에서 보고,
+사람 눈이 필요한 것은 `docs/visual-parity.md` 로 반기마다 검수한다.
+
 ## 1. 컬러 팔레트 (누룽지 톤)
 | 토큰 | HEX | 용도 |
 |---|---|---|

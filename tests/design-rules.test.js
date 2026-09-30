@@ -1,0 +1,57 @@
+// tests/design-rules.test.js — docs/design-system.md 규칙 중 코드로 잴 수 있는 것을 매 CI 에서 본다.
+// 숫자 일치는 tests/design-tokens.test.js, 사람 눈이 필요한 것은 docs/visual-parity.md(반기 검수).
+// 앱 쪽 같은 검사: 앱 저장소 test/design_rules_test.dart.
+const { test, describe } = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const ROOT = path.join(__dirname, '..');
+const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf-8');
+// 실제로 배포되는 페이지만 (test*.html 은 옛 실험 페이지라 뺀다)
+const PAGES = ['index.html', 'privacy.html', 'terms.html', 'guidelines.html', 'data-deletion.html', 'anchigi.html'];
+const SOURCES = ['css/main.css']
+    .concat(fs.readdirSync(path.join(ROOT, 'js')).filter((f) => f.endsWith('.js')).map((f) => 'js/' + f))
+    .concat(PAGES);
+
+describe('디자인 규칙', () => {
+    test('그림자는 갈색만 — 검정 그림자 금지 (§3)', () => {
+        const black = /(box-shadow|text-shadow|drop-shadow|boxShadow|shadowColor)[^;\n]*(rgba\(\s*0\s*,\s*0\s*,\s*0\s*,|#000\b|\bblack\b)/i;
+        const hits = [];
+        SOURCES.forEach((f) => read(f).split('\n').forEach((line, i) => {
+            if (black.test(line)) hits.push(f + ':' + (i + 1) + '  ' + line.trim().slice(0, 120));
+        }));
+        assert.deepStrictEqual(hits, [], '검정 그림자 → rgba(93, 64, 55, …) 또는 var(--shadow)');
+    });
+
+    test('Pretendard 는 모든 페이지가 같은 고정 버전 (§2)', () => {
+        const versions = new Set();
+        PAGES.forEach((f) => {
+            const m = read(f).match(/pretendard@([\d.]+)/g) || [];
+            assert.ok(m.length, f + ' 에 Pretendard 링크가 없다');
+            m.forEach((v) => versions.add(v));
+        });
+        assert.deepStrictEqual([...versions], ['pretendard@1.3.9'], '버전을 올릴 때는 모든 페이지와 앱 번들을 같이 바꾼다');
+    });
+
+    test('PWA 아이콘은 저장소 안의 브랜드 로고 (§3-1)', () => {
+        const manifest = JSON.parse(read('manifest.json'));
+        assert.ok(manifest.icons.length >= 2);
+        manifest.icons.forEach((icon) => {
+            assert.ok(!/^https?:/.test(icon.src), '외부 아이콘 금지: ' + icon.src);
+            assert.ok(fs.existsSync(path.join(ROOT, icon.src)), '없는 파일: ' + icon.src);
+        });
+    });
+
+    test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {
+        const css = read('css/main.css');
+        const rule = (sel) => {
+            const i = css.indexOf('\n        ' + sel + ' {');
+            assert.ok(i >= 0, sel + ' 규칙이 없다');
+            return css.slice(i, css.indexOf('}', i));
+        };
+        ['.fab-btn', '.fab-lunchbox'].forEach((s) => assert.match(rule(s), /border-radius: var\(--radius-fab\)/, s));
+        assert.match(rule('.fab-profile'), /border-radius: var\(--radius-fab-profile\)/);
+        ['.bottom-sheet', '.pickup-list-panel'].forEach((s) => assert.match(rule(s), /var\(--radius-sheet\)/, s));
+    });
+});
