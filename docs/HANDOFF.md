@@ -64,6 +64,7 @@ Flutter 네이티브. 지도는 **flutter_naver_map**(웹은 카카오맵). 화�
 
 Firestore 스키마, Firestore 보안 규칙, Cloud Functions, 애널리틱스 이벤트 이름,
 그리고 시각 규칙 — **`docs/design-system.md` 가 유일한 원본**(앱 레포 같은 경로엔 안내만 둔다).
+디자인 토큰 숫자는 `tokens/design-tokens.json` 에서 웹 `:root` 와 앱 `lib/design_tokens.g.dart` 를 생성한다(§0).
 **한쪽을 고치면 다른 쪽 패리티를 확인하라.** 2026-09-02~03 감사에서 등록 폼에만 15건의
 불일치가 나왔다(대부분 수정 완료).
 

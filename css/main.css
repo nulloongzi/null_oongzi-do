@@ -18,30 +18,32 @@
             height: 100%;
         }
 
-        /* [누룽지 테마 컬러 변수] */
+        /* <design-tokens> 생성 블록 — 직접 고치지 말 것. 원본 tokens/design-tokens.json → npm run tokens */
         :root {
-            --white: #fff;
-            --nurungji-yellow: #fac710;
-            --nurungji-brown: #8d6e63;
-            --nurungji-dark: #4e342e;
-            /* slightly darker for better contrast */
-            --nurungji-bg: #fff8e1;
-            --nurungji-light: #fffde7;
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-bg-darker: rgba(255, 248, 225, 0.85);
-            --urgent-color: #ff7043;
-            --shadow: 0 8px 32px rgba(93, 64, 55, 0.15);
-            /* Softer and more diffused shadow */
-            --shadow-sm: 0 4px 12px rgba(93, 64, 55, 0.12);
-            --today-color: #d84315;
-            /* 앱 lib/theme.dart 와 같은 값 — 한쪽만 바꾸지 않는다 (docs/design-system.md) */
-            --chip-bg: #f0ece2;
-            --chip-fg: #6d6258;
-            --pickup-teal: #13a89e;
-            --handle-color: #d8cfc6;
-            --dim: rgba(93, 64, 55, 0.35);
-            --radius-sheet: 28px;
+            --white: #ffffff; /* 입력창/카드 표면 */
+            --nurungji-yellow: #fac710; /* 메인 브랜드색 · CTA */
+            --nurungji-brown: #8d6e63; /* 보조 텍스트 · 아웃라인 */
+            --nurungji-dark: #4e342e; /* 제목/본문 텍스트 */
+            --nurungji-bg: #fff8e1; /* 기본 배경(크림) */
+            --nurungji-light: #fffde7; /* 카드/시트 배경 */
+            --urgent-color: #ff7043; /* 급구/주의 전용 */
+            --today-color: #d84315; /* "오늘" 강조 */
+            --chip-bg: #f0ece2; /* 칩 바탕 */
+            --chip-fg: #6d6258; /* 칩 글자 */
+            --pickup-teal: #13a89e; /* 픽업 핀 */
+            --handle-color: #d8cfc6; /* 시트 드래그 핸들 */
+            --glass-bg: rgba(255, 255, 255, 0.85); /* 글래스 표면 */
+            --glass-bg-darker: rgba(255, 248, 225, 0.85); /* 크림 글래스 표면 */
+            --dim: rgba(93, 64, 55, 0.35); /* 모달 딤(검정 금지) */
+            --shadow: 0 8px 32px rgba(93, 64, 55, 0.15); /* 기본 그림자(갈색 — 검정 금지) */
+            --shadow-sm: 0 4px 12px rgba(93, 64, 55, 0.12); /* 알약·작은 요소 */
+            --radius-sheet: 28px; /* 카드/바텀시트 */
+            --radius-button: 14px; /* 버튼 */
+            --radius-input: 12px; /* 입력창 */
+            --radius-fab: 20px; /* 지도 위 버튼 50px */
+            --radius-fab-profile: 24px; /* 🍚 버튼 55px */
         }
+        /* </design-tokens> */
 
         .search-container {
             position: absolute;
@@ -207,7 +209,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-radius: 20px;
+            border-radius: var(--radius-fab);
             box-shadow: var(--shadow);
             display: flex;
             justify-content: center;
@@ -337,7 +339,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-radius: 24px;
+            border-radius: var(--radius-fab-profile);
             box-shadow: var(--shadow);
             display: flex;
             justify-content: center;
@@ -362,7 +364,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-radius: 20px;
+            border-radius: var(--radius-fab);
             box-shadow: var(--shadow);
             display: flex;
             justify-content: center;

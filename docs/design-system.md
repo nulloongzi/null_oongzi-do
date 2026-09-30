@@ -1,11 +1,22 @@
 # 누룽지도 디자인 시스템 (마케팅·프로덕트 공통)
 
 > 웹·앱·마케팅 에셋(스토어 이미지·블로그·인스타·릴스)·브랜드 사이트가 **한 톤**으로 보이게 하는 고정 규칙.
-> 값의 구현: 웹 `css/main.css :root`, 앱 `lib/theme.dart`. 마케팅 에셋은 이 문서를 따른다.
+> 마케팅 에셋은 이 문서를 따른다.
 >
-> **이 문서가 유일한 원본이다.** 앱(`null_oongzi-do-app`)·브랜드 사이트(`nulloongzi.github.io`) 저장소에는
+> **이 문서가 규칙의 유일한 원본이다.** 앱(`null_oongzi-do-app`)·브랜드 사이트(`nulloongzi.github.io`) 저장소에는
 > 여기로 가는 안내만 둔다 — 두 벌로 두었더니 7-2·7-4 가 서로 달라졌다(2026-09).
-> 규칙을 바꾸는 PR 은 이 파일을 먼저 고치고, 같은 값을 웹 `:root` 와 앱 `theme.dart` 에 함께 반영한다.
+
+## 0. 토큰 파일 (값의 원본)
+색·그림자·모서리 **숫자**는 `tokens/design-tokens.json` 하나에만 적는다. 웹·앱 코드는 거기서 생성한다.
+
+| 생성물 | 만드는 법 | 어긋나면 |
+|---|---|---|
+| 웹 `css/main.css` 의 `:root` (표시 `<design-tokens>` 사이) | `npm run tokens` | 웹 CI `tests/design-tokens.test.js` 실패 |
+| 앱 `lib/design_tokens.g.dart` (`NurungjiColors` · `NurungjiShadows` · `NurungjiRadius`, `theme.dart` 가 export) | `npm run tokens -- --dart ../null_oongzi-do-app/lib/design_tokens.g.dart` | 앱 CI `design-tokens.yml` 실패 (주 1회도 돈다) |
+
+바꾸는 순서: ① 이 문서의 규칙 → ② JSON 값 → ③ 위 두 명령 → ④ 웹·앱 PR 을 **같은 브랜치 이름**으로 올린다
+(앱 CI 가 같은 이름의 웹 브랜치와 맞춰 본다. 없으면 웹 main 과 비교). 생성된 두 파일은 손으로 고치지 않는다.
+아래 표의 HEX 는 읽기 편하라고 옮겨 둔 것 — 다르면 JSON 이 맞다.
 
 ## 1. 컬러 팔레트 (누룽지 톤)
 | 토큰 | HEX | 용도 |
