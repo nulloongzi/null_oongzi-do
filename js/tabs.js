@@ -10,8 +10,8 @@
 
     function setTabButtons(tab) {
         var c = $('tabClubs'), p = $('tabPickup');
-        if (c) c.classList.toggle('active', tab === 'clubs');
-        if (p) p.classList.toggle('active', tab === 'pickup');
+        if (c) { c.classList.toggle('active', tab === 'clubs'); c.setAttribute('aria-selected', tab === 'clubs' ? 'true' : 'false'); }
+        if (p) { p.classList.toggle('active', tab === 'pickup'); p.setAttribute('aria-selected', tab === 'pickup' ? 'true' : 'false'); }
     }
 
     function teardownMarkers() {
@@ -29,6 +29,8 @@
 
     function applyChrome(tab) {
         var isPickup = tab === 'pickup';
+        // 결과 0 안내는 동호회 탭 것 — 픽업으로 가면 숨기고, 돌아오면 applyFilters 가 다시 정한다
+        if (isPickup && $('emptyResult')) $('emptyResult').hidden = true;
         // 등록 FAB: 동호회=팀등록 / 픽업=픽업등록 으로 같은 자리를 스왑
         show($('fabClubRegister'), !isPickup);
         show($('fabPickupCreate'), isPickup);

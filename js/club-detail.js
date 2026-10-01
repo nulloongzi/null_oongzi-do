@@ -194,7 +194,7 @@ window.renderTimetables = function (scheduleText) {
                 block.style.top = topPx + 'px';
                 block.style.height = (heightPx - 2) + 'px';
                 block.innerHTML = dd.text.replace('~', '<br>~<br>') +
-                    '<div style="font-size:9px; opacity:0.8; margin-top:2px;">(' + durationStr + 'h)</div>';
+                    '<div style="font-size:10px; opacity:0.8; margin-top:2px;">(' + durationStr + 'h)</div>';
                 dayCol.appendChild(block);
             }
         }

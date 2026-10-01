@@ -97,6 +97,36 @@ describe('디자인 규칙', () => {
         assert.strictEqual(r.status, 0, r.stderr);
     });
 
+    test('글자는 10px 이상 (design-references U8)', () => {
+        // 표 칸처럼 빽빽한 곳도 10px 까지. 앱 test/design_rules_test.dart 와 같은 바닥
+        const hits = [];
+        SOURCES.forEach((f) => read(f).split('\n').forEach((line, i) => {
+            const m = line.match(/font-size:\s*([0-9.]+)px/);
+            if (m && parseFloat(m[1]) < 10) hits.push(f + ':' + (i + 1) + '  ' + m[0]);
+        }));
+        assert.deepStrictEqual(hits, [], '10px 미만 글자');
+    });
+
+    test('픽업 틸은 글자색으로 쓰지 않는다 — 흰 바탕 2.95:1 (design-references U4)', () => {
+        // 테두리·핀·배경에만. 틸 계열 글자는 #0b6b64(6.36:1)
+        const hits = [];
+        SOURCES.forEach((f) => read(f).split('\n').forEach((line, i) => {
+            if (/(^|[^-\w])color:\s*(var\(--pickup-teal\)|#13a89e)/i.test(line)) hits.push(f + ':' + (i + 1));
+        }));
+        assert.deepStrictEqual(hits, [], '틸 글자 → #0b6b64');
+    });
+
+    test('동호회/픽업 탭은 role=tab 버튼, 누르는 곳 44px (design-references U3·U5)', () => {
+        const html = read('index.html');
+        ['tabClubs', 'tabPickup'].forEach((id) => {
+            const tag = (html.match(new RegExp('<[a-z]+[^>]*id="' + id + '"[^>]*>')) || [''])[0];
+            assert.match(tag, /^<button type="button"[^>]*role="tab"[^>]*aria-selected="(true|false)"/, id);
+        });
+        const css = read('css/main.css');
+        assert.match(css, /\.tab-btn::before \{[^}]*height: 44px/, '탭 누르는 곳 44px');
+        assert.doesNotMatch(css.slice(css.indexOf('.tab-btn {'), css.indexOf('.tab-btn::before')), /#9e8e84/, '비활성 탭 글자 3.15:1');
+    });
+
     test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {
         const css = read('css/main.css');
         const rule = (sel) => {
