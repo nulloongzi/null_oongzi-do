@@ -363,6 +363,9 @@
         // ── 픽업 게임: 탭 ──
         tab_clubs: { ko: '동호회', en: 'Clubs' },
         tab_pickup: { ko: '픽업', en: 'Pickup' },
+        // 검색·필터 결과 0 — 앱 strings.dart 와 같은 키
+        empty_result: { ko: '조건에 맞는 팀이 없어요', en: 'No teams match' },
+        empty_result_reset: { ko: '필터 지우기', en: 'Clear filters' },
 
         // 픽업 리스트 / FAB / 검색
         pk_list_title: { ko: '여기서 픽업이 열려요', en: 'Where pickup happens' },

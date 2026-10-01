@@ -98,6 +98,9 @@ const PAIRS = {
     fr_share_title: 'fr_share_title',
     fr_err_daily: 'fr_err_daily',
     fr_err_generic: 'fr_err_generic',
+    // 검색·필터 결과 0 안내
+    empty_result: 'empty_result',
+    empty_result_reset: 'empty_result_reset',
     // 이름만 있는 버튼(화면 낭독기)
     fab_lunchbox: 'fab_lunchbox',
     fab_profile: 'fab_profile',

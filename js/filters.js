@@ -133,6 +133,13 @@ window.applyFilters = function () {
     window.clusterer.addMarkers(visibleNormalMarkers);
     window.updateLabelVisibility();
 
+    // 결과 0: 지도가 왜 비었는지 + '필터 지우기'. 글자를 칠 때마다 불리므로 토스트 대신 떠 있는 안내
+    var emptyBox = document.getElementById('emptyResult');
+    if (emptyBox) {
+        var anyVisible = window.markers.some(function (m) { return m.isVisible; });
+        emptyBox.hidden = anyVisible || (keyword.length === 0 && filterCount === 0);
+    }
+
     if (!bounds.isEmpty() && (keyword.length > 0 || filterCount > 0)) {
         window.map.setBounds(bounds);
     }

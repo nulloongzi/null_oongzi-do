@@ -27,13 +27,13 @@
 | 토큰 | HEX | 용도 |
 |---|---|---|
 | nurungji-yellow | `#FAC710` | 메인 브랜드색, 강조 버튼/배지 |
-| nurungji-brown | `#8D6E63` | 보조 텍스트, 아웃라인 |
+| nurungji-brown | `#84675D` | 보조 텍스트, 아웃라인. 크림 바탕 4.85:1 (2026-10 `#8D6E63` 4.35 에서 조정) |
 | nurungji-dark | `#4E342E` | 제목/본문 텍스트 (배경 위) |
 | nurungji-bg | `#FFF8E1` | 기본 배경 (따뜻한 크림) |
 | nurungji-light | `#FFFDE7` | 카드/시트 배경 |
 | urgent | `#FF7043` | 급구/주의 (픽업 마감 임박 등) |
 | urgent-ink | `#BF360C` | 급구 **글자**, 흰 글자를 얹는 급구 바탕. `#FF7043` 은 테두리·점·글로우만 — 그 위 흰 글자는 2.7:1 이라 금지 |
-| today | `#D84315` | "오늘" 강조 |
+| today | `#CF4014` | "오늘" 강조 · 작은 주황 글자. 흰 4.78 · 크림 4.50 (2026-10 `#D84315` 4.44 에서 조정) |
 | white | `#FFFFFF` | 입력창/카드 표면 |
 
 - 마케팅 이미지 배경 기본값: `#FFF8E1`(크림). 텍스트는 `#4E342E`.
@@ -72,8 +72,11 @@
 | 지도 위 버튼(FAB) | 50, 모서리 20 — 둥근 사각형(원 아님) | `.fab-btn` | `_fab` · `NurungjiRadius.fab` |
 | 🍚 FAB | 55, 모서리 24 | `.fab-profile` | `NurungjiRadius.fabProfile` |
 | 등록 FAB | 브랜드 옐로 (주황은 급구·주의 전용) | `.fab-urgent` | `_fab(bg: 옐로)` |
-| 동호회/픽업 탭 | 바깥·안쪽 모두 pill | `.tab-bar` · `.tab-btn` | `_tabPill` |
-| 오늘 강조 | `#D84315` | `--today-color` | `NurungjiColors.today` |
+| 동호회/픽업 탭 | 바깥·안쪽 모두 pill. 보이는 알약 약 32, **누르는 곳 44**. 비활성 글자 `chip-fg` | `.tab-bar[role=tablist]` · `button.tab-btn[role=tab]` | `_tabPill` · `_tabBtn`(`Semantics(selected)`) |
+| 오늘 강조 | `#CF4014` | `--today-color` | `NurungjiColors.today` |
+| 글자 크기 바닥 | **10** — 표 칸처럼 빽빽한 곳만 10~11, 그 밖은 12 이상 | 규칙 테스트 | 규칙 테스트 (예외: 네임카드 스탬프 그림) |
+| 시트 잡는 띠 | 45 (손잡이 5 + 위아래 20) | `.sheet-handle-area` | `MapDetailPanel` |
+| 검색·필터 결과 0 | 탭 아래 떠 있는 알약: "조건에 맞는 팀이 없어요" + 옐로 '필터 지우기' | `#emptyResult` | `_emptyResult()` |
 | 급구 지도 라벨 | 흰 알약 + `urgent` 테두리·맥박 + `urgent-ink` 글자 · 🔥 | `.label.urgent` | `_labeledIcon(urgent:)` |
 | 지도 위 버튼 이름 | 이모지 버튼마다 KO/EN 이름 | `<button aria-label data-i18n-aria>` | `Semantics(label:)` |
 | 공유 메뉴 | **가운데 팝업**(시트 위에 시트를 겹치지 않는다) · 모서리 `radius-dialog` 20 | `.share-menu` | `share_menu.dart` `Dialog` |
