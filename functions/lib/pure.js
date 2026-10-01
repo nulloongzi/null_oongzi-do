@@ -31,7 +31,7 @@ function unauthorizedResponse() {
         template: {
             outputs: [{
                 simpleText: {
-                    text: "⛔ 권한이 없습니다.\n\n이 명령어는 관리자 전용입니다."
+                    text: "⛔ 운영자만 쓸 수 있는 명령어예요."
                 }
             }]
         }

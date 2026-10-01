@@ -170,7 +170,7 @@ describe('인증 승인 — 없는 팀에 유령 문서를 만들지 않는다',
         await fns.chatbotApprove(makeReq(), res);
         assert.strictEqual(docs['clubs/ghost-club'].is_verified, true);
         assert.strictEqual(docs['verification_requests/' + REQ_ID].status, 'approved');
-        assert.ok(text(res).includes('승인되었습니다'), text(res));
+        assert.ok(text(res).includes('승인했어요'), text(res));
     });
 
     test('승인되면 신청자가 그 팀 관리자가 된다', async () => {
