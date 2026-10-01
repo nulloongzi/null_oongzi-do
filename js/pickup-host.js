@@ -74,6 +74,7 @@
         document.getElementById('pkModalTitle').innerText = window.t('pk_create_title');
         document.getElementById('pkSubmitBtn').innerText = window.t('pk_create_submit');
         TEXT_FIELDS.forEach(function (id) { setVal(id, ''); });
+        if (window.clearFieldErrors) window.clearFieldErrors('pkModalOverlay'); // 지난번 칸 오류 표시 지우기
         window.setReelInputLocked(document.getElementById('pkReel'), false); // 숨김 스팟 편집 흔적 해제
         selectChipByVal('pkSportChips', '6s');
         selectChipByVal('pkLevelChips', 'any');
@@ -90,6 +91,7 @@
     };
 
     window.openPickupEditModal = function (spot) {
+        if (window.clearFieldErrors) window.clearFieldErrors('pkModalOverlay');
         if (!spot || !window.canModifyPickup(spot)) { window.showToast(window.t('reg_no_edit_perm')); return; }
         window.editingPickupId = spot.id;
         document.getElementById('pkModalTitle').innerText = window.t('pk_edit_title');
@@ -159,18 +161,19 @@
     }
 
     window.submitPickupGame = async function () {
+        if (window.clearFieldErrors) window.clearFieldErrors('pkModalOverlay'); // 다시 누르면 지난 표시부터 지운다
         var capturedEditId = window.editingPickupId;
         var title = getVal('pkTitle');
         var address = getVal('pkAddress');
         // 주소는 선택 — 장소가 유동적인 크루(인스타로만 굴러가는 모임)를 막지 않는다.
         // 주소 없이 등록하면 지도 마커 없이 목록에만 뜬다.
-        if (!title) { alert(window.t('pk_req_fields')); return; }
+        if (!title) { window.fieldError('pkTitle', window.t('pk_req_fields')); return; }
 
         // 링크 검증 (선택): 단톡/Meetup 등 http(s)만
         var contact = getVal('pkContact');
         if (contact) {
             var sc = window.sanitizeUrl(contact);
-            if (!sc || sc === '#') { alert(window.t('reg_link_invalid')); return; }
+            if (!sc || sc === '#') { window.fieldError('pkContact', window.t('reg_link_invalid')); return; }
             contact = sc;
         }
 
@@ -178,7 +181,7 @@
         var insta = getVal('pkInsta');
         if (insta) {
             var si = window.sanitizeInstaHandle(insta);
-            if (!si) { alert(window.t('reg_insta_invalid')); return; }
+            if (!si) { window.fieldError('pkInsta', window.t('reg_insta_invalid')); return; }
             insta = si;
         }
 
@@ -189,7 +192,7 @@
         var reelsLocked = !!(reelEl && reelEl.disabled);
         var reelResult = window.collectReelLines(reelsLocked ? '' : getVal('pkReel'));
         if (reelResult.error) {
-            alert(reelResult.error === 'too_many'
+            window.fieldError('pkReel', reelResult.error === 'too_many'
                 ? window.tf('reels_too_many', { max: window.MAX_REELS })
                 : window.t('insta_reel_invalid'));
             return;

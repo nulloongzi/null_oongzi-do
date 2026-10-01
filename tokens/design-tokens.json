@@ -10,6 +10,7 @@
     { "css": "--urgent-color", "dart": "urgent", "value": "#ff7043", "note": "급구/주의 전용" },
     { "css": "--urgent-ink", "dart": "urgentInk", "value": "#bf360c", "note": "급구 글자·흰 글자 바탕 (대비 5.6:1 — #ff7043 위 흰 글자는 2.7:1 이라 금지)" },
     { "css": "--today-color", "dart": "today", "value": "#d84315", "note": "\"오늘\" 강조" },
+    { "css": "--error-color", "dart": "error", "value": "#d32f2f", "note": "입력 오류(칸 테두리·칸 아래 글자). 흰 바탕 5.0:1" },
     { "css": "--chip-bg", "dart": "chipBg", "value": "#f0ece2", "note": "칩 바탕" },
     { "css": "--chip-fg", "dart": "chipFg", "value": "#6d6258", "note": "칩 글자" },
     { "css": "--pickup-teal", "dart": "teal", "value": "#13a89e", "note": "픽업 핀" },

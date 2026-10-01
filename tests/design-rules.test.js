@@ -78,12 +78,13 @@ describe('디자인 규칙', () => {
         assert.match(read('js/club-detail.js'), /var SHEET_CLOSE_RATIO = 0\.6;/);
     });
 
-    test('alert() 는 입력 검사 자리에만 남는다 — 알림은 showToast (design-references U12)', () => {
-        // 2026-10-01 66곳 → 14곳. 남은 14곳은 입력 칸 옆 표시로 바꿀 차례라 줄기만 해야 한다.
+    test('alert() 를 늘리지 않는다 — 알림은 showToast, 입력 실수는 fieldError (design-references U12)', () => {
+        // 2026-10-01 66곳 → 14곳(토스트) → 3곳(입력 칸 옆 표시). 남은 3곳은 이름 바꾸기 prompt 의 검사라
+        // prompt 를 누룽지 팝업으로 바꿀 때 함께 없어진다. 줄기만 해야 한다.
         // 작은 성공·안내·일반 오류는 window.showToast(js/toast.js), 문구는 docs/voice-and-tone.md
         const files = fs.readdirSync(path.join(ROOT, 'js')).filter((f) => f.endsWith('.js') && f !== 'toast.js');
         const count = files.reduce((n, f) => n + (read('js/' + f).match(/\balert\(/g) || []).length, 0);
-        assert.ok(count <= 14, 'alert() ' + count + '곳 — 늘리지 말고 showToast 를 쓴다');
+        assert.ok(count <= 3, 'alert() ' + count + '곳 — 늘리지 말고 showToast 를 쓴다');
     });
 
     test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {

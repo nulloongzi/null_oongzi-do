@@ -29,6 +29,7 @@
             --urgent-color: #ff7043; /* 급구/주의 전용 */
             --urgent-ink: #bf360c; /* 급구 글자·흰 글자 바탕 (대비 5.6:1 — #ff7043 위 흰 글자는 2.7:1 이라 금지) */
             --today-color: #d84315; /* "오늘" 강조 */
+            --error-color: #d32f2f; /* 입력 오류(칸 테두리·칸 아래 글자). 흰 바탕 5.0:1 */
             --chip-bg: #f0ece2; /* 칩 바탕 */
             --chip-fg: #6d6258; /* 칩 글자 */
             --pickup-teal: #13a89e; /* 픽업 핀 */
@@ -2321,16 +2322,28 @@
         }
 
         /* 필수 필드 미입력 하이라이트 */
+        /* 입력 오류(js/field-error.js) — 칸 빨간 테두리 + 칸 바로 아래 이유 한 줄. 색만으로 알리지 않는다 */
         .reg-invalid,
+        .field-invalid,
         input.reg-invalid,
-        textarea.reg-invalid {
-            border-color: #d32f2f !important;
+        textarea.reg-invalid,
+        input.field-invalid,
+        textarea.field-invalid {
+            border-color: var(--error-color) !important;
             box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.12);
         }
-        .chip-group.reg-invalid {
+        .chip-group.reg-invalid,
+        .chip-group.field-invalid {
             outline: 2px solid rgba(211, 47, 47, 0.4);
             outline-offset: 3px;
             border-radius: 10px;
+        }
+        .field-error {
+            margin: 6px 2px 2px;
+            color: var(--error-color);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.4;
         }
 
         /* 선택 정보 접기 섹션 */

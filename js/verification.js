@@ -48,9 +48,10 @@ window.submitVerificationRequest = async function (club) {
         return;
     }
     var photoInput = document.getElementById('verifyPhoto');
+    if (window.clearFieldError) window.clearFieldError(photoInput);
     var photoFile = photoInput.files[0];
     if (!photoFile) {
-        alert(window.t('vf_photo_required'));
+        window.fieldError('verifyPhoto', window.t('vf_photo_required'));
         return;
     }
 
@@ -155,9 +156,10 @@ window.submitAdminRequest = async function (club) {
         return;
     }
     var photoInput = document.getElementById('adminReqPhoto');
+    if (photoInput && window.clearFieldError) window.clearFieldError(photoInput);
     var photoFile = photoInput && photoInput.files[0];
     if (!photoFile) {
-        alert(window.t('ad_photo_required'));
+        window.fieldError('adminReqPhoto', window.t('ad_photo_required'));
         return;
     }
 

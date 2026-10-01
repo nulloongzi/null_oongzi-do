@@ -23,6 +23,8 @@ js/                 ← 기능별 JS 모듈
   registration.js   ← 팀 등록 (Firebase Storage)
   share.js          ← 공유/스크린샷
   back-nav.js       ← 폰 뒤로가기로 열린 창(시트·팝업) 닫기 — 창을 열 때 backNav.open, 다른 방법으로 닫을 때 backNav.closed
+  toast.js          ← 화면을 막지 않는 짧은 알림 window.showToast (alert 대신)
+  field-error.js    ← 입력 실수를 틀린 칸 바로 아래에 window.fieldError (alert 대신)
   app.js            ← 초기화 오케스트레이션
 functions/          ← Cloud Functions (인증 알림, 카카오 챗봇, 관리 스크립트)
 assets/             ← 이미지 에셋

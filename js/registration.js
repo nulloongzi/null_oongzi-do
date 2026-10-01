@@ -6,11 +6,11 @@ window.selectedCoords = null;
 window.editingClubId = null; // 편집 모드: club.id 설정 시 submitRegistration이 수정 경로로 분기
 window._regResumePending = false; // 로그인 게이트: 로그인 후 자동 재제출 대기 플래그
 
-// ── 인라인 에러 배너 (alert 대체) ──
-// 폼 상단에 메시지를 띄우고 스크롤로 보여줌. alert처럼 흐름을 끊지 않음.
+// ── 폼 상단 배너 — 칸 하나에 묶이지 않는 흐름 안내(주소를 못 찾아 지도로 넘어감, 저장 실패 등).
+// 칸의 입력 실수는 그 칸 아래에 쓴다(window.fieldError, js/field-error.js).
 window.showRegError = function (msg) {
     var box = document.getElementById('regError');
-    if (!box) { alert(msg); return; } // 폴백
+    if (!box) { window.showToast(msg); return; } // 폴백
     box.textContent = msg;
     box.style.display = 'block';
     var body = box.parentElement;
@@ -28,6 +28,7 @@ window.clearRegError = function () {
     });
     var chips = document.getElementById('regTargetChips');
     if (chips) chips.classList.remove('reg-invalid');
+    if (window.clearFieldErrors) window.clearFieldErrors('regModalOverlay');
 };
 
 window.generateTimeOptions = function () {
@@ -537,14 +538,12 @@ window.submitRegistration = async function () {
     var address = document.getElementById('regAddress').value.trim();
 
     if (!name || !target || !address) {
-        // 비어있는 필수 필드 하이라이트
-        var nameEl = document.getElementById('regName');
-        if (nameEl && !name) nameEl.classList.add('reg-invalid');
-        var addrEl = document.getElementById('regAddress');
-        if (addrEl && !address) addrEl.classList.add('reg-invalid');
-        var chipsEl = document.getElementById('regTargetChips');
-        if (chipsEl && !target) chipsEl.classList.add('reg-invalid');
-        window.showRegError(window.t('reg_required'));
+        // 비어 있는 칸마다 그 칸 아래에 이유를 적고, 첫 칸으로 데려간다
+        var missing = [];
+        if (!name) missing.push(['regName', 'reg_err_name']);
+        if (!target) missing.push(['regTargetChips', 'reg_err_target']);
+        if (!address) missing.push(['regAddress', 'reg_err_addr']);
+        missing.forEach(function (m, i) { window.fieldError(m[0], window.t(m[1]), { focus: i === 0 }); });
         return;
     }
 
@@ -560,7 +559,7 @@ window.submitRegistration = async function () {
     var reelsLocked = !!reelEl.disabled;
     var reelResult = window.collectReelLines(reelsLocked ? '' : reelEl.value);
     if (reelResult.error) {
-        window.showRegError(reelResult.error === 'too_many'
+        window.fieldError('regReel', reelResult.error === 'too_many'
             ? window.tf('reels_too_many', { max: window.MAX_REELS })
             : window.t('insta_reel_invalid'));
         return;
@@ -571,16 +570,16 @@ window.submitRegistration = async function () {
     var urgent_msg = "";
 
     // 길이 가드 (DoS · 도큐먼트 비대화 방지)
-    if (name.length > 60) { window.showRegError(window.t('reg_name_max')); return; }
-    if (target.length > 80) { window.showRegError(window.t('reg_target_max')); return; }
-    if (address.length > 200) { window.showRegError(window.t('reg_addr_max')); return; }
-    if (price.length > 100) { window.showRegError(window.t('reg_price_max')); return; }
+    if (name.length > 60) { window.fieldError('regName', window.t('reg_name_max')); return; }
+    if (target.length > 80) { window.fieldError('regTargetChips', window.t('reg_target_max')); return; }
+    if (address.length > 200) { window.fieldError('regAddress', window.t('reg_addr_max')); return; }
+    if (price.length > 100) { window.fieldError('regPrice', window.t('reg_price_max')); return; }
 
     // insta 핸들 검증: 빈 값은 허용, 입력했으면 형식 통과해야 함
     if (insta) {
         var safeInsta = window.sanitizeInstaHandle(insta);
         if (!safeInsta) {
-            window.showRegError(window.t('reg_insta_invalid'));
+            window.fieldError('regInsta', window.t('reg_insta_invalid'));
             return;
         }
         insta = safeInsta;
@@ -590,7 +589,7 @@ window.submitRegistration = async function () {
     if (link) {
         var safeLink = window.sanitizeUrl(link);
         if (safeLink === '#' || !safeLink) {
-            window.showRegError(window.t('reg_link_invalid'));
+            window.fieldError('regLink', window.t('reg_link_invalid'));
             return;
         }
         link = safeLink;
@@ -828,7 +827,7 @@ window.submitRegistration = async function () {
 
     } catch (error) {
         console.error(error);
-        window.showRegError(window.t('reg_error') + error.message);
+        window.showRegError(window.t('reg_error')); // 원문은 console 로
     } finally {
         btn.innerText = window.t('reg_submit');
         btn.disabled = false;
