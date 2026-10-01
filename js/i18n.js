@@ -29,6 +29,7 @@
         fab_register: { ko: '팀 등록하기', en: 'Register a team' },
         fab_pickup_create: { ko: '픽업 등록', en: 'Add a pickup game' },
         fab_my_location: { ko: '내 위치', en: 'My location' },
+        sheet_close: { ko: '닫기', en: 'Close' }, // 시트 손잡이(화면 낭독기·키보드용 이름)
 
         // 검색
         search_ph: { ko: '팀명, 지역으로 검색...', en: 'Search by team or area...' },
@@ -767,12 +768,13 @@
             els[i].setAttribute('placeholder', window.t(els[i].getAttribute('data-i18n-placeholder')));
         }
 
-        // 글자 없는(이모지) 버튼의 이름: 화면 낭독기용 aria-label + 마우스 툴팁 title
+        // 글자 없는(이모지) 버튼의 이름: 화면 낭독기용 aria-label + 마우스 툴팁 title.
+        // data-i18n-aria-only 가 있으면 title 은 달지 않는다(시트 손잡이처럼 마우스로 누를 일이 없는 것)
         els = document.querySelectorAll('[data-i18n-aria]');
         for (i = 0; i < els.length; i++) {
             var name = window.t(els[i].getAttribute('data-i18n-aria'));
             els[i].setAttribute('aria-label', name);
-            els[i].setAttribute('title', name);
+            if (!els[i].hasAttribute('data-i18n-aria-only')) els[i].setAttribute('title', name);
         }
 
         // 통제된 번역 문자열만 사용(사용자 입력 없음) → innerHTML 허용

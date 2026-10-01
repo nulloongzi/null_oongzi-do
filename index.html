@@ -264,8 +264,9 @@
     </div>
 
     <!-- 바텀시트 (클럽 상세) -->
-    <div id="bottomSheet" class="bottom-sheet">
-        <div class="sheet-handle-area" id="sheetHandle"><div class="sheet-handle"></div></div>
+    <div id="bottomSheet" class="bottom-sheet" inert aria-hidden="true">
+        <!-- 손잡이: 손가락으론 쓸어내려 닫기(드래그), 키보드·화면 낭독기로는 누르면 닫기(club-detail.js) -->
+        <button type="button" class="sheet-handle-area" id="sheetHandle" aria-label="닫기" data-i18n-aria="sheet_close" data-i18n-aria-only><span class="sheet-handle"></span></button>
         <div class="sheet-content-wrapper">
             <div id="urgentArea"></div>
             <div class="sheet-header">

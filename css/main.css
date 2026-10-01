@@ -1616,6 +1616,7 @@
             border-top: 1px solid rgba(255, 255, 255, 0.8);
         }
 
+        /* 손잡이는 <button> — 화면 낭독기·키보드에 '닫기'로 읽힌다. 손가락 탭은 아무 일도 안 한다(쓸어내리기만) */
         .sheet-handle-area {
             width: 100%;
             padding: 16px 0 12px 0;
@@ -1624,9 +1625,21 @@
             cursor: grab;
             flex-shrink: 0;
             background: transparent;
+            border: 0;
+            font: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sheet-handle-area:focus-visible {
+            outline: 3px solid var(--nurungji-dark);
+            outline-offset: -3px;
+            border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
         }
 
         .sheet-handle {
+            display: block;
             width: 44px;
             height: 5px;
             background: var(--handle-color);

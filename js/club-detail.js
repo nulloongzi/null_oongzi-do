@@ -209,6 +209,8 @@ window.renderTimetables = function (scheduleText) {
 
 var sheetState = 'PEEK';
 var PEEK_HEIGHT = 390;
+// 쓸어내려 닫는 기준: 접힌 높이의 60% 아래에서 놓으면 닫힌다. 앱 map_detail_panel.dart 와 같은 값(design-system §3-1)
+var SHEET_CLOSE_RATIO = 0.6;
 var EXPANDED_HEIGHT = window.innerHeight * 0.9;
 var BUBBLE_HEIGHT = 60;
 
@@ -218,6 +220,9 @@ function updateSheetState(newState, animation) {
     var hint = document.getElementById('expandHint');
 
     sheetState = newState;
+    // 닫힌(높이 0) 시트의 버튼이 키보드·화면 낭독기에 잡히지 않게
+    if (newState === 'CLOSED') { sheet.setAttribute('inert', ''); sheet.setAttribute('aria-hidden', 'true'); }
+    else { sheet.removeAttribute('inert'); sheet.removeAttribute('aria-hidden'); }
 
     if (animation) sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
     else sheet.style.transition = 'none';
@@ -819,13 +824,18 @@ window.toggleClubUrgentState = function (club) {
         if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
             updateSheetState('EXPANDED');
         } else {
-            if (currentH < PEEK_HEIGHT * 0.8) window.closeBottomSheet(); // 아래로 쓸어내려 닫기
+            if (currentH < PEEK_HEIGHT * SHEET_CLOSE_RATIO) window.closeBottomSheet(); // 아래로 쓸어내려 닫기
             else updateSheetState('PEEK');
         }
         currentY = 0;
         startY = 0;
     }
 
+    // 키보드(Enter·Space)·화면 낭독기로 누르면 닫기. 이런 클릭은 detail 이 0 이다 —
+    // 손가락·마우스 탭(detail ≥ 1)은 무시해서 '쓸어내려 닫기' 설계를 바꾸지 않는다
+    handleArea.addEventListener('click', function (e) {
+        if (e.detail === 0) window.closeBottomSheet();
+    });
     handleArea.addEventListener('touchstart', bHandleStart, { passive: true });
     handleArea.addEventListener('touchmove', bHandleMove, { passive: false });
     handleArea.addEventListener('touchend', bHandleEnd);

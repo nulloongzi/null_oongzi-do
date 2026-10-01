@@ -69,6 +69,15 @@ describe('디자인 규칙', () => {
         fabs.forEach((tag) => assert.match(tag, /^<button[^>]*aria-label="[^"]+"/, tag));
     });
 
+    test('시트 손잡이는 이름 있는 <button>, 닫힘 기준은 앱과 같은 0.6 (§3-1)', () => {
+        const html = read('index.html');
+        const tag = (html.match(/<[a-z]+[^>]*id="sheetHandle"[^>]*>/) || [''])[0];
+        assert.match(tag, /^<button type="button"/, '#sheetHandle 는 <button>');
+        assert.match(tag, /data-i18n-aria="sheet_close"/, '화면 낭독기 이름 "닫기"');
+        // 앱 lib/widgets/map_detail_panel.dart kSheetCloseRatio 와 같은 값
+        assert.match(read('js/club-detail.js'), /var SHEET_CLOSE_RATIO = 0\.6;/);
+    });
+
     test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {
         const css = read('css/main.css');
         const rule = (sel) => {
