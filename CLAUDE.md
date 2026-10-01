@@ -22,6 +22,7 @@ js/                 ← 기능별 JS 모듈
   filters.js        ← 검색/필터
   registration.js   ← 팀 등록 (Firebase Storage)
   share.js          ← 공유/스크린샷
+  back-nav.js       ← 폰 뒤로가기로 열린 창(시트·팝업) 닫기 — 창을 열 때 backNav.open, 다른 방법으로 닫을 때 backNav.closed
   app.js            ← 초기화 오케스트레이션
 functions/          ← Cloud Functions (인증 알림, 카카오 챗봇, 관리 스크립트)
 assets/             ← 이미지 에셋

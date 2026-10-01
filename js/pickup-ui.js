@@ -58,7 +58,7 @@
             if (window.pkRegion) p.set('region', window.pkRegion);
             if (window.pkLevel) p.set('level', window.pkLevel);
             if (window.pkEnglishOnly) p.set('english', '1');
-            window.history.replaceState(null, '', '?' + p.toString());
+            window.history.replaceState(window.history.state, '', '?' + p.toString()); // state 유지(js/back-nav.js)
         } catch (e) { /* 히스토리 조작 실패는 무시 */ }
     };
 

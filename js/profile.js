@@ -250,18 +250,33 @@ window.editNickname = async function () {
     }
 };
 
-window.toggleProfileCard = function () {
-    var overlay = document.getElementById('profileOverlay');
-    var closing = overlay.style.display === 'flex';
-    overlay.style.display = closing ? 'none' : 'flex';
-    // 열 때마다 첫 장(내 카드)부터 — 밥친구 장은 옆으로 넘겨서 연다 (js/friends.js)
-    if (!closing && window.resetProfilePager) window.resetProfilePager();
+// 프로필 카드 닫기(화면만). 뒤로가기로 닫힐 때도 이걸 부른다(js/back-nav.js)
+window.hideProfileCard = function () {
+    document.getElementById('profileOverlay').style.display = 'none';
     // 로그인 게이트 상태에서 로그인 없이 닫으면: 작성 중이던 등록 폼을 복원하고 대기 해제
-    if (closing && window._regResumePending) {
+    if (window._regResumePending) {
         window._regResumePending = false;
         var hint = document.getElementById('regLoginHint');
         if (hint) hint.style.display = 'none';
         var reg = document.getElementById('regModalOverlay');
         if (reg) reg.style.display = 'flex';
     }
+};
+
+// 프로필 카드 열기(화면 + 폰 뒤로가기 칸). resetPage: 첫 장(내 카드)부터
+window.showProfileCard = function (resetPage) {
+    document.getElementById('profileOverlay').style.display = 'flex';
+    if (resetPage && window.resetProfilePager) window.resetProfilePager();
+    if (window.backNav) window.backNav.open('profile', window.hideProfileCard);
+};
+
+window.toggleProfileCard = function () {
+    var closing = document.getElementById('profileOverlay').style.display === 'flex';
+    if (closing) {
+        window.hideProfileCard();
+        if (window.backNav) window.backNav.closed('profile');
+        return;
+    }
+    // 열 때마다 첫 장(내 카드)부터 — 밥친구 장은 옆으로 넘겨서 연다 (js/friends.js)
+    window.showProfileCard(true);
 };

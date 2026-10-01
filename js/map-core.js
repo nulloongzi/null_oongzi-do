@@ -119,10 +119,12 @@ function showReelPeek(club) {
     card.appendChild(title);
     card.appendChild(box);
     ov.appendChild(card);
+    function hide() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
     ov.addEventListener('click', function (e) {
-        if (e.target === ov) document.body.removeChild(ov);
+        if (e.target === ov) { hide(); if (window.backNav) window.backNav.closed('reelPeek'); }
     });
     document.body.appendChild(ov);
+    if (window.backNav) window.backNav.open('reelPeek', hide); // 폰 뒤로가기로 닫기(앱과 같은 순서: 미리보기 먼저)
     // 정지 커버 포스터(없으면 제네릭 카드) → 탭하면 인스타로. 임베드는 더 이상 쓰지 않는다(insta-embed.js 참고).
     var covers = club.insta_reel_covers;
     var cover = (covers && window.reelCodeFromUrl) ? (covers[window.reelCodeFromUrl(urls[0])] || '') : '';

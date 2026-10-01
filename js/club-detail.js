@@ -577,9 +577,15 @@ window.openClubDetail = function (id, opts) {
         btnShareClub.onclick = function () { if (window.openShareMenu) window.openShareMenu('club', club); };
     }
 
-    // 주소창을 공유 가능한 딥링크로 동기화
-    if (!silent && window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', '?club=' + encodeURIComponent(club.id));
+    // 주소창을 공유 가능한 딥링크로 동기화 + 폰 뒤로가기로 시트가 닫히게(js/back-nav.js).
+    // 닫혔을 때 돌아갈 칸의 주소는 ?club= 을 뺀 주소. 이미 열린 시트에서 다른 팀으로 바꾸면 주소만 바꾼다.
+    if (!silent) {
+        var clubUrl = '?club=' + encodeURIComponent(club.id);
+        if (window.backNav) {
+            window.backNav.open('club', hideBottomSheet, { url: clubUrl, baseUrl: location.pathname });
+        } else if (window.history && window.history.replaceState) {
+            window.history.replaceState(history.state, '', clubUrl);
+        }
     }
 
     if (!silent) updateSheetState('PEEK');
@@ -602,11 +608,18 @@ window.openClubDetail = function (id, opts) {
     }
 };
 
-window.closeBottomSheet = function () {
+// 뒤로가기로 닫힐 때(back-nav 가 칸을 이미 뺐다) — 화면만 닫는다
+function hideBottomSheet() {
     updateSheetState('CLOSED');
+}
+
+// 그 밖의 방법(쓸어내리기·탭 전환·삭제 등)으로 닫을 때 — 넣어 둔 뒤로가기 칸도 뺀다
+window.closeBottomSheet = function () {
+    hideBottomSheet();
+    if (window.backNav && window.backNav.closed('club')) return; // 칸을 빼면 ?club= 없는 주소로 돌아간다
     // 딥링크 파라미터 제거
     if (window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', location.pathname);
+        window.history.replaceState(history.state, '', location.pathname);
     }
 };
 
@@ -806,7 +819,7 @@ window.toggleClubUrgentState = function (club) {
         if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
             updateSheetState('EXPANDED');
         } else {
-            if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
+            if (currentH < PEEK_HEIGHT * 0.8) window.closeBottomSheet(); // 아래로 쓸어내려 닫기
             else updateSheetState('PEEK');
         }
         currentY = 0;

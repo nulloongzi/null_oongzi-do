@@ -83,7 +83,7 @@
     // 처리 후 주소창에서 ?code=&state= 를 지운다(지금 페이지 경로 그대로 — 복귀 주소가 아니라).
     function cleanUrl() {
         try {
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState(window.history.state, document.title, window.location.pathname);
         } catch (e) {}
     }
 

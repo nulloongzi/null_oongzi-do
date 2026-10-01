@@ -26,6 +26,7 @@
     { "css": "--radius-sheet", "dart": "sheet", "value": 28, "note": "카드/바텀시트" },
     { "css": "--radius-button", "dart": "button", "value": 14, "note": "버튼" },
     { "css": "--radius-input", "dart": "input", "value": 12, "note": "입력창" },
+    { "css": "--radius-dialog", "dart": "dialog", "value": 20, "note": "가운데 팝업(공유·등록·신고)" },
     { "css": "--radius-fab", "dart": "fab", "value": 20, "note": "지도 위 버튼 50px" },
     { "css": "--radius-fab-profile", "dart": "fabProfile", "value": 24, "note": "🍚 버튼 55px" }
   ]

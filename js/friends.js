@@ -941,7 +941,7 @@
             var u = new URL(location.href);
             if (!u.searchParams.has('invite')) return;
             u.searchParams.delete('invite');
-            history.replaceState(null, '', u.pathname + (u.search ? u.search : '') + u.hash);
+            history.replaceState(history.state, '', u.pathname + (u.search ? u.search : '') + u.hash);
         } catch (e) { }
     }
     // 로그인 안 된 채 초대 링크로 들어온 경우: 코드를 기억해 두고 로그인 팝업을 띄운다.

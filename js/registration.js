@@ -524,7 +524,8 @@ window.submitRegistration = async function () {
         document.getElementById('regModalOverlay').style.display = 'none';
         var hint = document.getElementById('regLoginHint');
         if (hint) hint.style.display = 'block';
-        document.getElementById('profileOverlay').style.display = 'flex';
+        if (window.showProfileCard) window.showProfileCard(false);
+        else document.getElementById('profileOverlay').style.display = 'flex';
         return;
     }
 

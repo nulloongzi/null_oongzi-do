@@ -867,7 +867,8 @@ function showStoryCoach(onGo) {
     var T = window.t || function (k, f) { return f || k; };
     var ov = document.createElement('div');
     ov.className = 'share-menu-overlay';
-    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    function hide() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    function close() { hide(); if (window.backNav) window.backNav.closed('storyCoach'); }
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var box = document.createElement('div');
     box.className = 'share-menu';
@@ -879,9 +880,11 @@ function showStoryCoach(onGo) {
     var skip = document.createElement('button'); skip.className = 'share-menu-cancel'; skip.textContent = T('sh_menu_cancel'); skip.onclick = close; box.appendChild(skip);
     ov.appendChild(box);
     document.body.appendChild(ov);
+    if (window.backNav) window.backNav.open('storyCoach', hide); // 폰 뒤로가기로 닫기
 }
 
-// 통합 공유 메뉴(바텀 액션시트): 인스타 스토리 / 카카오톡 / 링크복사 / 다른앱.
+// 통합 공유 메뉴(가운데 팝업 — 앱 share_menu.dart 와 같은 모양): 인스타 스토리 / 카카오톡 / 링크복사 / 다른앱.
+// 예전엔 하단 시트라 상세 시트 위에 시트가 겹쳤다(design-references U11).
 // kind: 'club' | 'spot', item: 해당 객체.
 window.openShareMenu = function (kind, item) {
     if (!item || !item.id) return;
@@ -891,7 +894,8 @@ window.openShareMenu = function (kind, item) {
 
     var overlay = document.createElement('div');
     overlay.className = 'share-menu-overlay';
-    function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    function hide() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    function close() { hide(); if (window.backNav) window.backNav.closed('share'); }
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
 
     var menu = document.createElement('div');
@@ -944,4 +948,6 @@ window.openShareMenu = function (kind, item) {
 
     overlay.appendChild(menu);
     document.body.appendChild(overlay);
+    // 폰 뒤로가기 = 공유 창만 닫기(뒤의 상세 시트는 그대로). 한 번 더 누르면 상세가 닫힌다
+    if (window.backNav) window.backNav.open('share', hide);
 };

@@ -127,6 +127,7 @@ window.logout = function () {
         firebase.auth().signOut().then(function () {
             document.getElementById('profileOverlay').style.display = 'none';
             document.getElementById('lunchboxOverlay').style.display = 'none';
+            if (window.backNav) { window.backNav.closed('profile'); window.backNav.closed('lunchbox'); }
         });
     }
 };

@@ -145,10 +145,16 @@ window.openFilterSheet = function () {
     var fsKw = document.getElementById('fsKeyword');
     if (fsKw) fsKw.value = document.getElementById('topSearchInput').value;
     document.getElementById('filterSheet').style.transform = "translateY(0)";
+    if (window.backNav) window.backNav.open('filter', hideFilterSheet); // 폰 뒤로가기로 닫기
 };
 
-window.closeFilterSheet = function () {
+function hideFilterSheet() {
     document.getElementById('filterSheet').style.transform = "translateY(-100%)";
+}
+
+window.closeFilterSheet = function () {
+    hideFilterSheet();
+    if (window.backNav) window.backNav.closed('filter');
 };
 
 window.toggleFilterSheet = function () {

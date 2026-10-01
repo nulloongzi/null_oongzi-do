@@ -282,6 +282,7 @@ window.openLunchbox = function () {
     setTempSlots(normalized);
     renderLunchboxGrid();
     overlay.style.display = 'flex';
+    if (window.backNav) window.backNav.open('lunchbox', hideLunchbox); // 폰 뒤로가기로 닫기
 };
 
 function renderLunchboxGrid() {
@@ -322,7 +323,8 @@ function renderLunchboxGrid() {
                 } else {
                     (function (t) {
                         div.onclick = function () {
-                            document.getElementById('lunchboxOverlay').style.display = 'none';
+                            // 도시락을 닫고 상세를 연다 — 뒤로가기 칸은 상세가 이어받는다(js/back-nav.js)
+                            window.closeLunchbox();
                             window.openClubDetail(t.id);
                         };
                     })(team);
@@ -547,9 +549,15 @@ function deleteSlot(index) {
     }
 }
 
-window.closeLunchbox = function () {
+// 뒤로가기로 닫힐 때(back-nav 가 칸을 이미 뺐다)
+function hideLunchbox() {
     if (isEditMode) saveLunchboxToDB();
     document.getElementById('lunchboxOverlay').style.display = 'none';
+}
+
+window.closeLunchbox = function () {
+    hideLunchbox();
+    if (window.backNav) window.backNav.closed('lunchbox');
 };
 
 // 언어 전환 시 도시락 오버레이가 열려 있으면 슬롯/식단표 재렌더링
