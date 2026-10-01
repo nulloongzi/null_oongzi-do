@@ -91,6 +91,12 @@ describe('디자인 규칙', () => {
         assert.deepStrictEqual(hits, [], '누룽지 모양으로: showToast · fieldError · nzConfirm · nzPrompt');
     });
 
+    test('웹·앱 짝 문구의 웹 키가 모두 있다 (voice-and-tone)', () => {
+        // 앱 문구와의 비교는 앱 CI(design-tokens.yml)가 --dart 로 한다. 여기선 키 이름이 사라지지 않았는지만
+        const r = require('node:child_process').spawnSync(process.execPath, [path.join(ROOT, 'scripts/check-copy-parity.js')], { encoding: 'utf-8' });
+        assert.strictEqual(r.status, 0, r.stderr);
+    });
+
     test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {
         const css = read('css/main.css');
         const rule = (sel) => {

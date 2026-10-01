@@ -12,7 +12,8 @@
     "test:emulator": "firebase emulators:exec --only firestore,storage \"npm run test:rules\"",
     "test:smoke": "playwright test",
     "tokens": "node scripts/build-tokens.js",
-    "tokens:check": "node scripts/build-tokens.js --check"
+    "tokens:check": "node scripts/build-tokens.js --check",
+    "copy:check": "node scripts/check-copy-parity.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

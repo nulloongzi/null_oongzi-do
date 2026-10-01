@@ -80,9 +80,11 @@ NN/g 의 톤 4축에 누룽지가 서는 **기본 자리**. 상황에 따라 §3
 > 2026-10-01: 토스트로 바꾼 알림 문구(아래 표의 `lb_*`·`addr_copied`·`cd_no_urgent_perm`·`au_welcome`·`reg_registered` 포함 약 40개)는 웹 `js/i18n.js` 에 반영했다.
 > 입력 칸 아래 오류 문구(팀 이름·대상·주소 빈 칸, 인스타·링크 형식, 길이, 로그인 오류)도 웹·앱 모두 반영했다 — `reg_required` 한 줄 대신 칸마다 `reg_err_*`.
 > 묻는 팝업 문구도 반영했다 — `au_logout_confirm`(로그아웃할까요? / 버튼 '로그아웃'), `cd_delete_confirm`(+ `cd_delete_body`, 버튼 '팀 지우기').
-> 남은 것: 앱 `strings.dart` 의 토스트·팝업 문구를 웹과 같게.
+> 앱 `strings.dart` 의 알림·입력 오류·팝업 문구도 웹과 같게 맞췄다(65쌍). 오류 원문(`$e`)은 화면에 붙이지 않고 로그(`debugPrint`)로만.
+> 짝 목록과 검사: 웹 `scripts/check-copy-parity.js` — 앱 CI(`design-tokens.yml`)가 매 push 마다 한·영 글자 그대로 비교한다.
+> 앱 키 이름이 웹과 다른 것(예: 앱 `cf_save_err` ↔ 웹 `reg_error`)도 그 파일의 `PAIRS` 에 적혀 있다.
 
-`js/i18n.js` 의 실제 문구로 본 예. 앱 `strings.dart` 도 같은 키로 함께 바꾼다.
+`js/i18n.js` 의 실제 문구로 본 예. 앱 `strings.dart` 도 같은 문구로 함께 바꾼다(짝이면 CI 가 잡는다).
 
 | 키 | 지금 | 이렇게 | 왜 |
 |---|---|---|---|
