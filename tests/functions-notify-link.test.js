@@ -294,7 +294,7 @@ describe('관리자 권한 신청 (club_admin_requests)', () => {
         delete docs['admin_kakao_ids/kakao-1'];
         const c = capture();
         await fns.chatbotAdminRequests(adminReq(), c.res);
-        assert.match(c.get().template.outputs[0].simpleText.text, /권한이 없습니다/);
+        assert.match(c.get().template.outputs[0].simpleText.text, /운영자만 쓸 수 있는/);
     });
 
     test('승인하면 admins 에 추가된다', async () => {

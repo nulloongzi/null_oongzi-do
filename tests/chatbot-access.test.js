@@ -190,7 +190,7 @@ describe('② 관리자 — 관리 발화는 운영자만', () => {
             const res = makeRes();
             await fns[name](withKey({ userId: 'kakao-stranger' }), res);
             assert.strictEqual(res.statusCode, 200, '거부는 401 이 아니라 안내 말풍선이다');
-            assert.ok(text(res).includes('권한이 없습니다'), `${name} 이 비관리자에게 내용을 돌려줬다`);
+            assert.ok(text(res).includes('운영자만 쓸 수 있는'), `${name} 이 비관리자에게 내용을 돌려줬다`);
         });
     }
 
@@ -198,8 +198,8 @@ describe('② 관리자 — 관리 발화는 운영자만', () => {
         docs['admin_kakao_ids/kakao-boss'] = { ok: true };
         const res = makeRes();
         await fns.chatbotReports(withKey({ userId: 'kakao-boss' }), res);
-        assert.ok(!text(res).includes('권한이 없습니다'));
-        assert.ok(text(res).includes('미처리 신고가 없습니다'));
+        assert.ok(!text(res).includes('운영자만 쓸 수 있는'));
+        assert.ok(text(res).includes('처리할 신고가 없어요'));
     });
 });
 
@@ -208,7 +208,7 @@ describe('공개 발화 — 누구나', () => {
         const res = makeRes();
         await fns.chatbotHelp(withKey({ userId: 'kakao-stranger' }), res);
         assert.strictEqual(res.statusCode, 200);
-        assert.ok(!text(res).includes('권한이 없습니다'), '공개 발화에 관리자 검사가 붙었다');
+        assert.ok(!text(res).includes('운영자만 쓸 수 있는'), '공개 발화에 관리자 검사가 붙었다');
         assert.ok(text(res).includes('https://do.nulloongzi.com'));
     });
 
@@ -246,7 +246,7 @@ describe('공개 발화 — 누구나', () => {
     test('제보: 비관리자가 보내도 접수된다', async () => {
         const res = makeRes();
         await fns.chatbotPublicReport(withKey({ userId: 'kakao-stranger', utterance: '제보 확인 부탁드려요' }), res);
-        assert.ok(!text(res).includes('권한이 없습니다'));
+        assert.ok(!text(res).includes('운영자만 쓸 수 있는'));
         assert.strictEqual(added.length, 1);
     });
 });
@@ -334,7 +334,7 @@ describe('audit 모드 — 17개 중 하나를 빠뜨렸을 때', () => {
         docs['system/chatbot_skill_key'] = { keys: [SKILL_KEY], mode: 'audit' };
         const res = makeRes();
         await fns.chatbotTeamDelete(makeReq({ userId: 'kakao-stranger' }), res);
-        assert.ok(text(res).includes('권한이 없습니다'),
+        assert.ok(text(res).includes('운영자만 쓸 수 있는'),
             'audit 은 스킬 키만 느슨하게 하는 것이지 권한을 여는 게 아니다');
     });
 

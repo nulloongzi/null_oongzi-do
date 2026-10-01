@@ -210,7 +210,7 @@ describe('팀관리 — Firestore 왕복을 줄인다', () => {
         const res = makeRes();
         await fns.chatbotTeamList(makeReq({ userId: 'kakao-stranger' }), res);
         const text = JSON.stringify(res.out.body);
-        assert.ok(text.includes('권한이 없습니다'), text);
+        assert.ok(text.includes('운영자만 쓸 수 있는'), text);
         assert.ok(!text.includes('팀0'), '권한이 없는데 팀 이름이 응답에 실렸다');
         assert.ok(!text.includes('carousel'), '권한이 없는데 목록 카드가 나갔다');
     });
@@ -227,6 +227,6 @@ describe('팀관리 — Firestore 왕복을 줄인다', () => {
         clubRows = [];
         const res = makeRes();
         await fns.chatbotTeamList(makeReq(), res);
-        assert.strictEqual(res.out.body.template.outputs[0].simpleText.text, '등록된 팀이 없습니다.');
+        assert.strictEqual(res.out.body.template.outputs[0].simpleText.text, '등록된 팀이 없어요.');
     });
 });

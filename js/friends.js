@@ -365,6 +365,19 @@
         if (!b) { b = document.createElement('span'); b.className = 'fab-badge'; fab.appendChild(b); }
         b.textContent = n > 9 ? '9+' : String(n);
         b.setAttribute('aria-label', TF('fr_badge_aria', { n: n }));
+        syncFabLabel();
+    }
+    // 🍚 버튼 이름: 버튼의 aria-label 이 안쪽 배지 글자를 덮으므로 신청 수·합석 알림을 이름에 합친다.
+    // 기본 이름은 data-i18n-aria 키로 둬서 언어를 바꿔도(applyI18n) 맞는 이름이 남는다.
+    function syncFabLabel() {
+        var fab = document.getElementById('fabProfile');
+        if (!fab) return;
+        var key = fab.classList.contains('fab-warm') ? 'fr_meal_fab' : 'fab_profile';
+        fab.setAttribute('data-i18n-aria', key);
+        var name = T(key), n = state.incoming.length;
+        if (n) name += ', ' + TF('fr_badge_aria', { n: n });
+        fab.setAttribute('aria-label', name);
+        fab.setAttribute('title', name);
     }
     // 처음 합석하게 된 밥친구가 있으면 🍚 버블에 단계 색 테두리(가장 높은 합석 단계).
     // 합석 알림은 처음 한 번만: 어떤 밥친구와 처음 합석하게 됐을 때 🍚 버블 테두리와 둘째 도트로
@@ -392,9 +405,8 @@
         var tier = unseenMealTier();
         fab.classList.remove('warm-1', 'warm-2', 'warm-3');
         fab.classList.toggle('fab-warm', tier > 0);
-        if (!tier) { fab.removeAttribute('title'); return; }
-        fab.classList.add('warm-' + tier);
-        fab.title = T('fr_meal_fab');
+        if (tier) fab.classList.add('warm-' + tier);
+        syncFabLabel();
     }
     window.syncFriendsBadge = function () { syncBadge(); syncFabWarmth(); };
 
@@ -474,14 +486,8 @@
         var d = new Date(ms);
         return d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate();
     }
-    function toast(msg) {
-        var box = document.getElementById('friendsToast');
-        if (!box) return;
-        box.textContent = msg;
-        box.hidden = false;
-        clearTimeout(box._t);
-        box._t = setTimeout(function () { box.hidden = true; }, 2400);
-    }
+    // 공용 토스트(js/toast.js)로 — 사이트 전체가 같은 모양
+    function toast(msg) { if (window.showToast) window.showToast(msg); }
     function copy(text, okMsg) {
         function done() { toast(okMsg); }
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -929,7 +935,7 @@
             var u = new URL(location.href);
             if (!u.searchParams.has('invite')) return;
             u.searchParams.delete('invite');
-            history.replaceState(null, '', u.pathname + (u.search ? u.search : '') + u.hash);
+            history.replaceState(history.state, '', u.pathname + (u.search ? u.search : '') + u.hash);
         } catch (e) { }
     }
     // 로그인 안 된 채 초대 링크로 들어온 경우: 코드를 기억해 두고 로그인 팝업을 띄운다.
@@ -946,4 +952,5 @@
     });
 
     document.addEventListener('nurungji:langchange', render);
+    document.addEventListener('nurungji:langchange', syncFabLabel);
 })();

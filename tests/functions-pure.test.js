@@ -31,7 +31,7 @@ describe('escapeHtml / renderResultPage (XSS 방지)', () => {
         assert.strictEqual(pure.escapeHtml(null), '');
     });
     test('악성 club_name이 결과 페이지에서 무해화', () => {
-        const html = pure.renderResultPage('승인 완료 ✅', '<script>alert(1)</script> 팀의 인증이 승인되었습니다.');
+        const html = pure.renderResultPage('승인 완료 ✅', '<script>alert(1)</script> 팀의 인증을 승인했어요.');
         assert.ok(!html.includes('<script>alert(1)</script>'), '스크립트가 그대로 삽입되면 안 됨');
         assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
         assert.ok(html.includes('<h1>승인 완료 ✅</h1>')); // 정상 텍스트는 보존
@@ -98,7 +98,7 @@ describe('unauthorizedResponse', () => {
     test('카카오 2.0 포맷 + 관리자 전용 문구', () => {
         const r = pure.unauthorizedResponse();
         assert.strictEqual(r.version, '2.0');
-        assert.match(r.template.outputs[0].simpleText.text, /권한이 없습니다/);
+        assert.match(r.template.outputs[0].simpleText.text, /운영자만 쓸 수 있는/);
     });
 });
 

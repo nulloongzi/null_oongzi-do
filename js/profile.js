@@ -228,40 +228,59 @@ document.addEventListener('nurungji:langchange', function () {
 window.editNickname = async function () {
     if (!window.currentUser || !window.firebaseDB) return;
     var currentName = document.getElementById('pcNickname').innerText;
-    var newName = prompt("변경할 닉네임을 입력해주세요 (하이픈 금지)", currentName);
-    if (newName && newName.trim() !== "" && newName !== currentName) {
-        if (newName.includes("-")) {
-            alert("닉네임에 하이픈(-)은 사용할 수 없습니다.\n하이픈은 오직 '밥아저씨'가 랜덤으로 지어준 이름에만 허용됩니다!");
-            return;
-        }
-        try {
-            if (window.isReservedNickname(newName) && !(await window.canUseReservedNickname(window.currentUser))) {
-                alert(window.t('nickname_reserved'));
-                return;
+    // 이름 팝업(js/dialog.js) — 하이픈·공식 이름·중복은 팝업을 닫지 않고 칸 아래에 알린다
+    var v = await window.nzPrompt({
+        title: window.t('nick_title'),
+        fields: [{ name: 'name', value: currentName, maxLength: 30, select: true }],
+        confirm: window.t('nick_btn'),
+        validate: async function (x) {
+            if (!x.name) return { name: window.t('nick_empty') };
+            if (x.name === currentName) return null;
+            if (x.name.indexOf('-') >= 0) return { name: window.t('nick_hyphen') };
+            if (window.isReservedNickname(x.name) && !(await window.canUseReservedNickname(window.currentUser))) {
+                return { name: window.t('nickname_reserved') };
             }
-            var isDup = await window.checkDuplicateNickname(newName);
-            if (isDup) { alert("이미 누군가 사용 중인 이름입니다."); return; }
-            var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
-            await window.firebaseUpdateDoc(userRef, { full_nickname: newName });
-            window.currentProfileData.full_nickname = newName;
-            window.renderProfileCard();
-            alert("닉네임 변경 완료!");
-        } catch (e) { alert("오류: " + e); }
-    }
+            if (await window.checkDuplicateNickname(x.name)) return { name: window.t('nick_dup') };
+            return null;
+        }
+    });
+    if (!v || v.name === currentName) return;
+    try {
+        var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
+        await window.firebaseUpdateDoc(userRef, { full_nickname: v.name });
+        window.currentProfileData.full_nickname = v.name;
+        window.renderProfileCard();
+        window.showToast(window.t('nick_changed'));
+    } catch (e) { console.warn('이름 바꾸기 실패:', e); window.showToast(window.t('nick_change_error')); }
 };
 
-window.toggleProfileCard = function () {
-    var overlay = document.getElementById('profileOverlay');
-    var closing = overlay.style.display === 'flex';
-    overlay.style.display = closing ? 'none' : 'flex';
-    // 열 때마다 첫 장(내 카드)부터 — 밥친구 장은 옆으로 넘겨서 연다 (js/friends.js)
-    if (!closing && window.resetProfilePager) window.resetProfilePager();
+// 프로필 카드 닫기(화면만). 뒤로가기로 닫힐 때도 이걸 부른다(js/back-nav.js)
+window.hideProfileCard = function () {
+    document.getElementById('profileOverlay').style.display = 'none';
     // 로그인 게이트 상태에서 로그인 없이 닫으면: 작성 중이던 등록 폼을 복원하고 대기 해제
-    if (closing && window._regResumePending) {
+    if (window._regResumePending) {
         window._regResumePending = false;
         var hint = document.getElementById('regLoginHint');
         if (hint) hint.style.display = 'none';
         var reg = document.getElementById('regModalOverlay');
         if (reg) reg.style.display = 'flex';
     }
+};
+
+// 프로필 카드 열기(화면 + 폰 뒤로가기 칸). resetPage: 첫 장(내 카드)부터
+window.showProfileCard = function (resetPage) {
+    document.getElementById('profileOverlay').style.display = 'flex';
+    if (resetPage && window.resetProfilePager) window.resetProfilePager();
+    if (window.backNav) window.backNav.open('profile', window.hideProfileCard);
+};
+
+window.toggleProfileCard = function () {
+    var closing = document.getElementById('profileOverlay').style.display === 'flex';
+    if (closing) {
+        window.hideProfileCard();
+        if (window.backNav) window.backNav.closed('profile');
+        return;
+    }
+    // 열 때마다 첫 장(내 카드)부터 — 밥친구 장은 옆으로 넘겨서 연다 (js/friends.js)
+    window.showProfileCard(true);
 };

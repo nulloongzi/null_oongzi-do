@@ -1,7 +1,27 @@
 # 누룽지도 디자인 시스템 (마케팅·프로덕트 공통)
 
-> 웹·앱·마케팅 에셋(스토어 이미지·블로그·인스타·릴스)이 **한 톤**으로 보이게 하는 고정 규칙.
-> 소스 진실: 웹 `css/main.css :root`, 앱 `lib/theme.dart`. 마케팅 에셋은 이 문서를 따른다.
+> 웹·앱·마케팅 에셋(스토어 이미지·블로그·인스타·릴스)·브랜드 사이트가 **한 톤**으로 보이게 하는 고정 규칙.
+> 마케팅 에셋은 이 문서를 따른다.
+>
+> **이 문서가 규칙의 유일한 원본이다.** 앱(`null_oongzi-do-app`)·브랜드 사이트(`nulloongzi.github.io`) 저장소에는
+> 여기로 가는 안내만 둔다 — 두 벌로 두었더니 7-2·7-4 가 서로 달라졌다(2026-09).
+>
+> 다음에 무엇을 고칠지 고를 재료(UI/UX·브랜드 참고자료, 지금 찾은 개선 후보)는 `docs/design-references.md`.
+
+## 0. 토큰 파일 (값의 원본)
+색·그림자·모서리 **숫자**는 `tokens/design-tokens.json` 하나에만 적는다. 웹·앱 코드는 거기서 생성한다.
+
+| 생성물 | 만드는 법 | 어긋나면 |
+|---|---|---|
+| 웹 `css/main.css` 의 `:root` (표시 `<design-tokens>` 사이) | `npm run tokens` | 웹 CI `tests/design-tokens.test.js` 실패 |
+| 앱 `lib/design_tokens.g.dart` (`NurungjiColors` · `NurungjiShadows` · `NurungjiRadius`, `theme.dart` 가 export) | `npm run tokens -- --dart ../null_oongzi-do-app/lib/design_tokens.g.dart` | 앱 CI `design-tokens.yml` 실패 (주 1회도 돈다) |
+
+바꾸는 순서: ① 이 문서의 규칙 → ② JSON 값 → ③ 위 두 명령 → ④ 웹·앱 PR 을 **같은 브랜치 이름**으로 올린다
+(앱 CI 가 같은 이름의 웹 브랜치와 맞춰 본다. 없으면 웹 main 과 비교). 생성된 두 파일은 손으로 고치지 않는다.
+아래 표의 HEX 는 읽기 편하라고 옮겨 둔 것 — 다르면 JSON 이 맞다.
+
+코드로 잴 수 있는 규칙(검정 그림자 금지 등)은 `tests/design-rules.test.js` · 앱 `test/design_rules_test.dart` 가 매 CI 에서 보고,
+사람 눈이 필요한 것은 `docs/visual-parity.md` 로 반기마다 검수한다.
 
 ## 1. 컬러 팔레트 (누룽지 톤)
 | 토큰 | HEX | 용도 |
@@ -12,6 +32,7 @@
 | nurungji-bg | `#FFF8E1` | 기본 배경 (따뜻한 크림) |
 | nurungji-light | `#FFFDE7` | 카드/시트 배경 |
 | urgent | `#FF7043` | 급구/주의 (픽업 마감 임박 등) |
+| urgent-ink | `#BF360C` | 급구 **글자**, 흰 글자를 얹는 급구 바탕. `#FF7043` 은 테두리·점·글로우만 — 그 위 흰 글자는 2.7:1 이라 금지 |
 | today | `#D84315` | "오늘" 강조 |
 | white | `#FFFFFF` | 입력창/카드 표면 |
 
@@ -29,6 +50,7 @@
 | 웹 `index.html` | jsDelivr npm `pretendard@1.3.9` 의 `variable/pretendardvariable.css` (전체 파일). 공유 카드를 canvas 로 그리므로 글자별 분할(dynamic-subset)은 쓰지 않는다 — 아직 안 받은 글자가 대체 폰트로 찍힌다 |
 | 웹 정적 페이지(`privacy`·`terms`·`guidelines`·`data-deletion`·`anchigi`) | 같은 버전의 `pretendardvariable-dynamic-subset.css` — 화면 글자만 쓰니 나눠 받아도 된다 |
 | 앱 | `assets/fonts/PretendardVariable.ttf` 번들(`pubspec.yaml` family `Pretendard`) — 네트워크 없이 같은 글꼴 |
+| 브랜드 사이트(`nulloongzi.github.io`) | 같은 버전(`v1.3.9`)의 dynamic-subset — 캔버스를 안 쓰는 정적 페이지 |
 
 - 글꼴 스택(웹): `"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`.
   CDN 이 막혀도 시스템 한글 글꼴로 떨어지게 이 순서를 지킨다.
@@ -41,9 +63,35 @@
 - 오버레이/딤: `rgba(93,64,55,.35)` (검정 아닌 갈색 딤).
 - 아이콘 모티프: 밥그릇 + 배구공(로고), 마커.
 
-## 4. 보이스 & 토ン
+### 3-1. 지도 화면 부품 (웹·앱 같은 값)
+| 부품 | 값 | 웹 | 앱 |
+|---|---|---|---|
+| 바텀시트(상세·필터·픽업 목록·공유) | 모서리 28 | `--radius-sheet` | `NurungjiRadius.sheet` |
+| 드래그 핸들 | 44×5, `#D8CFC6` | `--handle-color` | `NurungjiColors.handle` |
+| 모달 딤 | `rgba(93,64,55,.35)` | `--dim` | `NurungjiColors.dim` |
+| 지도 위 버튼(FAB) | 50, 모서리 20 — 둥근 사각형(원 아님) | `.fab-btn` | `_fab` · `NurungjiRadius.fab` |
+| 🍚 FAB | 55, 모서리 24 | `.fab-profile` | `NurungjiRadius.fabProfile` |
+| 등록 FAB | 브랜드 옐로 (주황은 급구·주의 전용) | `.fab-urgent` | `_fab(bg: 옐로)` |
+| 동호회/픽업 탭 | 바깥·안쪽 모두 pill | `.tab-bar` · `.tab-btn` | `_tabPill` |
+| 오늘 강조 | `#D84315` | `--today-color` | `NurungjiColors.today` |
+| 급구 지도 라벨 | 흰 알약 + `urgent` 테두리·맥박 + `urgent-ink` 글자 · 🔥 | `.label.urgent` | `_labeledIcon(urgent:)` |
+| 지도 위 버튼 이름 | 이모지 버튼마다 KO/EN 이름 | `<button aria-label data-i18n-aria>` | `Semantics(label:)` |
+| 공유 메뉴 | **가운데 팝업**(시트 위에 시트를 겹치지 않는다) · 모서리 `radius-dialog` 20 | `.share-menu` | `share_menu.dart` `Dialog` |
+| 폰 뒤로가기 | 열린 창을 위에서부터 하나씩 닫는다 → 다 닫히면 기본 동작(웹: 이전 페이지 · 앱: 두 번 눌러 종료) | `js/back-nav.js` | `map_screen.dart` `PopScope` |
+| 시트 닫기 | 아래로 쓸어내리기 — **접힌 높이의 60% 아래에서 놓으면 닫힘** + 뒤로가기 | `club-detail.js` `SHEET_CLOSE_RATIO` | `map_detail_panel.dart` `kSheetCloseRatio` |
+| 시트 손잡이 | 손가락: 끌기만(탭은 아무 일 없음). 화면 낭독기·키보드: '닫기' 버튼. 닫힌 시트는 낭독기·키보드에서 숨김 | `<button id="sheetHandle">` · `inert` | `Semantics(button, onTap)` |
+| 토스트(짧은 알림) | 다크 브라운 바탕 + 크림 글자, 아래쪽에 떠 있다가 사라짐(누르면 바로 닫힘) · 모서리 `radius-toast` 12. 작은 성공·안내·일반 오류에만 — 결정(삭제 확인)과 입력 실수(칸 옆)는 토스트가 아니다 | `window.showToast` (`js/toast.js`) | `SnackBar` (`theme.dart` `snackBarTheme`) |
+| 입력 오류 | **틀린 칸 바로 아래에 이유 한 줄** + 빨간 테두리(`error-color` #d32f2f, 13px/600). 여러 칸이면 칸마다, 첫 칸으로 이동. 고치기 시작하면 그 칸 표시만 사라짐. 접힌 '선택 정보' 안이면 펼침. 칸에 안 묶이는 흐름 안내(주소 못 찾음→지도, 저장 실패)만 폼 위 띠 | `window.fieldError` (`js/field-error.js`) | `InputDecoration.errorText` · `FieldErrorText` |
+| 묻는 팝업 | 가운데 흰 카드 · 모서리 `radius-dialog` 20 · 제목 17/800. **버튼엔 누르면 일어나는 일**('팀 지우기', '로그아웃' — '확인'만 쓰지 않음). 되돌릴 수 없는 일은 확인 버튼 `urgent-ink` + 처음 포커스 '취소'. 입력이 틀리면 팝업을 닫지 않고 칸 아래에. 바깥 누르기·Esc·뒤로가기 = 취소. 브라우저 기본 창(alert·confirm·prompt)은 쓰지 않는다 | `window.nzConfirm` · `nzPrompt` (`js/dialog.js`) | `AlertDialog` (`theme.dart` `dialogTheme` · 글자 버튼 다크) |
+
+- 사진 위 스크림(릴스 커버 그라데이션·이미지 미리보기)만 검정을 허용한다 — 사진 색을 물들이지 않기 위해서.
+- 로고 비트맵: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일)를 쓴다.
+  원본은 앱 `assets/nulloongzido logo_without bg.png`(2048). 웹 PWA 아이콘은 같은 원본을 흰 바탕에 얹은 `assets/icon-192.png` · `icon-512.png`.
+
+## 4. 보이스 & 톤
 - 친근하고 가벼움. "밥이름·도시락" 같은 **음식 비유**가 브랜드 정체성.
 - 과장·전문용어 지양. 한 문장 = 한 메시지.
+- 자세한 규칙(보이스 4 · 톤 프로필 · 상황별 톤 · 문장 규칙 · 점검 질문): **`docs/voice-and-tone.md`** (초안).
 
 ## 5. 마케팅 에셋 규격 (이미지 뽑을 때 캔버스)
 | 채널 | 사이즈(px) | 비고 |
@@ -90,7 +138,7 @@
 | 최소 글자 | 20px (스토리를 폰에서 볼 때 약 7pt — 이보다 작으면 읽히지 않는다) |
 | 모서리 | 카드 28, 칸 16, 칩·알약 완전 라운드 |
 | 그림자 | `0 8 32 rgba(93,64,55,.15)` 하나. 알약·QR 타일은 `0 4 16 rgba(93,64,55,.12)` |
-| 머리글 | 로고 원 56 + 워드마크 34/800, 좌측 기준선(80)에 붙임 |
+| 머리글 | 흰 알약 안에 로고 원 44 + 워드마크 30/800, 좌측 기준선(80)에 붙임. 로고 비트맵은 §3-1 |
 | 푸터 | 헤어라인 + QR(스토리 172 · 피드 148, 흰 타일 여백 10) + SCAN · CTA 34/800 · URL 26/500 |
 
 - **캔버스 안에는 이모지를 쓰지 않는다.** 앱 캔버스는 이모지가 □로 깨진다. 아이콘은 벡터로 그린다.
@@ -126,3 +174,11 @@
 - 시간대 성향: 시작 17시 이후 저녁형 · 12시 이후 낮형 · 그 전 아침형, 많은 쪽.
 - 시간표: 나머지 세로 전부(탄력). 칸 제목은 빼고(헤드라인이 제목) 블록 색 = 도시락 칸 색.
 - 스텁 CTA: '같이 뛸 팀 찾기'
+
+### 7-5. 밥친구 합석 단계 (화면·카드 공통)
+- 합석 단계 = 같이 다니는 팀 수: 1 한 숟갈 · 2 한 그릇 · 3팀 이상 한솥밥.
+- 아바타 속 밥그릇이 차오르는 양으로 보여준다(1/3 · 2/3 · 가득). 테두리·빛남 같은 장식은 없다.
+  - 채움 색: 한 숟갈 `#F1D9A6` · 한 그릇 `#F5B82E` · 한솥밥 `#E0A800`
+  - 글자: 한 그릇 `#B7791F` · 한솥밥 `#9A6B00`
+- 🍚 FAB 의 '처음 합석' 알림만 단계 색 테두리를 쓴다(§3-1 모양 그대로).
+- 구현: 웹 `js/friends.js`(`MEAL_FILL`) · `css/main.css`(`.warm-2`·`.warm-3`) · 앱 `lib/widgets/warm_avatar.dart`(`warmRing`·`warmInk`).

@@ -144,11 +144,24 @@ window.toggleDietPlan = function () {
 };
 
 window.addCustomTeam = async function () {
-    var name = prompt(window.t('lb_add_prompt'), window.t('lb_add_default'));
-    if (!name || name.trim() === "") return;
-
-    var schedule = prompt(window.t('lb_time_prompt'), window.t('lb_time_default'));
-    if (!schedule || schedule.trim() === "") return;
+    // 이름·시간을 팝업 하나에서 받는다(예전엔 prompt 두 번)
+    var v = await window.nzPrompt({
+        title: window.t('lb_add_title'),
+        fields: [
+            { name: 'name', label: window.t('lb_add_name_label'), value: window.t('lb_add_default'), select: true },
+            { name: 'time', label: window.t('lb_add_time_label'), placeholder: window.t('lb_time_default') }
+        ],
+        confirm: window.t('lb_add_btn'),
+        validate: function (x) {
+            var e = {};
+            if (!x.name) e.name = window.t('lb_add_name_empty');
+            if (!x.time) e.time = window.t('lb_add_time_empty');
+            return (e.name || e.time) ? e : null;
+        }
+    });
+    if (!v) return;
+    var name = v.name;
+    var schedule = v.time;
 
     var newId = "custom_" + Date.now();
     var newTeam = {
@@ -210,10 +223,10 @@ window.bookmarkTeam = async function (teamId) {
         var slots = getEffectiveBookmarks();
         while (slots.length < 5) slots.push(null);
 
-        if (slots.includes(teamId)) { alert(window.t('lb_already')); return; }
+        if (slots.includes(teamId)) { window.showToast(window.t('lb_already')); return; }
 
         var emptyIndex = slots.findIndex(function (item) { return item === null; });
-        if (emptyIndex === -1) { alert(window.t('lb_full')); return; }
+        if (emptyIndex === -1) { window.showToast(window.t('lb_full')); return; }
 
         slots[emptyIndex] = teamId;
 
@@ -225,7 +238,7 @@ window.bookmarkTeam = async function (teamId) {
 
             var team = window.findClub(teamId);
             var msg = team && team.isCustom ? window.t('lb_added_custom') : window.t('lb_added_team');
-            alert(msg);
+            window.showToast(msg);
 
             if (typeof window.renderProfileCard === 'function') window.renderProfileCard();
 
@@ -242,7 +255,7 @@ window.bookmarkTeam = async function (teamId) {
             setLocalBookmarks(slots);
             var team2 = window.findClub(teamId);
             var msg2 = team2 && team2.isCustom ? window.t('lb_added_custom') : window.t('lb_added_team');
-            alert(msg2);
+            window.showToast(msg2);
         }
 
         // 도시락 오버레이가 열려 있으면 tempSlots에도 반영
@@ -258,7 +271,7 @@ window.bookmarkTeam = async function (teamId) {
             if (isDietPlanOpen) renderCombinedSchedule();
         }
 
-    } catch (e) { alert(window.t('lb_bookmark_fail') + e.message); }
+    } catch (e) { console.warn('도시락 담기 실패:', e); window.showToast(window.t('lb_bookmark_fail')); }
 };
 
 window.openLunchbox = function () {
@@ -282,6 +295,7 @@ window.openLunchbox = function () {
     setTempSlots(normalized);
     renderLunchboxGrid();
     overlay.style.display = 'flex';
+    if (window.backNav) window.backNav.open('lunchbox', hideLunchbox); // 폰 뒤로가기로 닫기
 };
 
 function renderLunchboxGrid() {
@@ -322,7 +336,8 @@ function renderLunchboxGrid() {
                 } else {
                     (function (t) {
                         div.onclick = function () {
-                            document.getElementById('lunchboxOverlay').style.display = 'none';
+                            // 도시락을 닫고 상세를 연다 — 뒤로가기 칸은 상세가 이어받는다(js/back-nav.js)
+                            window.closeLunchbox();
                             window.openClubDetail(t.id);
                         };
                     })(team);
@@ -536,8 +551,8 @@ function handleSlotClick(index) {
     if (isDietPlanOpen) renderCombinedSchedule();
 }
 
-function deleteSlot(index) {
-    if (confirm(window.t('lb_remove_confirm'))) {
+async function deleteSlot(index) {
+    if (await window.nzConfirm({ title: window.t('lb_remove_confirm'), confirm: window.t('lb_remove_btn') })) {
         if (window.track) window.track('remove_bookmark'); // 앱 패리티 W4
         var tempSlots = getTempSlots();
         tempSlots[index] = null;
@@ -547,9 +562,15 @@ function deleteSlot(index) {
     }
 }
 
-window.closeLunchbox = function () {
+// 뒤로가기로 닫힐 때(back-nav 가 칸을 이미 뺐다)
+function hideLunchbox() {
     if (isEditMode) saveLunchboxToDB();
     document.getElementById('lunchboxOverlay').style.display = 'none';
+}
+
+window.closeLunchbox = function () {
+    hideLunchbox();
+    if (window.backNav) window.backNav.closed('lunchbox');
 };
 
 // 언어 전환 시 도시락 오버레이가 열려 있으면 슬롯/식단표 재렌더링

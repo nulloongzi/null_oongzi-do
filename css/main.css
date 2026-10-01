@@ -18,23 +18,36 @@
             height: 100%;
         }
 
-        /* [누룽지 테마 컬러 변수] */
+        /* <design-tokens> 생성 블록 — 직접 고치지 말 것. 원본 tokens/design-tokens.json → npm run tokens */
         :root {
-            --white: #fff;
-            --nurungji-yellow: #fac710;
-            --nurungji-brown: #8d6e63;
-            --nurungji-dark: #4e342e;
-            /* slightly darker for better contrast */
-            --nurungji-bg: #fff8e1;
-            --nurungji-light: #fffde7;
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-bg-darker: rgba(255, 248, 225, 0.85);
-            --urgent-color: #ff7043;
-            --shadow: 0 8px 32px rgba(93, 64, 55, 0.15);
-            /* Softer and more diffused shadow */
-            --shadow-sm: 0 4px 12px rgba(93, 64, 55, 0.12);
-            --today-color: #d84315;
+            --white: #ffffff; /* 입력창/카드 표면 */
+            --nurungji-yellow: #fac710; /* 메인 브랜드색 · CTA */
+            --nurungji-brown: #8d6e63; /* 보조 텍스트 · 아웃라인 */
+            --nurungji-dark: #4e342e; /* 제목/본문 텍스트 */
+            --nurungji-bg: #fff8e1; /* 기본 배경(크림) */
+            --nurungji-light: #fffde7; /* 카드/시트 배경 */
+            --urgent-color: #ff7043; /* 급구/주의 전용 */
+            --urgent-ink: #bf360c; /* 급구 글자·흰 글자 바탕 (대비 5.6:1 — #ff7043 위 흰 글자는 2.7:1 이라 금지) */
+            --today-color: #d84315; /* "오늘" 강조 */
+            --error-color: #d32f2f; /* 입력 오류(칸 테두리·칸 아래 글자). 흰 바탕 5.0:1 */
+            --chip-bg: #f0ece2; /* 칩 바탕 */
+            --chip-fg: #6d6258; /* 칩 글자 */
+            --pickup-teal: #13a89e; /* 픽업 핀 */
+            --handle-color: #d8cfc6; /* 시트 드래그 핸들 */
+            --glass-bg: rgba(255, 255, 255, 0.85); /* 글래스 표면 */
+            --glass-bg-darker: rgba(255, 248, 225, 0.85); /* 크림 글래스 표면 */
+            --dim: rgba(93, 64, 55, 0.35); /* 모달 딤(검정 금지) */
+            --shadow: 0 8px 32px rgba(93, 64, 55, 0.15); /* 기본 그림자(갈색 — 검정 금지) */
+            --shadow-sm: 0 4px 12px rgba(93, 64, 55, 0.12); /* 알약·작은 요소 */
+            --radius-sheet: 28px; /* 카드/바텀시트 */
+            --radius-button: 14px; /* 버튼 */
+            --radius-input: 12px; /* 입력창 */
+            --radius-dialog: 20px; /* 가운데 팝업(공유·등록·신고) */
+            --radius-toast: 12px; /* 토스트(웹 showToast · 앱 SnackBar) */
+            --radius-fab: 20px; /* 지도 위 버튼 50px */
+            --radius-fab-profile: 24px; /* 🍚 버튼 55px */
         }
+        /* </design-tokens> */
 
         .search-container {
             position: absolute;
@@ -200,7 +213,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-radius: 20px;
+            border-radius: var(--radius-fab);
             box-shadow: var(--shadow);
             display: flex;
             justify-content: center;
@@ -217,13 +230,29 @@
             transform: scale(0.9);
         }
 
+        /* 지도 위 버튼은 <button> — 브라우저 기본 모양을 지우고, 키보드로 왔을 때만 테두리를 보인다 */
+        .fab-btn, .fab-lunchbox, .fab-profile {
+            padding: 0;
+            font-family: inherit;
+            line-height: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-tap-highlight-color: transparent;
+        }
 
+        .fab-btn:focus-visible, .fab-lunchbox:focus-visible, .fab-profile:focus-visible {
+            outline: 3px solid var(--nurungji-dark);
+            outline-offset: 3px;
+        }
+
+
+        /* 등록 FAB = 브랜드 옐로(CTA). 주황(--urgent-color)은 급구·주의 전용 — 앱과 같은 색 */
         .fab-urgent {
-            background: var(--urgent-color);
-            color: #fff;
+            background: rgba(250, 199, 16, 0.95);
+            color: var(--nurungji-dark);
             border-color: rgba(255, 255, 255, 0.4);
             font-size: 24px;
-            box-shadow: 0 6px 20px rgba(255, 112, 67, 0.4);
+            box-shadow: 0 6px 20px rgba(250, 199, 16, 0.4);
         }
 
         /* 앱 설치 유도 배너 (웹→앱 유입 깔때기) */
@@ -329,7 +358,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-radius: 24px;
+            border-radius: var(--radius-fab-profile);
             box-shadow: var(--shadow);
             display: flex;
             justify-content: center;
@@ -354,7 +383,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border-radius: 20px;
+            border-radius: var(--radius-fab);
             box-shadow: var(--shadow);
             display: flex;
             justify-content: center;
@@ -422,7 +451,7 @@
             -webkit-backdrop-filter: blur(16px);
             padding: 30px 20px;
             text-align: center;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 20px 50px rgba(93, 64, 55, 0.15);
             position: relative;
             border: 1px solid rgba(255, 255, 255, 0.7);
             border-radius: 28px;
@@ -830,19 +859,131 @@
         .fr-mini .fr-meta b { font-size: 18px; font-weight: 900; }
         .fr-foot { display: flex; justify-content: center; margin-top: 8px; }
 
-        .fr-toast {
-            position: sticky;
-            bottom: 0;
-            margin-top: 12px;
-            padding: 10px 14px;
-            border-radius: 12px;
+        /* 공용 토스트(js/toast.js) — 앱 SnackBar 와 같은 모양. 화면을 막지 않고 잠깐 떴다 사라진다 */
+        .nz-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            z-index: 100001; /* 공유 팝업(100000) 위 */
+            width: max-content;
+            max-width: min(420px, calc(100% - 32px));
+            padding: 12px 18px;
+            border-radius: var(--radius-toast);
             background: var(--nurungji-dark);
-            color: #fff8e1;
-            font-size: 13px;
+            color: var(--nurungji-bg);
+            box-shadow: var(--shadow);
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.45;
             text-align: center;
+            white-space: pre-line; /* 문구 속 \n 줄바꿈 */
+            opacity: 0;
+            transform: translate(-50%, 12px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
         }
 
-        .fr-toast[hidden] { display: none; }
+        .nz-toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+            pointer-events: auto;
+        }
+
+        /* 공용 팝업(js/dialog.js) — confirm()·prompt() 대신. 공유 팝업과 같은 모양, 앱 AlertDialog 와 같은 값 */
+        .nz-dialog-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 36px;
+            background: var(--dim);
+            animation: fadeIn 0.15s ease;
+        }
+
+        .nz-dialog {
+            width: 100%;
+            max-width: 400px;
+            max-height: 100%;
+            overflow-y: auto;
+            margin: 0;
+            padding: 22px 20px 16px;
+            background: #fff;
+            border-radius: var(--radius-dialog);
+            box-shadow: var(--shadow);
+            animation: shareMenuIn 0.18s ease;
+        }
+
+        .nz-dialog-title {
+            margin: 0 0 8px;
+            color: var(--nurungji-dark);
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .nz-dialog-msg {
+            margin: 0 0 4px;
+            color: var(--nurungji-dark);
+            font-size: 14px;
+            line-height: 1.55;
+            white-space: pre-line;
+        }
+
+        .nz-dialog-field { margin-top: 14px; }
+
+        .nz-dialog-label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--nurungji-dark);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .nz-dialog-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            border: 1px solid rgba(78, 52, 46, 0.2);
+            border-radius: var(--radius-input);
+            background: #fff;
+            color: var(--nurungji-dark);
+            font: inherit;
+            font-size: 15px;
+        }
+
+        .nz-dialog-input:focus {
+            outline: none;
+            border: 2px solid var(--nurungji-yellow);
+            padding: 11px 13px;
+        }
+
+        .nz-dialog-input[readonly] { background: var(--nurungji-light); }
+
+        .nz-dialog-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .nz-btn {
+            flex: 1;
+            padding: 13px 10px;
+            border: 0;
+            border-radius: var(--radius-button);
+            font: inherit;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .nz-btn:disabled { opacity: 0.6; cursor: default; }
+        .nz-btn:focus-visible { outline: 3px solid var(--nurungji-dark); outline-offset: 2px; }
+        .nz-btn-ghost { background: var(--chip-bg); color: var(--chip-fg); }
+        .nz-btn-primary { background: var(--nurungji-yellow); color: var(--nurungji-dark); }
+        /* 되돌릴 수 없는 일 — 흰 글자는 urgent-ink 바탕(5.6:1) */
+        .nz-btn-danger { background: var(--urgent-ink); color: #fff; }
 
         /* ── 밥친구 2단계: 식단표 공유 ── */
         .lb-cell.fr-hidden {
@@ -935,7 +1076,7 @@
             height: 20px;
             border-radius: 50%;
             background: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 1px 3px rgba(93, 64, 55, 0.2);
             transition: left 0.2s;
         }
 
@@ -1117,7 +1258,7 @@
             font-size: 14px;
             color: var(--nurungji-dark);
             background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 10px rgba(93, 64, 55, 0.05);
             border: 1px solid rgba(255, 255, 255, 1);
             transition: transform 0.2s, background 0.2s;
         }
@@ -1147,7 +1288,7 @@
             justify-content: center;
             gap: 12px;
             width: 100%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px rgba(93, 64, 55, 0.05);
             transition: transform 0.2s;
         }
 
@@ -1173,7 +1314,7 @@
             font-weight: 700;
             cursor: pointer;
             border: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px rgba(93, 64, 55, 0.08);
             transition: transform 0.2s;
         }
 
@@ -1257,13 +1398,13 @@
             cursor: pointer;
             transition: all 0.2s;
             font-weight: 700;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.05);
         }
 
         .lb-edit-btn.editing {
-            background: #ff7043;
+            background: var(--urgent-ink);
             color: white;
-            border-color: #ff7043;
+            border-color: var(--urgent-ink);
             box-shadow: 0 4px 10px rgba(255, 112, 67, 0.3);
         }
 
@@ -1301,7 +1442,7 @@
             transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
             border: 1px solid rgba(215, 204, 200, 0.5);
             position: relative;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 4px 12px rgba(93, 64, 55, 0.04);
         }
 
         .lb-cell:active {
@@ -1413,7 +1554,7 @@
             border: 1px solid rgba(255, 255, 255, 0.6);
             margin-top: 0;
             padding: 0 10px;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.02);
+            box-shadow: inset 0 2px 10px rgba(93, 64, 55, 0.02);
         }
 
         /* [수정] 열렸을 때 패딩과 마진 적용 */
@@ -1455,7 +1596,7 @@
         .diet-day-col.header {
             background: #d7ccc8;
             color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            text-shadow: 0 1px 2px rgba(93, 64, 55, 0.1);
         }
 
         .diet-body-wrapper {
@@ -1497,7 +1638,7 @@
             align-items: center;
             /* 세로 중앙 정렬 */
             border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.08);
             line-height: 1.1;
         }
 
@@ -1534,7 +1675,7 @@
             font-size: 12px;
             font-weight: 800;
             color: #333;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.2);
             border: 1px solid rgba(0, 0, 0, 0.1);
             white-space: nowrap;
             cursor: pointer;
@@ -1546,24 +1687,26 @@
             transform: translateY(-57px) scale(1.05);
         }
 
+        /* 급구: 흰 알약 + 주황 테두리·맥박 + 진한 주황 글자(5.6:1) — 앱과 같은 모양.
+           주황 바탕에 흰 글자는 2.7:1 이라 지도 위에서 안 읽혔다 (docs/design-references.md U1) */
         .label.urgent {
-            background-color: var(--urgent-color);
-            color: #fff;
-            border: 2px solid #fff;
+            background-color: #fff;
+            color: var(--urgent-ink);
+            border: 2px solid var(--urgent-color);
             animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);
+                box-shadow: 0 0 0 0 rgba(255, 112, 67, 0.7);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(255, 71, 87, 0);
+                box-shadow: 0 0 0 10px rgba(255, 112, 67, 0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+                box-shadow: 0 0 0 0 rgba(255, 112, 67, 0);
             }
         }
 
@@ -1576,9 +1719,9 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             z-index: 200;
-            border-top-left-radius: 32px;
-            border-top-right-radius: 32px;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.08);
+            border-top-left-radius: var(--radius-sheet);
+            border-top-right-radius: var(--radius-sheet);
+            box-shadow: 0 -6px 28px rgba(93, 64, 55, 0.15);
             display: flex;
             flex-direction: column;
             transition: height 0.1s linear;
@@ -1587,6 +1730,7 @@
             border-top: 1px solid rgba(255, 255, 255, 0.8);
         }
 
+        /* 손잡이는 <button> — 화면 낭독기·키보드에 '닫기'로 읽힌다. 손가락 탭은 아무 일도 안 한다(쓸어내리기만) */
         .sheet-handle-area {
             width: 100%;
             padding: 16px 0 12px 0;
@@ -1595,12 +1739,24 @@
             cursor: grab;
             flex-shrink: 0;
             background: transparent;
+            border: 0;
+            font: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sheet-handle-area:focus-visible {
+            outline: 3px solid var(--nurungji-dark);
+            outline-offset: -3px;
+            border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
         }
 
         .sheet-handle {
+            display: block;
             width: 44px;
             height: 5px;
-            background: #e0e0e0;
+            background: var(--handle-color);
             border-radius: 3px;
         }
 
@@ -1622,7 +1778,7 @@
             background: #fff3e0;
             border: 1px solid #ffcc80;
             border-radius: 12px;
-            color: #e64a19;
+            color: var(--urgent-ink); /* #fff3e0 위 5.1:1 (예전 #e64a19 는 3.6:1) */
             font-size: 13px;
             font-weight: 700;
             display: flex;
@@ -1660,7 +1816,7 @@
             background: radial-gradient(circle farthest-corner at 28% 100%, #fcdf8f 0%, #fbd377 10%, #fa8e37 22%, #f73344 35%, transparent 65%), linear-gradient(145deg, #3051f1 10%, #c92bb7 70%);
             border-radius: 0.25em;
             position: relative;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 5px rgba(93, 64, 55, 0.15);
         }
 
         .instagram:before {
@@ -1849,7 +2005,7 @@
             font-weight: 700;
             line-height: 1.2;
             z-index: 5;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 4px rgba(93, 64, 55, 0.05);
             padding: 2px;
             overflow: hidden;
         }
@@ -1945,8 +2101,8 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             z-index: 300;
-            border-radius: 0 0 32px 32px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+            border-radius: 0 0 var(--radius-sheet) var(--radius-sheet);
+            box-shadow: 0 10px 40px rgba(93, 64, 55, 0.12);
             padding: 0;
             transform: translateY(-100%);
             transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2063,13 +2219,13 @@
             justify-content: center;
             cursor: grab;
             background: transparent;
-            border-radius: 0 0 32px 32px;
+            border-radius: 0 0 var(--radius-sheet) var(--radius-sheet);
         }
 
         .fs-handle {
             width: 44px;
             height: 5px;
-            background: #bdbdbd;
+            background: var(--handle-color);
             border-radius: 3px;
         }
 
@@ -2171,7 +2327,7 @@
             font-weight: 800;
             cursor: pointer;
             transition: transform 0.2s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(93, 64, 55, 0.3);
         }
 
         .btn-close {
@@ -2213,8 +2369,8 @@
             background: rgba(255, 255, 255, 0.85);
             width: 90%;
             max-width: 400px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-radius: var(--radius-dialog);
+            box-shadow: 0 10px 30px rgba(93, 64, 55, 0.1);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -2262,16 +2418,28 @@
         }
 
         /* 필수 필드 미입력 하이라이트 */
+        /* 입력 오류(js/field-error.js) — 칸 빨간 테두리 + 칸 바로 아래 이유 한 줄. 색만으로 알리지 않는다 */
         .reg-invalid,
+        .field-invalid,
         input.reg-invalid,
-        textarea.reg-invalid {
-            border-color: #d32f2f !important;
+        textarea.reg-invalid,
+        input.field-invalid,
+        textarea.field-invalid {
+            border-color: var(--error-color) !important;
             box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.12);
         }
-        .chip-group.reg-invalid {
+        .chip-group.reg-invalid,
+        .chip-group.field-invalid {
             outline: 2px solid rgba(211, 47, 47, 0.4);
             outline-offset: 3px;
             border-radius: 10px;
+        }
+        .field-error {
+            margin: 6px 2px 2px;
+            color: var(--error-color);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.4;
         }
 
         /* 선택 정보 접기 섹션 */
@@ -2686,13 +2854,13 @@
             background: var(--glass-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border-radius: 16px;
+            border-radius: 999px;
             box-shadow: var(--shadow);
         }
 
         .tab-btn {
             padding: 7px 22px;
-            border-radius: 13px;
+            border-radius: 999px;
             font-size: 14px;
             font-weight: 800;
             color: #9e8e84;
@@ -2732,8 +2900,8 @@
             background: rgba(255, 255, 255, 0.96);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
+            border-top-left-radius: var(--radius-sheet);
+            border-top-right-radius: var(--radius-sheet);
             box-shadow: 0 -8px 30px rgba(93, 64, 55, 0.15);
             display: flex;
             flex-direction: column;
@@ -3288,25 +3456,28 @@
         .share-menu-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.45);
+            background: var(--dim);
             z-index: 100000;
             display: flex;
-            align-items: flex-end;
+            align-items: center; /* 가운데 팝업 — 앱 share_menu.dart(Dialog)와 같은 모양. 상세 시트 위에 시트를 겹치지 않는다 */
             justify-content: center;
+            padding: 24px 36px;
         }
 
         .share-menu {
             width: 100%;
-            max-width: 480px;
+            max-width: 400px;
+            max-height: 100%;
+            overflow-y: auto;
             background: #fff;
-            border-radius: 24px 24px 0 0;
-            padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
-            animation: shareMenuUp 0.2s ease;
+            border-radius: var(--radius-dialog);
+            padding: 18px 18px 10px;
+            box-shadow: var(--shadow);
+            animation: shareMenuIn 0.18s ease;
         }
 
-        @keyframes shareMenuUp {
-            from { transform: translateY(24px); opacity: 0.5; }
+        @keyframes shareMenuIn {
+            from { transform: scale(0.96); opacity: 0; }
             to { transform: none; opacity: 1; }
         }
 

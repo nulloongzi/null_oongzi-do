@@ -74,14 +74,45 @@ window.loginWithGoogle = async function () {
         }
     } catch (error) {
         if (window.hideAuthLoading) window.hideAuthLoading();
-        alert(window.t('au_login_fail') + error.message);
+        console.warn('로그인 실패:', error); window.showToast(window.t('au_login_fail'));
     }
 };
 
+// 이메일 로그인·가입 폼: 빈 칸 → 그 칸 아래에 표시(js/field-error.js)
+function checkEmailForm(email, pw) {
+    window.clearFieldError('emailInput'); // 다시 누르면 지난 표시부터 지운다
+    window.clearFieldError('pwInput');
+    if (!email) { window.fieldError('emailInput', window.t('au_err_email_empty')); return false; }
+    if (!pw) { window.fieldError('pwInput', window.t('au_err_pw_empty')); return false; }
+    return true;
+}
+
+// Firebase 오류 코드 → 사람이 읽는 말. 칸에 붙일 수 있으면 그 칸 아래에, 아니면 토스트로.
+// 원문(e.message, 영어 코드)은 화면에 내지 않는다
+function showEmailAuthError(e) {
+    console.warn('이메일 로그인/가입 실패:', e);
+    var code = (e && e.code) || '';
+    var map = {
+        'auth/invalid-email': ['emailInput', 'au_err_email_invalid'],
+        'auth/email-already-in-use': ['emailInput', 'au_err_in_use'],
+        'auth/user-not-found': ['pwInput', 'au_err_wrong'],
+        'auth/wrong-password': ['pwInput', 'au_err_wrong'],
+        'auth/invalid-credential': ['pwInput', 'au_err_wrong'],
+        'auth/invalid-login-credentials': ['pwInput', 'au_err_wrong'],
+        'auth/missing-password': ['pwInput', 'au_err_pw_empty'],
+        'auth/weak-password': ['pwInput', 'au_err_weak_pw'],
+        'auth/too-many-requests': [null, 'au_err_too_many'],
+        'auth/network-request-failed': [null, 'au_err_network']
+    };
+    var hit = map[code];
+    if (hit && hit[0]) window.fieldError(hit[0], window.t(hit[1]));
+    else window.showToast(window.t(hit ? hit[1] : 'au_login_fail'));
+}
+
 window.registerWithEmail = async function () {
-    var email = document.getElementById('emailInput').value;
+    var email = document.getElementById('emailInput').value.trim();
     var pw = document.getElementById('pwInput').value;
-    if (!email || !pw) { alert(window.t('au_enter_info')); return; }
+    if (!checkEmailForm(email, pw)) return;
     // 누룽지도 계정 지연 시 이스터에그: 노란 습기(스팀) 레이어
     if (window.showAuthLoadingDelayed) {
         window.showAuthLoadingDelayed(800, 'auth_signing_in', 'auth_signing_in_desc', 'rice');
@@ -102,14 +133,14 @@ window.registerWithEmail = async function () {
         }
     } catch (e) {
         if (window.hideAuthLoading) window.hideAuthLoading();
-        alert(e.message);
+        showEmailAuthError(e);
     }
 };
 
 window.loginWithEmail = async function () {
-    var email = document.getElementById('emailInput').value;
+    var email = document.getElementById('emailInput').value.trim();
     var pw = document.getElementById('pwInput').value;
-    if (!email || !pw) { alert(window.t('au_enter_info')); return; }
+    if (!checkEmailForm(email, pw)) return;
     if (window.showAuthLoadingDelayed) {
         window.showAuthLoadingDelayed(800, 'auth_signing_in', 'auth_signing_in_desc', 'rice');
     }
@@ -118,17 +149,18 @@ window.loginWithEmail = async function () {
         if (window.track) window.track('login', { method: 'email' });
     } catch (e) {
         if (window.hideAuthLoading) window.hideAuthLoading();
-        alert(e.message);
+        showEmailAuthError(e);
     }
 };
 
-window.logout = function () {
-    if (confirm(window.t('au_logout_confirm'))) {
-        firebase.auth().signOut().then(function () {
-            document.getElementById('profileOverlay').style.display = 'none';
-            document.getElementById('lunchboxOverlay').style.display = 'none';
-        });
-    }
+window.logout = async function () {
+    var ok = await window.nzConfirm({ title: window.t('au_logout_confirm'), confirm: window.t('au_logout_btn') });
+    if (!ok) return;
+    firebase.auth().signOut().then(function () {
+        document.getElementById('profileOverlay').style.display = 'none';
+        document.getElementById('lunchboxOverlay').style.display = 'none';
+        if (window.backNav) { window.backNav.closed('profile'); window.backNav.closed('lunchbox'); }
+    });
 };
 
 window.updateProfileUI = function (isLoggedIn) {
@@ -183,7 +215,7 @@ window.loadOrCreateUserProfile = async function (user) {
             await window.firebaseSetDoc(userRef, publicData);
             await window.firebaseSetDoc(privateRef, privateData);
             window.currentProfileData = Object.assign({}, publicData, privateData);
-            alert(window.tf('au_welcome', { name: newNameObj.full }));
+            window.showToast(window.tf('au_welcome', { name: newNameObj.full }));
         } else {
             // 기존 가입자: 공개 + 비공개 머지, 필요 시 lazy migration
             var publicData2 = userSnap.data();
@@ -323,7 +355,7 @@ window.checkClubClaims = async function () {
         var d = (res && res.data) || {};
 
         if (d.status === 'requested') {
-            alert(window.t('claim_requested'));
+            window.showToast(window.t('claim_requested'));
             if (window.track) window.track('club_claim_requested', { count: (d.matches || []).length });
             return;
         }
@@ -336,10 +368,14 @@ window.checkClubClaims = async function () {
         // 시트에 있다"를 알 수 있게 된다(이메일 가입은 검증이 없으므로 남의 주소로
         // 떠볼 수 있다). 지금은 덜 새는 쪽을 택했다.
         if (d.status === 'needs_verification') {
-            if (confirm(window.t('claim_needs_verification'))) {
+            if (await window.nzConfirm({
+                title: window.t('claim_needs_verification'),
+                confirm: window.t('claim_send_btn'),
+                cancel: window.t('claim_later')
+            })) {
                 try {
                     await user.sendEmailVerification();
-                    alert(window.t('claim_verify_sent'));
+                    window.showToast(window.t('claim_verify_sent'));
                 } catch (e) {
                     console.warn('인증 메일 재발송 실패:', e && e.message);
                 }

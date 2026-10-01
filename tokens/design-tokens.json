@@ -1,0 +1,35 @@
+{
+  "$comment": "누룽지 디자인 토큰 — 웹·앱의 유일한 원본. 고친 뒤 `npm run tokens` 로 css/main.css :root 를, `npm run tokens -- --dart ../null_oongzi-do-app/lib/design_tokens.g.dart` 로 앱 파일을 다시 만든다. 규칙과 쓰임은 docs/design-system.md.",
+  "color": [
+    { "css": "--white", "value": "#ffffff", "note": "입력창/카드 표면" },
+    { "css": "--nurungji-yellow", "dart": "yellow", "value": "#fac710", "note": "메인 브랜드색 · CTA" },
+    { "css": "--nurungji-brown", "dart": "brown", "value": "#8d6e63", "note": "보조 텍스트 · 아웃라인" },
+    { "css": "--nurungji-dark", "dart": "dark", "value": "#4e342e", "note": "제목/본문 텍스트" },
+    { "css": "--nurungji-bg", "dart": "bg", "value": "#fff8e1", "note": "기본 배경(크림)" },
+    { "css": "--nurungji-light", "dart": "light", "value": "#fffde7", "note": "카드/시트 배경" },
+    { "css": "--urgent-color", "dart": "urgent", "value": "#ff7043", "note": "급구/주의 전용" },
+    { "css": "--urgent-ink", "dart": "urgentInk", "value": "#bf360c", "note": "급구 글자·흰 글자 바탕 (대비 5.6:1 — #ff7043 위 흰 글자는 2.7:1 이라 금지)" },
+    { "css": "--today-color", "dart": "today", "value": "#d84315", "note": "\"오늘\" 강조" },
+    { "css": "--error-color", "dart": "error", "value": "#d32f2f", "note": "입력 오류(칸 테두리·칸 아래 글자). 흰 바탕 5.0:1" },
+    { "css": "--chip-bg", "dart": "chipBg", "value": "#f0ece2", "note": "칩 바탕" },
+    { "css": "--chip-fg", "dart": "chipFg", "value": "#6d6258", "note": "칩 글자" },
+    { "css": "--pickup-teal", "dart": "teal", "value": "#13a89e", "note": "픽업 핀" },
+    { "css": "--handle-color", "dart": "handle", "value": "#d8cfc6", "note": "시트 드래그 핸들" },
+    { "css": "--glass-bg", "dart": "glass", "value": "rgba(255, 255, 255, 0.85)", "note": "글래스 표면" },
+    { "css": "--glass-bg-darker", "dart": "glassCream", "value": "rgba(255, 248, 225, 0.85)", "note": "크림 글래스 표면" },
+    { "css": "--dim", "dart": "dim", "value": "rgba(93, 64, 55, 0.35)", "note": "모달 딤(검정 금지)" }
+  ],
+  "shadow": [
+    { "css": "--shadow", "dart": "md", "dartColor": "shadow", "y": 8, "blur": 32, "color": "rgba(93, 64, 55, 0.15)", "note": "기본 그림자(갈색 — 검정 금지)" },
+    { "css": "--shadow-sm", "dart": "sm", "dartColor": "shadowSm", "y": 4, "blur": 12, "color": "rgba(93, 64, 55, 0.12)", "note": "알약·작은 요소" }
+  ],
+  "radius": [
+    { "css": "--radius-sheet", "dart": "sheet", "value": 28, "note": "카드/바텀시트" },
+    { "css": "--radius-button", "dart": "button", "value": 14, "note": "버튼" },
+    { "css": "--radius-input", "dart": "input", "value": 12, "note": "입력창" },
+    { "css": "--radius-dialog", "dart": "dialog", "value": 20, "note": "가운데 팝업(공유·등록·신고)" },
+    { "css": "--radius-toast", "dart": "toast", "value": 12, "note": "토스트(웹 showToast · 앱 SnackBar)" },
+    { "css": "--radius-fab", "dart": "fab", "value": 20, "note": "지도 위 버튼 50px" },
+    { "css": "--radius-fab-profile", "dart": "fabProfile", "value": 24, "note": "🍚 버튼 55px" }
+  ]
+}

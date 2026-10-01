@@ -50,6 +50,17 @@
 
     // 필터 상태를 주소창에 반영 → 그대로 복사해 보내면 상대도 같은 목록을 본다.
     // (외국인에게 "서울 ∧ English OK" 목록을 링크 하나로 건네는 게 이 기능의 핵심)
+    // 클립보드를 못 쓰면 링크를 골라 둔 채 보여 주고 직접 복사하게 한다(예전 prompt 대체)
+    function showCopyManually(url) {
+        window.nzPrompt({
+            title: window.t('copy_manual_title'),
+            message: window.t('copy_manual_body'),
+            fields: [{ name: 'url', value: url, readonly: true }],
+            confirm: window.t('dlg_close'),
+            hideCancel: true
+        });
+    }
+
     window.syncPickupUrl = function () {
         if (window.currentTab !== 'pickup') return;
         try {
@@ -58,7 +69,7 @@
             if (window.pkRegion) p.set('region', window.pkRegion);
             if (window.pkLevel) p.set('level', window.pkLevel);
             if (window.pkEnglishOnly) p.set('english', '1');
-            window.history.replaceState(null, '', '?' + p.toString());
+            window.history.replaceState(window.history.state, '', '?' + p.toString()); // state 유지(js/back-nav.js)
         } catch (e) { /* 히스토리 조작 실패는 무시 */ }
     };
 
@@ -82,11 +93,11 @@
         url = tag(url, 'copy');
         if (navigator.clipboard) {
             navigator.clipboard.writeText(url).then(function () {
-                alert(window.t('pk_list_link_copied'));
-            }).catch(function () { prompt(window.t('pk_list_link_copied'), url); });
+                window.showToast(window.t('pk_list_link_copied'));
+            }).catch(function () { showCopyManually(url); });
             return;
         }
-        prompt(window.t('pk_list_link_copied'), url);
+        showCopyManually(url);
     };
 
     // 동호회(노랑)와 구분되는 티얼 핀 (전용 에셋 없이 SVG data URI)

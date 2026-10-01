@@ -39,7 +39,7 @@ window.downloadImage = function () {
         link.click();
         document.body.removeChild(link);
     } else {
-        alert(window.t('no_image'));
+        window.showToast(window.t('no_image'));
     }
 };
 
@@ -75,7 +75,7 @@ window.initKakaoShare = function () {
 };
 
 function copyShareLink(url) {
-    function done() { alert(window.t('link_copied')); }
+    function done() { window.showToast(window.t('link_copied')); }
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done).catch(function () { fallbackCopy(url); done(); });
     } else {
@@ -683,7 +683,7 @@ window.generateStoryCard = function (data, format) {
     var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     return fontsReady.catch(function () { }).then(function () {
         return Promise.all([
-            storyLoadImage('./nulloongzido logo_512px.png'),
+            storyLoadImage('./assets/logo-512.png'),
             storyFindNearestStation(data.lat, data.lng)
         ]);
     }).then(function (res) {
@@ -834,7 +834,7 @@ window.shareFeedCard = function (kind, item) {
         return 'feed_card';
     }).catch(function (e) {
         console.error('피드 카드 생성 실패:', e);
-        alert(window.t('sh_run_fail') || '');
+        window.showToast(window.t('sh_run_fail'));
         return 'fallback';
     });
 };
@@ -867,7 +867,8 @@ function showStoryCoach(onGo) {
     var T = window.t || function (k, f) { return f || k; };
     var ov = document.createElement('div');
     ov.className = 'share-menu-overlay';
-    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    function hide() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    function close() { hide(); if (window.backNav) window.backNav.closed('storyCoach'); }
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var box = document.createElement('div');
     box.className = 'share-menu';
@@ -879,9 +880,11 @@ function showStoryCoach(onGo) {
     var skip = document.createElement('button'); skip.className = 'share-menu-cancel'; skip.textContent = T('sh_menu_cancel'); skip.onclick = close; box.appendChild(skip);
     ov.appendChild(box);
     document.body.appendChild(ov);
+    if (window.backNav) window.backNav.open('storyCoach', hide); // 폰 뒤로가기로 닫기
 }
 
-// 통합 공유 메뉴(바텀 액션시트): 인스타 스토리 / 카카오톡 / 링크복사 / 다른앱.
+// 통합 공유 메뉴(가운데 팝업 — 앱 share_menu.dart 와 같은 모양): 인스타 스토리 / 카카오톡 / 링크복사 / 다른앱.
+// 예전엔 하단 시트라 상세 시트 위에 시트가 겹쳤다(design-references U11).
 // kind: 'club' | 'spot', item: 해당 객체.
 window.openShareMenu = function (kind, item) {
     if (!item || !item.id) return;
@@ -891,7 +894,8 @@ window.openShareMenu = function (kind, item) {
 
     var overlay = document.createElement('div');
     overlay.className = 'share-menu-overlay';
-    function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    function hide() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    function close() { hide(); if (window.backNav) window.backNav.closed('share'); }
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
 
     var menu = document.createElement('div');
@@ -944,4 +948,6 @@ window.openShareMenu = function (kind, item) {
 
     overlay.appendChild(menu);
     document.body.appendChild(overlay);
+    // 폰 뒤로가기 = 공유 창만 닫기(뒤의 상세 시트는 그대로). 한 번 더 누르면 상세가 닫힌다
+    if (window.backNav) window.backNav.open('share', hide);
 };

@@ -30,7 +30,7 @@
          dynamic-subset 이면 아직 안 받은 글자가 카드에 대체 폰트로 찍힌다. 규칙: docs/design-system.md §1 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable.css">
     <!-- ?v=N: JS/CSS 수정 후 배포할 때마다 버전을 올려 캐시 무효화 (returning user 혼합버전 방지) -->
-    <link rel="stylesheet" href="css/main.css?v=43">
+    <link rel="stylesheet" href="css/main.css?v=44">
 
     <!-- Firebase compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -40,10 +40,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
-    <script src="js/firebase-init.js?v=48"></script>
-    <script src="js/dom-utils.js?v=48"></script>
+    <script src="js/firebase-init.js?v=49"></script>
+    <script src="js/dom-utils.js?v=49"></script>
+    <script src="js/back-nav.js?v=49"></script>
+    <script src="js/toast.js?v=49"></script>
+    <script src="js/field-error.js?v=49"></script>
+    <script src="js/dialog.js?v=49"></script>
     <!-- 소셜 로그인 진행 오버레이 — 첫 페인트 전에 상태를 잡아야 해서 head에서 로드 -->
-    <script src="js/auth-loading.js?v=48"></script>
+    <script src="js/auth-loading.js?v=49"></script>
 
 
     <!-- QR 코드 (인스타 스토리 카드의 ?spot= 딥링크) — 폰트와 동일 CDN(jsDelivr) 핀.
@@ -90,15 +94,16 @@
         </div>
     </div>
 
-    <div id="fabLunchbox" class="fab-lunchbox" onclick="openLunchbox()">🍱</div>
-    <div id="fabProfile" class="fab-profile" onclick="toggleProfileCard()">🍚</div>
+    <!-- 지도 위 버튼: 이모지만 보이므로 aria-label 로 이름을 준다(data-i18n-aria → KO/EN). 앱 _fab 의 Semantics(label) 와 같은 키 -->
+    <button type="button" id="fabLunchbox" class="fab-lunchbox" aria-label="도시락" data-i18n-aria="fab_lunchbox" onclick="openLunchbox()">🍱</button>
+    <button type="button" id="fabProfile" class="fab-profile" aria-label="프로필" data-i18n-aria="fab_profile" onclick="toggleProfileCard()">🍚</button>
 
     <!-- 픽업 탭에선 fabClubRegister 자리를 fabPickupCreate 가 물려받는다 (tabs.js applyChrome).
          그룹 전체는 body.pickup-mode 일 때 목록 패널 위로 올라간다. -->
     <div class="fab-group">
-        <div id="fabClubRegister" class="fab-btn fab-urgent" title="팀 등록하기" onclick="openRegistrationModal(false)">📝</div>
-        <div id="fabPickupCreate" class="fab-btn fab-urgent" title="픽업 등록" style="display:none;" onclick="window.openPickupCreateModal && window.openPickupCreateModal()">🏐</div>
-        <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
+        <button type="button" id="fabClubRegister" class="fab-btn fab-urgent" aria-label="팀 등록하기" data-i18n-aria="fab_register" onclick="openRegistrationModal(false)">📝</button>
+        <button type="button" id="fabPickupCreate" class="fab-btn fab-urgent" aria-label="픽업 등록" data-i18n-aria="fab_pickup_create" style="display:none;" onclick="window.openPickupCreateModal && window.openPickupCreateModal()">🏐</button>
+        <button type="button" class="fab-btn" aria-label="내 위치" data-i18n-aria="fab_my_location" onclick="moveToMyLocation()">📍</button>
     </div>
 
     <!-- 픽업 게임 리스트 패널 (픽업 탭에서만 표시) -->
@@ -161,7 +166,7 @@
             <div id="pcProviderMark" class="pc-provider-mark" aria-hidden="true"></div>
             <div id="pcRiceWatermark" class="pc-rice-type"></div>
             <div id="loginSection" class="login-section">
-                <div id="regLoginHint" class="reg-login-hint" style="display:none;" data-i18n="reg_login_hint">팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록됩니다.</div>
+                <div id="regLoginHint" class="reg-login-hint" style="display:none;" data-i18n="reg_login_hint">팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록돼요.</div>
                 <button id="btnGoogleLogin" class="btn-google-login" onclick="loginWithGoogle()">
                     <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="G">
                     <span data-i18n="login_google">구글로 간편 로그인</span>
@@ -200,7 +205,6 @@
         </div>
         <div class="profile-card friends-card" id="friendsCard" hidden onclick="event.stopPropagation()">
             <div id="friendsBody"></div>
-            <div class="fr-toast" id="friendsToast" role="status" hidden></div>
         </div>
         </div>
     </div>
@@ -262,8 +266,9 @@
     </div>
 
     <!-- 바텀시트 (클럽 상세) -->
-    <div id="bottomSheet" class="bottom-sheet">
-        <div class="sheet-handle-area" id="sheetHandle"><div class="sheet-handle"></div></div>
+    <div id="bottomSheet" class="bottom-sheet" inert aria-hidden="true">
+        <!-- 손잡이: 손가락으론 쓸어내려 닫기(드래그), 키보드·화면 낭독기로는 누르면 닫기(club-detail.js) -->
+        <button type="button" class="sheet-handle-area" id="sheetHandle" aria-label="닫기" data-i18n-aria="sheet_close" data-i18n-aria-only><span class="sheet-handle"></span></button>
         <div class="sheet-content-wrapper">
             <div id="urgentArea"></div>
             <div class="sheet-header">
@@ -314,7 +319,7 @@
             </div>
             <div class="reg-modal-body">
                 <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 10px 15px; margin-bottom: 20px; font-size: 13px; color: #555; line-height: 1.4; border-radius: 4px;" data-i18n-html="reg_tip">
-                    <strong>tip:</strong> 요일별로 체육관 위치가 다른 경우, 정확한 핀 표시를 위해 <strong>장소별로 각각 등록</strong> 부탁드립니다!
+                    <strong>tip:</strong> 요일마다 체육관이 다르면 <strong>장소마다 따로 등록</strong>해 주세요. 그래야 지도 핀이 정확해요.
                 </div>
                 <div id="regError" class="reg-error" role="alert" aria-live="assertive" style="display:none;"></div>
                 <div class="reg-form-group">
@@ -380,7 +385,7 @@
                 <div id="adminOwnerGroup" class="reg-form-group" style="display:none; background:rgba(244,67,54,0.05); border-left:3px solid #d32f2f; padding:10px 12px; border-radius:4px;">
                     <label style="color:#d32f2f; font-weight:600;">⚠️ 관리자 전용: 소유자 지정</label>
                     <input type="text" id="regOwnerEmail" placeholder="예: paul@example.com (비우면 변경 안 됨)">
-                    <div style="font-size:12px; color:#666; margin-top:4px;">이메일로 사용자를 찾아 팀 소유자로 지정합니다. 사용자는 먼저 로그인해야 합니다.</div>
+                    <div style="font-size:12px; color:#666; margin-top:4px;">이메일로 찾은 사람을 팀 소유자로 정해요. 그 사람이 먼저 한 번 로그인해 있어야 해요.</div>
                 </div>
                 <button id="regSubmitBtn" class="reg-submit-btn" onclick="submitRegistration()" data-i18n="reg_submit">등록하기</button>
             </div>
@@ -398,7 +403,7 @@
             </div>
             <div class="reg-modal-body">
                 <div id="reportTarget" class="rp-target"></div>
-                <div class="rp-intro" data-i18n="rp_intro">확인 후 영업일 기준 7일 이내에 처리 결과를 반영합니다. 신고자 정보는 남기지 않습니다.</div>
+                <div class="rp-intro" data-i18n="rp_intro">확인하고 영업일 7일 안에 반영해요. 신고한 사람의 정보는 남기지 않아요.</div>
                 <div id="reportError" class="reg-error" role="alert" aria-live="assertive" style="display:none;"></div>
                 <div class="reg-form-group">
                     <label data-i18n="rp_reason_label">어떤 문제인가요? (필수)</label>
@@ -452,7 +457,7 @@
                     </div>
                     <!-- 선택한 칩의 설명 (pickup-host.js가 채움) -->
                     <div class="reg-form-hint" id="pkLevelDesc"></div>
-                    <div class="reg-form-hint" data-i18n="pk_level_hint">애매하면 낮은 쪽을 골라주세요. 남과 비교하지 말고 설명 기준으로요.</div>
+                    <div class="reg-form-hint" data-i18n="pk_level_hint">애매하면 낮은 쪽을 골라 주세요. 남과 비교하지 말고 설명 기준으로요.</div>
                     <div class="chip-group reg-target-chips" style="margin-top:8px;">
                         <div class="chip pk-chip" id="pkBeginnerChip" onclick="toggleRegChip(this)" data-i18n="pk_f_beginner">초보 환영</div>
                         <div class="chip pk-chip" id="pkEnglishChip" onclick="toggleRegChip(this)" data-i18n="pk_f_english">🌐 외국인 환영 (English OK)</div>
@@ -513,7 +518,7 @@
                     <div class="chip-group reg-target-chips">
                         <div class="chip pk-chip" id="pkCuratedChip" onclick="toggleRegChip(this)" data-i18n="pk_f_curated_chip">🔎 공개 정보로 대신 등록</div>
                     </div>
-                    <div class="reg-form-hint" data-i18n="pk_f_curated_hint">켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 표시됩니다.</div>
+                    <div class="reg-form-hint" data-i18n="pk_f_curated_hint">켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 보여요. 남의 크루를 대신 올릴 때만 켜 주세요.</div>
                 </div>
                 <div class="reg-form-group">
                     <label data-i18n="pk_f_reel">릴스/게시물 링크 (선택)</label>
@@ -539,17 +544,17 @@
 
     <!-- Map Picker -->
     <div id="mapPickerOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; pointer-events: none;">
-        <img src="./assets/marker_yellow.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); width: 40px; opacity: 0.6; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));">
+        <img src="./assets/marker_yellow.png" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); width: 40px; opacity: 0.6; filter: drop-shadow(0 5px 5px rgba(93,64,55,0.5));">
         <!-- 찾은 위치 확인 패널. 등록/수정에서 주소를 새로 지오코딩했을 때만 뜬다.
              예전엔 조용히 저장해서, 엉뚱한 곳에 찍혀도 아무도 몰랐다. -->
-        <div id="mpConfirmPanel" style="display:none;position:absolute;top:0;left:0;right:0;background:rgba(255,248,225,0.97);padding:14px 18px;box-shadow:0 2px 12px rgba(0,0,0,0.15);pointer-events:auto;">
+        <div id="mpConfirmPanel" style="display:none;position:absolute;top:0;left:0;right:0;background:rgba(255,248,225,0.97);padding:14px 18px;box-shadow:0 2px 12px rgba(93,64,55,0.15);pointer-events:auto;">
             <div style="font-weight:800;color:var(--nurungji-dark);font-size:16px;" data-i18n="mp_confirm_title">여기가 맞나요?</div>
             <div id="mpMatched" style="font-size:13px;color:#6d4c41;margin-top:4px;line-height:1.5;"></div>
             <div style="font-size:12px;color:#8d6e63;margin-top:4px;" data-i18n="mp_adjust_hint">지도를 움직여 정확한 위치로 맞출 수 있어요.</div>
         </div>
         <div style="position: absolute; bottom: 40px; left: 0; right: 0; display: flex; justify-content: center; gap: 15px; pointer-events: auto;">
-            <button onclick="confirmMapPicker()" style="padding: 15px 30px; background: var(--nurungji-brown); color: white; border: none; border-radius: 30px; font-weight: 800; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 16px; cursor: pointer;" id="mpConfirmBtn" data-i18n="mp_confirm">이 위치로 주소 설정</button>
-            <button onclick="cancelMapPicker()" style="padding: 15px 25px; background: #fff; color: #555; border: none; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 15px; cursor: pointer;" data-i18n="mp_cancel">취소</button>
+            <button onclick="confirmMapPicker()" style="padding: 15px 30px; background: var(--nurungji-brown); color: white; border: none; border-radius: 30px; font-weight: 800; box-shadow: 0 5px 15px rgba(93,64,55,0.2); font-size: 16px; cursor: pointer;" id="mpConfirmBtn" data-i18n="mp_confirm">이 위치로 주소 설정</button>
+            <button onclick="cancelMapPicker()" style="padding: 15px 25px; background: #fff; color: #555; border: none; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(93,64,55,0.1); font-size: 15px; cursor: pointer;" data-i18n="mp_cancel">취소</button>
         </div>
     </div>
 
@@ -560,30 +565,30 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
-    <script src="js/i18n.js?v=48"></script>
-    <script src="js/data.js?v=48"></script>
-    <script src="js/pickup-filter.js?v=48"></script>
-    <script src="js/pickup-data.js?v=48"></script>
-    <script src="js/profile.js?v=48"></script>
-    <script src="js/friends.js?v=48"></script>
-    <script src="js/friends-share.js?v=48"></script>
-    <script src="js/auth.js?v=48"></script>
-    <script src="js/social-auth.js?v=48"></script>
-    <script src="js/lunchbox.js?v=48"></script>
-    <script src="js/share.js?v=48"></script>
-    <script src="js/my-card.js?v=48"></script>
-    <script src="js/insta-embed.js?v=48"></script>
-    <script src="js/map-core.js?v=48"></script>
-    <script src="js/data-trust.js?v=48"></script>
-    <script src="js/club-detail.js?v=48"></script>
-    <script src="js/filters.js?v=48"></script>
-    <script src="js/registration.js?v=48"></script>
-    <script src="js/verification.js?v=48"></script>
-    <script src="js/pickup-ui.js?v=48"></script>
-    <script src="js/tabs.js?v=48"></script>
-    <script src="js/pickup-host.js?v=48"></script>
-    <script src="js/pickup-detail.js?v=48"></script>
-    <script src="js/app.js?v=48"></script>
-    <script src="js/app-banner.js?v=48"></script>
+    <script src="js/i18n.js?v=49"></script>
+    <script src="js/data.js?v=49"></script>
+    <script src="js/pickup-filter.js?v=49"></script>
+    <script src="js/pickup-data.js?v=49"></script>
+    <script src="js/profile.js?v=49"></script>
+    <script src="js/friends.js?v=49"></script>
+    <script src="js/friends-share.js?v=49"></script>
+    <script src="js/auth.js?v=49"></script>
+    <script src="js/social-auth.js?v=49"></script>
+    <script src="js/lunchbox.js?v=49"></script>
+    <script src="js/share.js?v=49"></script>
+    <script src="js/my-card.js?v=49"></script>
+    <script src="js/insta-embed.js?v=49"></script>
+    <script src="js/map-core.js?v=49"></script>
+    <script src="js/data-trust.js?v=49"></script>
+    <script src="js/club-detail.js?v=49"></script>
+    <script src="js/filters.js?v=49"></script>
+    <script src="js/registration.js?v=49"></script>
+    <script src="js/verification.js?v=49"></script>
+    <script src="js/pickup-ui.js?v=49"></script>
+    <script src="js/tabs.js?v=49"></script>
+    <script src="js/pickup-host.js?v=49"></script>
+    <script src="js/pickup-detail.js?v=49"></script>
+    <script src="js/app.js?v=49"></script>
+    <script src="js/app-banner.js?v=49"></script>
 </body>
 </html>

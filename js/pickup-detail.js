@@ -31,11 +31,16 @@
         var c = document.getElementById('pickupSheetContent');
         if (c) c.scrollTop = 0;
     }
-    window.closePickupSheet = function () {
+    // 뒤로가기로 닫힐 때(back-nav 가 칸을 이미 뺐다) — 목록으로 돌아가기만
+    function hideDetail() {
         var p = panel();
         if (p) p.classList.remove('detail');
         document.body.classList.remove('pickup-detail');
         window.currentPickupId = null;
+    }
+    window.closePickupSheet = function () {
+        hideDetail();
+        if (window.backNav) window.backNav.closed('pickup');
     };
 
     window.openPickupDetail = function (id, opts) {
@@ -64,6 +69,8 @@
 
         renderSheet(spot);
         openSheet();
+        // 폰 뒤로가기 = 목록으로 (js/back-nav.js). 언어 전환 재렌더(silent)는 칸을 더 넣지 않는다
+        if (!opts.silent && window.backNav) window.backNav.open('pickup', hideDetail);
     };
 
     function infoRow(icon, textOrNode) {
@@ -214,16 +221,16 @@
         }
     }
 
-    function pkDelete(id) {
+    async function pkDelete(id) {
         var g = window.findPickupGame(id);
         if (!g || !window.canModifyPickup(g)) return;
-        if (!confirm(t('pk_delete_confirm'))) return;
+        if (!(await window.nzConfirm({ title: t('pk_delete_confirm'), confirm: t('pk_delete_btn'), danger: true }))) return;
         window.deletePickupGame(id).then(function () {
-            alert(t('pk_deleted'));
+            window.showToast(t('pk_deleted'));
             window.closePickupSheet();
             if (window.renderPickupMarkers) window.renderPickupMarkers();
             if (window.renderPickupList) window.renderPickupList();
-        }).catch(function (e) { alert(e.message || e); });
+        }).catch(function (e) { console.warn('픽업 삭제 실패:', e); window.showToast(t('pk_delete_error')); });
     }
 
     // 언어 전환 시 열린 상세 재렌더

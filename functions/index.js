@@ -300,7 +300,7 @@ exports.onVerificationCreated = onDocumentCreated(
         try {
             var templateObject = {
                 object_type: "text",
-                text: "[인증 신청] " + data.club_name + "\n\n새로운 팀 인증 신청이 도착했습니다.\n\n카카오톡 챗봇에서 '인증관리'를 입력하여 사진 확인 및 승인/거절을 진행해주세요.",
+                text: "[인증 신청] " + data.club_name + "\n\n새 팀 인증 신청이 왔어요.\n\n카카오톡 챗봇에서 '인증관리'를 입력해 사진을 보고 승인하거나 거절해 주세요.",
                 link: pure.kakaoLink("club", data.club_id)
             };
             var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
@@ -323,19 +323,19 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
     var token = req.query.token;
 
     if (!requestId || !action || !token) {
-        res.status(400).send("잘못된 요청입니다.");
+        res.status(400).send("요청을 읽지 못했어요.");
         return;
     }
 
     var secret = APP_SECRET.value();
     var expectedToken = generateToken(secret, requestId, action);
     if (token !== expectedToken) {
-        res.status(403).send("유효하지 않은 토큰입니다.");
+        res.status(403).send("이 링크로는 처리할 수 없어요. 카카오톡 알림의 링크로 다시 열어 주세요.");
         return;
     }
 
     if (action !== "approve" && action !== "reject") {
-        res.status(400).send("잘못된 액션입니다.");
+        res.status(400).send("알 수 없는 동작이에요.");
         return;
     }
 
@@ -344,14 +344,14 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
         var requestSnap = await requestRef.get();
 
         if (!requestSnap.exists) {
-            res.status(404).send(renderResultPage("오류", "해당 인증 요청을 찾을 수 없습니다."));
+            res.status(404).send(renderResultPage("오류", "이 인증 요청을 찾지 못했어요."));
             return;
         }
 
         var requestData = requestSnap.data();
 
         if (requestData.status !== "pending") {
-            res.send(renderResultPage("이미 처리됨", "이 인증 요청은 이미 " + requestData.status + " 처리되었습니다."));
+            res.send(renderResultPage("이미 처리됨", "이 인증 요청은 이미 " + requestData.status + " 처리됐어요."));
             return;
         }
 
@@ -366,11 +366,11 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
                     });
                     res.send(renderResultPage(
                         "없어진 팀",
-                        (requestData.club_name || "") + " 팀이 이미 삭제되어 요청을 거절 처리했습니다."
+                        (requestData.club_name || "") + " 팀이 이미 지워져서 요청을 거절했어요."
                     ));
                     return;
                 }
-                res.status(500).send(renderResultPage("오류", "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
+                res.status(500).send(renderResultPage("오류", "처리하지 못했어요. 잠시 후 다시 해 주세요."));
                 return;
             }
             await requestRef.update({
@@ -378,17 +378,17 @@ exports.verificationAction = onRequest({ invoker: "public", secrets: [APP_SECRET
                 reviewed_at: admin.firestore.FieldValue.serverTimestamp()
             });
             await grantClubAdmin(requestData.club_id, requestData.requested_by);
-            res.send(renderResultPage("승인 완료 ✅", requestData.club_name + " 팀의 인증이 승인되었습니다."));
+            res.send(renderResultPage("승인 완료 ✅", requestData.club_name + " 팀의 인증을 승인했어요."));
         } else {
             await requestRef.update({
                 status: "rejected",
                 reviewed_at: admin.firestore.FieldValue.serverTimestamp()
             });
-            res.send(renderResultPage("거절 완료", requestData.club_name + " 팀의 인증이 거절되었습니다."));
+            res.send(renderResultPage("거절 완료", requestData.club_name + " 팀의 인증을 거절했어요."));
         }
     } catch (error) {
         console.error("인증 처리 오류:", error);
-        res.status(500).send(renderResultPage("오류", "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
+        res.status(500).send(renderResultPage("오류", "처리하지 못했어요. 잠시 후 다시 해 주세요."));
     }
 });
 
@@ -417,7 +417,7 @@ exports.chatbotPending = onRequest(CHATBOT_OPTS, async function (req, res) {
             res.json({
                 version: "2.0",
                 template: {
-                    outputs: [{ simpleText: { text: "대기 중인 인증 요청이 없습니다. ✅" } }]
+                    outputs: [{ simpleText: { text: "기다리는 인증 요청이 없어요 ✅" } }]
                 }
             });
             return;
@@ -460,7 +460,7 @@ exports.chatbotPending = onRequest(CHATBOT_OPTS, async function (req, res) {
         res.json({
             version: "2.0",
             template: {
-                outputs: [{ simpleText: { text: "오류가 발생했습니다. 잠시 후 다시 시도해주세요." } }]
+                outputs: [{ simpleText: { text: "잠깐 문제가 생겼어요. 잠시 후 다시 해 주세요." } }]
             }
         });
     }
@@ -485,7 +485,7 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (!requestSnap.exists) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "해당 인증 요청을 찾을 수 없습니다. (id: " + requestId + ")" } }] }
+                template: { outputs: [{ simpleText: { text: "이 인증 요청을 찾지 못했어요. (id: " + requestId + ")" } }] }
             });
             return;
         }
@@ -495,7 +495,7 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (requestData.status !== "pending") {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "이미 " + requestData.status + " 처리된 요청입니다." } }] }
+                template: { outputs: [{ simpleText: { text: "이미 " + requestData.status + " 처리된 요청이에요." } }] }
             });
             return;
         }
@@ -513,7 +513,7 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
                 res.json({
                     version: "2.0",
                     template: {
-                        outputs: [{ simpleText: { text: "❌ " + (requestData.club_name || "") + " 팀이 이미 없어졌습니다.\n요청을 거절 처리했습니다." } }],
+                        outputs: [{ simpleText: { text: "❌ " + (requestData.club_name || "") + " 팀이 이미 없어졌어요.\n요청을 거절했어요." } }],
                         quickReplies: [{ label: "📋 인증 목록", action: "message", messageText: "인증관리" }]
                     }
                 });
@@ -521,7 +521,7 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
             }
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] }
+                template: { outputs: [{ simpleText: { text: "승인하지 못했어요. 잠시 후 다시 해 주세요." } }] }
             });
             return;
         }
@@ -537,7 +537,7 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
         res.json({
             version: "2.0",
             template: {
-                outputs: [{ simpleText: { text: "✅ " + requestData.club_name + " 팀 인증이 승인되었습니다!" } }],
+                outputs: [{ simpleText: { text: "✅ " + requestData.club_name + " 팀 인증을 승인했어요!" } }],
                 quickReplies: [
                     { label: "📋 인증 목록", action: "message", messageText: "인증관리" }
                 ]
@@ -547,7 +547,7 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
         console.error("chatbotApprove 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "승인하지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -567,7 +567,7 @@ exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (!requestSnap.exists) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "해당 인증 요청을 찾을 수 없습니다." } }] }
+                template: { outputs: [{ simpleText: { text: "이 인증 요청을 찾지 못했어요." } }] }
             });
             return;
         }
@@ -577,7 +577,7 @@ exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (requestData.status !== "pending") {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "이미 " + requestData.status + " 처리된 요청입니다." } }] }
+                template: { outputs: [{ simpleText: { text: "이미 " + requestData.status + " 처리된 요청이에요." } }] }
             });
             return;
         }
@@ -599,7 +599,7 @@ exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
             template: {
                 outputs: [{
                     simpleText: {
-                        text: "'" + requestData.club_name + "' 팀의 거절 사유를 선택해주세요."
+                        text: "'" + requestData.club_name + "' 팀의 거절 사유를 골라 주세요."
                     }
                 }],
                 quickReplies: quickReplies
@@ -609,7 +609,7 @@ exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
         console.error("chatbotRejectAsk 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "잠깐 문제가 생겼어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -631,7 +631,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
         if (!requestId) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "거절 처리할 요청 정보를 찾을 수 없습니다.\n'인증관리'를 입력하여 다시 시작해주세요." } }] }
+                template: { outputs: [{ simpleText: { text: "거절할 요청을 찾지 못했어요.\n'인증관리'를 입력해 다시 시작해 주세요." } }] }
             });
             return;
         }
@@ -642,7 +642,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
         if (!requestSnap.exists || requestSnap.data().status !== "pending") {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "해당 요청이 없거나 이미 처리되었습니다." } }] }
+                template: { outputs: [{ simpleText: { text: "요청이 없거나 이미 처리됐어요." } }] }
             });
             return;
         }
@@ -681,7 +681,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
             template: {
                 outputs: [{
                     simpleText: {
-                        text: "❌ " + clubName + " 팀 인증이 거절되었습니다.\n\n사유: " + reason
+                        text: "❌ " + clubName + " 팀 인증을 거절했어요.\n\n사유: " + reason
                     }
                 }],
                 quickReplies: [
@@ -693,7 +693,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
         console.error("chatbotRejectConfirm 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "거절하지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -743,7 +743,7 @@ exports.chatbotTeamList = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (snap.empty) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "등록된 팀이 없습니다." } }] }
+                template: { outputs: [{ simpleText: { text: "등록된 팀이 없어요." } }] }
             });
             return;
         }
@@ -785,7 +785,7 @@ exports.chatbotTeamList = onRequest(CHATBOT_OPTS, async function (req, res) {
         console.error("chatbotTeamList 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "팀 목록 조회 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "팀 목록을 불러오지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -804,7 +804,7 @@ exports.chatbotTeamDeleteAsk = onRequest(CHATBOT_OPTS, async function (req, res)
         if (!clubId) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "삭제 대상 팀 정보가 없습니다. '팀관리'로 다시 시도해주세요." } }] }
+                template: { outputs: [{ simpleText: { text: "지울 팀 정보가 없어요. '팀관리'로 다시 해 주세요." } }] }
             });
             return;
         }
@@ -815,7 +815,7 @@ exports.chatbotTeamDeleteAsk = onRequest(CHATBOT_OPTS, async function (req, res)
             res.json({
                 version: "2.0",
                 template: {
-                    outputs: [{ simpleText: { text: "해당 팀이 이미 삭제되었거나 존재하지 않습니다." } }],
+                    outputs: [{ simpleText: { text: "이미 지워졌거나 없는 팀이에요." } }],
                     quickReplies: [{ label: "📋 팀관리", action: "block", blockId: TEAM_LIST_BLOCK_ID }]
                 }
             });
@@ -827,11 +827,11 @@ exports.chatbotTeamDeleteAsk = onRequest(CHATBOT_OPTS, async function (req, res)
             template: {
                 outputs: [{
                     simpleText: {
-                        text: "'" + clubName + "' 팀을 삭제하시겠어요?\n\n⚠️ 관련 인증 요청도 함께 삭제됩니다.\n삭제 후 복구는 불가능합니다."
+                        text: "'" + clubName + "' 팀을 지울까요?\n\n⚠️ 관련 인증 요청도 함께 지워져요.\n지우면 되돌릴 수 없어요."
                     }
                 }],
                 quickReplies: [
-                    { label: "✅ 확인 삭제", action: "block", blockId: TEAM_DELETE_BLOCK_ID, extra: { club_id: clubId, club_name: clubName } },
+                    { label: "🗑 팀 지우기", action: "block", blockId: TEAM_DELETE_BLOCK_ID, extra: { club_id: clubId, club_name: clubName } },
                     { label: "❌ 취소", action: "block", blockId: TEAM_LIST_BLOCK_ID }
                 ]
             }
@@ -840,7 +840,7 @@ exports.chatbotTeamDeleteAsk = onRequest(CHATBOT_OPTS, async function (req, res)
         console.error("chatbotTeamDeleteAsk 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "삭제 확인 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "삭제를 확인하지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -859,7 +859,7 @@ exports.chatbotTeamDelete = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (!clubId) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "삭제 대상 팀 정보가 없습니다." } }] }
+                template: { outputs: [{ simpleText: { text: "지울 팀 정보가 없어요." } }] }
             });
             return;
         }
@@ -882,7 +882,7 @@ exports.chatbotTeamDelete = onRequest(CHATBOT_OPTS, async function (req, res) {
             template: {
                 outputs: [{
                     simpleText: {
-                        text: "✅ " + clubName + " 팀이 삭제되었습니다.\n관련 인증 요청 " + verifySnap.size + "건도 함께 정리됐습니다."
+                        text: "✅ " + clubName + " 팀을 지웠어요.\n관련 인증 요청 " + verifySnap.size + "건도 함께 정리했어요."
                     }
                 }],
                 quickReplies: [{ label: "📋 팀관리", action: "block", blockId: TEAM_LIST_BLOCK_ID }]
@@ -892,7 +892,7 @@ exports.chatbotTeamDelete = onRequest(CHATBOT_OPTS, async function (req, res) {
         console.error("chatbotTeamDelete 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "삭제 처리 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "지우지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -981,7 +981,7 @@ exports.onReportCreated = onDocumentCreated(
             "사유: " + reportReasonLabel(d.reason)
         ];
         if (d.detail) lines.push("내용: " + String(d.detail).slice(0, 200));
-        lines.push("", "카카오톡 챗봇에서 '신고관리'를 입력해 확인·처리해주세요.");
+        lines.push("", "카카오톡 챗봇에서 '신고관리'를 입력해 확인·처리해 주세요.");
 
         try {
             var templateObject = {
@@ -1016,7 +1016,7 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (snap.empty) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "미처리 신고가 없습니다. ✅" } }] }
+                template: { outputs: [{ simpleText: { text: "처리할 신고가 없어요 ✅" } }] }
             });
             return;
         }
@@ -1035,7 +1035,7 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
         // 목록에서 먼저 눈에 띄지 않으면 조용한 실패가 그대로 방치된다.
         var failedCount = items.filter(function (d) { return d.notify_failed === true; }).length;
         var failedNotice = failedCount
-            ? "\n⚠️ 알림 미발송 " + failedCount + "건 — 카카오 토큰 상태를 확인해주세요.\n"
+            ? "\n⚠️ 알림 미발송 " + failedCount + "건 — 카카오 토큰 상태를 확인해 주세요.\n"
             : "";
 
         var doneBlockId = reportDoneBlockId();
@@ -1058,7 +1058,7 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
                         simpleText: {
                             text: "미처리 신고 " + snap.size + "건\n" + failedNotice + "\n" + text
                                 + "\n\n※ '처리완료' 버튼을 쓰려면 챗봇 콘솔에서 신고처리 블록을 만들고"
-                                + " REPORT_DONE_BLOCK_ID 파라미터에 넣어주세요."
+                                + " REPORT_DONE_BLOCK_ID 파라미터에 넣어 주세요."
                         }
                     }]
                 }
@@ -1098,7 +1098,7 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
 
         var outputs = [];
         if (failedCount) {
-            outputs.push({ simpleText: { text: "⚠️ 알림 미발송 " + failedCount + "건 — 카카오 토큰 상태를 확인해주세요." } });
+            outputs.push({ simpleText: { text: "⚠️ 알림 미발송 " + failedCount + "건 — 카카오 토큰 상태를 확인해 주세요." } });
         }
         outputs.push({ carousel: { type: "basicCard", items: cards } });
 
@@ -1107,7 +1107,7 @@ exports.chatbotReports = onRequest(CHATBOT_OPTS, async function (req, res) {
         console.error("chatbotReports 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "신고 목록 조회 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "신고 목록을 불러오지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -1129,7 +1129,7 @@ exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (!reportId) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "처리할 신고 id가 없습니다. '신고관리'로 다시 시도해주세요." } }] }
+                template: { outputs: [{ simpleText: { text: "처리할 신고 id가 없어요. '신고관리'로 다시 해 주세요." } }] }
             });
             return;
         }
@@ -1139,7 +1139,7 @@ exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (!doc.exists) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "해당 신고를 찾을 수 없습니다." } }] }
+                template: { outputs: [{ simpleText: { text: "이 신고를 찾지 못했어요." } }] }
             });
             return;
         }
@@ -1147,7 +1147,7 @@ exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (d.status !== "open") {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "이미 처리된 신고입니다." } }] }
+                template: { outputs: [{ simpleText: { text: "이미 처리된 신고예요." } }] }
             });
             return;
         }
@@ -1165,7 +1165,7 @@ exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
             template: {
                 outputs: [{
                     simpleText: {
-                        text: "✅ 처리 완료로 표시했습니다.\n대상: " + (d.target_name || d.target_id || "")
+                        text: "✅ 처리 완료로 표시했어요.\n대상: " + (d.target_name || d.target_id || "")
                     }
                 }]
             }
@@ -1174,7 +1174,7 @@ exports.chatbotReportDone = onRequest(CHATBOT_OPTS, async function (req, res) {
         console.error("chatbotReportDone 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "신고 처리 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "신고를 처리하지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -1196,18 +1196,18 @@ exports.chatbotReportHideReels = onRequest(CHATBOT_OPTS, async function (req, re
         var clientExtra = (req.body.action && req.body.action.clientExtra) || {};
         var params = (req.body.action && req.body.action.params) || {};
         var reportId = clientExtra.report_id || params.report_id;
-        if (!reportId) { reply("처리할 신고 id가 없습니다. '신고관리'로 다시 시도해주세요."); return; }
+        if (!reportId) { reply("처리할 신고 id가 없어요. '신고관리'로 다시 해 주세요."); return; }
 
         var reportRef = db.collection("reports").doc(String(reportId));
         var reportSnap = await reportRef.get();
-        if (!reportSnap.exists) { reply("해당 신고를 찾을 수 없습니다."); return; }
+        if (!reportSnap.exists) { reply("이 신고를 찾지 못했어요."); return; }
         var d = reportSnap.data() || {};
         var col = pure.reportTargetCollection(d.kind);
-        if (!col || !d.target_id) { reply("신고 대상을 알 수 없습니다."); return; }
+        if (!col || !d.target_id) { reply("신고 대상을 알 수 없어요."); return; }
 
         var targetRef = db.collection(col).doc(String(d.target_id));
         var targetSnap = await targetRef.get();
-        if (!targetSnap.exists) { reply("대상이 이미 삭제되었습니다: " + (d.target_name || d.target_id)); return; }
+        if (!targetSnap.exists) { reply("대상이 이미 지워졌어요: " + (d.target_name || d.target_id)); return; }
 
         var who = auth.userId || "unknown";
         var batch = db.batch();
@@ -1227,11 +1227,11 @@ exports.chatbotReportHideReels = onRequest(CHATBOT_OPTS, async function (req, re
         await batch.commit();
         console.log("릴스 숨김 - report_id:", reportId, "target:", col + "/" + d.target_id);
 
-        reply("🙈 릴스를 숨겼습니다.\n대상: " + (d.target_name || d.target_id)
-            + "\n되돌리려면 콘솔에서 " + col + "/" + d.target_id + " 의 reels_hidden 을 false 로 바꿔주세요.");
+        reply("🙈 릴스를 숨겼어요.\n대상: " + (d.target_name || d.target_id)
+            + "\n되돌리려면 콘솔에서 " + col + "/" + d.target_id + " 의 reels_hidden 을 false 로 바꿔 주세요.");
     } catch (error) {
         console.error("chatbotReportHideReels 오류:", error);
-        reply("릴스 숨김 처리 중 오류가 발생했습니다.");
+        reply("릴스를 숨기지 못했어요. 잠시 후 다시 해 주세요.");
     }
 });
 
@@ -1455,7 +1455,7 @@ exports.onClubAdminRequestCreated = onDocumentCreated(
         var lines = [
             "[관리자 권한 신청] " + (d.club_name || d.club_id || ""),
             "",
-            "카카오톡 챗봇에서 '관리자관리'를 입력해 사진을 확인하고 승인해주세요."
+            "카카오톡 챗봇에서 '관리자관리'를 입력해 사진을 확인하고 승인해 주세요."
         ];
         try {
             var templateObject = {
@@ -1488,7 +1488,7 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
         if (snap.empty) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "대기 중인 관리자 권한 신청이 없습니다. ✅" } }] }
+                template: { outputs: [{ simpleText: { text: "기다리는 관리자 신청이 없어요 ✅" } }] }
             });
             return;
         }
@@ -1519,7 +1519,7 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
                         simpleText: {
                             text: "관리자 권한 신청 " + snap.size + "건\n\n" + text
                                 + "\n\n※ 승인 버튼을 쓰려면 챗봇 콘솔에서 관리자승인/관리자거절 블록을 만들고"
-                                + " ADMIN_APPROVE_BLOCK_ID · ADMIN_REJECT_BLOCK_ID 에 넣어주세요."
+                                + " ADMIN_APPROVE_BLOCK_ID · ADMIN_REJECT_BLOCK_ID 에 넣어 주세요."
                         }
                     }]
                 }
@@ -1560,7 +1560,7 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
         console.error("chatbotAdminRequests 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "관리자 신청 목록 조회 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "관리자 신청 목록을 불러오지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -1582,20 +1582,20 @@ async function resolveAdminRequest(req, res, approve) {
             }
         });
     }
-    if (!requestId) { say("처리할 신청 id가 없습니다. '관리자관리'로 다시 시도해주세요."); return; }
+    if (!requestId) { say("처리할 신청 id가 없어요. '관리자관리'로 다시 해 주세요."); return; }
 
     var ref = db.collection("club_admin_requests").doc(String(requestId));
     var doc = await ref.get();
-    if (!doc.exists) { say("해당 신청을 찾을 수 없습니다."); return; }
+    if (!doc.exists) { say("이 신청을 찾지 못했어요."); return; }
     var d = doc.data() || {};
-    if (d.status !== "pending") { say("이미 처리된 신청입니다."); return; }
+    if (d.status !== "pending") { say("이미 처리된 신청이에요."); return; }
 
     if (!approve) {
         await ref.update({
             status: "rejected",
             reviewed_at: admin.firestore.FieldValue.serverTimestamp()
         });
-        say("❌ 거절했습니다.\n대상: " + (d.club_name || d.club_id || ""));
+        say("❌ 거절했어요.\n대상: " + (d.club_name || d.club_id || ""));
         return;
     }
 
@@ -1608,10 +1608,10 @@ async function resolveAdminRequest(req, res, approve) {
             reviewed_at: admin.firestore.FieldValue.serverTimestamp()
         });
         say(granted.reason === "full"
-            ? "관리자가 이미 3명이라 승인하지 않았습니다.\n대상: " + (d.club_name || "")
+            ? "관리자가 벌써 3명이라 승인하지 않았어요.\n대상: " + (d.club_name || "")
             : granted.reason === "already_admin"
-                ? "이미 이 팀의 관리자입니다.\n대상: " + (d.club_name || "")
-                : "팀 문서를 찾을 수 없어 승인하지 않았습니다.");
+                ? "이미 이 팀의 관리자예요.\n대상: " + (d.club_name || "")
+                : "팀 문서를 찾지 못해 승인하지 않았어요.");
         return;
     }
 
@@ -1619,21 +1619,21 @@ async function resolveAdminRequest(req, res, approve) {
         status: "approved",
         reviewed_at: admin.firestore.FieldValue.serverTimestamp()
     });
-    say("✅ 승인했습니다.\n대상: " + (d.club_name || d.club_id || "")
+    say("✅ 승인했어요.\n대상: " + (d.club_name || d.club_id || "")
         + "\n관리자 " + granted.admins.length + "/" + pure.MAX_CLUB_ADMINS + "명");
 }
 
 exports.chatbotAdminApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveAdminRequest(req, res, true); } catch (error) {
         console.error("chatbotAdminApprove 오류:", error);
-        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] } });
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인하지 못했어요. 잠시 후 다시 해 주세요." } }] } });
     }
 });
 
 exports.chatbotAdminReject = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveAdminRequest(req, res, false); } catch (error) {
         console.error("chatbotAdminReject 오류:", error);
-        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] } });
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절하지 못했어요. 잠시 후 다시 해 주세요." } }] } });
     }
 });
 
@@ -1673,7 +1673,7 @@ async function notifyClaimRequests(created, emailMasked) {
         "대상: " + names,
         "신청자 메일: " + emailMasked,
         "",
-        "카카오톡 챗봇에서 '클레임관리'를 입력해 확인·승인해주세요."
+        "카카오톡 챗봇에서 '클레임관리'를 입력해 확인·승인해 주세요."
     ];
     try {
         var templateObject = {
@@ -1702,7 +1702,7 @@ exports.chatbotClaims = onRequest(CHATBOT_OPTS, async function (req, res) {
         if (snap.empty) {
             res.json({
                 version: "2.0",
-                template: { outputs: [{ simpleText: { text: "대기 중인 소유권 클레임이 없습니다. ✅" } }] }
+                template: { outputs: [{ simpleText: { text: "기다리는 소유권 클레임이 없어요 ✅" } }] }
             });
             return;
         }
@@ -1731,7 +1731,7 @@ exports.chatbotClaims = onRequest(CHATBOT_OPTS, async function (req, res) {
                         simpleText: {
                             text: "대기 중인 클레임 " + snap.size + "건\n\n" + text
                                 + "\n\n※ 승인 버튼을 쓰려면 챗봇 콘솔에 클레임승인/클레임거절 블록을 만들고"
-                                + " CLAIM_APPROVE_BLOCK_ID · CLAIM_REJECT_BLOCK_ID 에 넣어주세요."
+                                + " CLAIM_APPROVE_BLOCK_ID · CLAIM_REJECT_BLOCK_ID 에 넣어 주세요."
                         }
                     }]
                 }
@@ -1767,7 +1767,7 @@ exports.chatbotClaims = onRequest(CHATBOT_OPTS, async function (req, res) {
         console.error("chatbotClaims 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "클레임 목록 조회 중 오류가 발생했습니다." } }] }
+            template: { outputs: [{ simpleText: { text: "클레임 목록을 불러오지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });
@@ -1790,13 +1790,13 @@ async function resolveClaim(req, res, approve) {
             }
         });
     }
-    if (!claimId) { say("처리할 클레임 id가 없습니다. '클레임관리'로 다시 시도해주세요."); return; }
+    if (!claimId) { say("처리할 클레임 id가 없어요. '클레임관리'로 다시 해 주세요."); return; }
 
     var ref = db.collection("club_claim_requests").doc(String(claimId));
     var doc = await ref.get();
-    if (!doc.exists) { say("해당 클레임을 찾을 수 없습니다."); return; }
+    if (!doc.exists) { say("이 클레임을 찾지 못했어요."); return; }
     var d = doc.data() || {};
-    if (d.status !== "pending") { say("이미 처리된 클레임입니다."); return; }
+    if (d.status !== "pending") { say("이미 처리된 클레임이에요."); return; }
 
     if (!approve) {
         await ref.update({
@@ -1804,7 +1804,7 @@ async function resolveClaim(req, res, approve) {
             resolved_at: admin.firestore.FieldValue.serverTimestamp(),
             resolved_by: auth.userId || "unknown"
         });
-        say("❌ 거절했습니다.\n대상: " + (d.club_name || d.club_id || ""));
+        say("❌ 거절했어요.\n대상: " + (d.club_name || d.club_id || ""));
         return;
     }
 
@@ -1821,8 +1821,8 @@ async function resolveClaim(req, res, approve) {
             resolved_by: auth.userId || "unknown"
         });
         say(blocked === "already_owned"
-            ? "이미 다른 사람이 소유한 팀이라 승인하지 않았습니다.\n대상: " + (d.club_name || "")
-            : "팀 문서를 찾을 수 없어 승인하지 않았습니다.");
+            ? "이미 다른 사람이 소유한 팀이라 승인하지 않았어요.\n대상: " + (d.club_name || "")
+            : "팀 문서를 찾지 못해 승인하지 않았어요.");
         return;
     }
 
@@ -1833,21 +1833,21 @@ async function resolveClaim(req, res, approve) {
         resolved_by: auth.userId || "unknown"
     });
     console.log("클레임 승인 - club:", d.club_id, "uid:", d.uid);
-    say("✅ 승인했습니다.\n대상: " + (d.club_name || d.club_id || "") + "\n이제 이 분이 팀 정보를 수정할 수 있습니다.");
+    say("✅ 승인했어요.\n대상: " + (d.club_name || d.club_id || "") + "\n이제 이분이 팀 정보를 고칠 수 있어요.");
 }
 
 // ── 스킬 11·12: 클레임 승인 / 거절 ──
 exports.chatbotClaimApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveClaim(req, res, true); } catch (error) {
         console.error("chatbotClaimApprove 오류:", error);
-        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인 처리 중 오류가 발생했습니다." } }] } });
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "승인하지 못했어요. 잠시 후 다시 해 주세요." } }] } });
     }
 });
 
 exports.chatbotClaimReject = onRequest(CHATBOT_OPTS, async function (req, res) {
     try { await resolveClaim(req, res, false); } catch (error) {
         console.error("chatbotClaimReject 오류:", error);
-        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절 처리 중 오류가 발생했습니다." } }] } });
+        res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: "거절하지 못했어요. 잠시 후 다시 해 주세요." } }] } });
     }
 });
 
@@ -1972,7 +1972,7 @@ exports.chatbotPublicReport = onRequest(CHATBOT_OPTS, async function (req, res) 
                 template: {
                     outputs: [{
                         simpleText: {
-                            text: "어떤 정보가 틀렸는지 한 줄로 적어주세요.\n\n예) 제보 GVT 운동 시간이 바뀌었어요\n예) 제보 파주 임팩트 이제 활동 안 해요"
+                            text: "어떤 정보가 틀렸는지 한 줄로 적어 주세요.\n\n예) 제보 GVT 운동 시간이 바뀌었어요\n예) 제보 파주 임팩트 이제 활동 안 해요"
                         }
                     }]
                 }
@@ -2001,7 +2001,7 @@ exports.chatbotPublicReport = onRequest(CHATBOT_OPTS, async function (req, res) 
             template: {
                 outputs: [{
                     simpleText: {
-                        text: "제보 고맙습니다 🙏\n영업일 7일 안에 확인합니다.\n\n확인 결과를 따로 답장드리진 못해요. 대신 지도에 반영되면 바로 보실 수 있습니다."
+                        text: "제보 고마워요 🙏\n영업일 7일 안에 확인할게요.\n\n확인 결과를 따로 답장드리진 못해요. 대신 지도에 반영되면 바로 보실 수 있어요."
                     }
                 }],
                 quickReplies: [{ label: "🗺 지도 보기", action: "webLink", webLinkUrl: SITE }]
@@ -2011,7 +2011,7 @@ exports.chatbotPublicReport = onRequest(CHATBOT_OPTS, async function (req, res) 
         console.error("chatbotPublicReport 오류:", error);
         res.json({
             version: "2.0",
-            template: { outputs: [{ simpleText: { text: "제보 접수 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." } }] }
+            template: { outputs: [{ simpleText: { text: "제보를 받지 못했어요. 잠시 후 다시 해 주세요." } }] }
         });
     }
 });

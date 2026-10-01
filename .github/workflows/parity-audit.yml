@@ -1,0 +1,40 @@
+name: Parity audit
+
+# 웹↔앱 시각 패리티 반기 검수 — 1월·7월 1일에 체크리스트 이슈를 연다.
+# 체크리스트는 docs/visual-parity.md 의 <!-- checklist --> 구간에서 그대로 가져온다
+# (문서만 고치면 다음 이슈에 반영된다). 아무 때나: Actions → Parity audit → Run workflow.
+
+on:
+  schedule:
+    - cron: "7 0 1 1,7 *" # 1월·7월 1일 09:07 KST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  open-issue:
+    name: Open checklist issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build issue body
+        run: |
+          {
+            echo "반기 검수 — 방법과 의도된 차이 목록은 [docs/visual-parity.md](https://github.com/$GITHUB_REPOSITORY/blob/main/docs/visual-parity.md)."
+            echo "자동 검사(토큰·규칙 테스트)는 CI 가 보고 있으니 여기선 사람 눈이 필요한 것만 본다."
+            echo
+            sed -n '/<!-- checklist -->/,/<!-- \/checklist -->/p' docs/visual-parity.md | sed '1d;$d'
+          } > body.md
+          test "$(grep -c '^- \[ \]' body.md)" -gt 0
+
+      - name: Create issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          half=$([ "$(date -u +%m)" -le 6 ] && echo 1 || echo 2)
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "웹↔앱 시각 패리티 반기 검수 $(date -u +%Y)-H${half}" \
+            --body-file body.md

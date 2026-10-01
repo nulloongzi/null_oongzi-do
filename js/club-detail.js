@@ -209,6 +209,8 @@ window.renderTimetables = function (scheduleText) {
 
 var sheetState = 'PEEK';
 var PEEK_HEIGHT = 390;
+// 쓸어내려 닫는 기준: 접힌 높이의 60% 아래에서 놓으면 닫힌다. 앱 map_detail_panel.dart 와 같은 값(design-system §3-1)
+var SHEET_CLOSE_RATIO = 0.6;
 var EXPANDED_HEIGHT = window.innerHeight * 0.9;
 var BUBBLE_HEIGHT = 60;
 
@@ -218,6 +220,9 @@ function updateSheetState(newState, animation) {
     var hint = document.getElementById('expandHint');
 
     sheetState = newState;
+    // 닫힌(높이 0) 시트의 버튼이 키보드·화면 낭독기에 잡히지 않게
+    if (newState === 'CLOSED') { sheet.setAttribute('inert', ''); sheet.setAttribute('aria-hidden', 'true'); }
+    else { sheet.removeAttribute('inert'); sheet.removeAttribute('aria-hidden'); }
 
     if (animation) sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
     else sheet.style.transition = 'none';
@@ -577,9 +582,15 @@ window.openClubDetail = function (id, opts) {
         btnShareClub.onclick = function () { if (window.openShareMenu) window.openShareMenu('club', club); };
     }
 
-    // 주소창을 공유 가능한 딥링크로 동기화
-    if (!silent && window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', '?club=' + encodeURIComponent(club.id));
+    // 주소창을 공유 가능한 딥링크로 동기화 + 폰 뒤로가기로 시트가 닫히게(js/back-nav.js).
+    // 닫혔을 때 돌아갈 칸의 주소는 ?club= 을 뺀 주소. 이미 열린 시트에서 다른 팀으로 바꾸면 주소만 바꾼다.
+    if (!silent) {
+        var clubUrl = '?club=' + encodeURIComponent(club.id);
+        if (window.backNav) {
+            window.backNav.open('club', hideBottomSheet, { url: clubUrl, baseUrl: location.pathname });
+        } else if (window.history && window.history.replaceState) {
+            window.history.replaceState(history.state, '', clubUrl);
+        }
     }
 
     if (!silent) updateSheetState('PEEK');
@@ -602,11 +613,18 @@ window.openClubDetail = function (id, opts) {
     }
 };
 
-window.closeBottomSheet = function () {
+// 뒤로가기로 닫힐 때(back-nav 가 칸을 이미 뺐다) — 화면만 닫는다
+function hideBottomSheet() {
     updateSheetState('CLOSED');
+}
+
+// 그 밖의 방법(쓸어내리기·탭 전환·삭제 등)으로 닫을 때 — 넣어 둔 뒤로가기 칸도 뺀다
+window.closeBottomSheet = function () {
+    hideBottomSheet();
+    if (window.backNav && window.backNav.closed('club')) return; // 칸을 빼면 ?club= 없는 주소로 돌아간다
     // 딥링크 파라미터 제거
     if (window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', location.pathname);
+        window.history.replaceState(history.state, '', location.pathname);
     }
 };
 
@@ -617,7 +635,7 @@ document.getElementById('btnCopy').onclick = function () {
 
 window.copyAddress = function (addr) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(addr).then(function () { alert(window.t('addr_copied')); });
+        navigator.clipboard.writeText(addr).then(function () { window.showToast(window.t('addr_copied')); });
     } else {
         var t = document.createElement("input");
         t.value = addr;
@@ -625,7 +643,7 @@ window.copyAddress = function (addr) {
         t.select();
         document.execCommand("copy");
         document.body.removeChild(t);
-        alert(window.t('addr_copied'));
+        window.showToast(window.t('addr_copied'));
     }
 };
 
@@ -690,13 +708,18 @@ window.initUrgentTicker = function () {
 window.deleteClub = async function (club) {
     if (!club || !club.id) return;
     if (!window.canModifyClub(club)) {
-        alert(window.t('cd_no_delete_perm'));
+        window.showToast(window.t('cd_no_delete_perm'));
         return;
     }
 
     var roleLabel = window.isAdmin ? window.t('role_admin') : window.t('role_owner');
-    var msg = window.tf('cd_delete_confirm', { name: club.name, role: roleLabel });
-    if (!confirm(msg)) return;
+    var ok = await window.nzConfirm({
+        title: window.tf('cd_delete_confirm', { name: club.name }),
+        message: window.tf('cd_delete_body', { role: roleLabel }),
+        confirm: window.t('cd_delete_btn'),
+        danger: true
+    });
+    if (!ok) return;
 
     try {
         await window.firebaseDB.collection('clubs').doc(club.id).delete();
@@ -722,30 +745,37 @@ window.deleteClub = async function (club) {
         if (window.initMarkers) window.initMarkers();
         if (window.initUrgentTicker) window.initUrgentTicker();
 
-        alert(window.t('cd_deleted'));
+        window.showToast(window.t('cd_deleted'));
     } catch (e) {
         console.error('팀 삭제 오류:', e);
-        alert(window.t('cd_delete_error') + (e.message || e.code || '?'));
+        console.warn('팀 삭제 실패:', e); window.showToast(window.t('cd_delete_error'));
     }
 };
 
-window.toggleClubUrgentState = function (club) {
+window.toggleClubUrgentState = async function (club) {
     // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
     if (!window.canModifyClub || !window.canModifyClub(club)) {
-        alert(window.t('cd_no_urgent_perm'));
+        window.showToast(window.t('cd_no_urgent_perm'));
         return;
     }
 
     var newStatus = !club.is_urgent;
     var newMsg = "";
     if (newStatus) {
-        newMsg = prompt(window.t('cd_urgent_prompt'), window.t('cd_urgent_default'));
-        if (!newMsg) return;
-        newMsg = newMsg.trim();
-        if (newMsg.length > 200) {
-            alert(window.t('cd_urgent_max'));
-            return;
-        }
+        // 급구 메시지 — 빈 칸·200자 넘김은 팝업을 닫지 않고 칸 아래에 알린다
+        var v = await window.nzPrompt({
+            title: window.t('cd_urgent_title'),
+            message: window.t('cd_urgent_prompt'),
+            fields: [{ name: 'msg', value: window.t('cd_urgent_default'), maxLength: 200, select: true }],
+            confirm: window.t('cd_urgent_btn'),
+            validate: function (x) {
+                if (!x.msg) return { msg: window.t('cd_urgent_empty') };
+                if (x.msg.length > 200) return { msg: window.t('cd_urgent_max') };
+                return null;
+            }
+        });
+        if (!v) return;
+        newMsg = v.msg;
     }
 
     var clubRef = window.firebaseDoc(window.firebaseDB, 'clubs', club.id);
@@ -753,7 +783,7 @@ window.toggleClubUrgentState = function (club) {
         is_urgent: newStatus,
         urgent_msg: newMsg
     }, { merge: true }).then(function () {
-        alert(newStatus ? window.t('cd_urgent_posted') : window.t('cd_urgent_closed'));
+        window.showToast(newStatus ? window.t('cd_urgent_posted') : window.t('cd_urgent_closed'));
         club.is_urgent = newStatus;
         club.urgent_msg = newMsg;
 
@@ -766,7 +796,7 @@ window.toggleClubUrgentState = function (club) {
         window.openClubDetail(club.id);
     }).catch(function (e) {
         console.error(e);
-        alert(window.t('cd_update_error'));
+        window.showToast(window.t('cd_update_error'));
     });
 };
 
@@ -806,13 +836,18 @@ window.toggleClubUrgentState = function (club) {
         if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
             updateSheetState('EXPANDED');
         } else {
-            if (currentH < PEEK_HEIGHT * 0.8) updateSheetState('CLOSED');
+            if (currentH < PEEK_HEIGHT * SHEET_CLOSE_RATIO) window.closeBottomSheet(); // 아래로 쓸어내려 닫기
             else updateSheetState('PEEK');
         }
         currentY = 0;
         startY = 0;
     }
 
+    // 키보드(Enter·Space)·화면 낭독기로 누르면 닫기. 이런 클릭은 detail 이 0 이다 —
+    // 손가락·마우스 탭(detail ≥ 1)은 무시해서 '쓸어내려 닫기' 설계를 바꾸지 않는다
+    handleArea.addEventListener('click', function (e) {
+        if (e.detail === 0) window.closeBottomSheet();
+    });
     handleArea.addEventListener('touchstart', bHandleStart, { passive: true });
     handleArea.addEventListener('touchmove', bHandleMove, { passive: false });
     handleArea.addEventListener('touchend', bHandleEnd);
@@ -843,7 +878,7 @@ window.downloadImage = function () {
         link.click();
         document.body.removeChild(link);
     } else {
-        alert(window.t('no_image'));
+        window.showToast(window.t('no_image'));
     }
 };
 
