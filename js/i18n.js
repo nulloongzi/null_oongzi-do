@@ -1,7 +1,7 @@
 // i18n.js
 // 경량 다국어 엔진 (KO/EN 수동 토글). classic script, window.* 전역.
 // - window.t(key): 현재 언어의 문자열 반환 (동적 JS 문자열용)
-// - window.applyI18n(): DOM의 [data-i18n] / [data-i18n-placeholder] / [data-i18n-html] 일괄 적용
+// - window.applyI18n(): DOM의 [data-i18n] / [data-i18n-placeholder] / [data-i18n-html] / [data-i18n-aria] 일괄 적용
 // - window.setLang(lang) / window.toggleLang(): 언어 전환 + localStorage 저장 + 재적용
 // - 'nurungji:langchange' 이벤트를 document에 dispatch → 다른 모듈이 동적 UI 재렌더링
 // Depends on: 없음 (가장 먼저 로드)
@@ -22,6 +22,13 @@
         app_banner_sub_deeplink: { ko: '이 팀을 앱에서 열어보세요', en: 'Open this in the app' },
         app_banner_cta: { ko: '앱 받기', en: 'Get app' },
         app_banner_dismiss: { ko: '배너 닫기', en: 'Dismiss banner' },
+
+        // 지도 위 버튼 이름(aria-label·툴팁) — 이모지만 보이는 버튼. 앱 strings.dart 와 같은 키
+        fab_lunchbox: { ko: '도시락', en: 'Lunchbox' },
+        fab_profile: { ko: '프로필', en: 'Profile' },
+        fab_register: { ko: '팀 등록하기', en: 'Register a team' },
+        fab_pickup_create: { ko: '픽업 등록', en: 'Add a pickup game' },
+        fab_my_location: { ko: '내 위치', en: 'My location' },
 
         // 검색
         search_ph: { ko: '팀명, 지역으로 검색...', en: 'Search by team or area...' },
@@ -758,6 +765,14 @@
         els = document.querySelectorAll('[data-i18n-placeholder]');
         for (i = 0; i < els.length; i++) {
             els[i].setAttribute('placeholder', window.t(els[i].getAttribute('data-i18n-placeholder')));
+        }
+
+        // 글자 없는(이모지) 버튼의 이름: 화면 낭독기용 aria-label + 마우스 툴팁 title
+        els = document.querySelectorAll('[data-i18n-aria]');
+        for (i = 0; i < els.length; i++) {
+            var name = window.t(els[i].getAttribute('data-i18n-aria'));
+            els[i].setAttribute('aria-label', name);
+            els[i].setAttribute('title', name);
         }
 
         // 통제된 번역 문자열만 사용(사용자 입력 없음) → innerHTML 허용

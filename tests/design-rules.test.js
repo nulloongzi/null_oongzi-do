@@ -43,6 +43,32 @@ describe('디자인 규칙', () => {
         });
     });
 
+    test('주황(--urgent-color) 바탕에 흰 글자 금지 — 2.7:1 (design-references U1)', () => {
+        const css = read('css/main.css');
+        const hits = [];
+        const re = /\n\s*([^{}\n]+)\{([^}]*)\}/g;
+        let m;
+        while ((m = re.exec(css))) {
+            const body = m[2];
+            const onUrgent = /background(-color)?:\s*(var\(--urgent-color\)|#ff7043)/i.test(body);
+            const white = /(^|[^-\w])color:\s*(#fff\b|#ffffff\b|white\b)/i.test(body);
+            if (onUrgent && white) hits.push(m[1].trim());
+        }
+        assert.deepStrictEqual(hits, [], '흰 글자는 var(--urgent-ink) 바탕에, 주황 바탕엔 진한 글자');
+    });
+
+    test('지도 위 버튼은 이름 있는 <button> (design-references U6)', () => {
+        const html = read('index.html');
+        ['fabLunchbox', 'fabProfile', 'fabClubRegister', 'fabPickupCreate'].forEach((id) => {
+            const tag = (html.match(new RegExp('<[a-z]+[^>]*id="' + id + '"[^>]*>')) || [''])[0];
+            assert.match(tag, /^<button type="button"/, id + ' 는 <button>');
+            assert.match(tag, /data-i18n-aria="[a-z_]+"/, id + ' 에 이름(data-i18n-aria)');
+        });
+        const fabs = html.match(/<[a-z]+[^>]*class="fab-(btn|lunchbox|profile)[^"]*"[^>]*>/g) || [];
+        assert.ok(fabs.length >= 5);
+        fabs.forEach((tag) => assert.match(tag, /^<button[^>]*aria-label="[^"]+"/, tag));
+    });
+
     test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {
         const css = read('css/main.css');
         const rule = (sel) => {

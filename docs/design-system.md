@@ -32,6 +32,7 @@
 | nurungji-bg | `#FFF8E1` | 기본 배경 (따뜻한 크림) |
 | nurungji-light | `#FFFDE7` | 카드/시트 배경 |
 | urgent | `#FF7043` | 급구/주의 (픽업 마감 임박 등) |
+| urgent-ink | `#BF360C` | 급구 **글자**, 흰 글자를 얹는 급구 바탕. `#FF7043` 은 테두리·점·글로우만 — 그 위 흰 글자는 2.7:1 이라 금지 |
 | today | `#D84315` | "오늘" 강조 |
 | white | `#FFFFFF` | 입력창/카드 표면 |
 
@@ -73,6 +74,8 @@
 | 등록 FAB | 브랜드 옐로 (주황은 급구·주의 전용) | `.fab-urgent` | `_fab(bg: 옐로)` |
 | 동호회/픽업 탭 | 바깥·안쪽 모두 pill | `.tab-bar` · `.tab-btn` | `_tabPill` |
 | 오늘 강조 | `#D84315` | `--today-color` | `NurungjiColors.today` |
+| 급구 지도 라벨 | 흰 알약 + `urgent` 테두리·맥박 + `urgent-ink` 글자 · 🔥 | `.label.urgent` | `_labeledIcon(urgent:)` |
+| 지도 위 버튼 이름 | 이모지 버튼마다 KO/EN 이름 | `<button aria-label data-i18n-aria>` | `Semantics(label:)` |
 
 - 사진 위 스크림(릴스 커버 그라데이션·이미지 미리보기)만 검정을 허용한다 — 사진 색을 물들이지 않기 위해서.
 - 로고 비트맵: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일)를 쓴다.

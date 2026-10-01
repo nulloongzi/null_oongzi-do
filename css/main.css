@@ -27,6 +27,7 @@
             --nurungji-bg: #fff8e1; /* 기본 배경(크림) */
             --nurungji-light: #fffde7; /* 카드/시트 배경 */
             --urgent-color: #ff7043; /* 급구/주의 전용 */
+            --urgent-ink: #bf360c; /* 급구 글자·흰 글자 바탕 (대비 5.6:1 — #ff7043 위 흰 글자는 2.7:1 이라 금지) */
             --today-color: #d84315; /* "오늘" 강조 */
             --chip-bg: #f0ece2; /* 칩 바탕 */
             --chip-fg: #6d6258; /* 칩 글자 */
@@ -224,6 +225,21 @@
 
         .fab-btn:active {
             transform: scale(0.9);
+        }
+
+        /* 지도 위 버튼은 <button> — 브라우저 기본 모양을 지우고, 키보드로 왔을 때만 테두리를 보인다 */
+        .fab-btn, .fab-lunchbox, .fab-profile {
+            padding: 0;
+            font-family: inherit;
+            line-height: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .fab-btn:focus-visible, .fab-lunchbox:focus-visible, .fab-profile:focus-visible {
+            outline: 3px solid var(--nurungji-dark);
+            outline-offset: 3px;
         }
 
 
@@ -1271,9 +1287,9 @@
         }
 
         .lb-edit-btn.editing {
-            background: #ff7043;
+            background: var(--urgent-ink);
             color: white;
-            border-color: #ff7043;
+            border-color: var(--urgent-ink);
             box-shadow: 0 4px 10px rgba(255, 112, 67, 0.3);
         }
 
@@ -1556,24 +1572,26 @@
             transform: translateY(-57px) scale(1.05);
         }
 
+        /* 급구: 흰 알약 + 주황 테두리·맥박 + 진한 주황 글자(5.6:1) — 앱과 같은 모양.
+           주황 바탕에 흰 글자는 2.7:1 이라 지도 위에서 안 읽혔다 (docs/design-references.md U1) */
         .label.urgent {
-            background-color: var(--urgent-color);
-            color: #fff;
-            border: 2px solid #fff;
+            background-color: #fff;
+            color: var(--urgent-ink);
+            border: 2px solid var(--urgent-color);
             animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);
+                box-shadow: 0 0 0 0 rgba(255, 112, 67, 0.7);
             }
 
             70% {
-                box-shadow: 0 0 0 10px rgba(255, 71, 87, 0);
+                box-shadow: 0 0 0 10px rgba(255, 112, 67, 0);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+                box-shadow: 0 0 0 0 rgba(255, 112, 67, 0);
             }
         }
 
@@ -1632,7 +1650,7 @@
             background: #fff3e0;
             border: 1px solid #ffcc80;
             border-radius: 12px;
-            color: #e64a19;
+            color: var(--urgent-ink); /* #fff3e0 위 5.1:1 (예전 #e64a19 는 3.6:1) */
             font-size: 13px;
             font-weight: 700;
             display: flex;

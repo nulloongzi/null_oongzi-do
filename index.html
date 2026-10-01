@@ -90,15 +90,16 @@
         </div>
     </div>
 
-    <div id="fabLunchbox" class="fab-lunchbox" onclick="openLunchbox()">🍱</div>
-    <div id="fabProfile" class="fab-profile" onclick="toggleProfileCard()">🍚</div>
+    <!-- 지도 위 버튼: 이모지만 보이므로 aria-label 로 이름을 준다(data-i18n-aria → KO/EN). 앱 _fab 의 Semantics(label) 와 같은 키 -->
+    <button type="button" id="fabLunchbox" class="fab-lunchbox" aria-label="도시락" data-i18n-aria="fab_lunchbox" onclick="openLunchbox()">🍱</button>
+    <button type="button" id="fabProfile" class="fab-profile" aria-label="프로필" data-i18n-aria="fab_profile" onclick="toggleProfileCard()">🍚</button>
 
     <!-- 픽업 탭에선 fabClubRegister 자리를 fabPickupCreate 가 물려받는다 (tabs.js applyChrome).
          그룹 전체는 body.pickup-mode 일 때 목록 패널 위로 올라간다. -->
     <div class="fab-group">
-        <div id="fabClubRegister" class="fab-btn fab-urgent" title="팀 등록하기" onclick="openRegistrationModal(false)">📝</div>
-        <div id="fabPickupCreate" class="fab-btn fab-urgent" title="픽업 등록" style="display:none;" onclick="window.openPickupCreateModal && window.openPickupCreateModal()">🏐</div>
-        <div class="fab-btn" onclick="moveToMyLocation()">📍</div>
+        <button type="button" id="fabClubRegister" class="fab-btn fab-urgent" aria-label="팀 등록하기" data-i18n-aria="fab_register" onclick="openRegistrationModal(false)">📝</button>
+        <button type="button" id="fabPickupCreate" class="fab-btn fab-urgent" aria-label="픽업 등록" data-i18n-aria="fab_pickup_create" style="display:none;" onclick="window.openPickupCreateModal && window.openPickupCreateModal()">🏐</button>
+        <button type="button" class="fab-btn" aria-label="내 위치" data-i18n-aria="fab_my_location" onclick="moveToMyLocation()">📍</button>
     </div>
 
     <!-- 픽업 게임 리스트 패널 (픽업 탭에서만 표시) -->
