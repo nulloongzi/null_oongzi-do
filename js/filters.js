@@ -225,6 +225,6 @@ window.moveToMyLocation = function () {
             window.map.panTo(locPosition);
         });
     } else {
-        alert('위치 정보를 사용할 수 없습니다.');
+        window.showToast(window.t('geo_unavailable'));
     }
 };

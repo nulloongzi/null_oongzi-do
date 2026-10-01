@@ -80,6 +80,7 @@
 | 폰 뒤로가기 | 열린 창을 위에서부터 하나씩 닫는다 → 다 닫히면 기본 동작(웹: 이전 페이지 · 앱: 두 번 눌러 종료) | `js/back-nav.js` | `map_screen.dart` `PopScope` |
 | 시트 닫기 | 아래로 쓸어내리기 — **접힌 높이의 60% 아래에서 놓으면 닫힘** + 뒤로가기 | `club-detail.js` `SHEET_CLOSE_RATIO` | `map_detail_panel.dart` `kSheetCloseRatio` |
 | 시트 손잡이 | 손가락: 끌기만(탭은 아무 일 없음). 화면 낭독기·키보드: '닫기' 버튼. 닫힌 시트는 낭독기·키보드에서 숨김 | `<button id="sheetHandle">` · `inert` | `Semantics(button, onTap)` |
+| 토스트(짧은 알림) | 다크 브라운 바탕 + 크림 글자, 아래쪽에 떠 있다가 사라짐(누르면 바로 닫힘) · 모서리 `radius-toast` 12. 작은 성공·안내·일반 오류에만 — 결정(삭제 확인)과 입력 실수(칸 옆)는 토스트가 아니다 | `window.showToast` (`js/toast.js`) | `SnackBar` (`theme.dart` `snackBarTheme`) |
 
 - 사진 위 스크림(릴스 커버 그라데이션·이미지 미리보기)만 검정을 허용한다 — 사진 색을 물들이지 않기 위해서.
 - 로고 비트맵: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일)를 쓴다.

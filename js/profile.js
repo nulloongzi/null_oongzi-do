@@ -245,8 +245,8 @@ window.editNickname = async function () {
             await window.firebaseUpdateDoc(userRef, { full_nickname: newName });
             window.currentProfileData.full_nickname = newName;
             window.renderProfileCard();
-            alert("닉네임 변경 완료!");
-        } catch (e) { alert("오류: " + e); }
+            window.showToast(window.t('nick_changed'));
+        } catch (e) { console.warn('이름 바꾸기 실패:', e); window.showToast(window.t('nick_change_error')); }
     }
 };
 

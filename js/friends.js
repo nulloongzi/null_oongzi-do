@@ -486,14 +486,8 @@
         var d = new Date(ms);
         return d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate();
     }
-    function toast(msg) {
-        var box = document.getElementById('friendsToast');
-        if (!box) return;
-        box.textContent = msg;
-        box.hidden = false;
-        clearTimeout(box._t);
-        box._t = setTimeout(function () { box.hidden = true; }, 2400);
-    }
+    // 공용 토스트(js/toast.js)로 — 사이트 전체가 같은 모양
+    function toast(msg) { if (window.showToast) window.showToast(msg); }
     function copy(text, okMsg) {
         function done() { toast(okMsg); }
         if (navigator.clipboard && navigator.clipboard.writeText) {

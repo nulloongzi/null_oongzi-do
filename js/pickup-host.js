@@ -90,7 +90,7 @@
     };
 
     window.openPickupEditModal = function (spot) {
-        if (!spot || !window.canModifyPickup(spot)) { alert(window.t('reg_no_edit_perm')); return; }
+        if (!spot || !window.canModifyPickup(spot)) { window.showToast(window.t('reg_no_edit_perm')); return; }
         window.editingPickupId = spot.id;
         document.getElementById('pkModalTitle').innerText = window.t('pk_edit_title');
         document.getElementById('pkSubmitBtn').innerText = window.t('pk_save_submit');
@@ -249,10 +249,10 @@
             }
             if (capturedEditId) {
                 await window.updatePickupGame(capturedEditId, fields);
-                alert(window.t('pk_updated'));
+                window.showToast(window.t('pk_updated'));
             } else {
                 await window.createPickupGame(fields); // 무로그인 시 내부에서 익명 인증
-                alert(window.t('pk_created'));
+                window.showToast(window.t('pk_created'));
             }
             window.closePickupModal();
             if (window.currentTab === 'pickup' && window.loadPickupGames) {
@@ -263,7 +263,7 @@
             if (window.track) window.track('pickup_create', { mode: capturedEditId ? 'edit' : 'create' });
         } catch (e) {
             console.error(e);
-            alert(window.t('pk_create_err') + (e.message || e));
+            console.warn('픽업 저장 실패:', e); window.showToast(window.t('pk_create_err'));
         } finally {
             btn.disabled = false;
             btn.innerText = orig;

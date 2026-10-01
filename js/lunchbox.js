@@ -210,10 +210,10 @@ window.bookmarkTeam = async function (teamId) {
         var slots = getEffectiveBookmarks();
         while (slots.length < 5) slots.push(null);
 
-        if (slots.includes(teamId)) { alert(window.t('lb_already')); return; }
+        if (slots.includes(teamId)) { window.showToast(window.t('lb_already')); return; }
 
         var emptyIndex = slots.findIndex(function (item) { return item === null; });
-        if (emptyIndex === -1) { alert(window.t('lb_full')); return; }
+        if (emptyIndex === -1) { window.showToast(window.t('lb_full')); return; }
 
         slots[emptyIndex] = teamId;
 
@@ -225,7 +225,7 @@ window.bookmarkTeam = async function (teamId) {
 
             var team = window.findClub(teamId);
             var msg = team && team.isCustom ? window.t('lb_added_custom') : window.t('lb_added_team');
-            alert(msg);
+            window.showToast(msg);
 
             if (typeof window.renderProfileCard === 'function') window.renderProfileCard();
 
@@ -242,7 +242,7 @@ window.bookmarkTeam = async function (teamId) {
             setLocalBookmarks(slots);
             var team2 = window.findClub(teamId);
             var msg2 = team2 && team2.isCustom ? window.t('lb_added_custom') : window.t('lb_added_team');
-            alert(msg2);
+            window.showToast(msg2);
         }
 
         // 도시락 오버레이가 열려 있으면 tempSlots에도 반영
@@ -258,7 +258,7 @@ window.bookmarkTeam = async function (teamId) {
             if (isDietPlanOpen) renderCombinedSchedule();
         }
 
-    } catch (e) { alert(window.t('lb_bookmark_fail') + e.message); }
+    } catch (e) { console.warn('도시락 담기 실패:', e); window.showToast(window.t('lb_bookmark_fail')); }
 };
 
 window.openLunchbox = function () {

@@ -236,7 +236,7 @@ window.closeRegistrationModal = function () {
 window.openEditModal = function (club) {
     if (!club) return;
     if (!window.canModifyClub || !window.canModifyClub(club)) {
-        alert(window.t('reg_no_edit_perm'));
+        window.showToast(window.t('reg_no_edit_perm'));
         return;
     }
     try {
@@ -721,7 +721,7 @@ window.submitRegistration = async function () {
             // adminReassignOwner이 이미 registered_by를 갱신했으므로 update payload에서는 제외.
             await window.firebaseDB.collection("clubs").doc(clubId).update(updatePayload);
 
-            alert(window.t('reg_updated'));
+            window.showToast(window.t('reg_updated'));
 
             // 메모리 내 객체 업데이트 (lat/lng 평탄화 포함)
             var existing = window.allClubs.find(function (c) { return String(c.id) === String(clubId); });
@@ -785,7 +785,7 @@ window.submitRegistration = async function () {
                 console.error("Firebase DB is not initialized properly");
             }
 
-            alert(window.t('reg_registered'));
+            window.showToast(window.t('reg_registered'));
 
             // Update frontend: add to map
             newClub.lat = coords.lat;

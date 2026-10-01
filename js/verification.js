@@ -44,7 +44,7 @@ window.closeVerificationModal = function () {
 
 window.submitVerificationRequest = async function (club) {
     if (!window.currentUser) {
-        alert(window.t('vf_login_required'));
+        window.showToast(window.t('vf_login_required'));
         return;
     }
     var photoInput = document.getElementById('verifyPhoto');
@@ -88,12 +88,12 @@ window.submitVerificationRequest = async function (club) {
         // 카카오톡 알림은 Cloud Functions의 onVerificationCreated 트리거가 자동 발송한다.
         // (기존 무인증 verificationNotify HTTP 엔드포인트는 폐기됨)
 
-        alert(window.t('vf_done'));
+        window.showToast(window.t('vf_done'));
         window.closeVerificationModal();
 
     } catch (error) {
         console.error('인증 신청 오류:', error);
-        alert(window.t('vf_error') + error.message);
+        console.warn('인증 신청 실패:', error); window.showToast(window.t('vf_error'));
     } finally {
         btn.innerText = window.t('vf_submit');
         btn.disabled = false;
@@ -151,7 +151,7 @@ window.closeAdminRequestModal = function () {
 
 window.submitAdminRequest = async function (club) {
     if (!window.currentUser || window.currentUser.isAnonymous) {
-        alert(window.t('ad_login_required'));
+        window.showToast(window.t('ad_login_required'));
         return;
     }
     var photoInput = document.getElementById('adminReqPhoto');
@@ -164,7 +164,7 @@ window.submitAdminRequest = async function (club) {
     // 정원이 찼으면 사진부터 올리게 두지 않는다 — 올려봐야 거절될 뿐이고,
     // 남의 이름이 찍힌 캡처가 괜히 저장소에 남는다.
     if (window.clubAdminUids(club).length >= window.MAX_CLUB_ADMINS) {
-        alert(window.t('ad_full'));
+        window.showToast(window.t('ad_full'));
         return;
     }
 
@@ -194,11 +194,11 @@ window.submitAdminRequest = async function (club) {
 
         // 운영자 카톡 알림은 onClubAdminRequestCreated 트리거가 보낸다.
         if (window.track) window.track('club_admin_request', { id: club.id });
-        alert(window.t('ad_done'));
+        window.showToast(window.t('ad_done'));
         window.closeAdminRequestModal();
     } catch (error) {
         console.error('관리자 신청 오류:', error);
-        alert(window.t('ad_error') + error.message);
+        console.warn('관리자 신청 실패:', error); window.showToast(window.t('ad_error'));
     } finally {
         btn.innerText = window.t('ad_submit');
         btn.disabled = false;
@@ -212,7 +212,7 @@ window.leaveClubAdmin = async function (club) {
     try {
         var fn = firebase.functions().httpsCallable('leaveClubAdmin');
         await fn({ clubId: club.id });
-        alert(window.t('ad_leave_done'));
+        window.showToast(window.t('ad_leave_done'));
         // 메모리의 클럽 객체에서도 빼준다 — 안 그러면 시트를 다시 열 때까지
         // 수정 버튼이 그대로 남아, 눌렀다가 규칙에 거부당한다.
         var uid = window.currentUser.uid;
@@ -227,6 +227,6 @@ window.leaveClubAdmin = async function (club) {
         if (window.closeBottomSheet) window.closeBottomSheet();
     } catch (e) {
         console.error('관리자 탈퇴 실패:', e && e.message);
-        alert(window.t('ad_leave_error'));
+        window.showToast(window.t('ad_leave_error'));
     }
 };

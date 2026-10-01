@@ -42,6 +42,7 @@
             --radius-button: 14px; /* 버튼 */
             --radius-input: 12px; /* 입력창 */
             --radius-dialog: 20px; /* 가운데 팝업(공유·등록·신고) */
+            --radius-toast: 12px; /* 토스트(웹 showToast · 앱 SnackBar) */
             --radius-fab: 20px; /* 지도 위 버튼 50px */
             --radius-fab-profile: 24px; /* 🍚 버튼 55px */
         }
@@ -857,19 +858,35 @@
         .fr-mini .fr-meta b { font-size: 18px; font-weight: 900; }
         .fr-foot { display: flex; justify-content: center; margin-top: 8px; }
 
-        .fr-toast {
-            position: sticky;
-            bottom: 0;
-            margin-top: 12px;
-            padding: 10px 14px;
-            border-radius: 12px;
+        /* 공용 토스트(js/toast.js) — 앱 SnackBar 와 같은 모양. 화면을 막지 않고 잠깐 떴다 사라진다 */
+        .nz-toast {
+            position: fixed;
+            left: 50%;
+            bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            z-index: 100001; /* 공유 팝업(100000) 위 */
+            width: max-content;
+            max-width: min(420px, calc(100% - 32px));
+            padding: 12px 18px;
+            border-radius: var(--radius-toast);
             background: var(--nurungji-dark);
-            color: #fff8e1;
-            font-size: 13px;
+            color: var(--nurungji-bg);
+            box-shadow: var(--shadow);
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.45;
             text-align: center;
+            white-space: pre-line; /* 문구 속 \n 줄바꿈 */
+            opacity: 0;
+            transform: translate(-50%, 12px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
         }
 
-        .fr-toast[hidden] { display: none; }
+        .nz-toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+            pointer-events: auto;
+        }
 
         /* ── 밥친구 2단계: 식단표 공유 ── */
         .lb-cell.fr-hidden {

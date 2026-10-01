@@ -638,7 +638,7 @@
     }
 
     window.showShareOptions = function () {
-        if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
+        if (!window.currentProfileData) { window.showToast(window.t('sh_login_required')); return; }
         window.generateShareImage('card');
     };
 
@@ -651,7 +651,7 @@
         var seq = ++shapeRenderSeq;
         var box = document.getElementById('previewImgBox');
         try {
-            if (!window.currentProfileData) { alert(window.t('sh_login_required')); return; }
+            if (!window.currentProfileData) { window.showToast(window.t('sh_login_required')); return; }
             setShapeChips(mode);
             if (box) box.classList.add('is-loading');
             // 밥도감은 밥친구 프로필이 필요하다. 못 받아도 카드는 그린다(나 혼자 = 혼밥).
@@ -673,7 +673,7 @@
             if (window.track) window.track('mycard_render', { mode: mode });
         } catch (e) {
             console.error(e);
-            alert((window.t('sh_run_fail') || '') + (e && e.message ? e.message : e));
+            console.warn('내 카드 만들기 실패:', e); window.showToast(window.t('sh_run_fail'));
         } finally {
             if (box && seq === shapeRenderSeq) box.classList.remove('is-loading');
         }

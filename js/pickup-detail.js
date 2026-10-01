@@ -226,11 +226,11 @@
         if (!g || !window.canModifyPickup(g)) return;
         if (!confirm(t('pk_delete_confirm'))) return;
         window.deletePickupGame(id).then(function () {
-            alert(t('pk_deleted'));
+            window.showToast(t('pk_deleted'));
             window.closePickupSheet();
             if (window.renderPickupMarkers) window.renderPickupMarkers();
             if (window.renderPickupList) window.renderPickupList();
-        }).catch(function (e) { alert(e.message || e); });
+        }).catch(function (e) { console.warn('픽업 삭제 실패:', e); window.showToast(t('pk_delete_error')); });
     }
 
     // 언어 전환 시 열린 상세 재렌더

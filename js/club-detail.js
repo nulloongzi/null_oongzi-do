@@ -635,7 +635,7 @@ document.getElementById('btnCopy').onclick = function () {
 
 window.copyAddress = function (addr) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(addr).then(function () { alert(window.t('addr_copied')); });
+        navigator.clipboard.writeText(addr).then(function () { window.showToast(window.t('addr_copied')); });
     } else {
         var t = document.createElement("input");
         t.value = addr;
@@ -643,7 +643,7 @@ window.copyAddress = function (addr) {
         t.select();
         document.execCommand("copy");
         document.body.removeChild(t);
-        alert(window.t('addr_copied'));
+        window.showToast(window.t('addr_copied'));
     }
 };
 
@@ -708,7 +708,7 @@ window.initUrgentTicker = function () {
 window.deleteClub = async function (club) {
     if (!club || !club.id) return;
     if (!window.canModifyClub(club)) {
-        alert(window.t('cd_no_delete_perm'));
+        window.showToast(window.t('cd_no_delete_perm'));
         return;
     }
 
@@ -740,17 +740,17 @@ window.deleteClub = async function (club) {
         if (window.initMarkers) window.initMarkers();
         if (window.initUrgentTicker) window.initUrgentTicker();
 
-        alert(window.t('cd_deleted'));
+        window.showToast(window.t('cd_deleted'));
     } catch (e) {
         console.error('팀 삭제 오류:', e);
-        alert(window.t('cd_delete_error') + (e.message || e.code || '?'));
+        console.warn('팀 삭제 실패:', e); window.showToast(window.t('cd_delete_error'));
     }
 };
 
 window.toggleClubUrgentState = function (club) {
     // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
     if (!window.canModifyClub || !window.canModifyClub(club)) {
-        alert(window.t('cd_no_urgent_perm'));
+        window.showToast(window.t('cd_no_urgent_perm'));
         return;
     }
 
@@ -761,7 +761,7 @@ window.toggleClubUrgentState = function (club) {
         if (!newMsg) return;
         newMsg = newMsg.trim();
         if (newMsg.length > 200) {
-            alert(window.t('cd_urgent_max'));
+            window.showToast(window.t('cd_urgent_max'));
             return;
         }
     }
@@ -771,7 +771,7 @@ window.toggleClubUrgentState = function (club) {
         is_urgent: newStatus,
         urgent_msg: newMsg
     }, { merge: true }).then(function () {
-        alert(newStatus ? window.t('cd_urgent_posted') : window.t('cd_urgent_closed'));
+        window.showToast(newStatus ? window.t('cd_urgent_posted') : window.t('cd_urgent_closed'));
         club.is_urgent = newStatus;
         club.urgent_msg = newMsg;
 
@@ -784,7 +784,7 @@ window.toggleClubUrgentState = function (club) {
         window.openClubDetail(club.id);
     }).catch(function (e) {
         console.error(e);
-        alert(window.t('cd_update_error'));
+        window.showToast(window.t('cd_update_error'));
     });
 };
 
@@ -866,7 +866,7 @@ window.downloadImage = function () {
         link.click();
         document.body.removeChild(link);
     } else {
-        alert(window.t('no_image'));
+        window.showToast(window.t('no_image'));
     }
 };
 

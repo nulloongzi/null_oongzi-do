@@ -139,7 +139,7 @@
         }).then(function () {
             if (window.track) window.track('report_submit', { kind: item.kind, id: item.id, reason: reason });
             window.closeReportModal();
-            alert(window.t('rp_done'));
+            window.showToast(window.t('rp_done'));
         }).catch(function (e) {
             console.warn('신고 전송 실패:', e && e.message);
             // 통로 자체가 막히면 안 된다 — 메일로 폴백해서 신고를 잃지 않는다.

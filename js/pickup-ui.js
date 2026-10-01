@@ -82,7 +82,7 @@
         url = tag(url, 'copy');
         if (navigator.clipboard) {
             navigator.clipboard.writeText(url).then(function () {
-                alert(window.t('pk_list_link_copied'));
+                window.showToast(window.t('pk_list_link_copied'));
             }).catch(function () { prompt(window.t('pk_list_link_copied'), url); });
             return;
         }

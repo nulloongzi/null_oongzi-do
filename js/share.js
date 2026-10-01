@@ -39,7 +39,7 @@ window.downloadImage = function () {
         link.click();
         document.body.removeChild(link);
     } else {
-        alert(window.t('no_image'));
+        window.showToast(window.t('no_image'));
     }
 };
 
@@ -75,7 +75,7 @@ window.initKakaoShare = function () {
 };
 
 function copyShareLink(url) {
-    function done() { alert(window.t('link_copied')); }
+    function done() { window.showToast(window.t('link_copied')); }
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done).catch(function () { fallbackCopy(url); done(); });
     } else {
@@ -834,7 +834,7 @@ window.shareFeedCard = function (kind, item) {
         return 'feed_card';
     }).catch(function (e) {
         console.error('피드 카드 생성 실패:', e);
-        alert(window.t('sh_run_fail') || '');
+        window.showToast(window.t('sh_run_fail'));
         return 'fallback';
     });
 };

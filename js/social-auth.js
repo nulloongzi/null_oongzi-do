@@ -68,7 +68,7 @@
 
     // ── 네이버 로그인 시작 ── (수동 authorize URL: 공개 Client ID만 사용)
     window.loginWithNaver = function () {
-        if (!NAVER_CLIENT_ID) { alert(window.t('au_login_fail') + 'Naver clientId'); return; }
+        if (!NAVER_CLIENT_ID) { console.warn('Naver clientId 없음'); window.showToast(window.t('au_login_fail')); return; }
         setLastProvider('naver');
         if (window.showAuthLoading) window.showAuthLoading('auth_redirecting_naver', 'auth_redirect_desc', 'naver');
         var st = makeState('naver');
@@ -104,9 +104,9 @@
         if (error && state) {
             stopLoading();
             if (error !== 'access_denied') {
-                alert(window.t('au_login_fail') + (params.get('error_description') || error));
+                console.warn('소셜 로그인 실패:', params.get('error_description') || error); window.showToast(window.t('au_login_fail'));
             } else {
-                alert(window.t('au_login_cancelled'));
+                window.showToast(window.t('au_login_cancelled'));
             }
             try { sessionStorage.removeItem(SS_OAUTH_STATE); } catch (e) {}
             cleanUrl();
@@ -156,7 +156,7 @@
         } catch (e) {
             console.error(provider + ' 로그인 실패:', e);
             stopLoading();
-            alert(window.t('au_login_fail') + (e.message || ''));
+            console.warn('소셜 로그인 실패:', e); window.showToast(window.t('au_login_fail'));
         } finally {
             try { sessionStorage.removeItem(SS_OAUTH_STATE); } catch (e) {}
             cleanUrl();

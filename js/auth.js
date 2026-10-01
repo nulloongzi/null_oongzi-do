@@ -74,7 +74,7 @@ window.loginWithGoogle = async function () {
         }
     } catch (error) {
         if (window.hideAuthLoading) window.hideAuthLoading();
-        alert(window.t('au_login_fail') + error.message);
+        console.warn('로그인 실패:', error); window.showToast(window.t('au_login_fail'));
     }
 };
 
@@ -184,7 +184,7 @@ window.loadOrCreateUserProfile = async function (user) {
             await window.firebaseSetDoc(userRef, publicData);
             await window.firebaseSetDoc(privateRef, privateData);
             window.currentProfileData = Object.assign({}, publicData, privateData);
-            alert(window.tf('au_welcome', { name: newNameObj.full }));
+            window.showToast(window.tf('au_welcome', { name: newNameObj.full }));
         } else {
             // 기존 가입자: 공개 + 비공개 머지, 필요 시 lazy migration
             var publicData2 = userSnap.data();
@@ -324,7 +324,7 @@ window.checkClubClaims = async function () {
         var d = (res && res.data) || {};
 
         if (d.status === 'requested') {
-            alert(window.t('claim_requested'));
+            window.showToast(window.t('claim_requested'));
             if (window.track) window.track('club_claim_requested', { count: (d.matches || []).length });
             return;
         }
@@ -340,7 +340,7 @@ window.checkClubClaims = async function () {
             if (confirm(window.t('claim_needs_verification'))) {
                 try {
                     await user.sendEmailVerification();
-                    alert(window.t('claim_verify_sent'));
+                    window.showToast(window.t('claim_verify_sent'));
                 } catch (e) {
                     console.warn('인증 메일 재발송 실패:', e && e.message);
                 }
