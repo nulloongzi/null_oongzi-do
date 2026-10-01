@@ -98,6 +98,9 @@ const PAIRS = {
     fr_share_title: 'fr_share_title',
     fr_err_daily: 'fr_err_daily',
     fr_err_generic: 'fr_err_generic',
+    // 서비스 이름 — 영어는 Nulloongzi-do 하나
+    brand: 'brand',
+    reels_hidden_notice: 'reels_hidden_notice',
     // 검색·필터 결과 0 안내
     empty_result: 'empty_result',
     empty_result_reset: 'empty_result_reset',

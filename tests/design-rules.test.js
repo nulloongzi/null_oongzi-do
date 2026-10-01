@@ -127,6 +127,16 @@ describe('디자인 규칙', () => {
         assert.doesNotMatch(css.slice(css.indexOf('.tab-btn {'), css.indexOf('.tab-btn::before')), /#9e8e84/, '비활성 탭 글자 3.15:1');
     });
 
+    test('영어 서비스 이름은 Nulloongzi-do 하나 (design-system §4)', () => {
+        // 사람·브랜드 누룽지는 Nulloongzi(@null_oongzi). 소문자 파일명·패키지 ID(nulloongzido)와
+        // 내부 이름(X-Nurungji-Skill-Key 등)은 화면 이름이 아니라서 대문자로 시작하는 표기만 본다
+        const hits = [];
+        PAGES.concat(['js/i18n.js', 'manifest.json']).forEach((f) => read(f).split('\n').forEach((line, i) => {
+            if (/Nurungji-?do|Nulloongzido|Nulloongzi do\b/.test(line)) hits.push(f + ':' + (i + 1));
+        }));
+        assert.deepStrictEqual(hits, [], 'Nulloongzi-do 로');
+    });
+
     test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {
         const css = read('css/main.css');
         const rule = (sel) => {
