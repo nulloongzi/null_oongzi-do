@@ -221,10 +221,10 @@
         }
     }
 
-    function pkDelete(id) {
+    async function pkDelete(id) {
         var g = window.findPickupGame(id);
         if (!g || !window.canModifyPickup(g)) return;
-        if (!confirm(t('pk_delete_confirm'))) return;
+        if (!(await window.nzConfirm({ title: t('pk_delete_confirm'), confirm: t('pk_delete_btn'), danger: true }))) return;
         window.deletePickupGame(id).then(function () {
             window.showToast(t('pk_deleted'));
             window.closePickupSheet();

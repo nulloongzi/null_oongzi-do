@@ -16,6 +16,7 @@
     var stack = []; // [{ key, seq, close }] — 아래에서 위로 열린 순서
     var seq = 0;
     var pendingBack = null; // closed() 가 예약한 되감기(setTimeout id)
+    var pendingCount = 0;   // 예약된 되감기 칸 수 — 창 둘이 연달아 닫히면(팝업 확인 → 상세 닫기) 2
 
     function supported() { return !!(window.history && history.pushState && history.replaceState); }
     function indexOf(key) {
@@ -36,9 +37,10 @@
             seq += 1;
             stack.push({ key: key, seq: seq, close: close });
             if (pendingBack !== null) {
-                // 방금 닫힌 창의 칸을 이어받는다(되감기 취소)
+                // 방금 닫힌 창의 칸을 이어받는다(되감기 취소). 둘 이상 닫혔으면 아래 칸은 비워 둔다(드묾)
                 clearTimeout(pendingBack);
                 pendingBack = null;
+                pendingCount = 0;
                 history.replaceState({ nzBack: seq }, '', opts.url || location.href);
                 return;
             }
@@ -49,9 +51,19 @@
             var i = indexOf(key);
             if (i < 0) return false;
             var item = stack.splice(i, 1)[0];
-            // 맨 위 칸이 지금 칸일 때만 되감는다. 아래 칸이면 그 칸은 비워 둔다(뒤로가기 한 번이 헛돈다 — 드묾)
-            if (pendingBack === null && history.state && history.state.nzBack === item.seq) {
-                pendingBack = setTimeout(function () { pendingBack = null; history.back(); }, 0);
+            var wasTop = i === stack.length;
+            // 맨 위 창이고, 그 칸이 지금 칸이거나 바로 위 칸이 이미 되감기 예약됐으면 함께 되감는다.
+            // 아래 창이 먼저 닫히면 그 칸은 비워 둔다(뒤로가기 한 번이 헛돈다 — 드묾)
+            if (wasTop && (pendingCount > 0 || (history.state && history.state.nzBack === item.seq))) {
+                pendingCount += 1;
+                if (pendingBack === null) {
+                    pendingBack = setTimeout(function () {
+                        var n = pendingCount;
+                        pendingBack = null;
+                        pendingCount = 0;
+                        if (n) history.go(-n);
+                    }, 0);
+                }
             }
             return true;
         },

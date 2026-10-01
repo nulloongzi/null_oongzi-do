@@ -18,7 +18,8 @@ function makeEnv() {
         get state() { return entries[idx].state; },
         pushState(s, _t, u) { entries.splice(idx + 1); entries.push({ state: s, url: u }); idx++; },
         replaceState(s, _t, u) { entries[idx] = { state: s, url: u || entries[idx].url }; },
-        back() { if (idx > 0) { idx--; setTimeout(fire, 0); } },
+        back() { this.go(-1); },
+        go(n) { if (idx + n >= 0) { idx += n; setTimeout(fire, 0); } },
     };
     const location = { get href() { return entries[idx].url; }, get pathname() { return '/'; } };
     const window = { history, location, addEventListener(t, f) { if (t === 'popstate') listeners.push(f); } };
@@ -88,6 +89,19 @@ describe('backNav', () => {
         await env.pressBack();
         assert.strictEqual(sheet.open, false);
         assert.strictEqual(env.depth, 0);
+    });
+
+    test('창 둘이 연달아 닫히면(팝업 확인 → 상세 닫기) 두 칸을 함께 되감는다', async () => {
+        const env = makeEnv();
+        const sheet = overlay(env, 'club');
+        const dialog = overlay(env, 'dialog');
+        sheet.show(); dialog.show();
+        assert.strictEqual(env.depth, 2);
+        dialog.closeByTouch();
+        sheet.closeByTouch();
+        await tick();
+        assert.strictEqual(env.depth, 0, '헛도는 칸이 남지 않는다');
+        assert.strictEqual(sheet.closes + dialog.closes, 2);
     });
 
     test('열린 창을 다시 열면(다른 팀으로 바꾸기) 칸을 더 넣지 않고 주소만 바꾼다', () => {

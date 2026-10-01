@@ -228,26 +228,30 @@ document.addEventListener('nurungji:langchange', function () {
 window.editNickname = async function () {
     if (!window.currentUser || !window.firebaseDB) return;
     var currentName = document.getElementById('pcNickname').innerText;
-    var newName = prompt("변경할 닉네임을 입력해주세요 (하이픈 금지)", currentName);
-    if (newName && newName.trim() !== "" && newName !== currentName) {
-        if (newName.includes("-")) {
-            alert("닉네임에 하이픈(-)은 사용할 수 없습니다.\n하이픈은 오직 '밥아저씨'가 랜덤으로 지어준 이름에만 허용됩니다!");
-            return;
-        }
-        try {
-            if (window.isReservedNickname(newName) && !(await window.canUseReservedNickname(window.currentUser))) {
-                alert(window.t('nickname_reserved'));
-                return;
+    // 이름 팝업(js/dialog.js) — 하이픈·공식 이름·중복은 팝업을 닫지 않고 칸 아래에 알린다
+    var v = await window.nzPrompt({
+        title: window.t('nick_title'),
+        fields: [{ name: 'name', value: currentName, maxLength: 30, select: true }],
+        confirm: window.t('nick_btn'),
+        validate: async function (x) {
+            if (!x.name) return { name: window.t('nick_empty') };
+            if (x.name === currentName) return null;
+            if (x.name.indexOf('-') >= 0) return { name: window.t('nick_hyphen') };
+            if (window.isReservedNickname(x.name) && !(await window.canUseReservedNickname(window.currentUser))) {
+                return { name: window.t('nickname_reserved') };
             }
-            var isDup = await window.checkDuplicateNickname(newName);
-            if (isDup) { alert("이미 누군가 사용 중인 이름입니다."); return; }
-            var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
-            await window.firebaseUpdateDoc(userRef, { full_nickname: newName });
-            window.currentProfileData.full_nickname = newName;
-            window.renderProfileCard();
-            window.showToast(window.t('nick_changed'));
-        } catch (e) { console.warn('이름 바꾸기 실패:', e); window.showToast(window.t('nick_change_error')); }
-    }
+            if (await window.checkDuplicateNickname(x.name)) return { name: window.t('nick_dup') };
+            return null;
+        }
+    });
+    if (!v || v.name === currentName) return;
+    try {
+        var userRef = window.firebaseDoc(window.firebaseDB, 'users', window.currentUser.uid);
+        await window.firebaseUpdateDoc(userRef, { full_nickname: v.name });
+        window.currentProfileData.full_nickname = v.name;
+        window.renderProfileCard();
+        window.showToast(window.t('nick_changed'));
+    } catch (e) { console.warn('이름 바꾸기 실패:', e); window.showToast(window.t('nick_change_error')); }
 };
 
 // 프로필 카드 닫기(화면만). 뒤로가기로 닫힐 때도 이걸 부른다(js/back-nav.js)

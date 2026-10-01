@@ -889,6 +889,102 @@
             pointer-events: auto;
         }
 
+        /* 공용 팝업(js/dialog.js) — confirm()·prompt() 대신. 공유 팝업과 같은 모양, 앱 AlertDialog 와 같은 값 */
+        .nz-dialog-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 36px;
+            background: var(--dim);
+            animation: fadeIn 0.15s ease;
+        }
+
+        .nz-dialog {
+            width: 100%;
+            max-width: 400px;
+            max-height: 100%;
+            overflow-y: auto;
+            margin: 0;
+            padding: 22px 20px 16px;
+            background: #fff;
+            border-radius: var(--radius-dialog);
+            box-shadow: var(--shadow);
+            animation: shareMenuIn 0.18s ease;
+        }
+
+        .nz-dialog-title {
+            margin: 0 0 8px;
+            color: var(--nurungji-dark);
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+
+        .nz-dialog-msg {
+            margin: 0 0 4px;
+            color: var(--nurungji-dark);
+            font-size: 14px;
+            line-height: 1.55;
+            white-space: pre-line;
+        }
+
+        .nz-dialog-field { margin-top: 14px; }
+
+        .nz-dialog-label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--nurungji-dark);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .nz-dialog-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            border: 1px solid rgba(78, 52, 46, 0.2);
+            border-radius: var(--radius-input);
+            background: #fff;
+            color: var(--nurungji-dark);
+            font: inherit;
+            font-size: 15px;
+        }
+
+        .nz-dialog-input:focus {
+            outline: none;
+            border: 2px solid var(--nurungji-yellow);
+            padding: 11px 13px;
+        }
+
+        .nz-dialog-input[readonly] { background: var(--nurungji-light); }
+
+        .nz-dialog-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .nz-btn {
+            flex: 1;
+            padding: 13px 10px;
+            border: 0;
+            border-radius: var(--radius-button);
+            font: inherit;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .nz-btn:disabled { opacity: 0.6; cursor: default; }
+        .nz-btn:focus-visible { outline: 3px solid var(--nurungji-dark); outline-offset: 2px; }
+        .nz-btn-ghost { background: var(--chip-bg); color: var(--chip-fg); }
+        .nz-btn-primary { background: var(--nurungji-yellow); color: var(--nurungji-dark); }
+        /* 되돌릴 수 없는 일 — 흰 글자는 urgent-ink 바탕(5.6:1) */
+        .nz-btn-danger { background: var(--urgent-ink); color: #fff; }
+
         /* ── 밥친구 2단계: 식단표 공유 ── */
         .lb-cell.fr-hidden {
             background-image: repeating-linear-gradient(135deg, rgba(141, 110, 99, 0.10) 0 6px, transparent 6px 12px) !important;

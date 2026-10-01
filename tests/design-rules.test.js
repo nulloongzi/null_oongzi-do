@@ -78,13 +78,17 @@ describe('디자인 규칙', () => {
         assert.match(read('js/club-detail.js'), /var SHEET_CLOSE_RATIO = 0\.6;/);
     });
 
-    test('alert() 를 늘리지 않는다 — 알림은 showToast, 입력 실수는 fieldError (design-references U12)', () => {
-        // 2026-10-01 66곳 → 14곳(토스트) → 3곳(입력 칸 옆 표시). 남은 3곳은 이름 바꾸기 prompt 의 검사라
-        // prompt 를 누룽지 팝업으로 바꿀 때 함께 없어진다. 줄기만 해야 한다.
-        // 작은 성공·안내·일반 오류는 window.showToast(js/toast.js), 문구는 docs/voice-and-tone.md
-        const files = fs.readdirSync(path.join(ROOT, 'js')).filter((f) => f.endsWith('.js') && f !== 'toast.js');
-        const count = files.reduce((n, f) => n + (read('js/' + f).match(/\balert\(/g) || []).length, 0);
-        assert.ok(count <= 3, 'alert() ' + count + '곳 — 늘리지 말고 showToast 를 쓴다');
+    test('브라우저 기본 창(alert·confirm·prompt)을 쓰지 않는다 (design-references U12)', () => {
+        // 2026-10-01: alert 66 · confirm 6 · prompt 6 → 0. 알림은 showToast(js/toast.js),
+        // 입력 실수는 fieldError(js/field-error.js), 묻기는 nzConfirm·nzPrompt(js/dialog.js).
+        const hits = [];
+        fs.readdirSync(path.join(ROOT, 'js')).filter((f) => f.endsWith('.js')).forEach((f) => {
+            read('js/' + f).split('\n').forEach((line, i) => {
+                const code = line.replace(/\/\/.*$/, '');
+                if (/(^|[^\w.$])(alert|confirm|prompt)\(/.test(code)) hits.push('js/' + f + ':' + (i + 1));
+            });
+        });
+        assert.deepStrictEqual(hits, [], '누룽지 모양으로: showToast · fieldError · nzConfirm · nzPrompt');
     });
 
     test('지도 위 버튼·시트 모서리는 토큰 변수로 (§3-1)', () => {

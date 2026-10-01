@@ -713,8 +713,13 @@ window.deleteClub = async function (club) {
     }
 
     var roleLabel = window.isAdmin ? window.t('role_admin') : window.t('role_owner');
-    var msg = window.tf('cd_delete_confirm', { name: club.name, role: roleLabel });
-    if (!confirm(msg)) return;
+    var ok = await window.nzConfirm({
+        title: window.tf('cd_delete_confirm', { name: club.name }),
+        message: window.tf('cd_delete_body', { role: roleLabel }),
+        confirm: window.t('cd_delete_btn'),
+        danger: true
+    });
+    if (!ok) return;
 
     try {
         await window.firebaseDB.collection('clubs').doc(club.id).delete();
@@ -747,7 +752,7 @@ window.deleteClub = async function (club) {
     }
 };
 
-window.toggleClubUrgentState = function (club) {
+window.toggleClubUrgentState = async function (club) {
     // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
     if (!window.canModifyClub || !window.canModifyClub(club)) {
         window.showToast(window.t('cd_no_urgent_perm'));
@@ -757,13 +762,20 @@ window.toggleClubUrgentState = function (club) {
     var newStatus = !club.is_urgent;
     var newMsg = "";
     if (newStatus) {
-        newMsg = prompt(window.t('cd_urgent_prompt'), window.t('cd_urgent_default'));
-        if (!newMsg) return;
-        newMsg = newMsg.trim();
-        if (newMsg.length > 200) {
-            window.showToast(window.t('cd_urgent_max'));
-            return;
-        }
+        // 급구 메시지 — 빈 칸·200자 넘김은 팝업을 닫지 않고 칸 아래에 알린다
+        var v = await window.nzPrompt({
+            title: window.t('cd_urgent_title'),
+            message: window.t('cd_urgent_prompt'),
+            fields: [{ name: 'msg', value: window.t('cd_urgent_default'), maxLength: 200, select: true }],
+            confirm: window.t('cd_urgent_btn'),
+            validate: function (x) {
+                if (!x.msg) return { msg: window.t('cd_urgent_empty') };
+                if (x.msg.length > 200) return { msg: window.t('cd_urgent_max') };
+                return null;
+            }
+        });
+        if (!v) return;
+        newMsg = v.msg;
     }
 
     var clubRef = window.firebaseDoc(window.firebaseDB, 'clubs', club.id);

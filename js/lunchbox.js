@@ -144,11 +144,24 @@ window.toggleDietPlan = function () {
 };
 
 window.addCustomTeam = async function () {
-    var name = prompt(window.t('lb_add_prompt'), window.t('lb_add_default'));
-    if (!name || name.trim() === "") return;
-
-    var schedule = prompt(window.t('lb_time_prompt'), window.t('lb_time_default'));
-    if (!schedule || schedule.trim() === "") return;
+    // 이름·시간을 팝업 하나에서 받는다(예전엔 prompt 두 번)
+    var v = await window.nzPrompt({
+        title: window.t('lb_add_title'),
+        fields: [
+            { name: 'name', label: window.t('lb_add_name_label'), value: window.t('lb_add_default'), select: true },
+            { name: 'time', label: window.t('lb_add_time_label'), placeholder: window.t('lb_time_default') }
+        ],
+        confirm: window.t('lb_add_btn'),
+        validate: function (x) {
+            var e = {};
+            if (!x.name) e.name = window.t('lb_add_name_empty');
+            if (!x.time) e.time = window.t('lb_add_time_empty');
+            return (e.name || e.time) ? e : null;
+        }
+    });
+    if (!v) return;
+    var name = v.name;
+    var schedule = v.time;
 
     var newId = "custom_" + Date.now();
     var newTeam = {
@@ -538,8 +551,8 @@ function handleSlotClick(index) {
     if (isDietPlanOpen) renderCombinedSchedule();
 }
 
-function deleteSlot(index) {
-    if (confirm(window.t('lb_remove_confirm'))) {
+async function deleteSlot(index) {
+    if (await window.nzConfirm({ title: window.t('lb_remove_confirm'), confirm: window.t('lb_remove_btn') })) {
         if (window.track) window.track('remove_bookmark'); // 앱 패리티 W4
         var tempSlots = getTempSlots();
         tempSlots[index] = null;

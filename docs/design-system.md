@@ -82,6 +82,7 @@
 | 시트 손잡이 | 손가락: 끌기만(탭은 아무 일 없음). 화면 낭독기·키보드: '닫기' 버튼. 닫힌 시트는 낭독기·키보드에서 숨김 | `<button id="sheetHandle">` · `inert` | `Semantics(button, onTap)` |
 | 토스트(짧은 알림) | 다크 브라운 바탕 + 크림 글자, 아래쪽에 떠 있다가 사라짐(누르면 바로 닫힘) · 모서리 `radius-toast` 12. 작은 성공·안내·일반 오류에만 — 결정(삭제 확인)과 입력 실수(칸 옆)는 토스트가 아니다 | `window.showToast` (`js/toast.js`) | `SnackBar` (`theme.dart` `snackBarTheme`) |
 | 입력 오류 | **틀린 칸 바로 아래에 이유 한 줄** + 빨간 테두리(`error-color` #d32f2f, 13px/600). 여러 칸이면 칸마다, 첫 칸으로 이동. 고치기 시작하면 그 칸 표시만 사라짐. 접힌 '선택 정보' 안이면 펼침. 칸에 안 묶이는 흐름 안내(주소 못 찾음→지도, 저장 실패)만 폼 위 띠 | `window.fieldError` (`js/field-error.js`) | `InputDecoration.errorText` · `FieldErrorText` |
+| 묻는 팝업 | 가운데 흰 카드 · 모서리 `radius-dialog` 20 · 제목 17/800. **버튼엔 누르면 일어나는 일**('팀 지우기', '로그아웃' — '확인'만 쓰지 않음). 되돌릴 수 없는 일은 확인 버튼 `urgent-ink` + 처음 포커스 '취소'. 입력이 틀리면 팝업을 닫지 않고 칸 아래에. 바깥 누르기·Esc·뒤로가기 = 취소. 브라우저 기본 창(alert·confirm·prompt)은 쓰지 않는다 | `window.nzConfirm` · `nzPrompt` (`js/dialog.js`) | `AlertDialog` (`theme.dart` `dialogTheme` · 글자 버튼 다크) |
 
 - 사진 위 스크림(릴스 커버 그라데이션·이미지 미리보기)만 검정을 허용한다 — 사진 색을 물들이지 않기 위해서.
 - 로고 비트맵: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일)를 쓴다.

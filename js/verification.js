@@ -210,7 +210,7 @@ window.submitAdminRequest = async function (club) {
 // 스스로 관리자에서 빠진다. 남을 빼는 건 운영자만 한다.
 window.leaveClubAdmin = async function (club) {
     if (!window.currentUser || !club) return;
-    if (!confirm(window.t('ad_leave_confirm'))) return;
+    if (!(await window.nzConfirm({ title: window.t('ad_leave_confirm'), confirm: window.t('ad_leave_btn'), danger: true }))) return;
     try {
         var fn = firebase.functions().httpsCallable('leaveClubAdmin');
         await fn({ clubId: club.id });

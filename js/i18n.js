@@ -44,6 +44,32 @@
         au_err_weak_pw: { ko: '비밀번호는 6자 이상이어야 해요', en: 'Passwords need at least 6 characters.' },
         au_err_too_many: { ko: '여러 번 틀려서 잠시 막혔어요. 조금 뒤에 다시 해 주세요', en: 'Too many tries. Please wait a bit and try again.' },
         au_err_network: { ko: '인터넷 연결을 확인해 주세요', en: 'Check your internet connection.' },
+        // 공용 팝업(js/dialog.js) — 버튼엔 누르면 일어나는 일을 그대로
+        dlg_cancel: { ko: '취소', en: 'Cancel' },
+        dlg_close: { ko: '닫기', en: 'Close' },
+        au_logout_btn: { ko: '로그아웃', en: 'Log out' },
+        claim_send_btn: { ko: '인증 메일 받기', en: 'Send verification email' },
+        claim_later: { ko: '나중에', en: 'Later' },
+        cd_delete_btn: { ko: '팀 지우기', en: 'Delete team' },
+        cd_urgent_title: { ko: '🔥 급구 올리기', en: '🔥 Post an urgent call' },
+        cd_urgent_btn: { ko: '급구 올리기', en: 'Post' },
+        cd_urgent_empty: { ko: '급구 메시지를 적어 주세요', en: 'Write an urgent message.' },
+        lb_add_title: { ko: '🍙 직접 담기', en: '🍙 Pack your own' },
+        lb_add_name_label: { ko: '팀·일정 이름', en: 'Team or session name' },
+        lb_add_time_label: { ko: '시간', en: 'Time' },
+        lb_add_btn: { ko: '도시락에 담기', en: 'Pack it' },
+        lb_add_name_empty: { ko: '이름을 적어 주세요', en: 'Enter a name.' },
+        lb_add_time_empty: { ko: '시간을 적어 주세요 (예: 월 19:00~21:00)', en: 'Enter a time (e.g. 월 19:00~21:00).' },
+        lb_remove_btn: { ko: '빼기', en: 'Take out' },
+        pk_delete_btn: { ko: '게임 지우기', en: 'Delete game' },
+        ad_leave_btn: { ko: '관리자에서 빠지기', en: 'Leave as admin' },
+        copy_manual_title: { ko: '링크를 직접 복사해 주세요', en: 'Copy the link' },
+        copy_manual_body: { ko: '자동으로 복사하지 못했어요. 아래 링크를 길게 눌러 복사해 주세요.', en: "Couldn't copy automatically. Press and hold the link below to copy it." },
+        nick_title: { ko: '이름 바꾸기', en: 'Change your name' },
+        nick_btn: { ko: '바꾸기', en: 'Change' },
+        nick_empty: { ko: '새 이름을 적어 주세요', en: 'Enter a new name.' },
+        nick_hyphen: { ko: "이름에 하이픈(-)은 쓸 수 없어요. 하이픈은 '밥아저씨'가 지어 준 이름에만 들어가요", en: "Names can't include a hyphen (-). Only auto-generated rice names have one." },
+        nick_dup: { ko: '이미 누가 쓰고 있는 이름이에요', en: 'Someone is already using that name.' },
         nick_changed: { ko: '이름을 바꿨어요', en: 'Name updated' },
         nick_change_error: { ko: '이름을 바꾸지 못했어요. 잠시 후 다시 해 주세요.', en: "Couldn't change your name. Please try again in a moment." },
 
@@ -245,7 +271,7 @@
         // 로그인/인증(auth)
         au_login_fail: { ko: '로그인하지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t log you in. Please try again in a moment.' },
         au_enter_info: { ko: '정보를 입력해주세요.', en: 'Please enter your information.' },
-        au_logout_confirm: { ko: '로그아웃 하시겠습니까?', en: 'Log out?' },
+        au_logout_confirm: { ko: '로그아웃할까요?', en: 'Log out?' },
         au_welcome: { ko: '반가워요! 오늘부터 밥이름은 [{name}] 🍚', en: 'Welcome! Your rice name is [{name}] 🍚' },
         au_login_cancelled: { ko: '로그인이 취소되었어요.', en: 'Login was cancelled.' },
 
@@ -284,7 +310,7 @@
         ad_full: { ko: '이 팀은 관리자가 벌써 3명이에요', en: 'This team already has 3 admins.' },
         ad_count: { ko: '관리자 {n}/3명', en: 'Admins {n}/3' },
         ad_leave: { ko: '관리자에서 빠지기', en: 'Leave as admin' },
-        ad_leave_confirm: { ko: '이 팀의 관리자에서 빠질까요?\n더 이상 팀 정보를 고칠 수 없게 됩니다.', en: 'Leave as an admin of this team?\nYou will no longer be able to edit its information.' },
+        ad_leave_confirm: { ko: '이 팀의 관리자에서 빠질까요?\n빠지면 팀 정보를 고칠 수 없어요.', en: 'Leave as an admin of this team?\nYou won\'t be able to edit it anymore.' },
         ad_leave_done: { ko: '관리자에서 빠졌어요', en: 'You\'re no longer an admin' },
         ad_leave_error: { ko: '처리하지 못했어요. 잠시 후 다시 해 주세요.', en: 'Something went wrong. Please try again in a moment.' },
         // ── 위치 공개 수준 ──
@@ -325,12 +351,13 @@
         cd_no_delete_perm: { ko: '팀을 올린 사람이나 관리자만 지울 수 있어요', en: 'Only the team owner or an admin can delete this.' },
         role_admin: { ko: '관리자', en: 'admin' },
         role_owner: { ko: '소유자', en: 'owner' },
-        cd_delete_confirm: { ko: '[{name}]\n정말 이 팀을 삭제하시겠습니까?\n\n(삭제 후 복구 불가 · {role} 권한)', en: '[{name}]\nReally delete this team?\n\n(Cannot be undone · {role} privilege)' },
+        cd_delete_confirm: { ko: '[{name}] 팀을 지울까요?', en: 'Delete [{name}]?' },
+        cd_delete_body: { ko: '지우면 되돌릴 수 없어요. ({role} 권한)', en: "This can't be undone. ({role})" },
         cd_deleted: { ko: '팀을 지웠어요', en: 'Team deleted' },
         cd_delete_error: { ko: '팀을 지우지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t delete the team. Please try again in a moment.' },
         cd_no_urgent_perm: { ko: '급구는 팀을 올린 사람이나 관리자만 켤 수 있어요', en: 'Only the team owner or an admin can post an urgent call.' },
-        cd_urgent_prompt: { ko: '급구 메시지를 입력해주세요! (예: 라이트 1명 급구)', en: 'Enter an urgent message! (e.g. Need 1 right-side hitter)' },
-        cd_urgent_default: { ko: '센터 1명 급구합니다!', en: 'Urgently looking for 1 center!' },
+        cd_urgent_prompt: { ko: '어떤 자리를 구하는지 적어 주세요 (예: 라이트 1명)', en: 'Say who you need (e.g. 1 right-side hitter)' },
+        cd_urgent_default: { ko: '센터 1명 급구해요', en: 'Need 1 middle blocker' },
         cd_urgent_max: { ko: '급구 메시지는 200자까지 쓸 수 있어요', en: 'Urgent messages can be up to 200 characters.' },
         cd_urgent_posted: { ko: '🔥 급구를 올렸어요', en: '🔥 Urgent call posted' },
         cd_urgent_closed: { ko: '급구를 마감했어요', en: 'Urgent call closed' },
@@ -452,8 +479,8 @@
             en: 'We found a team registered with your email. An admin will review and grant edit access.'
         },
         claim_needs_verification: {
-            ko: '메일 인증을 마치면 등록하신 팀을 이어드릴 수 있어요. 받은 메일함을 확인해주세요.',
-            en: 'Verify your email to claim your team. Check your inbox.'
+            ko: '메일 인증을 마치면 등록하신 팀을 이어 드릴 수 있어요. 인증 메일을 받을까요?',
+            en: 'Verify your email to claim your team. Send a verification email?'
         },
         claim_verify_sent: {
             ko: '인증 메일을 보냈어요. 확인한 뒤 다시 로그인해 주세요.',
@@ -595,7 +622,7 @@
         pk_create_err: { ko: '게임을 저장하지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t save the game. Please try again in a moment.' },
         pk_edit: { ko: '✏ 게임 수정', en: '✏ Edit game' },
         pk_delete: { ko: '🗑 게임 삭제', en: '🗑 Delete game' },
-        pk_delete_confirm: { ko: '이 게임을 삭제할까요? 참가자 정보도 함께 사라져요.', en: 'Delete this game? Player data will be removed too.' },
+        pk_delete_confirm: { ko: '이 게임을 지울까요? 참가자 정보도 함께 사라져요.', en: 'Delete this game? Player info will be removed too.' },
         pk_deleted: { ko: '게임을 지웠어요', en: 'Game deleted' },
 
         // ── 밥친구 (js/friends.js) ──

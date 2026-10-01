@@ -153,14 +153,14 @@ window.loginWithEmail = async function () {
     }
 };
 
-window.logout = function () {
-    if (confirm(window.t('au_logout_confirm'))) {
-        firebase.auth().signOut().then(function () {
-            document.getElementById('profileOverlay').style.display = 'none';
-            document.getElementById('lunchboxOverlay').style.display = 'none';
-            if (window.backNav) { window.backNav.closed('profile'); window.backNav.closed('lunchbox'); }
-        });
-    }
+window.logout = async function () {
+    var ok = await window.nzConfirm({ title: window.t('au_logout_confirm'), confirm: window.t('au_logout_btn') });
+    if (!ok) return;
+    firebase.auth().signOut().then(function () {
+        document.getElementById('profileOverlay').style.display = 'none';
+        document.getElementById('lunchboxOverlay').style.display = 'none';
+        if (window.backNav) { window.backNav.closed('profile'); window.backNav.closed('lunchbox'); }
+    });
 };
 
 window.updateProfileUI = function (isLoggedIn) {
@@ -368,7 +368,11 @@ window.checkClubClaims = async function () {
         // 시트에 있다"를 알 수 있게 된다(이메일 가입은 검증이 없으므로 남의 주소로
         // 떠볼 수 있다). 지금은 덜 새는 쪽을 택했다.
         if (d.status === 'needs_verification') {
-            if (confirm(window.t('claim_needs_verification'))) {
+            if (await window.nzConfirm({
+                title: window.t('claim_needs_verification'),
+                confirm: window.t('claim_send_btn'),
+                cancel: window.t('claim_later')
+            })) {
                 try {
                     await user.sendEmailVerification();
                     window.showToast(window.t('claim_verify_sent'));
