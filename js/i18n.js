@@ -150,8 +150,8 @@
         // 팀 등록 모달
         reg_title: { ko: '팀 등록하기', en: 'Register a team' },
         reg_tip: {
-            ko: '<strong>tip:</strong> 요일별로 체육관 위치가 다른 경우, 정확한 핀 표시를 위해 <strong>장소별로 각각 등록</strong> 부탁드립니다!',
-            en: '<strong>Tip:</strong> If your gym location differs by day, please <strong>register each location separately</strong> so the map pins are accurate!'
+            ko: '<strong>tip:</strong> 요일마다 체육관이 다르면 <strong>장소마다 따로 등록</strong>해 주세요. 그래야 지도 핀이 정확해요.',
+            en: '<strong>Tip:</strong> If your gym changes by day, <strong>register each location separately</strong> so the map pins are accurate.'
         },
         reg_name_label: { ko: '팀 이름 (필수)', en: 'Team name (required)' },
         reg_name_ph: { ko: '예: GVT 배구클럽', en: 'e.g. GVT Volleyball Club' },
@@ -180,8 +180,8 @@
         reg_link_ph: { ko: '예: https://open.kakao.com/o/...', en: 'e.g. https://open.kakao.com/o/...' },
         reg_submit: { ko: '등록하기', en: 'Register' },
         reg_optional_summary: { ko: '추가 정보 입력 (선택) ▾', en: 'Add more details (optional) ▾' },
-        reg_login_hint: { ko: '팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록됩니다.', en: 'Log in to finish registering your team. Your entries are kept and submitted automatically after login.' },
-        reg_addr_geocode_fallback: { ko: '주소를 자동으로 찾지 못했어요. 지도에서 위치를 직접 찍어주세요.', en: "Couldn't locate that address automatically. Please drop a pin on the map." },
+        reg_login_hint: { ko: '팀 등록을 마치려면 로그인이 필요해요. 로그인하면 작성한 내용 그대로 이어서 등록돼요.', en: 'Log in to finish registering your team. Your entries are kept and submitted automatically after login.' },
+        reg_addr_geocode_fallback: { ko: '주소를 자동으로 찾지 못했어요. 지도에서 위치를 직접 찍어 주세요.', en: "Couldn't locate that address automatically. Please drop a pin on the map." },
 
         // 지도 위치 선택
         mp_confirm: { ko: '이 위치로 주소 설정', en: 'Set address to this spot' },
@@ -189,8 +189,8 @@
 
         // ── 동적(JS) 문자열 ──
         // 도시락 식단표 슬롯 / 동작 — 밥·국·반찬 메타포 유지
-        lb_slot_rice: { ko: '밥을<br>담아주세요🍚', en: 'Add rice 🍚' },
-        lb_slot_soup: { ko: '국을<br>담아주세요🥘', en: 'Add soup 🥘' },
+        lb_slot_rice: { ko: '밥을<br>담아 주세요🍚', en: 'Add rice 🍚' },
+        lb_slot_soup: { ko: '국을<br>담아 주세요🥘', en: 'Add soup 🥘' },
         lb_slot_side1: { ko: '반찬1🍳', en: 'Side 1 🍳' },
         lb_slot_side2: { ko: '반찬2🥗', en: 'Side 2 🥗' },
         lb_slot_side3: { ko: '반찬3🥢', en: 'Side 3 🥢' },
@@ -212,13 +212,12 @@
 
         // 공유
         // 포장 형태 칩 — 앱 share_mode_feed / share_mode_story 와 같은 문구
-        nickname_reserved: { ko: '누룽지도 공식 계정만 쓸 수 있는 이름이에요. 다른 이름을 골라주세요.', en: 'That name is reserved for official Nulloongzi accounts. Please pick another.' },
+        nickname_reserved: { ko: '누룽지도 공식 계정만 쓸 수 있는 이름이에요. 다른 이름을 골라 주세요.', en: 'That name is reserved for official Nulloongzi accounts. Please pick another.' },
         mc_mode_card: { ko: '네임카드', en: 'Name card' },
         mc_mode_diet: { ko: '식단표', en: 'Schedule' },
         mc_meal_n: { ko: '같은 팀 {n}', en: 'shared teams: {n}' },
         sh_login_required: { ko: '로그인하면 쓸 수 있어요', en: 'Log in to use this.' },
         sh_weekly_plan: { ko: '📅 주간 식단표', en: '📅 Weekly menu' },
-        sh_error: { ko: '오류 발생: ', en: 'Error: ' },
         sh_run_fail: { ko: '잠깐 문제가 생겼어요. 다시 해 주세요.', en: 'Something went wrong. Please try again.' },
         no_image: { ko: '저장할 이미지가 없어요', en: 'No image to save' },
         link_copied: { ko: '링크를 복사했어요', en: 'Link copied' },
@@ -250,8 +249,7 @@
         reg_owner_hint: { ko: '현재 소유자: {nick} (비우면 변경 안 됨)', en: 'Current owner: {nick} (leave blank to keep)' },
         reg_owner_none: { ko: '소유자 없음 (레거시) · 이메일 입력하여 지정', en: 'No owner (legacy) · enter an email to assign' },
         reg_map_loc: { ko: '지도에서 선택된 위치', en: 'Location picked on map' },
-        reg_login_required: { ko: '팀을 등록하려면 먼저 로그인해주세요.', en: 'Please log in to register a team.' },
-        reg_required: { ko: '팀 이름, 대상, 주소는 필수 입력값입니다.', en: 'Team name, who it\'s for, and address are required.' },
+        reg_login_required: { ko: '로그인하면 팀을 등록할 수 있어요', en: 'Log in to register a team.' },
         reg_name_max: { ko: '팀 이름은 60자까지 쓸 수 있어요', en: 'Team names can be up to 60 characters.' },
         reg_target_max: { ko: '대상은 80자까지 쓸 수 있어요', en: 'Who it\'s for can be up to 80 characters.' },
         reg_addr_max: { ko: '주소는 200자까지 쓸 수 있어요', en: 'Addresses can be up to 200 characters.' },
@@ -262,18 +260,17 @@
         insta_view: { ko: 'Instagram에서 보기', en: 'View on Instagram' },
         processing: { ko: '처리중...', en: 'Processing...' },
         reg_addr_notfound: { ko: '이 주소로는 위치를 못 찾았어요. 도로명 주소로 적거나 지도에서 찍어 주세요', en: 'We couldn\'t find that address. Try a street address or pick it on the map.' },
-        reg_cf_uninit: { ko: 'Cloud Functions가 초기화되지 않아 소유자 재할당을 진행할 수 없습니다.', en: 'Cloud Functions is not initialized, so owner reassignment cannot proceed.' },
-        reg_owner_fail: { ko: '소유자 재할당 실패', en: 'Owner reassignment failed' },
+        reg_cf_uninit: { ko: '소유자를 바꾸지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t change the owner. Please try again in a moment.' },
+        reg_owner_fail: { ko: '소유자를 바꾸지 못했어요', en: 'Couldn\'t change the owner' },
         reg_updated: { ko: '팀 정보를 고쳤어요', en: 'Team info updated' },
         reg_registered: { ko: '팀을 올렸어요! 이제 지도에서 보여요', en: 'Your team is on the map!' },
         reg_error: { ko: '팀을 저장하지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t save the team. Please try again in a moment.' },
 
         // 로그인/인증(auth)
         au_login_fail: { ko: '로그인하지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t log you in. Please try again in a moment.' },
-        au_enter_info: { ko: '정보를 입력해주세요.', en: 'Please enter your information.' },
         au_logout_confirm: { ko: '로그아웃할까요?', en: 'Log out?' },
         au_welcome: { ko: '반가워요! 오늘부터 밥이름은 [{name}] 🍚', en: 'Welcome! Your rice name is [{name}] 🍚' },
-        au_login_cancelled: { ko: '로그인이 취소되었어요.', en: 'Login was cancelled.' },
+        au_login_cancelled: { ko: '로그인을 취소했어요', en: 'Login cancelled' },
 
         // 소셜 로그인 진행 오버레이 (js/auth-loading.js — 동일 키의 최소 사전을 자체 보유)
         auth_signing_in: { ko: '로그인 중이에요', en: 'Signing you in…' },
@@ -296,7 +293,7 @@
         // "내가 이 팀 사람이다"를 보여야 한다. 공개된 인스타 사진은 앞의 것만
         // 증명하므로, 여기서 그 예를 들면 남의 팀을 가져갈 수 있는 통로가 된다.
         ad_title: { ko: '팀 관리자 신청', en: 'Request team admin' },
-        ad_desc: { ko: '관리자가 되면 이 팀 정보를 직접 고칠 수 있어요.<br>본인이 이 팀 사람이라는 걸 알 수 있는 사진을 올려주세요.<br><br>예) 팀 단톡방 화면 · 팀 유니폼 입고 찍은 사진 · 팀 인스타 계정 관리 화면<br>※ 다른 분 이름이나 연락처는 가리고 올려주세요.', en: 'Admins can edit this team\'s information directly.<br>Upload a photo showing that you belong to this team.<br><br>e.g. your team group chat, you in the team uniform, the team\'s Instagram account screen<br>※ Please mask other people\'s names and contact details.' },
+        ad_desc: { ko: '관리자가 되면 이 팀 정보를 직접 고칠 수 있어요.<br>본인이 이 팀 사람이라는 걸 알 수 있는 사진을 올려 주세요.<br><br>예) 팀 단톡방 화면 · 팀 유니폼 입고 찍은 사진 · 팀 인스타 계정 관리 화면<br>※ 다른 분 이름이나 연락처는 가리고 올려 주세요.', en: 'Admins can edit this team\'s information directly.<br>Upload a photo showing that you belong to this team.<br><br>e.g. your team group chat, you in the team uniform, the team\'s Instagram account screen<br>※ Please mask other people\'s names and contact details.' },
         ad_photo_label: { ko: '증빙 사진 (필수)', en: 'Proof photo (required)' },
         ad_submit: { ko: '관리자 신청하기', en: 'Submit request' },
         ad_apply_btn: { ko: '🙋 이 팀 관리자 신청', en: '🙋 Request team admin' },
@@ -304,8 +301,8 @@
         ad_photo_required: { ko: '확인용 사진을 골라 주세요', en: 'Choose a photo to confirm.' },
         ad_done: { ko: '관리자 신청을 받았어요.\n확인되면 팀 정보를 고칠 수 있어요.', en: 'Request received.\nYou can edit the team once it\'s approved.' },
         ad_error: { ko: '관리자 신청을 보내지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t send the request. Please try again in a moment.' },
-        ad_pending: { ko: '⏳ 관리자 신청을 확인하고 있습니다.', en: '⏳ Your admin request is under review.' },
-        ad_rejected: { ko: '❌ 관리자 신청이 받아들여지지 않았습니다', en: '❌ Admin request was not accepted' },
+        ad_pending: { ko: '⏳ 관리자 신청을 확인하고 있어요', en: '⏳ Your admin request is under review.' },
+        ad_rejected: { ko: '❌ 관리자 신청이 받아들여지지 않았어요', en: '❌ Admin request was not accepted' },
         ad_reapply: { ko: '🔄 다시 신청', en: '🔄 Apply again' },
         ad_full: { ko: '이 팀은 관리자가 벌써 3명이에요', en: 'This team already has 3 admins.' },
         ad_count: { ko: '관리자 {n}/3명', en: 'Admins {n}/3' },
@@ -317,10 +314,10 @@
         // 학교 체육관을 쓰는 팀이 많다. 장소+시간표가 같이 공개되면 대관에서 밀린
         // 사람이 누가 쓰는지 알 수 있어, 실제로 민원을 받은 팀이 있었다(2026-09).
         reg_area_only: { ko: '대략적인 위치만 공개', en: 'Show approximate location only' },
-        reg_area_only_desc: { ko: '지도에 정확한 핀 대신 동네 범위로 표시하고, 주소는 시·군·구까지만 보입니다. 체육관 이름과 상세 주소는 저장하지 않습니다. 학교나 공공 체육관을 빌려 쓰는 팀에 권합니다.', en: 'Shows a neighbourhood area instead of an exact pin, and the address only down to the district. The venue name and full address are not stored. Recommended for teams renting school or public gyms.' },
-        reg_area_label_fail: { ko: '이 주소로는 동네 범위를 만들 수 없습니다. 지도에서 위치를 찍어주세요.', en: 'Could not derive an area from this address. Please pick the location on the map.' },
+        reg_area_only_desc: { ko: '지도에 정확한 핀 대신 동네 범위로 표시하고, 주소는 시·군·구까지만 보여요. 체육관 이름과 상세 주소는 저장하지 않아요. 학교나 공공 체육관을 빌려 쓰는 팀에 권해요.', en: 'Shows a neighbourhood area instead of an exact pin, and the address only down to the district. The venue name and full address are not stored. Recommended for teams renting school or public gyms.' },
+        reg_area_label_fail: { ko: '이 주소로는 동네 범위를 만들지 못했어요. 지도에서 위치를 찍어 주세요.', en: 'Couldn\'t work out the area from this address. Pick the location on the map.' },
         cd_area_only: { ko: '대략 위치', en: 'Approximate' },
-        cd_area_only_note: { ko: '이 팀은 대략적인 위치만 공개합니다. 정확한 장소는 팀에 문의해주세요.', en: 'This team shares only an approximate location. Please contact them for the exact venue.' },
+        cd_area_only_note: { ko: '이 팀은 대략적인 위치만 공개해요. 정확한 장소는 팀에 물어봐 주세요.', en: 'This team shares only an approximate location. Ask them for the exact venue.' },
         // 위치 확인 단계. 등록 버튼을 누르면 조용히 지오코딩하고 저장해서,
         // 엉뚱한 곳에 찍혀도 아무도 몰랐다(나중에 신고로 돌아온다).
         mp_confirm_title: { ko: '여기가 맞나요?', en: 'Is this the right spot?' },
@@ -329,7 +326,7 @@
         mp_matched_place: { ko: '\'{name}\'(으)로 찾았어요', en: 'Matched \'{name}\'' },
         mp_matched_addr: { ko: '주소: {addr}', en: 'Address: {addr}' },
         vf_title: { ko: '인증 신청', en: 'Request verification' },
-        vf_desc: { ko: '이 팀이 실제로 운영 중인지 확인하는 용도예요.<br>팀 단체사진이나 대회 참가 사진이면 됩니다 — 인스타에 올렸던 사진도 괜찮아요.<br>확인되면 팀 이름 옆에 인증 배지가 붙습니다.', en: 'This confirms the team is actually active.<br>A team group photo or a tournament photo works — one you already posted on Instagram is fine.<br>Once confirmed, a badge appears next to the team name.' },
+        vf_desc: { ko: '이 팀이 실제로 운영 중인지 확인하는 용도예요.<br>팀 단체사진이나 대회 참가 사진이면 돼요 — 인스타에 올렸던 사진도 괜찮아요.<br>확인되면 팀 이름 옆에 인증 배지가 붙어요.', en: 'This confirms the team is actually active.<br>A team group photo or a tournament photo works — one you already posted on Instagram is fine.<br>Once confirmed, a badge appears next to the team name.' },
         vf_photo_label: { ko: '인증 사진 (필수)', en: 'Verification photo (required)' },
         vf_submit: { ko: '인증 신청하기', en: 'Submit request' },
         vf_login_required: { ko: '인증 신청은 로그인하면 할 수 있어요', en: 'Log in to request verification.' },
@@ -337,9 +334,9 @@
         vf_done: { ko: '인증 신청을 받았어요.\n운영자가 확인하면 인증 배지가 붙어요.', en: 'Verification request received.\nA badge is added after review.' },
         vf_error: { ko: '인증 신청을 보내지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t send the request. Please try again in a moment.' },
         vf_apply_btn: { ko: '✅ 인증 신청', en: '✅ Get verified' },
-        vf_pending: { ko: '⏳ 인증 심사 중입니다.<br><span style="font-size:12px;color:#666;">관리자 확인 후 인증 배지가 부여됩니다.</span>', en: '⏳ Verification under review.<br><span style="font-size:12px;color:#666;">A badge is granted after admin review.</span>' },
-        vf_no_reason: { ko: '사유가 기재되지 않았습니다.', en: 'No reason was provided.' },
-        vf_rejected: { ko: '❌ 인증이 거절되었습니다', en: '❌ Verification rejected' },
+        vf_pending: { ko: '⏳ 인증을 확인하고 있어요.<br><span style="font-size:12px;color:#666;">운영자가 확인하면 인증 배지가 붙어요.</span>', en: '⏳ Verification under review.<br><span style="font-size:12px;color:#666;">A badge is added after review.</span>' },
+        vf_no_reason: { ko: '적힌 사유가 없어요.', en: 'No reason given.' },
+        vf_rejected: { ko: '❌ 인증이 받아들여지지 않았어요', en: '❌ Verification was not accepted' },
         vf_reason: { ko: '사유: ', en: 'Reason: ' },
         vf_reapply: { ko: '🔄 인증 재신청', en: '🔄 Re-apply' },
 
@@ -376,7 +373,7 @@
         pk_f_curated: { ko: '대신 등록 (관리자)', en: 'Add on behalf (admin)' },
         pk_f_curated_chip: { ko: '🔎 공개 정보로 대신 등록', en: '🔎 Added from public info' },
         pk_f_curated_hint: {
-            ko: '켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 표시됩니다. 남의 크루를 대신 올릴 때만 켜세요.',
+            ko: '켜면 상세에 "공개 인스타 정보로 모은 크루" 안내와 수정/삭제 요청 링크가 보여요. 남의 크루를 대신 올릴 때만 켜 주세요.',
             en: 'Shows a "collected from public Instagram info" notice plus an edit/removal request link on the detail sheet. Only for crews you add on their behalf.'
         },
         pk_curated_note: {
@@ -399,7 +396,7 @@
         report_what: { ko: '어느 부분이 틀렸는지: ', en: 'What is wrong: ' },
         // 인앱 신고 모달 (mailto 대체). 사유 값은 firestore.rules 의 enum 과 같아야 한다.
         rp_title: { ko: '잘못된 정보 신고', en: 'Report incorrect info' },
-        rp_intro: { ko: '확인 후 영업일 기준 7일 이내에 처리 결과를 반영합니다. 신고자 정보는 남기지 않습니다.', en: 'We review reports within 7 business days. No personal information is stored.' },
+        rp_intro: { ko: '확인하고 영업일 7일 안에 반영해요. 신고한 사람의 정보는 남기지 않아요.', en: 'We review reports within 7 business days. No personal information is stored.' },
         rp_reason_label: { ko: '어떤 문제인가요? (필수)', en: "What's wrong? (required)" },
         rp_wrong_info: { ko: '정보가 틀림', en: 'Incorrect info' },
         rp_closed: { ko: '운영 종료/해체', en: 'No longer active' },
@@ -410,7 +407,7 @@
         rp_detail_ph: { ko: '예: 연습 요일이 화·목으로 바뀌었어요', en: 'e.g. Practice days changed to Tue/Thu' },
         rp_submit: { ko: '신고 보내기', en: 'Send report' },
         rp_sending: { ko: '보내는 중…', en: 'Sending…' },
-        rp_need_reason: { ko: '사유를 선택해주세요.', en: 'Please choose a reason.' },
+        rp_need_reason: { ko: '어떤 문제인지 골라 주세요', en: 'Choose what\'s wrong.' },
         rp_done: { ko: '신고를 받았어요. 확인하고 반영할게요. 고마워요!', en: 'Report received. Thanks — we\'ll review it.' },
         // 포장하기(공유 카드). 빈 칸 라벨은 화면 UI의 안내문구에서 명령형만 뺀 형태 —
         // '국을 담아주세요🥘' 는 받아 보는 사람에게 하는 말처럼 읽힌다.
@@ -486,7 +483,7 @@
             ko: '인증 메일을 보냈어요. 확인한 뒤 다시 로그인해 주세요.',
             en: 'Verification email sent. Please sign in again after confirming.'
         },
-        rp_fail_mail: { ko: '전송에 실패했어요. 메일로 보내주시면 확인하겠습니다.', en: 'Sending failed. Please email us instead.' },
+        rp_fail_mail: { ko: '신고를 보내지 못했어요. 메일로 보내 주시면 확인할게요.', en: 'Couldn\'t send the report. Please email us instead.' },
         policy_terms: { ko: '이용약관', en: 'Terms' },
         policy_guidelines: { ko: '운영 기준', en: 'Guidelines' },
         policy_privacy: { ko: '개인정보처리방침', en: 'Privacy' },
@@ -525,7 +522,7 @@
 
         // 자가 선택 가이드 — 미국 오픈짐들이 공통으로 붙이는 문구. 레벨 제도가 굴러가게 하는 장치다.
         pk_level_hint: {
-            ko: '애매하면 낮은 쪽을 골라주세요. 남과 비교하지 말고 설명 기준으로요.',
+            ko: '애매하면 낮은 쪽을 골라 주세요. 남과 비교하지 말고 설명 기준으로요.',
             en: "When in doubt, pick the lower level. Judge by the description, not by other players."
         },
         pk_beginner_ok: { ko: '🌱 초보환영', en: '🌱 Beginners welcome' },
@@ -544,12 +541,11 @@
         pk_joined: { ko: '참가 확정 ✓', en: "You're in ✓" },
         pk_waitlisted: { ko: '대기열 등록됨', en: 'On the waitlist' },
         pk_cancel_spot: { ko: '신청 취소', en: 'Cancel my spot' },
-        pk_login_to_join: { ko: '참가하려면 로그인해주세요.', en: 'Please log in to join.' },
-        pk_joined_in: { ko: "참가가 확정됐어요! 게임비를 송금해주세요. 💸", en: "You're in! Please send the game fee. 💸" },
+        pk_login_to_join: { ko: '로그인하면 참가할 수 있어요', en: 'Log in to join.' },
+        pk_joined_in: { ko: '참가가 확정됐어요! 게임비를 보내 주세요 💸', en: "You're in! Please send the game fee. 💸" },
         pk_joined_wait: { ko: '정원이 차서 대기열에 등록됐어요.', en: "The game is full — you're on the waitlist." },
         pk_cancel_confirm: { ko: '참가를 취소할까요?', en: 'Cancel your spot?' },
         pk_canceled: { ko: '참가가 취소됐어요.', en: 'Your spot was canceled.' },
-        pk_join_err: { ko: '신청 중 오류: ', en: 'Error joining: ' },
 
         // 결제(송금 링크아웃)
         pk_fee_label: { ko: '게임비', en: 'Game fee' },
@@ -612,9 +608,9 @@
         pk_save_submit: { ko: '수정하기', en: 'Save changes' },
 
         // 호스트 - 검증/메시지
-        pk_login_required: { ko: '게임을 열려면 먼저 로그인해주세요.', en: 'Please log in to host a game.' },
+        pk_login_required: { ko: '로그인하면 게임을 열 수 있어요', en: 'Log in to host a game.' },
         pk_req_fields: { ko: '픽업 이름을 적어 주세요', en: 'Enter a name for the game.' },
-        pk_bad_capacity: { ko: '정원은 1~200 사이 숫자로 입력해주세요.', en: 'Capacity must be a number between 1 and 200.' },
+        pk_bad_capacity: { ko: '정원은 1~200 사이 숫자로 적어 주세요', en: 'Enter a capacity from 1 to 200.' },
         pk_bad_time: { ko: '종료 시간이 시작보다 빨라요.', en: 'End time is before the start time.' },
         pk_past_time: { ko: '지난 시간은 선택할 수 없어요.', en: "You can't pick a time in the past." },
         pk_created: { ko: '픽업 게임이 열렸어요! 🏐', en: 'Your pickup game is live! 🏐' },
@@ -677,9 +673,9 @@
         fr_unfriend_confirm: { ko: '끊기', en: 'Remove' },
         fr_unfriend_note: { ko: '상대에게 알리지 않아요. 서로의 목록에서 사라져요.', en: 'They won’t be notified. You’ll disappear from each other’s list.' },
         fr_unfriended: { ko: '밥친구를 끊었어요', en: 'Friend removed' },
-        fr_err_generic: { ko: '잠시 후 다시 시도해 주세요.', en: 'Please try again in a moment.' },
+        fr_err_generic: { ko: '잠시 후 다시 해 주세요.', en: 'Please try again in a moment.' },
         fr_err_full: { ko: '밥친구는 100명까지예요.', en: 'You can have up to 100 bap friends.' },
-        fr_share_title: { ko: '밥친구에게 보일 팀을 골라주세요', en: 'Choose teams your bap friends can see' },
+        fr_share_title: { ko: '밥친구에게 보일 팀을 골라 주세요', en: 'Choose teams your bap friends can see' },
         fr_share_body: { ko: '체크한 팀과 그 운동 시간이 모든 밥친구에게 보여요. 나중에 도시락 편집의 눈 버튼으로 바꿀 수 있어요.', en: 'Checked teams and their times are visible to all bap friends. Change later with the eye button in lunchbox edit.' },
         fr_share_none: { ko: '도시락에 담은 팀이 아직 없어요.', en: 'No teams in your lunchbox yet.' },
         fr_share_ok: { ko: '이대로 보이기', en: 'Share these' },
@@ -702,7 +698,7 @@
         fr_meal_tier: { ko: '{tier} · 같은 팀 {n}개', en: '{tier} · shared teams: {n}' },
         fr_meal_zero: { ko: '같은 팀에서 같은 시간에 운동하면 합석이에요.', en: 'Same team, same time = eating together.' },
         fr_meal_hint: { ko: '같은 팀 · 같은 시간에 운동하는 밥친구', en: 'Friends on the same team at the same time' },
-        fr_err_daily: { ko: '신청은 하루 30건까지예요. 내일 다시 해주세요.', en: 'Up to 30 requests a day. Try again tomorrow.' },
+        fr_err_daily: { ko: '신청은 하루 30건까지예요. 내일 다시 해 주세요.', en: 'Up to 30 requests a day. Try again tomorrow.' },
         fr_meal_fab: { ko: '이번 주 합석하는 밥친구가 있어요', en: 'You play with bap friends this week' },
         fr_warm_0: { ko: '', en: '' },
         fr_warm_1: { ko: '한 숟갈', en: 'A spoonful' },

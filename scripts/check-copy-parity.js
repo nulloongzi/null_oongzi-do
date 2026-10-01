@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // check-copy-parity.js — 웹과 앱이 같은 상황에서 같은 말을 하는지 본다(docs/voice-and-tone.md).
-// 알림(토스트·스낵바)·입력 칸 오류·확인 팝업 문구만 대상이다. 화면 라벨은 플랫폼마다
+// 알림(토스트·스낵바)·입력 칸 오류·확인 팝업·안내 문구가 대상이다. 화면 라벨은 플랫폼마다
 // 자리가 달라 일부러 다르게 둔 것이 많아서 뺐다(docs/visual-parity.md).
 //
 //   node scripts/check-copy-parity.js                 웹 키가 모두 있는지만
@@ -77,6 +77,27 @@ const PAIRS = {
     lb_add_time_label: 'lb_add_time_label',
     lb_add_btn: 'lb_add_btn',
     lb_remove: 'lb_remove_btn',
+    // 안내·상태 문구(웹 <br> 은 앱 \n 과 같게 본다)
+    login_cancelled: 'au_login_cancelled',
+    nickname_reserved: 'nickname_reserved',
+    f_reel_invalid: 'insta_reel_invalid',
+    pf_curated_hint: 'pk_f_curated_hint',
+    pk_level_hint: 'pk_level_hint',
+    lb_slot_rice: 'lb_slot_rice',
+    lb_slot_soup: 'lb_slot_soup',
+    vf_rejected: 'vf_rejected',
+    vf_no_reason: 'vf_no_reason',
+    ad_desc: 'ad_desc',
+    ad_pending: 'ad_pending',
+    ad_rejected: 'ad_rejected',
+    reg_area_only_desc: 'reg_area_only_desc',
+    reg_area_label_fail: 'reg_area_label_fail',
+    cd_area_only_note: 'cd_area_only_note',
+    rp_intro: 'rp_intro',
+    rp_need_reason: 'rp_need_reason',
+    fr_share_title: 'fr_share_title',
+    fr_err_daily: 'fr_err_daily',
+    fr_err_generic: 'fr_err_generic',
     // 이름만 있는 버튼(화면 낭독기)
     fab_lunchbox: 'fab_lunchbox',
     fab_profile: 'fab_profile',
@@ -96,7 +117,9 @@ function readWeb() {
     const re = new RegExp('^\\s*([a-z0-9_]+):\\s*\\{\\s*ko:\\s*' + STR + '\\s*,\\s*en:\\s*' + STR, 'gm');
     const out = {};
     let m;
-    while ((m = re.exec(src))) out[m[1]] = { ko: lit(m[2]), en: lit(m[3]) };
+    // 웹 화면 줄바꿈 <br> 은 앱 문자열의 \n 과 같은 뜻
+    const br = (v) => v.replace(/<br>/g, '\\n');
+    while ((m = re.exec(src))) out[m[1]] = { ko: br(lit(m[2])), en: br(lit(m[3])) };
     return out;
 }
 
