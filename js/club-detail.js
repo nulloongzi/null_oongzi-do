@@ -586,13 +586,17 @@ window.openClubDetail = function (id, opts) {
         actionBtns.appendChild(flags);
     }
 
-    // Verification status area (registered owner only, unverified clubs)
+    // 인증 신청/상태 영역 — 미인증 팀의 관리자(admins, 최대 3명)에게.
+    // 예전엔 처음 등록한 사람(registered_by)에게만 보여, 관리자 신청으로 들어온 공동 관리자는
+    // 인증을 신청할 길이 없었고, 거꾸로 관리자에서 빠진 등록자에겐 계속 보였다.
+    // 앱(detail_sheet.dart _VerificationSection)과 같은 기준. 운영자는 바로 인증할 수 있어 뺀다.
     var existingVerifyArea = document.getElementById('verifyStatusArea');
     if (existingVerifyArea) existingVerifyArea.remove();
 
     if (!club.is_verified
         && window.currentUser
-        && club.registered_by === window.currentUser.uid) {
+        && !window.currentUser.isAnonymous
+        && window.clubAdminUids(club).indexOf(window.currentUser.uid) !== -1) {
         var verifyArea = document.createElement('div');
         verifyArea.id = 'verifyStatusArea';
         verifyArea.style = 'margin-top:8px;';

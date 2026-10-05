@@ -697,3 +697,32 @@ test('급구 폼: 운동 칩 · 문구 검사 · postUrgent 호출 · 티커 마
     await expect(item).toContainText('스모크급구');
     await expect(item.locator('.ticker-until')).toHaveText(/\d{2}:\d{2}/);
 });
+
+// 인증 신청 칸은 미인증 팀의 '관리자'(admins)에게 — 처음 등록한 사람만이 아니다.
+// 관리자 신청으로 들어온 공동 관리자도 인증을 신청할 수 있어야 하고, 관리자에서 빠진
+// 등록자에게는 더 이상 보이지 않아야 한다. 운영자는 바로 인증할 수 있어 뺀다.
+test('인증 신청 칸: 공동 관리자에게 보이고, 빠진 등록자·운영자에겐 안 보인다', async ({ page }) => {
+    await page.goto('/');
+    const shown = await page.evaluate(async () => {
+        window.initMarkers = function () {};
+        window.firebaseDB = {
+            collection: () => ({ where: () => ({ limit: () => ({ get: () => Promise.resolve({ empty: true, docs: [], forEach() {} }) }) }) })
+        };
+        window.clubs.push({
+            id: 'smoke-vf', name: '스모크인증', is_verified: false,
+            registered_by: 'owner', admins: ['co1', 'co2'], address: '서울 마포구'
+        });
+        const out = {};
+        for (const [who, uid, op] of [['co2', 'co2', false], ['owner', 'owner', false], ['op', 'op1', true]]) {
+            window.currentUser = { uid, isAnonymous: false };
+            window.isAdmin = op;
+            window.openClubDetail('smoke-vf', { silent: true });
+            await new Promise((r) => setTimeout(r, 50));
+            out[who] = !!document.querySelector('#verifyStatusArea #btnRequestVerify');
+        }
+        return out;
+    });
+    expect(shown.co2).toBe(true);     // 공동 관리자
+    expect(shown.owner).toBe(false);  // admins 에 없는 처음 등록자
+    expect(shown.op).toBe(false);     // 운영자(admins 에 없음)
+});
