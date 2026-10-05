@@ -223,3 +223,40 @@ describe('정의되지 않은 경로는 기본 거부', () => {
         );
     });
 });
+
+// rules v2 에서 `read` = get + list. 공개 읽기는 get 만 열어서,
+// 경로를 모르는 사람이 uid 폴더 목록을 훑을 수 없게 한다.
+describe('공개 사진 폴더: get 은 되고 목록(list)은 막힌다', () => {
+    const FOLDERS = ['verification_photos', 'admin_request_photos', 'club_photos'];
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (sctx) => {
+            for (const f of FOLDERS) {
+                await sctx.storage().ref(f + '/user-A/listed.jpg').put(makeBlob(1024, 'image/jpeg'));
+            }
+            await sctx.storage().ref('reel_covers/LISTME.jpg').put(makeBlob(1024, 'image/jpeg'));
+        });
+    });
+
+    for (const f of FOLDERS) {
+        test(f + ': 비로그인 get(getDownloadURL) 통과', async () => {
+            const ctx = testEnv.unauthenticatedContext();
+            await assertSucceeds(ctx.storage().ref(f + '/user-A/listed.jpg').getDownloadURL());
+        });
+
+        test(f + ': 비로그인 루트 목록 거부', async () => {
+            const ctx = testEnv.unauthenticatedContext();
+            await assertFails(ctx.storage().ref(f).listAll());
+        });
+
+        test(f + ': 로그인해도 남의 uid 폴더 목록 거부', async () => {
+            const ctx = testEnv.authenticatedContext('user-B');
+            await assertFails(ctx.storage().ref(f + '/user-A').list({ maxResults: 10 }));
+        });
+    }
+
+    test('reel_covers: 목록 거부', async () => {
+        const ctx = testEnv.unauthenticatedContext();
+        await assertFails(ctx.storage().ref('reel_covers').listAll());
+    });
+});
