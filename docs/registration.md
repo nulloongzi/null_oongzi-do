@@ -8,7 +8,7 @@
 
 | 함수 | 설명 |
 |------|------|
-| `openRegistrationModal(isUrgent)` | 등록/급구 모달 열기 |
+| `openRegistrationModal()` | 팀 등록 모달 열기 (급구는 등록 폼이 아니라 상세 시트의 급구 버튼으로 켠다 — 새 팀은 급구가 꺼진 채로만 저장된다) |
 | `addScheduleRow()` | 스케줄 입력 행 추가 (요일 + 시작~종료 시간) |
 | `getScheduleData()` | 입력된 스케줄을 `{raw, text}` 형태로 파싱 |
 | `startMapPicker()` | 지도 피커 오버레이 열기 |

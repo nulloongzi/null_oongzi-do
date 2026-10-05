@@ -195,7 +195,7 @@ window.setRegTargetValue = function (targetStr) {
     if (noteEl) noteEl.value = parsed.note;
 };
 
-window.openRegistrationModal = function (isUrgent) {
+window.openRegistrationModal = function () {
     try {
         // 편집 모드 초기화 (이전 openEditModal 흔적 제거)
         window.editingClubId = null;
@@ -207,7 +207,7 @@ window.openRegistrationModal = function (isUrgent) {
         if (submitBtn) submitBtn.innerText = window.t('reg_submit');
         window.setRegTargetValue(''); // 칩/메모 초기화
         window.setReelInputLocked(document.getElementById('regReel'), false); // 숨김 팀 편집 흔적 해제
-        document.getElementById('regModalTitle').innerText = isUrgent ? window.t('reg_title_urgent') : window.t('reg_title');
+        document.getElementById('regModalTitle').innerText = window.t('reg_title');
         // 관리자 전용 필드는 신규 등록 시에는 숨김
         var ownerGroup = document.getElementById('adminOwnerGroup');
         if (ownerGroup) ownerGroup.style.display = 'none';
@@ -566,8 +566,6 @@ window.submitRegistration = async function () {
     }
     var reels = reelResult.reels;
     var reel = reels.length ? reels[0] : '';
-    var is_urgent = false;
-    var urgent_msg = "";
 
     // 길이 가드 (DoS · 도큐먼트 비대화 방지)
     if (name.length > 60) { window.fieldError('regName', window.t('reg_name_max')); return; }
@@ -764,8 +762,9 @@ window.submitRegistration = async function () {
                 contact: { insta: insta, link: link },
                 insta_reel: reel,
                 insta_reels: reels,
-                is_urgent: is_urgent,
-                urgent_msg: urgent_msg,
+                // 급구는 인증된 팀만 켤 수 있다(규칙이 새 팀의 급구 켜기를 거부) — 꺼진 채로 시작
+                is_urgent: false,
+                urgent_msg: "",
                 last_verified_at: window.firebaseServerTimestamp ? window.firebaseServerTimestamp() : new Date(),
                 data_status: "active", // active | needs_check | dormant (관리자가 조정)
                 metadata: {
@@ -797,18 +796,8 @@ window.submitRegistration = async function () {
             window.allClubs.push(newClub);
         }
 
-        // Re-render markers (수정/등록 모두)
-        if (window.clusterer) window.clusterer.clear();
-        if (window.markers) {
-            window.markers.forEach(function (m) { if (m.marker) m.marker.setMap(null); });
-            window.markers.forEach(function (m) { if (m.overlay) m.overlay.setMap(null); });
-            window.markers = [];
-        }
+        // Re-render markers (수정/등록 모두) — initMarkers 가 이전 마커·라벨·원을 먼저 걷는다
         if (window.initMarkers) window.initMarkers();
-
-        if (is_urgent && window.initUrgentTicker) {
-            window.initUrgentTicker();
-        }
 
         if (window.track) window.track('club_register', { mode: isEditing ? 'edit' : 'create' });
 
