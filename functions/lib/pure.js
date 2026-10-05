@@ -638,6 +638,115 @@ function instaReelCode(u) {
     return m ? m[1] : null;
 }
 
+// ── 급구 · 회원 모집 ──────────────────────────────────────────────
+// 급구는 운동 **한 번**에 묶인다. 고른 운동이 끝나면(urgent_until) 저절로 내려가고,
+// 7일 안의 운동만 고를 수 있다. 켜기는 postUrgent(callable) 하나로만 — 문구 검사와
+// 기록(urgent_log)을 서버가 쥔다. 끄기는 클라이언트도 직접 한다.
+// 회원 모집(is_recruiting)은 따로 있는 평범한 표시다. 팀 관리자가 직접 켜고 끄고,
+// 팀 정보를 60일 동안 안 고치면 매시간 도는 정리(sweepClubFlags)가 끈다.
+//
+// 문구 검사 정규식은 웹 js/urgent.js · 앱과 **같아야** 한다 — 어긋나면 화면은
+// 통과시켰는데 서버가 거절한다.
+var URGENT_MSG_MAX = 60;                       // 코드 포인트 기준(이모지 1개 = 1)
+var URGENT_MIN_LEAD_MS = 5 * 60 * 1000;        // 끝나기 5분도 안 남은 운동은 못 고른다
+var URGENT_MAX_AHEAD_MS = 8 * 24 * 3600 * 1000; // 화면은 7일, 서버는 하루 여유(시간대·끝 시각)
+var URGENT_MIGRATE_MS = 7 * 24 * 3600 * 1000;  // urgent_until 없는 예전 급구에 줄 기한
+var RECRUIT_STALE_MS = 60 * 24 * 3600 * 1000;
+var URGENT_LINK_RE = /(https?:\/\/|www\.|open\.kakao|[a-z0-9-]+\.(com|net|org|kr|co|io|me|ly|gl|link|app|page)\b)/i;
+var URGENT_PHONE_RE = /(01[016789]|0\d{1,2})[-.\s]?\d{3,4}[-.\s]?\d{4}/;
+
+// Firestore Timestamp · Date · ms 숫자 → ms. 그 밖(문자열·null·이상한 값)은 null.
+function toMillis(v) {
+    if (v == null) return null;
+    if (typeof v === "number") return isFinite(v) ? v : null;
+    if (v instanceof Date) { var t = v.getTime(); return isFinite(t) ? t : null; }
+    if (typeof v.toMillis === "function") {
+        var ms = v.toMillis();
+        return typeof ms === "number" && isFinite(ms) ? ms : null;
+    }
+    if (typeof v.seconds === "number") return v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+    return null;
+}
+
+// 급구 문구 문제. 없으면 null. 링크·전화번호를 막는 이유: 연락은 팀 연락처로 받는다 —
+// 지도 맨 위에 크게 뜨는 자리라 광고·개인번호가 실리면 곤란하다.
+function urgentMsgProblem(msg) {
+    var s = typeof msg === "string" ? msg.trim() : "";
+    if (!s) return "msg_empty";
+    if (Array.from(s).length > URGENT_MSG_MAX) return "msg_too_long";
+    if (URGENT_LINK_RE.test(s)) return "msg_link";
+    if (URGENT_PHONE_RE.test(s)) return "msg_phone";
+    return null;
+}
+
+// postUrgent 가 막는 이유(로그인·입력 형식·팀 없음은 index.js 가 먼저 거른다).
+// 순서가 곧 화면에 뜨는 이유다 — 권한 → 팀 상태 → 시간 → 문구.
+function postUrgentBlockReason(p) {
+    var club = p.club || {};
+    var now = p.nowMs;
+    if (!p.isOperator && !canManageClub(club, p.uid)) return "not_manager";
+    if (club.is_verified !== true) return "unverified";
+    var blocked = toMillis(club.urgent_blocked_until);
+    if (blocked != null && blocked > now) return "blocked";
+    if (!(p.untilMs > now + URGENT_MIN_LEAD_MS)) return "past";
+    if (p.untilMs > now + URGENT_MAX_AHEAD_MS) return "too_far";
+    return urgentMsgProblem(p.msg);
+}
+
+// 급구가 지금 떠 있나. 웹 window.isUrgentActive · 앱과 같은 판정.
+// urgent_until 이 없는 예전 급구는 떠 있는 걸로 본다(정리가 기한을 붙인다).
+function isUrgentActive(club, nowMs) {
+    if (!club || club.is_urgent !== true) return false;
+    if (typeof club.urgent_msg !== "string" || !club.urgent_msg.trim()) return false;
+    if (club.urgent_until == null) return true;
+    var until = toMillis(club.urgent_until);
+    return until != null && until > nowMs;
+}
+
+// 매시간 정리가 is_urgent == true 인 팀에 할 일.
+//   expire     — 고른 운동이 끝났다(또는 문구가 비어 애초에 안 보이는 급구)
+//   unverified — 인증이 풀린 팀
+//   no_admin   — 관리자가 한 명도 없는 팀(끌 사람이 없다)
+//   migrate    — urgent_until 이 없는 예전 급구: 지금부터 7일 기한을 붙인다
+// 끄는 일이 기한 붙이기보다 먼저다 — 꺼야 할 급구에 기한을 붙여 살려두지 않게.
+function urgentSweepAction(club, nowMs) {
+    if (!club || club.is_urgent !== true) return null;
+    var until = toMillis(club.urgent_until);
+    if (typeof club.urgent_msg !== "string" || !club.urgent_msg.trim()) return "expire";
+    if (until != null && until <= nowMs) return "expire";
+    if (club.is_verified !== true) return "unverified";
+    if (clubAdminUids(club).length === 0) return "no_admin";
+    if (until == null) return "migrate";
+    return null;
+}
+
+// 서버 시각(serverTimestamp)은 지금보다 뒤일 수 없다. 앞날짜가 박힌 값은 손으로
+// 넣은 것이라 기준으로 쓰지 않는다 — 안 그러면 영영 안 꺼지는 모집이 생긴다.
+function pastMillis(v, nowMs) {
+    var ms = toMillis(v);
+    return ms != null && ms <= nowMs ? ms : null;
+}
+
+// 회원 모집이 낡았나: max(recruit_at, last_verified_at) 가 60일보다 오래됐다.
+// recruit_at 이 없으면(콘솔에서 켠 예전 값) 낡았다고 보지 않는다 — 정리가 지금
+// 시각을 붙이고(recruitSweepAction 'stamp') 그때부터 60일을 센다. 모르는 채로
+// 바로 끄면 방금 켠 모집이 사라질 수 있다.
+function recruitStale(club, nowMs) {
+    if (!club || club.is_recruiting !== true) return false;
+    var at = pastMillis(club.recruit_at, nowMs);
+    if (at == null) return false;
+    var verified = pastMillis(club.last_verified_at, nowMs);
+    var base = verified != null && verified > at ? verified : at;
+    return nowMs - base > RECRUIT_STALE_MS;
+}
+
+// 정리가 is_recruiting == true 인 팀에 할 일: 'off' | 'stamp'(recruit_at 붙이기) | null
+function recruitSweepAction(club, nowMs) {
+    if (!club || club.is_recruiting !== true) return null;
+    if (pastMillis(club.recruit_at, nowMs) == null) return "stamp";
+    return recruitStale(club, nowMs) ? "off" : null;
+}
+
 module.exports = {
     skillKeyOk: skillKeyOk,
     skillKeyMatches: skillKeyMatches,
@@ -683,5 +792,17 @@ module.exports = {
     extractInstaPoster: extractInstaPoster,
     isInstaCdnUrl: isInstaCdnUrl,
     isCachedCoverUrl: isCachedCoverUrl,
-    instaReelCode: instaReelCode
+    instaReelCode: instaReelCode,
+    URGENT_MSG_MAX: URGENT_MSG_MAX,
+    URGENT_MIN_LEAD_MS: URGENT_MIN_LEAD_MS,
+    URGENT_MAX_AHEAD_MS: URGENT_MAX_AHEAD_MS,
+    URGENT_MIGRATE_MS: URGENT_MIGRATE_MS,
+    RECRUIT_STALE_MS: RECRUIT_STALE_MS,
+    toMillis: toMillis,
+    urgentMsgProblem: urgentMsgProblem,
+    postUrgentBlockReason: postUrgentBlockReason,
+    isUrgentActive: isUrgentActive,
+    urgentSweepAction: urgentSweepAction,
+    recruitStale: recruitStale,
+    recruitSweepAction: recruitSweepAction
 };

@@ -1,5 +1,6 @@
 var { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 var { onDocumentCreated } = require("firebase-functions/v2/firestore");
+var { onSchedule } = require("firebase-functions/v2/scheduler");
 var { defineSecret } = require("firebase-functions/params");
 var admin = require("firebase-admin");
 var pure = require("./lib/pure");
@@ -1774,6 +1775,168 @@ exports.leaveClubAdmin = onCall(async function (request) {
         tx.update(clubRef, { admins: result.admins });
         return { status: "left", remaining: result.admins.length };
     });
+});
+
+// ══════════════════════════════════════════════════════════
+// 급구 · 회원 모집
+// ══════════════════════════════════════════════════════════
+// 급구를 **켜는** 길은 이 callable 하나다(firestore.rules 가 클라이언트의 급구 켜기·고치기를
+// 막는다). 문구 검사·기한(운동 한 번, 7일 안)·기록(urgent_log)을 서버가 쥐어야
+// 예전 앱이나 콘솔에서 아무 문구·아무 기한으로 지도를 덮지 못한다.
+// 끄기는 클라이언트가 직접 쓴다(규칙이 허용). 순수 판정은 lib/pure.js(tests/urgent.test.js).
+
+// 운영자(/admins/{uid})인가. 규칙의 isAdmin() 과 같은 기준.
+async function isOperatorUid(uid) {
+    if (!uid) return false;
+    var snap = await db.collection("admins").doc(String(uid)).get();
+    return snap.exists;
+}
+
+function urgentError(code, reason, message) {
+    return new HttpsError(code, message || reason, { reason: reason });
+}
+
+// 요청 { clubId, until(ms), msg } → { status: 'ok', until }. 실패는 details.reason 으로
+// 이유를 준다(화면이 ug_err_<reason> 문구로 바꾼다). 올라와 있는 급구를 고칠 때도 이걸 다시 부른다.
+exports.postUrgent = onCall(async function (request) {
+    var auth = request.auth;
+    var provider = auth && auth.token && auth.token.firebase && auth.token.firebase.sign_in_provider;
+    if (!auth || provider === "anonymous") throw urgentError("unauthenticated", "login");
+
+    var data = request.data || {};
+    var clubId = typeof data.clubId === "string" ? data.clubId.trim() : "";
+    var until = data.until;
+    if (!clubId || clubId.length > 200 || typeof until !== "number" || !isFinite(until)
+        || typeof data.msg !== "string" || data.msg.length > 1000) {
+        throw urgentError("invalid-argument", "bad_input");
+    }
+
+    var uid = auth.uid;
+    var operator = await isOperatorUid(uid);
+    var clubRef = db.collection("clubs").doc(clubId);
+
+    // 읽고 판정하고 쓰는 사이에 인증이 풀리거나 관리자가 바뀔 수 있어 한 트랜잭션으로.
+    return await db.runTransaction(async function (tx) {
+        var snap = await tx.get(clubRef);
+        if (!snap.exists) throw urgentError("not-found", "not_found");
+        var nowMs = Date.now();
+        var reason = pure.postUrgentBlockReason({
+            club: snap.data(), uid: uid, isOperator: operator,
+            untilMs: until, msg: data.msg, nowMs: nowMs
+        });
+        if (reason) {
+            throw urgentError(reason === "not_manager" ? "permission-denied" : "failed-precondition", reason);
+        }
+        var msg = data.msg.trim();
+        var untilTs = admin.firestore.Timestamp.fromMillis(until);
+        var now = admin.firestore.FieldValue.serverTimestamp();
+        tx.update(clubRef, { is_urgent: true, urgent_msg: msg, urgent_until: untilTs, urgent_at: now });
+        tx.set(clubRef.collection("urgent_log").doc(), { action: "post", uid: uid, msg: msg, until: untilTs, at: now });
+        return { status: "ok", until: until };
+    });
+});
+
+// 한 번에 커밋하는 쓰기 수(Firestore 한도 500 — 여유를 둔다).
+var SWEEP_BATCH_WRITES = 400;
+
+// 정리할 일 하나 → 쓰기 목록. 급구 끄기·기한 붙이기는 urgent_log 도 함께 남긴다.
+function sweepWrites(snap, kind, action, nowMs) {
+    var FieldValue = admin.firestore.FieldValue;
+    var d = snap.data() || {};
+    var at = FieldValue.serverTimestamp();
+    if (kind === "recruit") {
+        if (action === "off") return [{ ref: snap.ref, data: { is_recruiting: false } }];
+        return [{ ref: snap.ref, data: { recruit_at: at } }]; // stamp
+    }
+    var logRef = snap.ref.collection("urgent_log").doc();
+    if (action === "migrate") {
+        var until = admin.firestore.Timestamp.fromMillis(nowMs + pure.URGENT_MIGRATE_MS);
+        return [
+            { ref: snap.ref, data: { urgent_until: until } },
+            { ref: logRef, data: { action: "migrate", until: until, at: at }, create: true }
+        ];
+    }
+    var log = { action: action, at: at };
+    if (typeof d.urgent_msg === "string") log.msg = d.urgent_msg;
+    if (d.urgent_until != null) log.until = d.urgent_until;
+    return [
+        { ref: snap.ref, data: { is_urgent: false, urgent_msg: "", urgent_until: FieldValue.delete(), urgent_at: FieldValue.delete() } },
+        { ref: logRef, data: log, create: true }
+    ];
+}
+
+// 팀 하나의 쓰기들은 같은 배치에 넣는다(끄기와 기록이 갈라지지 않게). 팀 문서 쓰기에는
+// 읽은 시점(updateTime) 전제를 건다 — 읽은 뒤 관리자가 급구를 새로 올렸으면 그 배치는
+// 실패하고, 그 팀들은 한 팀씩 다시 시도한다(다시 실패한 팀은 다음 시간에 새로 본다).
+async function commitSweep(groups) {
+    function addTo(batch, g) {
+        g.writes.forEach(function (w) {
+            if (w.create) batch.set(w.ref, w.data);
+            else batch.update(w.ref, w.data, { lastUpdateTime: g.updateTime });
+        });
+    }
+    var chunks = [], cur = [], n = 0;
+    groups.forEach(function (g) {
+        if (n + g.writes.length > SWEEP_BATCH_WRITES && cur.length) { chunks.push(cur); cur = []; n = 0; }
+        cur.push(g);
+        n += g.writes.length;
+    });
+    if (cur.length) chunks.push(cur);
+
+    var done = 0;
+    for (var i = 0; i < chunks.length; i++) {
+        var batch = db.batch();
+        chunks[i].forEach(function (g) { addTo(batch, g); });
+        try {
+            await batch.commit();
+            done += chunks[i].length;
+        } catch (e) {
+            console.warn("sweepClubFlags 배치 실패 — 한 팀씩 다시:", e && e.message);
+            for (var j = 0; j < chunks[i].length; j++) {
+                var one = db.batch();
+                addTo(one, chunks[i][j]);
+                try { await one.commit(); done++; } catch (e2) {
+                    console.warn("sweepClubFlags 건너뜀 - club:", chunks[i][j].id, e2 && e2.message);
+                }
+            }
+        }
+    }
+    return done;
+}
+
+// 매시간: 끝난 급구 · 인증이 풀린 팀의 급구 · 관리자 없는 팀의 급구를 끄고, 기한 없는 예전
+// 급구에 7일 기한을 붙이고, 60일 동안 손대지 않은 회원 모집을 끈다.
+// Cloud Scheduler API 가 켜져 있어야 배포된다(docs/HANDOFF.md).
+exports.sweepClubFlags = onSchedule({ schedule: "every 60 minutes", timeZone: "Asia/Seoul" }, async function () {
+    var nowMs = Date.now();
+    var clubs = db.collection("clubs");
+    var res = await Promise.all([
+        clubs.where("is_urgent", "==", true).get(),
+        clubs.where("is_recruiting", "==", true).get()
+    ]);
+    var groups = [];
+    var byId = {};
+    var counts = {};
+    function plan(snap, kind, action) {
+        if (!action) return;
+        counts[kind + ":" + action] = (counts[kind + ":" + action] || 0) + 1;
+        var writes = sweepWrites(snap, kind, action, nowMs);
+        var g = byId[snap.id];
+        if (g) {
+            // 급구와 모집을 함께 고칠 팀: 팀 문서 쓰기는 하나로 합친다(첫 번째가 팀 문서).
+            // 두 번 쓰면 두 번째의 updateTime 전제가 첫 번째 쓰기에 깨진다.
+            Object.assign(g.writes[0].data, writes[0].data);
+            g.writes = g.writes.concat(writes.slice(1));
+            return;
+        }
+        byId[snap.id] = g = { id: snap.id, updateTime: snap.updateTime, writes: writes };
+        groups.push(g);
+    }
+    res[0].forEach(function (snap) { plan(snap, "urgent", pure.urgentSweepAction(snap.data(), nowMs)); });
+    res[1].forEach(function (snap) { plan(snap, "recruit", pure.recruitSweepAction(snap.data(), nowMs)); });
+    if (!groups.length) return;
+    var done = await commitSweep(groups);
+    console.log("sweepClubFlags:", JSON.stringify(counts), "적용", done + "/" + groups.length);
 });
 
 // 운영자에게 알린다. 실패해도 요청 문서는 남고 '클레임관리'로 따라잡을 수 있다.

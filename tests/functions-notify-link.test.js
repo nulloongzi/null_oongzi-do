@@ -117,6 +117,7 @@ const fnStubs = {
         onDocumentCreated: (o, h) => ({ _handler: h }), onDocumentWritten: (o, h) => ({ _handler: h }),
         onDocumentUpdated: (o, h) => ({ _handler: h }), onDocumentDeleted: (o, h) => ({ _handler: h })
     },
+    'firebase-functions/v2/scheduler': { onSchedule: (o, h) => h },
     'firebase-functions/params': {
         // CHATBOT_SKILL_KEY 만 빈 값을 준다. 이 파일이 보는 건 알림 배선이지
         // 접근 경계가 아니고, 빈 값이면 스킬 키 검증이 '미설정' 경로로 통과한다.
