@@ -10,10 +10,11 @@ service cloud.firestore {
 
     // 이 팀을 관리할 수 있는 uid 목록.
     //
-    // admins 가 정본이지만 그 필드가 생기기 전 문서에는 없다. 그때는
-    // registered_by 한 사람을 관리자로 본다 — 마이그레이션을 안 돌려도 기존
-    // 소유자가 권한을 잃지 않는다. functions/lib/pure.js 의 clubAdminUids 와
-    // 같은 규칙이다. 둘이 어긋나면 화면엔 버튼이 보이는데 저장은 거부된다.
+    // admins 가 정본이지만 그 필드가 생기기 전 문서에는 없다. 그때(필드가 없거나
+    // 배열이 아닐 때)만 registered_by 한 사람을 관리자로 본다 — 마이그레이션을
+    // 안 돌려도 기존 소유자가 권한을 잃지 않는다. 빈 배열 `admins: []` 는
+    // "관리자 없음"이다. functions/lib/pure.js 의 clubAdminUids 와 같은 규칙이다.
+    // 둘이 어긋나면 화면엔 버튼이 보이는데 저장은 거부된다.
     function clubAdmins(d) {
       return ('admins' in d && d.admins is list)
              ? d.admins
@@ -73,6 +74,15 @@ service cloud.firestore {
           && (!('price' in d) || (d.price is string && d.price.size() <= 120))
           && (!('schedule' in d) || (d.schedule is string && d.schedule.size() <= 600))
           && (!('urgent_msg' in d) || (d.urgent_msg is string && d.urgent_msg.size() <= 250))
+          && (!('is_urgent' in d) || d.is_urgent is bool)
+          // 급구 기한(고른 운동이 끝나는 시각)·올린 시각·운영자 차단 기한, 회원 모집.
+          // 새 급구 문구는 postUrgent 가 60자로 자른다 — 위 250 은 예전 급구용.
+          && (!('urgent_until' in d) || d.urgent_until is timestamp)
+          && (!('urgent_at' in d) || d.urgent_at is timestamp)
+          && (!('urgent_blocked_until' in d) || d.urgent_blocked_until is timestamp)
+          && (!('is_recruiting' in d) || d.is_recruiting is bool)
+          && (!('recruit_msg' in d) || (d.recruit_msg is string && d.recruit_msg.size() <= 60))
+          && (!('recruit_at' in d) || d.recruit_at is timestamp)
           && (!('contact' in d) || (d.contact is map
                 && (!('insta' in d.contact) || (d.contact.insta is string && d.contact.insta.size() <= 60))
                 && (!('link' in d.contact) || (d.contact.link is string && d.contact.link.size() <= 500))))
@@ -87,6 +97,48 @@ service cloud.firestore {
           && (!('location_precision' in d) || d.location_precision in ['exact', 'area'])
           && reelFieldsValid(d)
           && areaCoordsCoarse();
+    }
+
+    // 급구(is_urgent) — 지도에 빨간 마커·티커로 크게 뜨는 표시라 **켜기는 서버만** 한다.
+    // postUrgent(callable, admin SDK)가 인증·관리자·차단·기한(운동 한 번, 7일 안)·문구
+    // (60자, 링크·전화번호 금지)를 보고 urgent_log 에 남긴 뒤 쓴다. 팀 관리자 경로에서는:
+    //   · 급구 네 필드(is_urgent · urgent_msg · urgent_until · urgent_at)를 그대로 두면 통과 —
+    //     급구가 떠 있는 동안에도 팀 정보는 고칠 수 있게. 기한을 늘리거나 문구를 바꾸려면
+    //     callable 을 다시 부른다(고치기도 같은 길).
+    //   · 끄기(after.is_urgent != true)는 언제나 된다. 기한·시각은 지우거나 그대로 둘 수만
+    //     있다 — 꺼둔 채 새 기한을 심어두는 길을 막는다.
+    // 운영자 경로는 그대로 신뢰. 화면도 인증된 팀 관리자에게만 '급구 올리기'를 보인다.
+    function urgentChangeOk() {
+      let after = request.resource.data;
+      let before = resource.data;
+      return (after.get('is_urgent', false) == before.get('is_urgent', false)
+              && after.get('urgent_msg', '') == before.get('urgent_msg', '')
+              && after.get('urgent_until', null) == before.get('urgent_until', null)
+              && after.get('urgent_at', null) == before.get('urgent_at', null))
+          || (after.get('is_urgent', false) != true
+              && (!('urgent_until' in after) || after.urgent_until == before.get('urgent_until', null))
+              && (!('urgent_at' in after) || after.urgent_at == before.get('urgent_at', null)));
+    }
+
+    // 운영자가 콘솔에서 거는 급구 차단 기한. 팀 관리자가 풀 수 있으면 차단이 아니다.
+    function urgentBlockUnchanged() {
+      return request.resource.data.get('urgent_blocked_until', null)
+          == resource.data.get('urgent_blocked_until', null);
+    }
+
+    // 회원 모집(is_recruiting) — 인증 여부와 상관없이 팀 관리자가 직접 켜고 끈다.
+    // 켤 때·문구를 바꿀 때는 recruit_at 이 서버 시각(request.time)이어야 한다. 정리
+    // (sweepClubFlags)가 max(recruit_at, last_verified_at) 로 60일을 세므로, 켜진 채
+    // 그 밖의 수정에서도 recruit_at 은 그대로 두거나 지금 시각으로만 바꿀 수 있다 —
+    // 앞날짜를 심어 영영 안 꺼지는 모집을 막는다. 끄기는 언제나 된다.
+    function recruitChangeOk() {
+      let after = request.resource.data;
+      let before = resource.data;
+      return after.get('is_recruiting', false) != true
+          || after.get('recruit_at', null) == request.time
+          || (before.get('is_recruiting', false) == true
+              && after.get('recruit_msg', '') == before.get('recruit_msg', '')
+              && after.get('recruit_at', null) == before.get('recruit_at', null));
     }
 
     // 위치를 '대략만' 공개하기로 한 팀은 **정확한 좌표를 저장하지 못하게** 한다.
@@ -152,9 +204,16 @@ service cloud.firestore {
       // 새 팀 등록: 인증된 사용자가 자신을 registered_by 로 기록, is_verified=false 강제.
       // 등록자가 곧 1번 관리자다. admins 를 함께 쓰더라도
       // 본인 혼자만 넣을 수 있다 — 만들면서 남을 끼워넣지 못하게.
+      // 급구는 서버(postUrgent)만 켜니 새 팀은 꺼진 채로, 기한·차단 필드 없이 들어온다.
+      // 회원 모집도 꺼진 채로 시작한다(켜기는 recruit_at 규칙을 타는 update 로).
       allow create: if request.auth != null
                     && request.resource.data.registered_by == request.auth.uid
                     && request.resource.data.is_verified == false
+                    && request.resource.data.get('is_urgent', false) == false
+                    && request.resource.data.get('is_recruiting', false) == false
+                    && !('urgent_until' in request.resource.data)
+                    && !('urgent_at' in request.resource.data)
+                    && !('urgent_blocked_until' in request.resource.data)
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && (!('admins' in request.resource.data)
@@ -184,11 +243,21 @@ service cloud.firestore {
                         && request.resource.data.registered_by == resource.data.registered_by
                         && adminsUnchanged()
                         && moderationUnchanged()
+                        && urgentChangeOk()
+                        && urgentBlockUnchanged()
+                        && recruitChangeOk()
                         && clubFieldsValid()));
 
       // 삭제: 운영자 또는 팀 관리자
       allow delete: if isAdmin()
                     || (request.auth != null && isClubManager(resource.data));
+
+      // 급구 기록(post · expire · unverified · no_admin · migrate). Functions(admin SDK)만
+      // 쓴다. 누가 언제 무슨 문구로 올렸나라 운영자만 읽는다.
+      match /urgent_log/{logId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
     }
 
     // pickup_games: 픽업 스팟(발견형). 모두 읽기, 누구나 등록(무로그인=익명 인증 포함).
@@ -342,15 +411,21 @@ service cloud.firestore {
     //
     // 승인·거절은 Functions(admin SDK)만 한다. 신청자가 자기 요청을 승인으로
     // 바꿀 수 있으면 절차 전체가 무의미하다.
+    //
+    // 만들 때는 신청 필드만 받는다. reviewed_at·reject_reason 은 심사 결과라
+    // 서버(admin SDK)만 쓴다 — 신청자가 거절 사유를 미리 박아 넣을 이유가 없다.
+    // 사진은 우리 Storage 의 다운로드 URL 만 받는다. 아무 URL 이나 받으면 챗봇
+    // 카드가 바깥 이미지를 그대로 띄우고, 운영자가 그 링크를 누르게 된다.
     function adminReqFieldsValid() {
       let d = request.resource.data;
       return d.keys().hasOnly([
                'club_id', 'club_name', 'photo_url',
-               'requested_by', 'requested_at', 'status', 'reviewed_at', 'reject_reason'
+               'requested_by', 'requested_at', 'status'
              ])
           && d.club_id is string && d.club_id.size() > 0 && d.club_id.size() <= 200
           && (!('club_name' in d) || (d.club_name is string && d.club_name.size() <= 120))
           && d.photo_url is string && d.photo_url.size() > 0 && d.photo_url.size() <= 1000
+          && d.photo_url.matches('^https://firebasestorage[.]googleapis[.]com/.*')
           && d.requested_at is timestamp;
     }
 
@@ -360,7 +435,10 @@ service cloud.firestore {
                   || (request.auth != null
                       && resource.data.requested_by == request.auth.uid);
 
+      // 익명 인증(무로그인 픽업 등록용)으로는 신청할 수 없다 — 승인되면 그 uid 가
+      // 팀 관리자가 되는데, 익명 계정은 기기를 바꾸면 사라진다.
       allow create: if request.auth != null
+                    && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous'
                     && request.resource.data.requested_by == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && adminReqFieldsValid();

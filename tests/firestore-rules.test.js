@@ -72,10 +72,11 @@ describe('Phase 1-1: clubs update (PIN 제거 → canModifyClub) 룰 강제', ()
         }));
     });
 
-    test('owner는 자기 팀 is_urgent 업데이트 통과', async () => {
+    // 급구 켜기는 이제 서버(postUrgent)만 한다 — 인증된 팀 owner 라도 직접 쓰기는 거부.
+    test('owner라도 is_urgent 를 직접 켤 수 없다(postUrgent 로만)', async () => {
         const ctx = testEnv.authenticatedContext('owner-uid');
         const db = ctx.firestore();
-        await assertSucceeds(db.collection('clubs').doc('club-1').update({
+        await assertFails(db.collection('clubs').doc('club-1').update({
             is_urgent: true,
             urgent_msg: '센터 1명 급구'
         }));
@@ -771,11 +772,249 @@ describe('팀 관리자(admins) 룰 — 정원 3명 · 명단은 서버만', () 
     });
 });
 
+describe('급구(is_urgent) — 켜기는 서버만, 끄기는 관리자도', () => {
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    const H = 3600 * 1000;
+    // ctx.firestore() 는 compat 인스턴스라 compat 의 Timestamp·FieldValue 를 쓴다(아래 다른 블록과 같다)
+    const FS = () => require('firebase/compat/app').default.firestore;
+    const Timestamp = { fromMillis: (ms) => FS().Timestamp.fromMillis(ms) };
+    const FieldValue = { serverTimestamp: () => FS().FieldValue.serverTimestamp(), delete: () => FS().FieldValue.delete() };
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('clubs').doc('urg-unverified').set({
+                name: '미인증급구팀', admins: ['m1'], registered_by: 'm1', is_verified: false,
+                is_urgent: false, urgent_msg: ''
+            });
+            // 인증이 풀렸는데 예전 급구가 켜진 채 남은 팀
+            await db.collection('clubs').doc('urg-unverified-on').set({
+                name: '예전급구팀', admins: ['m1'], registered_by: 'm1', is_verified: false,
+                is_urgent: true, urgent_msg: '예전 급구'
+            });
+            await db.collection('clubs').doc('urg-verified').set({
+                name: '인증급구팀', admins: ['m1', 'm2'], registered_by: 'm1', is_verified: true,
+                is_urgent: false, urgent_msg: '센터 1명'   // 꺼진 채 문구만 남은 팀
+            });
+            // postUrgent 가 올린 급구(기한·시각 있음) + 운영자 차단 기한
+            await db.collection('clubs').doc('urg-live').set({
+                name: '급구중팀', admins: ['m1'], registered_by: 'm1', is_verified: true,
+                is_urgent: true, urgent_msg: '레프트 1명',
+                urgent_until: Timestamp.fromMillis(Date.now() + 3 * H),
+                urgent_at: Timestamp.fromMillis(Date.now() - H),
+                urgent_blocked_until: Timestamp.fromMillis(Date.now() - 24 * H)
+            });
+            await db.collection('clubs').doc('urg-live-2').set({
+                name: '급구중팀2', admins: ['m1'], registered_by: 'm1', is_verified: true,
+                is_urgent: true, urgent_msg: '센터',
+                urgent_until: Timestamp.fromMillis(Date.now() + 3 * H),
+                urgent_at: Timestamp.fromMillis(Date.now() - H)
+            });
+            await db.collection('clubs').doc('urg-live').collection('urgent_log').doc('l1').set({
+                action: 'post', uid: 'm1', msg: '레프트 1명', at: Timestamp.fromMillis(Date.now() - H)
+            });
+        });
+    });
+
+    test('인증된 팀 관리자라도 급구를 직접 켤 수 없다', async () => {
+        const ref = as('m2').collection('clubs').doc('urg-verified');
+        await assertFails(ref.update({ is_urgent: true, urgent_msg: '레프트 1명 급구' }));
+        // 문구를 그대로 둔 채 is_urgent 만 켜는 것도
+        await assertFails(ref.update({ is_urgent: true }));
+        // 기한·시각까지 그럴듯하게 채워도
+        await assertFails(ref.update({
+            is_urgent: true, urgent_msg: '센터 1명',
+            urgent_until: Timestamp.fromMillis(Date.now() + H), urgent_at: FieldValue.serverTimestamp()
+        }));
+    });
+
+    test('미인증 팀 관리자도 켤 수 없다', async () => {
+        await assertFails(as('m1').collection('clubs').doc('urg-unverified')
+            .update({ is_urgent: true, urgent_msg: '센터 급구' }));
+    });
+
+    test('떠 있는 급구의 문구·기한·시각은 직접 못 고친다(postUrgent 로 다시)', async () => {
+        const ref = as('m1').collection('clubs').doc('urg-live');
+        await assertFails(ref.update({ urgent_msg: '새 문구' }));
+        await assertFails(ref.update({ urgent_until: Timestamp.fromMillis(Date.now() + 100 * H) }));
+        await assertFails(ref.update({ urgent_until: FieldValue.delete() }));
+        await assertFails(ref.update({ urgent_at: FieldValue.serverTimestamp() }));
+    });
+
+    test('급구가 떠 있어도 다른 필드는 고칠 수 있다', async () => {
+        await assertSucceeds(as('m1').collection('clubs').doc('urg-live').update({ price: '월 2만원' }));
+        // 인증이 풀린 팀의 예전 급구도 마찬가지
+        await assertSucceeds(as('m1').collection('clubs').doc('urg-unverified-on').update({ price: '월 1만원' }));
+    });
+
+    test('운영자 차단 기한(urgent_blocked_until)은 관리자가 못 건드린다', async () => {
+        const ref = as('m1').collection('clubs').doc('urg-live');
+        await assertFails(ref.update({ urgent_blocked_until: FieldValue.delete() }));
+        await assertFails(ref.update({ urgent_blocked_until: Timestamp.fromMillis(Date.now() + H) }));
+        await assertFails(as('m1').collection('clubs').doc('urg-live-2')
+            .update({ urgent_blocked_until: Timestamp.fromMillis(Date.now() - H) }));
+    });
+
+    test('끄기는 된다 — 기한·시각 지우기 포함(미인증 팀도)', async () => {
+        await assertSucceeds(as('m1').collection('clubs').doc('urg-live-2').update({
+            is_urgent: false, urgent_msg: '', urgent_until: FieldValue.delete(), urgent_at: FieldValue.delete()
+        }));
+        await assertSucceeds(as('m1').collection('clubs').doc('urg-unverified-on')
+            .update({ is_urgent: false, urgent_msg: '' }));
+    });
+
+    test('끄면서 새 기한을 심을 수는 없다', async () => {
+        const ref = as('m1').collection('clubs').doc('urg-live');
+        await assertFails(ref.update({
+            is_urgent: false, urgent_msg: '', urgent_until: Timestamp.fromMillis(Date.now() + 100 * H)
+        }));
+        await assertFails(as('m2').collection('clubs').doc('urg-verified')
+            .update({ urgent_until: Timestamp.fromMillis(Date.now() + H) }));
+    });
+
+    test('기한·시각은 timestamp 여야 한다', async () => {
+        await assertFails(as('m1').collection('clubs').doc('urg-live')
+            .update({ is_urgent: false, urgent_until: 'tomorrow' }));
+        await assertFails(as('m1').collection('clubs').doc('urg-live')
+            .update({ is_urgent: false, urgent_at: 12345 }));
+    });
+
+    test('is_urgent 가 bool 이 아니면 거부', async () => {
+        const ref = as('m1').collection('clubs').doc('urg-verified');
+        await assertFails(ref.update({ is_urgent: 'true', urgent_msg: '급구' }));
+        await assertFails(ref.update({ is_urgent: 1, urgent_msg: '급구' }));
+    });
+
+    test('남은 급구를 끄지도 켜지도 못한다', async () => {
+        await assertFails(as('stranger').collection('clubs').doc('urg-verified')
+            .update({ is_urgent: true, urgent_msg: '급구' }));
+        await assertFails(as('stranger').collection('clubs').doc('urg-live')
+            .update({ is_urgent: false, urgent_msg: '' }));
+    });
+
+    test('새 팀은 급구를 켠 채, 기한·차단 필드를 든 채 만들 수 없다', async () => {
+        const club = (id) => ({ name: id, registered_by: 'newbie2', is_verified: false });
+        const db = as('newbie2').collection('clubs');
+        await assertFails(db.doc('urg-new-on').set(Object.assign(club('a'), { is_urgent: true, urgent_msg: '급구' })));
+        await assertFails(db.doc('urg-new-str').set(Object.assign(club('b'), { is_urgent: 'false' })));
+        await assertFails(db.doc('urg-new-until').set(Object.assign(club('d'),
+            { is_urgent: false, urgent_until: Timestamp.fromMillis(Date.now() + H) })));
+        await assertFails(db.doc('urg-new-at').set(Object.assign(club('e'), { urgent_at: FieldValue.serverTimestamp() })));
+        await assertFails(db.doc('urg-new-blk').set(Object.assign(club('f'),
+            { urgent_blocked_until: Timestamp.fromMillis(Date.now() - H) })));
+        await assertSucceeds(db.doc('urg-new-off').set(Object.assign(club('c'), { is_urgent: false, urgent_msg: '' })));
+    });
+
+    test('운영자 경로는 그대로 — 미인증 팀도 켤 수 있다', async () => {
+        await assertSucceeds(as('admin-uid').collection('clubs').doc('urg-unverified')
+            .update({ is_urgent: true, urgent_msg: '운영자 공지' }));
+    });
+
+    test('urgent_log — 운영자만 읽고, 아무도 쓰지 못한다', async () => {
+        const log = (uid) => as(uid).collection('clubs').doc('urg-live').collection('urgent_log');
+        await assertSucceeds(log('admin-uid').doc('l1').get());
+        await assertSucceeds(log('admin-uid').get());
+        await assertFails(log('m1').doc('l1').get());
+        await assertFails(testEnv.unauthenticatedContext().firestore()
+            .collection('clubs').doc('urg-live').collection('urgent_log').get());
+        await assertFails(log('m1').add({ action: 'post', uid: 'm1', msg: 'x', at: FieldValue.serverTimestamp() }));
+        await assertFails(log('admin-uid').add({ action: 'post', uid: 'admin-uid', msg: 'x', at: FieldValue.serverTimestamp() }));
+        await assertFails(log('admin-uid').doc('l1').delete());
+    });
+});
+
+describe('회원 모집(is_recruiting) — 팀 관리자가 직접, 인증과 상관없이', () => {
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    const D = 24 * 3600 * 1000;
+    // ctx.firestore() 는 compat 인스턴스라 compat 의 Timestamp·FieldValue 를 쓴다(아래 다른 블록과 같다)
+    const FS = () => require('firebase/compat/app').default.firestore;
+    const Timestamp = { fromMillis: (ms) => FS().Timestamp.fromMillis(ms) };
+    const FieldValue = { serverTimestamp: () => FS().FieldValue.serverTimestamp(), delete: () => FS().FieldValue.delete() };
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('clubs').doc('rc-unverified').set({
+                name: '미인증모집팀', admins: ['r1'], registered_by: 'r1', is_verified: false
+            });
+            await db.collection('clubs').doc('rc-on').set({
+                name: '모집중팀', admins: ['r1'], registered_by: 'r1', is_verified: false,
+                is_recruiting: true, recruit_msg: '20대 여성', recruit_at: Timestamp.fromMillis(Date.now() - 10 * D)
+            });
+        });
+    });
+
+    test('미인증 팀 관리자도 켤 수 있다 — recruit_at 은 서버 시각', async () => {
+        const ref = as('r1').collection('clubs').doc('rc-unverified');
+        await assertSucceeds(ref.update({ is_recruiting: true, recruit_msg: '', recruit_at: FieldValue.serverTimestamp() }));
+        await assertSucceeds(ref.update({ is_recruiting: false }));
+    });
+
+    test('켤 때 recruit_at 이 서버 시각이 아니면 거부', async () => {
+        const ref = as('r1').collection('clubs').doc('rc-unverified');
+        await assertFails(ref.update({ is_recruiting: true, recruit_msg: 'x' }));
+        await assertFails(ref.update({ is_recruiting: true, recruit_msg: 'x', recruit_at: Timestamp.fromMillis(Date.now() + 365 * D) }));
+        await assertFails(ref.update({ is_recruiting: true, recruit_msg: 'x', recruit_at: Timestamp.fromMillis(Date.now()) }));
+    });
+
+    test('켜진 채 문구를 바꾸면 recruit_at 도 서버 시각으로', async () => {
+        const ref = as('r1').collection('clubs').doc('rc-on');
+        await assertFails(ref.update({ recruit_msg: '30대도 환영' }));
+        await assertSucceeds(ref.update({ recruit_msg: '30대도 환영', recruit_at: FieldValue.serverTimestamp() }));
+    });
+
+    test('켜진 채 다른 필드 수정은 되고, recruit_at 에 앞날짜는 못 심는다', async () => {
+        const ref = as('r1').collection('clubs').doc('rc-on');
+        await assertSucceeds(ref.update({ price: '월 3만원' }));
+        await assertFails(ref.update({ recruit_at: Timestamp.fromMillis(Date.now() + 365 * D) }));
+        await assertFails(ref.update({ recruit_at: FieldValue.delete() }));
+        await assertSucceeds(ref.update({ recruit_at: FieldValue.serverTimestamp() }));
+    });
+
+    test('타입·길이', async () => {
+        const ref = as('r1').collection('clubs').doc('rc-unverified');
+        await assertFails(ref.update({ is_recruiting: 'true', recruit_at: FieldValue.serverTimestamp() }));
+        await assertFails(ref.update({ is_recruiting: true, recruit_msg: 'x'.repeat(61), recruit_at: FieldValue.serverTimestamp() }));
+        await assertFails(ref.update({ is_recruiting: true, recruit_msg: 5, recruit_at: FieldValue.serverTimestamp() }));
+        await assertSucceeds(ref.update({ is_recruiting: true, recruit_msg: '가'.repeat(60), recruit_at: FieldValue.serverTimestamp() }));
+        await assertFails(ref.update({ recruit_at: '2026-10-05' }));
+    });
+
+    test('관리자가 아니면 켜지도 끄지도 못한다', async () => {
+        await assertFails(as('stranger').collection('clubs').doc('rc-unverified')
+            .update({ is_recruiting: true, recruit_msg: '', recruit_at: FieldValue.serverTimestamp() }));
+        await assertFails(as('stranger').collection('clubs').doc('rc-on').update({ is_recruiting: false }));
+    });
+
+    test('새 팀은 모집을 켠 채 만들 수 없다', async () => {
+        const club = { name: 'rc-new', registered_by: 'newbie3', is_verified: false };
+        await assertFails(as('newbie3').collection('clubs').doc('rc-new-on')
+            .set(Object.assign({}, club, { is_recruiting: true, recruit_msg: '', recruit_at: FieldValue.serverTimestamp() })));
+        await assertSucceeds(as('newbie3').collection('clubs').doc('rc-new-off')
+            .set(Object.assign({}, club, { is_recruiting: false })));
+    });
+});
+
+describe('빈 admins 배열은 관리자 없음 — registered_by 로 되살아나지 않는다', () => {
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('clubs').doc('club-emptied').set({
+                name: '관리자떠난팀', admins: [], registered_by: 'left-uid', is_verified: true
+            });
+        });
+    });
+    test('마지막 관리자가 빠진 팀은 등록자도 못 고친다', async () => {
+        await assertFails(as('left-uid').collection('clubs').doc('club-emptied').update({ price: '월 1원' }));
+    });
+});
+
 describe('club_admin_requests 룰 (관리자 신청)', () => {
     function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    const PHOTO = 'https://firebasestorage.googleapis.com/v0/b/x.appspot.com/o/admin_request_photos%2Freq-1%2Fp.jpg?alt=media&token=t';
     const base = (uid) => ({
         club_id: 'club-1', club_name: '테스트팀',
-        photo_url: 'https://example.com/p.jpg',
+        photo_url: PHOTO,
         requested_by: uid, requested_at: new Date(), status: 'pending'
     });
 
@@ -805,6 +1044,31 @@ describe('club_admin_requests 룰 (관리자 신청)', () => {
     test('화이트리스트 밖 필드는 거부 (문서 비대화 방지)', async () => {
         const d = base('req-1'); d.note = 'x'.repeat(100);
         await assertFails(as('req-1').collection('club_admin_requests').doc('r5').set(d));
+    });
+
+    // 심사 결과 필드는 서버만 쓴다. 만들 때 끼워 넣을 수 있으면 신청자가
+    // '거절 사유'를 미리 박거나 심사 시각을 꾸밀 수 있다.
+    test('만들 때 reviewed_at · reject_reason 은 못 넣는다', async () => {
+        const d1 = base('req-1'); d1.reviewed_at = null;
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r6').set(d1));
+        const d2 = base('req-1'); d2.reject_reason = 'full';
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r7').set(d2));
+    });
+
+    // 승인되면 그 uid 가 팀 관리자가 된다. 익명 계정은 기기를 바꾸면 사라진다.
+    test('익명 인증으로는 신청할 수 없다', async () => {
+        const anon = testEnv.authenticatedContext('anon-req', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+        await assertFails(anon.collection('club_admin_requests').doc('r8').set(base('anon-req')));
+    });
+
+    // 바깥 URL 을 받으면 챗봇 카드가 아무 이미지나 띄우고 운영자가 그 링크를 누른다.
+    test('사진은 우리 Storage 다운로드 URL 만 받는다', async () => {
+        const bad = ['https://example.com/p.jpg', 'http://firebasestorage.googleapis.com/v0/b/x',
+            'https://firebasestorage.googleapis.com.evil.com/x', 'javascript:alert(1)'];
+        for (let i = 0; i < bad.length; i++) {
+            const d = base('req-1'); d.photo_url = bad[i];
+            await assertFails(as('req-1').collection('club_admin_requests').doc('rb' + i).set(d), bad[i]);
+        }
     });
 
     test('신청자 본인과 운영자만 읽는다', async () => {

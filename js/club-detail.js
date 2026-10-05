@@ -1,6 +1,7 @@
 // club-detail.js
 // Bottom sheet club detail, timetable rendering, urgent ticker
-// Depends on: map-core.js (window.map, window.markers, window.clusterer, window.instaCssIcon, window.initMarkers)
+// Depends on: map-core.js (window.map, window.markers, window.clusterer, window.instaCssIcon, window.initMarkers),
+//             urgent.js (급구 칩·마감 표시·문구 검사)
 
 // ── Schedule parsing ──
 
@@ -274,6 +275,124 @@ window.toggleTimeExpand = function () {
 
 // ── Open club detail ──
 
+// 비동기 조회가 끝났을 때 시트가 아직 그 팀을 보이고 있는지. 시트는 요소 id 를
+// 재사용해서(verifyStatusArea · clubAdminArea), 그새 다른 팀을 열었으면 늦게 온
+// 응답이 새 팀 자리에 앞 팀의 상태·버튼을 그려 넣는다.
+window.clubSheetShows = function (club, el) {
+    if (!club || String(window.currentClubId) !== String(club.id)) return false;
+    return !el || el.isConnected !== false;
+};
+
+// requested_by 로 받은 내 신청들 중 이 팀 것의 최신 하나(없으면 null).
+// orderBy 를 걸면 복합 인덱스가 필요해 메모리에서 고른다.
+window.latestRequestFor = function (snap, clubId) {
+    var latest = null, latestMs = -1;
+    snap.forEach(function (doc) {
+        var d = doc.data() || {};
+        if (String(d.club_id) !== String(clubId)) return;
+        var ms = d.requested_at && d.requested_at.toMillis ? d.requested_at.toMillis() : 0;
+        if (ms > latestMs) { latest = d; latestMs = ms; }
+    });
+    return latest;
+};
+
+// 관리자 신청 거절 사유 코드 → 문구. 서버가 쓰는 코드(full · already_admin ·
+// not_found · duplicate)만 문구가 있고, 모르는 코드나 사유 없는 수동 거절은 ''
+// — 사유 줄을 아예 안 보인다.
+window.adminRejectReasonText = function (code) {
+    var key = {
+        full: 'ad_reason_full',
+        already_admin: 'ad_reason_already_admin',
+        not_found: 'ad_reason_not_found',
+        duplicate: 'ad_reason_duplicate'
+    }[String(code == null ? '' : code)];
+    return key ? window.t(key) : '';
+};
+
+function adminApplyButton(club, area, label) {
+    area.innerHTML =
+        '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
+    var b = area.querySelector('#btnRequestAdmin');
+    b.textContent = label;
+    b.onclick = function () { window.openAdminRequestModal(club); };
+}
+
+// 심사 중 안내. 신청을 막 보낸 직후에도 이걸로 바꾼다 — 버튼이 그대로 남으면
+// 한 번 더 누르기 쉽다(서버가 duplicate 로 닫지만 사진은 한 장 더 올라간다).
+window.showAdminRequestPending = function (area) {
+    if (!area) return;
+    area.innerHTML =
+        '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:10px 14px;border-radius:4px;font-size:13px;color:#1565c0;">' +
+        window.escapeHtml(window.t('ad_pending')) + '</div>';
+};
+
+// 내 관리자 신청 상태를 보여준다(관리자가 아닐 때).
+// requested_by 단일 조건으로만 거른다. club_id 를 함께 걸면 복합 인덱스가 필요해지고,
+// 없으면 매번 실패한다. 한 사람이 내는 신청은 많아야 몇 건이라 나머지는 메모리에서
+// 고른다. (규칙상 남의 신청은 애초에 안 읽힌다.)
+window.renderAdminRequestStatus = function (club, adminArea) {
+    var uid = window.currentUser && window.currentUser.uid;
+    if (!uid) return;
+    window.firebaseDB.collection('club_admin_requests')
+        .where('requested_by', '==', uid)
+        .limit(20)
+        .get().then(function (snap) {
+            if (!window.clubSheetShows(club, adminArea)) return;
+            var latest = window.latestRequestFor(snap, club.id);
+            if (latest && latest.status === 'pending') {
+                window.showAdminRequestPending(adminArea);
+                return;
+            }
+            if (latest && latest.status === 'approved') {
+                // 승인됐는데 메모리의 팀 문서가 낡아 내가 명단에 없다(시트를 연 뒤 승인).
+                // 한 번만 다시 읽어 실제로 관리자면 관리자 화면으로 다시 그린다.
+                window.firebaseDB.collection('clubs').doc(String(club.id)).get().then(function (doc) {
+                    if (!window.clubSheetShows(club, adminArea)) return;
+                    var fresh = doc.exists ? (doc.data() || {}) : null;
+                    if (fresh && window.clubAdminUids(fresh).indexOf(uid) !== -1) {
+                        ['allClubs', 'clubs'].forEach(function (key) {
+                            if (!Array.isArray(window[key])) return;
+                            window[key].forEach(function (c) {
+                                if (String(c.id) !== String(club.id)) return;
+                                c.admins = fresh.admins;
+                                c.registered_by = fresh.registered_by;
+                            });
+                        });
+                        club.admins = fresh.admins;
+                        club.registered_by = fresh.registered_by;
+                        window.openClubDetail(club.id, { silent: true });
+                        return;
+                    }
+                    adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+                }).catch(function (err) {
+                    console.warn('팀 문서 다시 읽기 실패:', err && err.message);
+                    if (window.clubSheetShows(club, adminArea)) adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+                });
+                return;
+            }
+            if (latest && latest.status === 'rejected') {
+                // 거절 안내 + (알아들을 수 있는 사유면) 사유 한 줄 + 다시 신청. XSS 방지: textContent.
+                var reason = window.adminRejectReasonText(latest.reject_reason);
+                adminArea.innerHTML =
+                    '<div style="background:rgba(244,67,54,0.08);border-left:3px solid #f44336;padding:10px 14px;border-radius:4px;margin-bottom:8px;font-size:13px;line-height:1.5;">' +
+                    '<div id="adRejectedTitle" style="color:#d32f2f;font-weight:600;"></div>' +
+                    (reason ? '<div id="adRejectedReason" style="color:#555;margin-top:4px;"></div>' : '') +
+                    '</div><div id="adReapplyBox"></div>';
+                adminArea.querySelector('#adRejectedTitle').textContent = window.t('ad_rejected');
+                if (reason) adminArea.querySelector('#adRejectedReason').textContent = reason;
+                var box = adminArea.querySelector('#adReapplyBox');
+                adminApplyButton(club, box, window.t('ad_reapply'));
+                return;
+            }
+            adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+        }).catch(function (err) {
+            // 조회가 막혀도 신청 자체는 할 수 있어야 한다.
+            console.warn('관리자 신청 상태 조회 실패:', err && err.message);
+            if (!window.clubSheetShows(club, adminArea)) return;
+            adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+        });
+};
+
 window.openClubDetail = function (id, opts) {
     // silent: 언어 전환 시 재렌더링용 (analytics/지도이동/주소갱신 등 부작용 생략)
     var silent = !!(opts && opts.silent);
@@ -378,66 +497,131 @@ window.openClubDetail = function (id, opts) {
         (club.insta_reels && club.insta_reels.length) ? club.insta_reels : (club.insta_reel ? [club.insta_reel] : []),
         club.insta_reel_covers, { source: 'club', id: club.id });
 
+    // 급구 배너: 문구 + 마감(고른 운동이 끝나는 시각). XSS 방지: 사용자 입력은 textContent
     var urgentArea = document.getElementById('urgentArea');
-    if (club.is_urgent && club.urgent_msg) {
-        // XSS 방지: urgent_msg는 textContent로 삽입
+    var urgentNow = window.isUrgentActive(club);
+    if (urgentNow) {
         urgentArea.innerHTML = '';
         var urgentBanner = document.createElement('div');
         urgentBanner.className = 'urgent-banner';
-        urgentBanner.textContent = '🔥 ' + club.urgent_msg;
+        var urgentText = document.createElement('span');
+        urgentText.className = 'urgent-banner-msg';
+        urgentText.textContent = '🔥 ' + club.urgent_msg;
+        urgentBanner.appendChild(urgentText);
+        var untilLabel = window.urgentDeadlineLabel(club);
+        if (untilLabel) {
+            var untilSpan = document.createElement('span');
+            untilSpan.className = 'urgent-banner-until';
+            untilSpan.textContent = untilLabel;
+            urgentBanner.appendChild(untilSpan);
+        }
         urgentArea.appendChild(urgentBanner);
         urgentArea.style.display = 'block';
     } else {
         urgentArea.style.display = 'none';
     }
 
-    // Urgent management button (verified clubs only)
-    var actionBtns = document.querySelector('.action-buttons');
-    var existingManageBtn = document.getElementById('btnManageUrgent');
-    if (existingManageBtn) existingManageBtn.remove();
+    // 회원 모집 표시 + (관리자에게만) 60일 자동 꺼짐 안내
+    var canManage = !!(window.canModifyClub && window.canModifyClub(club));
+    var recruitArea = document.getElementById('recruitArea');
+    if (recruitArea) {
+        recruitArea.innerHTML = '';
+        if (window.isRecruitingActive(club)) {
+            var rcBox = document.createElement('div');
+            rcBox.className = 'recruit-banner';
+            var rcBadge = document.createElement('b');
+            rcBadge.textContent = window.t('rc_badge');
+            rcBox.appendChild(rcBadge);
+            if (typeof club.recruit_msg === 'string' && club.recruit_msg.trim()) {
+                var rcMsg = document.createElement('span');
+                rcMsg.textContent = club.recruit_msg.trim();
+                rcBox.appendChild(rcMsg);
+            }
+            recruitArea.appendChild(rcBox);
+            if (canManage) {
+                var rcHint = document.createElement('div');
+                rcHint.className = 'recruit-hint';
+                rcHint.textContent = window.t('rc_auto_off');
+                recruitArea.appendChild(rcHint);
+            }
+            recruitArea.style.display = 'block';
+        } else {
+            recruitArea.style.display = 'none';
+        }
+    }
 
-    // 인증된 팀의 owner/admin만 급구 토글 노출 (Firestore rule이 동일 조건으로 write 차단)
     // 데이터 신선도 + 신고 통로 (guidelines.html 2-3 · 3-1)
     if (window.renderDataTrust) {
         window.renderDataTrust(document.getElementById('clubDataTrust'), club, 'club');
     }
 
-    if (club.is_verified && window.canModifyClub && window.canModifyClub(club)) {
-        var manageBtn = document.createElement('button');
-        manageBtn.id = 'btnManageUrgent';
-        manageBtn.className = 'btn';
-        manageBtn.style = 'background: #ff5252; color: #fff;';
-        manageBtn.innerText = club.is_urgent ? window.t('cd_urgent_off') : window.t('cd_urgent_on');
-        manageBtn.onclick = function () { window.toggleClubUrgentState(club); };
-        actionBtns.appendChild(manageBtn);
+    // 급구 · 회원 모집 버튼(팀 관리자·운영자만).
+    //   급구 — 새로 올리기는 인증된 팀만(서버 postUrgent 도 unverified 로 거절한다).
+    //          떠 있으면 '급구 수정'(같은 폼을 채워서) + '급구 내리기'. 내리기는 인증이
+    //          풀린 팀도 할 수 있어야 해서 인증 여부와 상관없이 보인다.
+    //   모집 — 인증 여부와 상관없이 켜고 끈다.
+    var actionBtns = document.querySelector('.action-buttons');
+    var existingFlags = document.getElementById('clubFlagActions');
+    if (existingFlags) existingFlags.remove();
+    if (canManage) {
+        var flags = document.createElement('div');
+        flags.id = 'clubFlagActions';
+        flags.className = 'flag-actions';
+        var addFlagBtn = function (cls, label, onClick) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn ' + cls;
+            b.textContent = label;
+            b.onclick = onClick;
+            flags.appendChild(b);
+        };
+        if (urgentNow) {
+            addFlagBtn('flag-btn-urgent-ghost', window.t('ug_edit'), function () { window.openUrgentForm(club); });
+            addFlagBtn('flag-btn-urgent', window.t('cd_urgent_off'), function () { window.closeClubUrgent(club); });
+        } else if (club.is_verified) {
+            addFlagBtn('flag-btn-urgent', window.t('cd_urgent_on'), function () { window.openUrgentForm(club); });
+        }
+        addFlagBtn('flag-btn-recruit', window.t(window.isRecruitingActive(club) ? 'rc_off' : 'rc_on'),
+            function () { window.toggleClubRecruiting(club); });
+        actionBtns.appendChild(flags);
     }
 
-    // Verification status area (registered owner only, unverified clubs)
+    // 인증 신청/상태 영역 — 미인증 팀의 관리자(admins, 최대 3명)에게.
+    // 예전엔 처음 등록한 사람(registered_by)에게만 보여, 관리자 신청으로 들어온 공동 관리자는
+    // 인증을 신청할 길이 없었고, 거꾸로 관리자에서 빠진 등록자에겐 계속 보였다.
+    // 앱(detail_sheet.dart _VerificationSection)과 같은 기준. 운영자는 바로 인증할 수 있어 뺀다.
     var existingVerifyArea = document.getElementById('verifyStatusArea');
     if (existingVerifyArea) existingVerifyArea.remove();
 
     if (!club.is_verified
         && window.currentUser
-        && club.registered_by === window.currentUser.uid) {
+        && !window.currentUser.isAnonymous
+        && window.clubAdminUids(club).indexOf(window.currentUser.uid) !== -1) {
         var verifyArea = document.createElement('div');
         verifyArea.id = 'verifyStatusArea';
         verifyArea.style = 'margin-top:8px;';
         actionBtns.parentElement.insertBefore(verifyArea, actionBtns.nextSibling);
 
-        // Firestore에서 최신 인증 요청 상태 조회
+        // Firestore에서 최신 인증 요청 상태 조회.
+        // 규칙은 신청자 본인 문서만 읽게 한다(requested_by == uid). club_id 로만 거르면
+        // 남의 문서가 섞일 수 있는 질의라 통째로 거부된다 — 그래서 늘 '신청 버튼'만
+        // 떴다. requested_by 하나로 조회하고 이 팀 것 중 최신은 메모리에서 고른다
+        // (orderBy·복합 인덱스 없이, 관리자 신청 조회와 같은 모양).
+        var verifyUid = window.currentUser.uid;
         window.firebaseDB.collection('verification_requests')
-            .where('club_id', '==', club.id)
-            .orderBy('requested_at', 'desc')
-            .limit(1)
+            .where('requested_by', '==', verifyUid)
+            .limit(20)
             .get().then(function (snap) {
-            if (snap.empty) {
+            // 조회하는 사이 시트가 다른 팀으로 바뀌었으면 손대지 않는다(요소 id 를 재사용한다).
+            if (!window.clubSheetShows(club, verifyArea)) return;
+            var reqData = window.latestRequestFor(snap, club.id);
+            if (!reqData) {
                 // 신청 이력 없음 → 인증 신청 버튼
                 verifyArea.innerHTML =
                     '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
                     window.t('vf_apply_btn') + '</button>';
-                document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+                verifyArea.querySelector('#btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
             } else {
-                var reqData = snap.docs[0].data();
                 if (reqData.status === 'pending') {
                     // 심사 중
                     verifyArea.innerHTML =
@@ -452,17 +636,18 @@ window.openClubDetail = function (id, opts) {
                         '<div style="color:#555;">' + window.t('vf_reason') + '<span id="rejectReasonText"></span></div></div>' +
                         '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
                         window.t('vf_reapply') + '</button>';
-                    document.getElementById('rejectReasonText').textContent = reasonText;
-                    document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+                    verifyArea.querySelector('#rejectReasonText').textContent = reasonText;
+                    verifyArea.querySelector('#btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
                 }
             }
         }).catch(function (err) {
             console.error('인증 상태 조회 오류:', err);
+            if (!window.clubSheetShows(club, verifyArea)) return;
             // 조회 실패 시 기본 인증 신청 버튼 표시
             verifyArea.innerHTML =
                 '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
                 window.t('vf_apply_btn') + '</button>';
-            document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+            verifyArea.querySelector('#btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
         });
     }
 
@@ -494,50 +679,13 @@ window.openClubDetail = function (id, opts) {
                     '<span id="clubAdminCount"></span>' +
                     '<button id="btnLeaveAdmin" style="background:none;border:none;color:#d32f2f;font-size:12px;text-decoration:underline;cursor:pointer;padding:0;"></button>' +
                     '</div>';
-                document.getElementById('clubAdminCount').textContent =
+                adminArea.querySelector('#clubAdminCount').textContent =
                     window.tf('ad_count', { n: adminUids.length });
-                var leaveBtn = document.getElementById('btnLeaveAdmin');
+                var leaveBtn = adminArea.querySelector('#btnLeaveAdmin');
                 leaveBtn.textContent = window.t('ad_leave');
                 leaveBtn.onclick = function () { window.leaveClubAdmin(club); };
             } else {
-                // 이미 낸 신청이 있으면 그 상태를 보여준다 — 없으면 계속 다시 낸다.
-                // requested_by 단일 조건으로만 거른다. club_id 를 함께 걸면 복합
-                // 인덱스가 필요해지고, 없으면 매번 실패한다. 한 사람이 내는 신청은
-                // 많아야 몇 건이라 나머지는 메모리에서 고른다.
-                // (규칙상 남의 신청은 애초에 안 읽힌다.)
-                window.firebaseDB.collection('club_admin_requests')
-                    .where('requested_by', '==', window.currentUser.uid)
-                    .limit(20)
-                    .get().then(function (snap) {
-                        var latest = null;
-                        snap.forEach(function (doc) {
-                            var d = doc.data();
-                            if (String(d.club_id) !== String(club.id)) return;
-                            var ms = d.requested_at && d.requested_at.toMillis ? d.requested_at.toMillis() : 0;
-                            if (!latest || ms > latest._ms) { latest = d; latest._ms = ms; }
-                        });
-                        if (latest && latest.status === 'pending') {
-                            adminArea.innerHTML =
-                                '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:10px 14px;border-radius:4px;font-size:13px;color:#1565c0;">' +
-                                window.t('ad_pending') + '</div>';
-                            return;
-                        }
-                        var label = (latest && latest.status === 'rejected')
-                            ? window.t('ad_reapply') : window.t('ad_apply_btn');
-                        adminArea.innerHTML =
-                            '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
-                        var b = document.getElementById('btnRequestAdmin');
-                        b.textContent = label;
-                        b.onclick = function () { window.openAdminRequestModal(club); };
-                    }).catch(function (err) {
-                        // 조회가 막혀도 신청 자체는 할 수 있어야 한다.
-                        console.warn('관리자 신청 상태 조회 실패:', err && err.message);
-                        adminArea.innerHTML =
-                            '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
-                        var b2 = document.getElementById('btnRequestAdmin');
-                        b2.textContent = window.t('ad_apply_btn');
-                        b2.onclick = function () { window.openAdminRequestModal(club); };
-                    });
+                window.renderAdminRequestStatus(club, adminArea);
             }
         }
     }
@@ -649,8 +797,24 @@ window.copyAddress = function (addr) {
 
 // ── Urgent ticker ──
 
+// 몇 번 불러도 같은 결과여야 한다 — 급구를 켜고 끈 뒤·팀을 지운 뒤 다시 부른다.
+// 예전엔 목록을 비우지 않고 덧붙이고, 굴리는 타이머도 하나씩 더 늘렸다.
+var urgentTickerTimer = null;
+
 window.initUrgentTicker = function () {
-    var urgentClubs = window.clubs.filter(function (c) { return c.is_urgent && c.urgent_msg; });
+    var tickerContainer = document.getElementById('urgentTicker');
+    var tickerList = document.getElementById('tickerList');
+    if (!tickerContainer || !tickerList) return;
+
+    // 이전 벌 정리: 타이머 · 항목 · 굴린 위치
+    if (urgentTickerTimer) { clearInterval(urgentTickerTimer); urgentTickerTimer = null; }
+    tickerList.innerHTML = '';
+    tickerList.style.transition = 'none';
+    tickerList.style.top = '0px';
+
+    // 곧 끝나는 급구가 먼저(기한 없는 예전 급구는 맨 뒤). filter 에 함수를 그대로 넘기면
+    // 두 번째 인자(index)가 nowMs 로 들어간다 — 감싸서 부른다.
+    var urgentClubs = window.urgentTickerOrder((window.clubs || []).filter(function (c) { return window.isUrgentActive(c); }));
     var uniqueTickerList = [];
     var processedTeams = {};
 
@@ -661,48 +825,57 @@ window.initUrgentTicker = function () {
         }
     });
 
-    if (uniqueTickerList.length > 0) {
-        var tickerContainer = document.getElementById('urgentTicker');
-        var tickerList = document.getElementById('tickerList');
-        tickerContainer.style.display = 'flex';
+    if (!uniqueTickerList.length) {
+        tickerContainer.style.display = 'none';
+        return;
+    }
+    // 픽업 탭에선 숨긴다(tabs.js 가 동호회로 돌아올 때 항목이 있으면 다시 보인다).
+    var onClubsTab = !window.currentTab || window.currentTab === 'clubs';
+    tickerContainer.style.display = onClubsTab ? 'flex' : 'none';
+    setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
 
-        uniqueTickerList.forEach(function (c) {
-            var li = document.createElement('li');
-            li.className = 'ticker-item';
-            // XSS 방지: c.name / c.urgent_msg를 textContent로
-            var nameB = document.createElement('b');
-            nameB.textContent = '[' + (c.name || '') + ']';
-            li.appendChild(nameB);
-            li.appendChild(document.createTextNode(' ' + (c.urgent_msg || '')));
-            li.onclick = function () { window.openClubDetail(c.id); };
-            tickerList.appendChild(li);
-        });
-
-        if (uniqueTickerList.length > 1) {
-            var tickerHeight = 44;
-            var currentIndex = 0;
-            setInterval(function () {
-                currentIndex++;
-                tickerList.style.top = '-' + (currentIndex * tickerHeight) + 'px';
-
-                if (currentIndex === uniqueTickerList.length) {
-                    setTimeout(function () {
-                        tickerList.style.transition = 'none';
-                        tickerList.style.top = '0px';
-                        currentIndex = 0;
-                        setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
-                    }, 500);
-                }
-            }, 3000);
-
-            var firstClone = tickerList.children[0].cloneNode(true);
-            firstClone.onclick = function () { window.openClubDetail(uniqueTickerList[0].id); };
-            tickerList.appendChild(firstClone);
+    uniqueTickerList.forEach(function (c) {
+        var li = document.createElement('li');
+        li.className = 'ticker-item';
+        // XSS 방지: c.name / c.urgent_msg를 textContent로. 마감은 이름 바로 뒤 — 문구가 길어
+        // 말줄임(…)으로 잘려도 '언제까지'는 보이게.
+        var nameB = document.createElement('b');
+        nameB.textContent = '[' + (c.name || '') + ']';
+        li.appendChild(nameB);
+        var until = window.urgentDeadlineLabel(c);
+        if (until) {
+            var untilSpan = document.createElement('span');
+            untilSpan.className = 'ticker-until';
+            untilSpan.textContent = until;
+            li.appendChild(untilSpan);
         }
+        li.appendChild(document.createTextNode(' ' + (c.urgent_msg || '')));
+        li.onclick = function () { window.openClubDetail(c.id); };
+        tickerList.appendChild(li);
+    });
+
+    if (uniqueTickerList.length > 1) {
+        var tickerHeight = 44;
+        var currentIndex = 0;
+        urgentTickerTimer = setInterval(function () {
+            currentIndex++;
+            tickerList.style.top = '-' + (currentIndex * tickerHeight) + 'px';
+
+            if (currentIndex === uniqueTickerList.length) {
+                setTimeout(function () {
+                    tickerList.style.transition = 'none';
+                    tickerList.style.top = '0px';
+                    currentIndex = 0;
+                    setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
+                }, 500);
+            }
+        }, 3000);
+
+        var firstClone = tickerList.children[0].cloneNode(true);
+        firstClone.onclick = function () { window.openClubDetail(uniqueTickerList[0].id); };
+        tickerList.appendChild(firstClone);
     }
 };
-
-// ── Toggle urgent state ──
 
 // Delete a club (owner or admin only; rules enforce this)
 window.deleteClub = async function (club) {
@@ -735,13 +908,7 @@ window.deleteClub = async function (club) {
         var sheet = document.getElementById('bottomSheet');
         if (sheet) sheet.classList.remove('open');
 
-        // Re-render markers
-        if (window.markers) {
-            window.markers.forEach(function (m) { if (m.marker) m.marker.setMap(null); });
-            window.markers.forEach(function (m) { if (m.overlay) m.overlay.setMap(null); });
-            window.markers = [];
-        }
-        if (window.clusterer) window.clusterer.clear();
+        // Re-render markers — initMarkers 가 이전 마커·라벨·원을 먼저 걷는다
         if (window.initMarkers) window.initMarkers();
         if (window.initUrgentTicker) window.initUrgentTicker();
 
@@ -752,52 +919,265 @@ window.deleteClub = async function (club) {
     }
 };
 
-window.toggleClubUrgentState = async function (club) {
-    // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
+// ── 급구 올리기 폼 ──
+// 급구는 운동 **한 번**에 묶인다: 시간표에서 다가오는 운동(7일 안, 3개까지)을 칩으로
+// 고르거나 '다른 날'(날짜 + 끝나는 시각)을 고른다. 고른 운동이 끝나면 저절로 내려간다.
+// 켜기·고치기는 서버 postUrgent 만 받는다(firestore.rules 가 직접 쓰기를 막는다) — 문구
+// 검사는 여기서 먼저 같은 규칙(js/urgent.js)으로 해서 칸 아래에 바로 알린다.
+
+function urgentCallable() {
+    if (window.firebaseCallable) return window.firebaseCallable('postUrgent');
+    return firebase.functions().httpsCallable('postUrgent');
+}
+
+function urgentTimestamp(ms) {
+    var fs = window.firebase && firebase.firestore;
+    return (fs && fs.Timestamp) ? fs.Timestamp.fromMillis(ms) : ms;
+}
+
+// 메모리의 팀 객체(allClubs·clubs 가 같은 객체를 나눠 쓴다)를 고치고 지도·티커·시트를 다시 그린다.
+function refreshAfterFlagChange(club) {
+    window.initMarkers();
+    if (window.initUrgentTicker) window.initUrgentTicker();
+    if (window.clubSheetShows(club)) window.openClubDetail(club.id, { silent: true });
+}
+
+function hideUrgentForm() {
+    var overlay = document.getElementById('urgentFormOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+window.closeUrgentForm = function () {
+    hideUrgentForm();
+    if (window.backNav) window.backNav.closed('urgentForm');
+};
+
+window.openUrgentForm = function (club) {
     if (!window.canModifyClub || !window.canModifyClub(club)) {
         window.showToast(window.t('cd_no_urgent_perm'));
         return;
     }
-
-    var newStatus = !club.is_urgent;
-    var newMsg = "";
-    if (newStatus) {
-        // 급구 메시지 — 빈 칸·200자 넘김은 팝업을 닫지 않고 칸 아래에 알린다
-        var v = await window.nzPrompt({
-            title: window.t('cd_urgent_title'),
-            message: window.t('cd_urgent_prompt'),
-            fields: [{ name: 'msg', value: window.t('cd_urgent_default'), maxLength: 200, select: true }],
-            confirm: window.t('cd_urgent_btn'),
-            validate: function (x) {
-                if (!x.msg) return { msg: window.t('cd_urgent_empty') };
-                if (x.msg.length > 200) return { msg: window.t('cd_urgent_max') };
-                return null;
-            }
-        });
-        if (!v) return;
-        newMsg = v.msg;
+    var editing = window.isUrgentActive(club);
+    var overlay = document.getElementById('urgentFormOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'urgentFormOverlay';
+        overlay.className = 'reg-modal-overlay';
+        document.body.appendChild(overlay);
     }
+    // 팀·언어마다 칩이 달라서 열 때마다 새로 짠다. 고정 문구만 innerHTML, 나머지는 textContent.
+    overlay.innerHTML =
+        '<div class="reg-modal-content urgent-form" role="dialog" aria-modal="true" aria-labelledby="ugTitle">' +
+            '<div class="reg-modal-header">' +
+                '<h3 id="ugTitle"></h3>' +
+                '<span class="reg-modal-close" role="button" tabindex="0" aria-label="' + window.escapeHtml(window.t('dlg_close')) + '">&times;</span>' +
+            '</div>' +
+            '<div class="reg-modal-body">' +
+                '<div class="reg-form-group">' +
+                    '<label id="ugWhenLabel"></label>' +
+                    '<div class="chip-group ug-sessions" id="ugSessions" role="radiogroup" aria-labelledby="ugWhenLabel" tabindex="-1"></div>' +
+                    '<div class="ug-other" id="ugOtherBox" hidden>' +
+                        '<input type="date" id="ugDate">' +
+                        '<label for="ugEnd" id="ugEndLabel"></label>' +
+                        '<input type="time" id="ugEnd" step="300">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="reg-form-group">' +
+                    '<label for="ugMsg" id="ugMsgLabel"></label>' +
+                    '<input type="text" id="ugMsg" maxlength="60" autocomplete="off">' +
+                '</div>' +
+                '<div class="ug-auto-off" id="ugAutoOff"></div>' +
+                '<button type="button" id="ugSubmit" class="reg-submit-btn"></button>' +
+            '</div>' +
+        '</div>';
+    var $ = function (id) { return document.getElementById(id); };
+    $('ugTitle').textContent = editing ? window.t('ug_edit') : window.t('cd_urgent_title');
+    $('ugWhenLabel').textContent = window.t('ug_when');
+    $('ugEndLabel').textContent = window.t('ug_end_time');
+    $('ugMsgLabel').textContent = window.t('ug_msg_label');
+    $('ugAutoOff').textContent = window.t('ug_auto_off');
+    $('ugSubmit').textContent = editing ? window.t('ug_edit') : window.t('ug_submit');
+    var msgInput = $('ugMsg');
+    msgInput.placeholder = window.t('ug_msg_hint');
+    msgInput.value = editing ? club.urgent_msg.trim() : '';
 
-    var clubRef = window.firebaseDoc(window.firebaseDB, 'clubs', club.id);
-    window.firebaseSetDoc(clubRef, {
-        is_urgent: newStatus,
-        urgent_msg: newMsg
-    }, { merge: true }).then(function () {
-        window.showToast(newStatus ? window.t('cd_urgent_posted') : window.t('cd_urgent_closed'));
-        club.is_urgent = newStatus;
-        club.urgent_msg = newMsg;
+    var now = Date.now();
+    var dateInput = $('ugDate'), endInput = $('ugEnd');
+    dateInput.min = window.urgentDateInputValue(now);
+    dateInput.max = window.urgentDateInputValue(now + window.URGENT_PICK_AHEAD_MS);
 
-        // Re-render markers
-        window.markers.forEach(function (m) { m.marker.setMap(null); });
-        window.markers.forEach(function (m) { m.overlay.setMap(null); });
-        window.clusterer.clear();
-        window.markers = [];
-        window.initMarkers();
-        window.openClubDetail(club.id);
-    }).catch(function (e) {
+    // 칩: 다가오는 운동 + '다른 날'. 고른 것 하나만 selected(radio).
+    var sessions = window.urgentNextSessions(window.parseScheduleText(club.schedule), now, 3);
+    var box = $('ugSessions');
+    var pick = null; // { until } | 'other'
+    var chips = [];
+    function select(chip, value) {
+        chips.forEach(function (c) { c.classList.remove('selected'); c.setAttribute('aria-checked', 'false'); });
+        chip.classList.add('selected');
+        chip.setAttribute('aria-checked', 'true');
+        pick = value;
+        $('ugOtherBox').hidden = value !== 'other';
+        if (window.clearFieldError) window.clearFieldError(box);
+    }
+    function addChip(label, value) {
+        var c = document.createElement('button');
+        c.type = 'button';
+        c.className = 'chip';
+        c.setAttribute('role', 'radio');
+        c.setAttribute('aria-checked', 'false');
+        c.textContent = label;
+        c.onclick = function () { select(c, value); };
+        box.appendChild(c);
+        chips.push(c);
+        return c;
+    }
+    var dayName = function (k) { return window.i18nDay(k); };
+    var currentUntil = editing ? window.tsMillis(club.urgent_until) : null;
+    var preselect = null; // 새로 올릴 땐 가장 이른 운동, 고칠 땐 지금 기한과 같은 운동
+    sessions.forEach(function (sess) {
+        var c = addChip(window.urgentSessionLabel(sess, window.currentLang, dayName), { until: sess.endMs });
+        if (!preselect && (currentUntil == null || currentUntil === sess.endMs)) preselect = { chip: c, value: { until: sess.endMs } };
+    });
+    var otherChip = addChip(window.t('ug_other_day'), 'other');
+
+    // '다른 날' 기본값: 고치는 중이면 지금 기한, 아니면 오늘 22:00(이미 지났으면 내일)
+    var otherDefault = currentUntil;
+    if (otherDefault == null) {
+        var d = new Date(now);
+        otherDefault = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 22, 0).getTime();
+        if (otherDefault <= now + window.URGENT_MIN_LEAD_MS) otherDefault += 24 * 3600 * 1000;
+    }
+    var od = new Date(otherDefault);
+    dateInput.value = window.urgentDateInputValue(otherDefault);
+    endInput.value = (od.getHours() < 10 ? '0' : '') + od.getHours() + ':' + (od.getMinutes() < 10 ? '0' : '') + od.getMinutes();
+    // 고치는 중인데 지금 기한이 칩에 없으면(다른 날로 올렸던 급구) '다른 날'에 그 기한이 채워진다
+    if (preselect) select(preselect.chip, preselect.value); else select(otherChip, 'other');
+
+    overlay.querySelector('.reg-modal-close').onclick = window.closeUrgentForm;
+    overlay.querySelector('.reg-modal-close').onkeydown = function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.closeUrgentForm(); }
+    };
+    $('ugSubmit').onclick = function () { submitUrgentForm(club, function () { return pick; }); };
+    overlay.style.display = 'flex';
+    if (window.backNav) window.backNav.open('urgentForm', hideUrgentForm);
+    setTimeout(function () { msgInput.focus(); }, 0);
+};
+
+// 서버가 준 이유 → 문구 키. 모르는 이유는 ug_err_generic.
+function urgentErrorKey(reason) {
+    if (reason === 'login') return 'sh_login_required';
+    var key = 'ug_err_' + String(reason || '');
+    return window.t(key) !== key ? key : 'ug_err_generic';
+}
+
+async function submitUrgentForm(club, getPick) {
+    var msgInput = document.getElementById('ugMsg');
+    var pick = getPick();
+    var timeTarget = pick === 'other' ? 'ugEnd' : 'ugSessions';
+    var until = pick === 'other'
+        ? window.urgentOtherDayUntil(document.getElementById('ugDate').value, document.getElementById('ugEnd').value)
+        : (pick && pick.until);
+    var now = Date.now();
+    if (until == null || until <= now + window.URGENT_MIN_LEAD_MS) {
+        window.fieldError(timeTarget, window.t('ug_err_past'));
+        return;
+    }
+    if (until > now + window.URGENT_MAX_AHEAD_MS) {
+        window.fieldError(timeTarget, window.t('ug_err_too_far'));
+        return;
+    }
+    var problem = window.urgentMsgProblem(msgInput.value);
+    if (problem) {
+        window.fieldError(msgInput, window.t('ug_err_' + problem));
+        return;
+    }
+    var msg = msgInput.value.trim();
+    var btn = document.getElementById('ugSubmit');
+    var label = btn.textContent;
+    btn.textContent = window.t('processing');
+    btn.disabled = true;
+    try {
+        var call = urgentCallable();
+        if (!call) throw new Error('functions 미초기화');
+        var res = await call({ clubId: String(club.id), until: until, msg: msg });
+        var savedUntil = (res && res.data && typeof res.data.until === 'number') ? res.data.until : until;
+        club.is_urgent = true;
+        club.urgent_msg = msg;
+        club.urgent_until = urgentTimestamp(savedUntil);
+        club.urgent_at = urgentTimestamp(Date.now());
+        window.closeUrgentForm();
+        window.showToast(window.t('cd_urgent_posted'));
+        if (window.track) window.track('urgent_post', { club_id: club.id });
+        refreshAfterFlagChange(club);
+    } catch (e) {
+        var reason = e && e.details && e.details.reason;
+        console.warn('급구 올리기 실패:', reason || (e && e.message));
+        var key = urgentErrorKey(reason);
+        if (/^msg_/.test(reason || '')) window.fieldError(msgInput, window.t(key));
+        else if (reason === 'past' || reason === 'too_far') window.fieldError(timeTarget, window.t(key));
+        else window.showToast(window.t(key));
+    } finally {
+        btn.textContent = label;
+        btn.disabled = false;
+    }
+}
+
+// 급구 내리기 — 클라이언트가 직접 쓴다(규칙이 끄기는 허용). 기한·올린 시각도 지운다.
+window.closeClubUrgent = async function (club) {
+    if (!window.canModifyClub || !window.canModifyClub(club)) {
+        window.showToast(window.t('cd_no_urgent_perm'));
+        return;
+    }
+    var del = firebase.firestore.FieldValue.delete();
+    try {
+        await window.firebaseDB.collection('clubs').doc(String(club.id)).update({
+            is_urgent: false, urgent_msg: '', urgent_until: del, urgent_at: del
+        });
+        club.is_urgent = false;
+        club.urgent_msg = '';
+        delete club.urgent_until;
+        delete club.urgent_at;
+        window.showToast(window.t('cd_urgent_closed'));
+        refreshAfterFlagChange(club);
+    } catch (e) {
         console.error(e);
         window.showToast(window.t('cd_update_error'));
-    });
+    }
+};
+
+// ── 회원 모집 켜기/끄기 ──
+// 팀 관리자가 직접 쓴다(인증 여부 상관없음). 켤 때는 문구(선택)를 받고 recruit_at 을
+// 서버 시각으로 — 규칙이 그걸 요구하고, 정리(sweepClubFlags)가 거기서 60일을 센다.
+window.toggleClubRecruiting = async function (club) {
+    if (!window.canModifyClub || !window.canModifyClub(club)) return;
+    var ref = window.firebaseDB.collection('clubs').doc(String(club.id));
+    try {
+        if (window.isRecruitingActive(club)) {
+            await ref.update({ is_recruiting: false });
+            club.is_recruiting = false;
+        } else {
+            var v = await window.nzPrompt({
+                title: window.t('rc_on'),
+                message: window.t('rc_auto_off'),
+                fields: [{ name: 'msg', value: club.recruit_msg || '', placeholder: window.t('rc_msg_hint'), maxLength: window.URGENT_MSG_MAX }],
+                confirm: window.t('rc_on'),
+                validate: function (x) {
+                    var p = window.recruitMsgProblem(x.msg);
+                    return p ? { msg: window.t('ug_err_' + p) } : null;
+                }
+            });
+            if (!v) return;
+            await ref.update({ is_recruiting: true, recruit_msg: v.msg, recruit_at: window.firebaseServerTimestamp() });
+            club.is_recruiting = true;
+            club.recruit_msg = v.msg;
+            club.recruit_at = urgentTimestamp(Date.now());
+            if (window.track) window.track('recruit_on', { club_id: club.id });
+        }
+        refreshAfterFlagChange(club);
+    } catch (e) {
+        console.error(e);
+        window.showToast(window.t('cd_update_error'));
+    }
 };
 
 // ── Bottom sheet touch/mouse drag handlers ──

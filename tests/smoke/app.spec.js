@@ -647,3 +647,82 @@ test('소셜 로그인은 /auth/callback/ 으로 돌아오도록 요청한다', 
         expect(new URL(u).searchParams.get('redirect_uri')).toBe('http://localhost:4173/auth/callback/');
     }
 });
+
+// 급구는 운동 한 번에 묶인다: 시간표에서 다가오는 운동 칩(3개) + '다른 날'. 문구 검사는
+// 서버와 같은 규칙으로 칸 아래에 먼저 알리고, 통과하면 postUrgent 로만 올린다(직접 쓰기 X).
+test('급구 폼: 운동 칩 · 문구 검사 · postUrgent 호출 · 티커 마감 표시', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentUser = { uid: 'm1' };
+        window.isAdmin = false;
+        if (!window.canModifyClub) window.canModifyClub = () => true;
+        window.initMarkers = function () {};   // 지도 SDK 없이 돈다
+        window.__ugCalls = [];
+        window.firebaseCallable = function (name) {
+            return function (data) { window.__ugCalls.push({ name, data }); return Promise.resolve({ data: { status: 'ok', until: data.until } }); };
+        };
+        const club = {
+            id: 'smoke-urg', name: '스모크급구', is_verified: true, admins: ['m1'],
+            schedule: '월화수목금토일 19:00~21:00', address: '서울 광진구', target: '성인'
+        };
+        window.clubs.push(club);
+        window.openUrgentForm(club);
+    });
+    const chips = page.locator('#ugSessions .chip');
+    await expect(chips).toHaveCount(4);                      // 다가오는 운동 3 + 다른 날
+    await expect(chips.nth(0)).toHaveClass(/selected/);
+    await expect(chips.nth(0)).toHaveText(/\d{1,2}\/\d{1,2} 19:00[~–]21:00$/);
+    await expect(page.locator('#ugOtherBox')).toBeHidden();
+    await chips.nth(3).click();
+    await expect(page.locator('#ugOtherBox')).toBeVisible();
+    await chips.nth(0).click();
+
+    // 전화번호는 칸 아래에서 막고 서버를 부르지 않는다
+    await page.locator('#ugMsg').fill('010-1234-5678 로 연락');
+    await page.locator('#ugSubmit').click();
+    await expect(page.locator('#ugMsg')).toHaveClass(/field-invalid/);
+    expect(await page.evaluate(() => window.__ugCalls.length)).toBe(0);
+
+    await page.locator('#ugMsg').fill('  센터 1명  ');
+    await page.locator('#ugSubmit').click();
+    await expect(page.locator('#urgentFormOverlay')).toBeHidden();
+    const call = await page.evaluate(() => window.__ugCalls[0]);
+    expect(call.name).toBe('postUrgent');
+    expect(call.data.clubId).toBe('smoke-urg');
+    expect(call.data.msg).toBe('센터 1명');
+    expect(call.data.until).toBeGreaterThan(Date.now());
+
+    // 올라간 급구는 티커에 이름 · 마감 · 문구로
+    const item = page.locator('#tickerList .ticker-item').first();
+    await expect(item).toContainText('스모크급구');
+    await expect(item.locator('.ticker-until')).toHaveText(/\d{2}:\d{2}/);
+});
+
+// 인증 신청 칸은 미인증 팀의 '관리자'(admins)에게 — 처음 등록한 사람만이 아니다.
+// 관리자 신청으로 들어온 공동 관리자도 인증을 신청할 수 있어야 하고, 관리자에서 빠진
+// 등록자에게는 더 이상 보이지 않아야 한다. 운영자는 바로 인증할 수 있어 뺀다.
+test('인증 신청 칸: 공동 관리자에게 보이고, 빠진 등록자·운영자에겐 안 보인다', async ({ page }) => {
+    await page.goto('/');
+    const shown = await page.evaluate(async () => {
+        window.initMarkers = function () {};
+        window.firebaseDB = {
+            collection: () => ({ where: () => ({ limit: () => ({ get: () => Promise.resolve({ empty: true, docs: [], forEach() {} }) }) }) })
+        };
+        window.clubs.push({
+            id: 'smoke-vf', name: '스모크인증', is_verified: false,
+            registered_by: 'owner', admins: ['co1', 'co2'], address: '서울 마포구'
+        });
+        const out = {};
+        for (const [who, uid, op] of [['co2', 'co2', false], ['owner', 'owner', false], ['op', 'op1', true]]) {
+            window.currentUser = { uid, isAnonymous: false };
+            window.isAdmin = op;
+            window.openClubDetail('smoke-vf', { silent: true });
+            await new Promise((r) => setTimeout(r, 50));
+            out[who] = !!document.querySelector('#verifyStatusArea #btnRequestVerify');
+        }
+        return out;
+    });
+    expect(shown.co2).toBe(true);     // 공동 관리자
+    expect(shown.owner).toBe(false);  // admins 에 없는 처음 등록자
+    expect(shown.op).toBe(false);     // 운영자(admins 에 없음)
+});

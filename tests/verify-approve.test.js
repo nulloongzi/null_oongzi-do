@@ -94,6 +94,7 @@ const fnStubs = {
         onDocumentCreated: (o, h) => ({ _handler: h }), onDocumentWritten: (o, h) => ({ _handler: h }),
         onDocumentUpdated: (o, h) => ({ _handler: h }), onDocumentDeleted: (o, h) => ({ _handler: h })
     },
+    'firebase-functions/v2/scheduler': { onSchedule: (o, h) => h },
     'firebase-functions/params': {
         defineSecret: (n) => ({ value: () => 'secret', name: n }),
         defineString: (n, o) => ({ value: () => (o && o.default) || '', name: n })

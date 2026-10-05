@@ -38,6 +38,9 @@ const CASES = [
     ['admins 가 이기고 registered_by 는 무시', { admins: ['a'], registered_by: 'owner' }],
     ['중복·공백 정리', { admins: ['a', ' a ', '', 'b'] }],
     ['빈 팀', {}],
+    ['admins: [] 는 관리자 없음(registered_by 무시)', { admins: [], registered_by: 'owner' }],
+    ['정리 후 빈 배열도 관리자 없음', { admins: ['', ' '], registered_by: 'owner' }],
+    ['admins 가 배열이 아니면 registered_by 폴백', { admins: 'a', registered_by: 'owner' }],
     ['정원', { admins: ['a', 'b', 'c'] }]
 ];
 
@@ -46,6 +49,22 @@ describe('웹 clubAdminUids 가 서버 pure.clubAdminUids 와 같은 답을 낸�
         test(label, () => {
             assert.deepStrictEqual(plain(web.clubAdminUids(club)), pure.clubAdminUids(club));
         });
+    });
+});
+
+describe('빈 admins 배열은 관리자 없음 (registered_by 폴백은 필드가 없을 때만)', () => {
+    test('웹: { admins: [], registered_by } → []', () => {
+        assert.deepStrictEqual(plain(web.clubAdminUids({ admins: [], registered_by: 'x' })), []);
+    });
+
+    test('웹: 등록자였어도 admins: [] 이면 못 고친다', () => {
+        sandbox.window.currentUser = { uid: 'x' };
+        sandbox.window.isAdmin = false;
+        assert.strictEqual(web.canModifyClub({ admins: [], registered_by: 'x' }), false);
+    });
+
+    test('웹: admins 필드가 없으면 registered_by 가 관리자', () => {
+        assert.deepStrictEqual(plain(web.clubAdminUids({ registered_by: 'x' })), ['x']);
     });
 });
 

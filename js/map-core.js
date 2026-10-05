@@ -62,13 +62,14 @@ function buildReelBadgeEl() {
 
 function buildClubLabelEl(club, includeVerifiedBadge) {
     var el = document.createElement('div');
-    el.className = club.is_urgent ? 'label urgent' : 'label';
+    var urgent = window.isUrgentActive(club);
+    el.className = urgent ? 'label urgent' : 'label';
     if (includeVerifiedBadge && club.is_verified) {
         var badgeSpan = document.createElement('span');
         badgeSpan.innerHTML = VERIFIED_BADGE_SVG; // 정적 SVG, 사용자 입력 없음
         el.appendChild(badgeSpan);
     }
-    if (club.is_urgent) {
+    if (urgent) {
         el.appendChild(document.createTextNode('🔥 '));
     }
     el.appendChild(document.createTextNode(club.name || ''));
@@ -114,7 +115,7 @@ function showReelPeek(club) {
         'padding:14px;box-shadow:0 20px 50px rgba(93,64,55,.3);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);');
     var title = document.createElement('div');
     title.setAttribute('style', 'font-weight:800;color:#4e342e;margin:2px 4px 8px;');
-    title.textContent = (club.is_urgent ? '🔥 ' : '') + (club.name || '');
+    title.textContent = (window.isUrgentActive(club) ? '🔥 ' : '') + (club.name || '');
     var box = document.createElement('div');
     card.appendChild(title);
     card.appendChild(box);
@@ -132,18 +133,36 @@ function showReelPeek(club) {
     if (window.track) window.track('reel_peek', { via: 'label' });
 }
 
+// 지금 그려진 동호회 마커·라벨·반경 원을 모두 걷어낸다.
+// 급구 마커·라벨과 반경 원은 클러스터를 거치지 않고 지도에 직접 붙는다. markers
+// 배열만 비우면 그것들은 지도에 남아 더는 아무도 못 지운다 — 처음 로드 때
+// data.js 가 refreshMarkers 로 한 벌을 그리고 곧이어 app.js 가 initMarkers 로
+// 또 한 벌을 그려서, 급구 마커가 두 겹으로 남고 급구를 꺼도 빨간 핀이 지워지지
+// 않았다. 그래서 initMarkers 는 늘 이걸 먼저 부른다.
+window.clearClubMarkers = function () {
+    (window.markers || []).forEach(function (m) {
+        if (m.marker) m.marker.setMap(null);
+        if (m.overlay) m.overlay.setMap(null);
+        if (m.circle) m.circle.setMap(null);
+    });
+    window.markers = [];
+    if (window.clusterer) window.clusterer.clear();
+};
+
 window.initMarkers = function () {
     // 픽업 탭에선 동호회(급구 포함) 마커를 그리지 않는다. 급구 마커는 클러스터를
     // 거치지 않고 지도에 직접 붙어서, teardownMarkers 이후 이 함수가 재호출되면
     // (예: 데이터 로드/급구 토글) 픽업 탭인데도 되살아난다.
     if (window.currentTab && window.currentTab !== 'clubs') return;
-    window.markers = [];
+    // 다시 불려도 겹치지 않게 — 이전 벌을 먼저 걷는다.
+    window.clearClubMarkers();
 
     window.allClubs.forEach(function (club) {
         if (!club.lat || !club.lng) return;
         var latlng = new kakao.maps.LatLng(club.lat, club.lng);
         var marker;
-        if (club.is_urgent) {
+        var urgent = window.isUrgentActive(club);
+        if (urgent) {
             marker = new kakao.maps.Marker({ position: latlng, image: urgentMarkerImage, zIndex: 9999 });
             marker.setMap(window.map);
         } else {
@@ -167,18 +186,18 @@ window.initMarkers = function () {
         if (club.angle !== undefined) xAnc = 0.5 - (Math.cos(club.angle) * 0.5);
         var overlay = new kakao.maps.CustomOverlay({ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 });
 
-        if (club.is_urgent) overlay.setMap(window.map);
+        if (urgent) overlay.setMap(window.map);
         kakao.maps.event.addListener(marker, 'click', function () { window.openClubDetail(club.id); });
 
         // 원도 markers 에 담아야 한다 — 지도에 직접 붙는 객체라, 여기 안 넣으면
         // teardownMarkers 가 못 지워 픽업 탭으로 옮겨도 그대로 남는다.
-        window.markers.push({ marker: marker, overlay: overlay, circle: areaCircle, club: club, isVisible: true });
+        window.markers.push({ marker: marker, overlay: overlay, circle: areaCircle, club: club, urgent: urgent, isVisible: true });
     });
 
     // Add non-urgent to clusterer
     var clusterMarkers = [];
     window.markers.forEach(function (item) {
-        if (!item.club.is_urgent) clusterMarkers.push(item.marker);
+        if (!item.urgent) clusterMarkers.push(item.marker);
     });
     window.clusterer.addMarkers(clusterMarkers);
     window.updateLabelVisibility();
@@ -195,7 +214,7 @@ window.updateLabelVisibility = function () {
     var showUrgentLabels = (level <= 8);
     window.markers.forEach(function (item) {
         if (!item.isVisible) return;
-        if (item.club.is_urgent) {
+        if (item.urgent) {
             if (showUrgentLabels) item.overlay.setMap(window.map); else item.overlay.setMap(null);
         } else {
             if (showNormalLabels) item.overlay.setMap(window.map); else item.overlay.setMap(null);
@@ -218,7 +237,8 @@ window.refreshMarkers = function () {
 
         var latlng = new kakao.maps.LatLng(club.lat, club.lng);
         var marker;
-        if (club.is_urgent) {
+        var urgent = window.isUrgentActive(club);
+        if (urgent) {
             marker = new kakao.maps.Marker({ position: latlng, image: urgentMarkerImage, zIndex: 9999 });
             marker.setMap(window.map);
         } else {
@@ -231,10 +251,10 @@ window.refreshMarkers = function () {
         if (club.angle !== undefined) xAnc = 0.5 - (Math.cos(club.angle) * 0.5);
         var overlay = new kakao.maps.CustomOverlay({ position: latlng, content: content, xAnchor: xAnc, yAnchor: yAnc, zIndex: 9999 });
 
-        if (club.is_urgent) overlay.setMap(window.map);
+        if (urgent) overlay.setMap(window.map);
         kakao.maps.event.addListener(marker, 'click', function () { window.openClubDetail(club.id); });
 
-        window.markers.push({ marker: marker, overlay: overlay, club: club, isVisible: true });
+        window.markers.push({ marker: marker, overlay: overlay, club: club, urgent: urgent, isVisible: true });
     });
 
     if (newClusterMarkers.length > 0) {

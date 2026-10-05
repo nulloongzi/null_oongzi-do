@@ -19,7 +19,7 @@ claimMyClubs (onCall)         로그인할 때마다 불린다
 club_claim_requests/{clubId}__{uid}    status: pending
         │  카카오 알림 → 챗봇 '클레임관리'
         ▼
-운영자 승인 → clubs/{clubId}.registered_by = uid
+운영자 승인 → clubs/{clubId} 에 { registered_by: uid, admins: [uid] }
 ```
 
 | 컬렉션 | 문서 id | 쓰는 주체 |
@@ -49,6 +49,30 @@ id 를 고정하면 겹쳐 불려도 같은 문서를 건드리므로 Firestore 
 | `pending` | `already_requested` |
 | `rejected` | `already_rejected` |
 | `approved` | `already_yours` |
+
+## 승인 = 관리 권한까지 (2026-10-05)
+
+예전 승인은 `registered_by` 만 바꿨다. 그런데 권한 판정(`clubAdminUids` · 규칙
+`clubAdmins()`)은 `admins` 배열이 **있으면** 그것만 본다 — 빈 배열이어도. 그래서
+`admins` 필드가 있는 팀에서는 승인하고 "이제 고칠 수 있어요"라고 안내해도 실제로는
+아무 권한이 생기지 않았다. 반대로 `registered_by` 만 보고 "주인 있음"으로 막으니,
+마지막 관리자가 빠져 `admins: []` 가 된(아무도 못 고치는) 팀은 영영 클레임이 안 됐다.
+
+이제 규칙은 하나다.
+
+| 팀 상태 (`clubAdminUids`) | 클레임 생성(`claimMyClubs`) | 승인(`resolveClaim`) |
+|---|---|---|
+| 내가 관리자 | `already_yours` | — |
+| 다른 관리자가 있음 | `already_owned` | `rejected` + `reject_reason: already_owned` (덮지 않음) |
+| 관리자 없음 (`admins` 없고 `registered_by` 없음, 또는 `admins: []`) | 생성 | `registered_by: uid` · `admins: [uid]` |
+| 팀 문서 없음 | `not_found` | `rejected` + `reject_reason: not_found` |
+
+승인은 클레임 읽기·팀 확인·팀 쓰기·클레임 상태 기록을 **한 트랜잭션**에서 한다.
+두 번 누르기·승인과 거절이 겹쳐도 한 번만 처리되고(뒤쪽은 "이미 처리된 클레임"),
+트랜잭션이 실패하면 아무것도 쓰이지 않아 클레임은 `pending` 그대로다.
+
+이미 관리자가 있는 팀에서 이 사람도 함께 관리해야 하면, 클레임이 아니라 '관리자
+신청'(사진 증빙, 정원 3명) 통로를 쓴다.
 
 ## ⚠️ IAM: 런타임 서비스 계정에 Auth 조회 권한이 필요하다
 
@@ -112,7 +136,7 @@ gcloud projects add-iam-policy-binding <project-id> \
 |---|---|
 | `functions/index.js` `claimMyClubs` | 매칭 · 요청 생성 |
 | `functions/index.js` `chatbotClaims` / `resolveClaim` | 챗봇 목록 · 승인/거절 |
-| `functions/lib/pure.js` `claimRequestId` / `claimReuseReason` / `claimBlockReason` | 순수 판단 |
+| `functions/lib/pure.js` `claimRequestId` / `claimReuseReason` / `claimBlockReason` / `reassignOwnerUpdate` | 순수 판단 · 승인 때 쓰는 값 |
 | `js/auth.js` `checkClubClaims` | 로그인 직후 호출 · 결과 안내 |
-| `tests/claim-dedupe.test.js` | 중복 방지 검증 |
+| `tests/claim-dedupe.test.js` | 중복 방지 · 승인 결과(관리 권한) 검증 |
 | `docs/chatbot-blocks.md` | 카카오 콘솔 블록 설정 |

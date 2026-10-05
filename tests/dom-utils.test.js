@@ -353,3 +353,20 @@ describe('stripHiddenReels', () => {
         assert.strictEqual(stripHiddenReels(null), null);
     });
 });
+
+describe('isUrgentActive (급구 표시 판정 — 마커·라벨·티커·배너 공통)', () => {
+    const isUrgentActive = sandbox.window.isUrgentActive;
+    test('켜져 있고 문구가 있으면 급구', () => {
+        assert.strictEqual(isUrgentActive({ is_urgent: true, urgent_msg: '센터 급구' }), true);
+    });
+    test('문구가 비었거나 공백뿐이면 급구 아님', () => {
+        assert.strictEqual(isUrgentActive({ is_urgent: true, urgent_msg: '' }), false);
+        assert.strictEqual(isUrgentActive({ is_urgent: true, urgent_msg: '   ' }), false);
+        assert.strictEqual(isUrgentActive({ is_urgent: true }), false);
+    });
+    test('true 가 아니면 급구 아님 (문자열 "true" 포함)', () => {
+        assert.strictEqual(isUrgentActive({ is_urgent: 'true', urgent_msg: '급구' }), false);
+        assert.strictEqual(isUrgentActive({ is_urgent: false, urgent_msg: '급구' }), false);
+        assert.strictEqual(isUrgentActive(null), false);
+    });
+});

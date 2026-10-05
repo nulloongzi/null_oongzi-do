@@ -109,6 +109,22 @@ Firestore 스키마, Firestore 보안 규칙, Cloud Functions, 애널리틱스 �
 | **챗봇 2단 권한** | 스킬 키(채널 확인) + `admin_kakao_ids`(사람 확인) | `system/chatbot_skill_key`, **enforce 켜짐**. `docs/chatbot-blocks.md` |
 | **챗봇 공개 발화** | `chatbotHelp` · `chatbotPublicReport` | 지도를 흉내내지 않는다 — 길잡이와 로그인 없는 제보 둘만 |
 | App Links | `.well-known/assetlinks.json` + `.nojekyll` | 앱 레포 `docs/play-store-listing.md` §5 |
+| **급구 = 운동 한 번** | `postUrgent`(callable) · `sweepClubFlags`(매시간) · `urgent_until` · `urgent_log` | 켜기는 서버만, 고른 운동이 끝나면 자동으로 내려간다. 7일 안. `docs/map.md` '급구' |
+| **회원 모집 중** | `is_recruiting` · `recruit_msg` · `recruit_at` | 관리자 직접 토글(미인증 팀도). 60일 손대지 않으면 정리가 끈다 |
+
+### 배포 메모 — 급구 개편 · 회원 모집 (2026-10)
+
+1. **Cloud Scheduler API 를 켠다.** `sweepClubFlags` 는 처음 생기는 예약 함수(`onSchedule`)라
+   Scheduler 잡을 만든다. `gcloud services enable cloudscheduler.googleapis.com --project=nulloongzi-do`.
+   GitHub Actions 배포 계정에는 `roles/cloudscheduler.admin` 도 있어야 한다(`docs/deploy.md` 역할 목록).
+2. **순서: functions + firestore 규칙을 함께 → 그다음 웹.**
+   `firebase deploy --only functions,firestore:rules`. 규칙만 먼저 가면 `postUrgent` 가 없어 아무도 급구를
+   못 켜고, 함수만 먼저 가면 옛 규칙이 기한·검사 없는 직접 켜기를 계속 받는다. 웹(GitHub Pages)은 그 뒤 —
+   새 웹이 먼저 나가면 없는 `postUrgent` 를 부른다. 옛 웹·앱은 직접 써서 켜려다 규칙에 막힌다(끄기는 된다).
+3. **예전 앱은 급구를 못 올린다(받아들인 결정).** 설치된 옛 버전은 직접 쓰기로 켜므로 규칙에 거부된다.
+   끄기·보기는 된다. 기한 없는 예전 급구는 첫 정리에서 `urgent_until = 지금 + 7일` 을 받는다(migrate).
+4. 운영자 차단: 콘솔에서 팀 문서에 `urgent_blocked_until`(timestamp)를 넣으면 그 시각까지 `postUrgent` 가
+   `blocked` 로 거절한다. 기록은 `clubs/{id}/urgent_log`(운영자만 읽기).
 
 ---
 

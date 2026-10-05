@@ -16,11 +16,16 @@ service firebase.storage {
       return request.resource.size < 5 * 1024 * 1024;
     }
 
+    // ※ 공개 읽기는 `get` 만 연다. rules v2 에서 `read` 는 get + list 라서
+    //   `allow read: if true` 면 누구나 폴더 목록(모든 uid 폴더·파일 이름)을
+    //   훑을 수 있다. 앱·웹·함수 어디도 목록을 쓰지 않으니 list 는 닫아 둔다.
+
     // ── 인증 사진 ──
-    // 읽기: 챗봇 캐러셀 썸네일에 필요 → 공개 (기존 데이터 호환)
+    // 읽기: 챗봇 캐러셀 썸네일에 필요 → 경로를 아는 사람만 공개 get (기존 데이터 호환)
+    //       목록(list)은 막는다 — 경로를 모르면 찾을 수 없다.
     // 쓰기: 자신의 uid 디렉터리 아래에만 가능. 다른 팀 사진 덮어쓰기 차단.
     match /verification_photos/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
     }
     match /verification_photos/{userId}/{fileName} {
       allow write: if request.auth != null
@@ -35,12 +40,12 @@ service firebase.storage {
     // 썸네일을 불러오려면 공개 URL 이 필요하다.
     //
     // 다만 이쪽은 단톡방 캡처처럼 **남의 이름이 찍힐 수 있는** 사진이 온다.
-    // 경로에 uid 와 타임스탬프가 들어가 사실상 추측이 불가능하지만, 링크를
-    // 아는 사람은 볼 수 있다. 그래서 신청 화면이 "다른 분 이름·연락처는
+    // 목록(list)은 닫혀 있고 경로에 uid 와 타임스탬프가 들어가 추측이 어렵지만,
+    // 링크(경로)를 아는 사람은 볼 수 있다. 그래서 신청 화면이 "다른 분 이름·연락처는
     // 가리고 올려주세요" 라고 먼저 안내한다. 더 조이려면 서명 URL(짧은 만료)로
     // 바꿔야 하는데, 그러려면 서비스 계정에 signBlob 권한이 필요하다.
     match /admin_request_photos/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
     }
     match /admin_request_photos/{userId}/{fileName} {
       allow write: if request.auth != null
@@ -54,13 +59,14 @@ service firebase.storage {
     // Cloud Function(insta-cover.js)이 admin SDK 로만 쓴다(규칙 우회). 클라이언트는 읽기만.
     // 공개 읽기: 발견 카드·지도 피크가 로그인 없이 커버를 보여줘야 한다.
     match /reel_covers/{fileName} {
-      allow read: if true;
+      allow get: if true;
       allow write: if false;
     }
 
     // ── 팀 사진 ──
+    // 읽기: 상세 시트가 사진을 보여줘야 해 공개 get. 목록은 막는다.
     match /club_photos/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
     }
     match /club_photos/{userId}/{fileName} {
       allow write: if request.auth != null

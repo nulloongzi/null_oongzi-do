@@ -29,7 +29,8 @@ window.checkIsAdmin = async function (user) {
 
 // 특정 팀에 대해 현재 유저가 삭제/수정 권한이 있는지
 // 이 팀을 관리할 수 있는 uid 목록. admins 가 정본이고, 그 필드가 생기기 전
-// 문서는 registered_by 한 사람을 관리자로 본다.
+// 문서(필드가 없거나 배열이 아닐 때)만 registered_by 한 사람을 관리자로 본다.
+// 빈 배열 `admins: []` 는 "관리자 없음"이다 — registered_by 로 되살리지 않는다.
 //
 // firestore.rules 의 clubAdmins() · functions/lib/pure.js 의 clubAdminUids() 와
 // **같은 규칙이어야 한다.** 어긋나면 화면엔 수정 버튼이 보이는데 저장은 거부되는,
@@ -37,14 +38,14 @@ window.checkIsAdmin = async function (user) {
 window.clubAdminUids = function (club) {
     var c = club || {};
     var out = [];
-    var list = Array.isArray(c.admins) ? c.admins : [];
-    for (var i = 0; i < list.length; i++) {
-        var v = String(list[i] == null ? '' : list[i]).trim();
-        if (v && out.indexOf(v) === -1) out.push(v);
-    }
-    if (!out.length && c.registered_by) {
-        var owner = String(c.registered_by).trim();
+    if (!Array.isArray(c.admins)) {
+        var owner = c.registered_by == null ? '' : String(c.registered_by).trim();
         if (owner) out.push(owner);
+        return out;
+    }
+    for (var i = 0; i < c.admins.length; i++) {
+        var v = String(c.admins[i] == null ? '' : c.admins[i]).trim();
+        if (v && out.indexOf(v) === -1) out.push(v);
     }
     return out;
 };
