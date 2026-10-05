@@ -1327,9 +1327,11 @@ exports.claimMyClubs = onCall(
             var clubDoc = await db.collection("clubs").doc(clubId).get();
             var club = clubDoc.exists ? clubDoc.data() : null;
 
+            // 이미 이 팀 관리자면 클레임할 게 없다. (주인 있음 검사보다 먼저 봐야
+            // 자기 팀이 '남의 팀'으로 안내되지 않는다.)
+            if (club && pure.canManageClub(club, uid)) { skipped.push({ clubId: clubId, reason: "already_yours" }); continue; }
             var blocked = pure.claimBlockReason(club);
             if (blocked) { skipped.push({ clubId: clubId, reason: blocked }); continue; }
-            if (club.registered_by === uid) { skipped.push({ clubId: clubId, reason: "already_yours" }); continue; }
 
             // 같은 (팀, 사람) 요청이 이미 있으면 다시 만들지 않는다 —
             // 로그인할 때마다 부르는 함수라 안 막으면 운영자 목록이 도배된다.
@@ -1427,6 +1429,69 @@ async function grantClubAdmin(clubId, uid) {
     }
 }
 
+// 새 신청을 거를 이유(duplicate / already_admin). 조회가 실패하면 null — 거르지
+// 못했다고 알림까지 빠뜨리면 신청이 아무도 모르게 묻힌다.
+async function adminRequestSkip(snap, d) {
+    var uid = String(d.requested_by == null ? "" : d.requested_by).trim();
+    if (!uid || !d.club_id) return null;
+    try {
+        var clubSnap = await db.collection("clubs").doc(String(d.club_id)).get();
+        var mineSnap = await db.collection("club_admin_requests")
+            .where("requested_by", "==", uid).limit(50).get();
+        var others = [];
+        mineSnap.forEach(function (doc) { others.push({ id: doc.id, data: doc.data() || {} }); });
+        return pure.adminRequestSkipReason(d, snap.ref.id, others, clubSnap.exists ? clubSnap.data() : null);
+    } catch (e) {
+        console.error("관리자 신청 중복 확인 실패 - id:", snap.ref.id, e && e.message);
+        return null;
+    }
+}
+
+// 아직 pending 일 때만 거절로 닫는다. 그새 운영자가 처리했으면 건드리지 않는다.
+async function closeAdminRequest(ref, reason) {
+    try {
+        return await db.runTransaction(async function (tx) {
+            var cur = await tx.get(ref);
+            if (!cur.exists || (cur.data() || {}).status !== "pending") return false;
+            tx.update(ref, {
+                status: "rejected",
+                reject_reason: reason,
+                reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        });
+    } catch (e) {
+        console.error("관리자 신청 자동 정리 실패 - id:", ref.id, e && e.message);
+        return false;
+    }
+}
+
+// 심사가 끝난 신청의 증빙 사진을 지운다. 단톡방 캡처처럼 남의 이름이 찍힌
+// 사진이라 결정 뒤엔 남길 이유가 없다. 인증 사진(verification_photos)은 대상이 아니다.
+//
+// 지우기 실패는 결정을 되돌리지 않는다 — 로그만 남긴다(사진은 경로를 모르면
+// 못 찾고, 나중에 다시 지울 수 있다). 지웠으면(또는 이미 없으면) photo_deleted_at 을 남긴다.
+async function deleteAdminRequestPhoto(ref, d) {
+    var target = pure.adminRequestPhotoPath(d && d.photo_url, d && d.requested_by);
+    if (!target) {
+        if (d && d.photo_url) console.warn("관리자 신청 사진 경로를 못 읽어 지우지 않음 - id:", ref.id);
+        return false;
+    }
+    try {
+        var bucket = admin.storage().bucket();
+        if (bucket.name && target.bucket !== bucket.name) {
+            console.warn("관리자 신청 사진이 다른 버킷이라 지우지 않음 - id:", ref.id, target.bucket);
+            return false;
+        }
+        await bucket.file(target.path).delete({ ignoreNotFound: true });
+        await ref.update({ photo_deleted_at: admin.firestore.FieldValue.serverTimestamp() });
+        return true;
+    } catch (e) {
+        console.error("관리자 신청 사진 삭제 실패 - id:", ref.id, e && e.message);
+        return false;
+    }
+}
+
 // 관리자 신청 접수 → 운영자에게 알린다.
 exports.onClubAdminRequestCreated = onDocumentCreated(
     {
@@ -1438,6 +1503,19 @@ exports.onClubAdminRequestCreated = onDocumentCreated(
         if (!snap) return;
         var d = snap.data() || {};
         if (d.status !== "pending") return;
+
+        // 운영자에게 올리기 전에 거른다 — 같은 사람이 같은 팀에 이미 낸 신청이
+        // 대기 중이거나, 이미 그 팀 관리자면 운영자 목록에 같은 건이 또 뜰 뿐이다.
+        // requested_by 하나로만 조회하고 club_id 는 메모리에서 거른다(복합 인덱스 없이).
+        var skip = await adminRequestSkip(snap, d);
+        if (skip) {
+            var closed = await closeAdminRequest(snap.ref, skip);
+            if (closed) {
+                console.log("관리자 신청 자동 정리 - id:", snap.ref.id, "reason:", skip);
+                await deleteAdminRequestPhoto(snap.ref, d);
+                return;
+            }
+        }
 
         var kakaoToken = null;
         try {
@@ -1509,7 +1587,7 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
             var text = top.map(function (d, i) {
                 var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
                 return (i + 1) + ". " + (d.club_name || d.club_id) + " · " + dateStr
-                    + "\n   사진: " + (d.photo_url || "없음")
+                    + "\n   사진: " + ((d.photo_url && !d.photo_deleted_at) ? d.photo_url : "없음")
                     + "\n   id: " + d._id;
             }).join("\n\n");
             res.json({
@@ -1527,16 +1605,19 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
             return;
         }
 
+        var NO_PHOTO_THUMB = "https://do.nulloongzi.com/app_ui/nulloongzido%20logo_512px.png";
         var cards = top.map(function (d) {
             var dateStr = d._ms ? new Date(d._ms).toLocaleDateString("ko-KR") : "날짜 없음";
-            var buttons = [
-                // 증빙을 보고 판단하는 순서라 원본 보기가 먼저다. basicCard 상한 3개.
-                { label: "🔍 사진 크게 보기", action: "webLink", webLinkUrl: d.photo_url },
-                {
-                    label: "✅ 승인", action: "block", blockId: ADMIN_APPROVE_BLOCK_ID,
-                    extra: { request_id: d._id, club_name: d.club_name || "" }
-                }
-            ];
+            // 사진은 심사가 끝나면 지운다(deleteAdminRequestPhoto). 대기 중인데 사진이
+            // 없거나 이미 지워진 건이 섞여도 카드가 깨진 이미지·죽은 링크를 띄우지 않게.
+            var photo = (d.photo_url && !d.photo_deleted_at) ? d.photo_url : "";
+            var buttons = [];
+            // 증빙을 보고 판단하는 순서라 원본 보기가 먼저다. basicCard 상한 3개.
+            if (photo) buttons.push({ label: "🔍 사진 크게 보기", action: "webLink", webLinkUrl: photo });
+            buttons.push({
+                label: "✅ 승인", action: "block", blockId: ADMIN_APPROVE_BLOCK_ID,
+                extra: { request_id: d._id, club_name: d.club_name || "" }
+            });
             if (ADMIN_REJECT_BLOCK_ID) {
                 buttons.push({
                     label: "❌ 거절", action: "block", blockId: ADMIN_REJECT_BLOCK_ID,
@@ -1545,9 +1626,11 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
             }
             return {
                 title: d.club_name || d.club_id || "대상 없음",
-                description: "신청일: " + dateStr,
+                description: "신청일: " + dateStr + (photo ? "" : "\n(증빙 사진 없음)"),
                 // 단톡방 캡처처럼 세로로 긴 사진이 잘리면 정작 볼 부분이 사라진다.
-                thumbnail: { imageUrl: d.photo_url, fixedRatio: true, link: { web: d.photo_url } },
+                thumbnail: photo
+                    ? { imageUrl: photo, fixedRatio: true, link: { web: photo } }
+                    : { imageUrl: NO_PHOTO_THUMB },
                 buttons: buttons
             };
         });
@@ -1564,6 +1647,47 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
         });
     }
 });
+
+// 신청 하나를 승인/거절한다. 신청 읽기·상태 확인, 팀 명단 수정, 신청 상태
+// 기록을 **한 트랜잭션**에 묶는다. 따로 하면 승인 버튼 두 번 누르기나 승인·거절이
+// 겹칠 때 "명단엔 들어갔는데 신청은 거절" 같은 어긋남이 남는다. 트랜잭션은 같은
+// 문서를 건드리는 호출을 직렬화해서, 먼저 끝난 쪽이 pending 을 지우면 뒤쪽은
+// "이미 처리됨"을 본다.
+//
+// 서버가 남기는 거절 사유는 pure.ADMIN_REJECT_REASONS 뿐이다. 그 밖의 이유(오류 등)
+// 로는 거절을 쓰지 않고 pending 그대로 둔다 — 운영자가 다시 누르면 된다.
+async function settleAdminRequest(requestId, approve) {
+    var reqRef = db.collection("club_admin_requests").doc(String(requestId));
+    return await db.runTransaction(async function (tx) {
+        var reqSnap = await tx.get(reqRef);
+        if (!reqSnap.exists) return { outcome: "missing", d: {} };
+        var d = reqSnap.data() || {};
+        if (d.status !== "pending") return { outcome: "done", d: d };
+        var now = admin.firestore.FieldValue.serverTimestamp();
+
+        if (!approve) {
+            // 운영자가 손으로 거절할 때는 사유를 남기지 않는다(화면은 사유 줄을 생략한다).
+            tx.update(reqRef, { status: "rejected", reviewed_at: now });
+            return { outcome: "rejected", d: d };
+        }
+
+        // 정원은 승인 시점에 다시 본다 — 신청이 접수된 뒤 3명이 찼을 수 있다.
+        var clubRef = d.club_id ? db.collection("clubs").doc(String(d.club_id)) : null;
+        var clubSnap = clubRef ? await tx.get(clubRef) : null;
+        var result = (clubSnap && clubSnap.exists)
+            ? pure.addClubAdmin(clubSnap.data(), d.requested_by)
+            : { added: false, reason: "not_found" };
+        if (!result.added) {
+            var reason = pure.adminRejectReason(result.reason);
+            if (!reason) return { outcome: "unprocessable", reason: result.reason, d: d };
+            tx.update(reqRef, { status: "rejected", reject_reason: reason, reviewed_at: now });
+            return { outcome: "blocked", reason: reason, d: d };
+        }
+        tx.update(clubRef, { admins: result.admins });
+        tx.update(reqRef, { status: "approved", reviewed_at: now });
+        return { outcome: "approved", admins: result.admins, d: d };
+    });
+}
 
 // 승인/거절 공통.
 async function resolveAdminRequest(req, res, approve) {
@@ -1584,43 +1708,39 @@ async function resolveAdminRequest(req, res, approve) {
     }
     if (!requestId) { say("처리할 신청 id가 없어요. '관리자관리'로 다시 해 주세요."); return; }
 
-    var ref = db.collection("club_admin_requests").doc(String(requestId));
-    var doc = await ref.get();
-    if (!doc.exists) { say("이 신청을 찾지 못했어요."); return; }
-    var d = doc.data() || {};
-    if (d.status !== "pending") { say("이미 처리된 신청이에요."); return; }
+    var r;
+    try {
+        r = await settleAdminRequest(requestId, approve);
+    } catch (e) {
+        // 트랜잭션이 실패하면 아무것도 쓰이지 않았다 — 신청은 pending 그대로다.
+        console.error("관리자 신청 처리 실패 - id:", requestId, e && e.message);
+        say("처리하지 못했어요. 신청은 대기 중 그대로예요 — 잠시 후 다시 눌러 주세요.");
+        return;
+    }
+    var d = r.d || {};
+    var target = d.club_name || d.club_id || "";
 
-    if (!approve) {
-        await ref.update({
-            status: "rejected",
-            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-        });
-        say("❌ 거절했어요.\n대상: " + (d.club_name || d.club_id || ""));
+    if (r.outcome === "missing") { say("이 신청을 찾지 못했어요."); return; }
+    if (r.outcome === "done") { say("이미 처리된 신청이에요."); return; }
+    if (r.outcome === "unprocessable") {
+        say("신청 정보가 온전하지 않아 승인하지 못했어요. 신청은 대기 중 그대로예요 — 확인 뒤 거절해 주세요.\n대상: " + target);
         return;
     }
 
-    // 정원은 승인 시점에 다시 본다 — 신청이 접수된 뒤 3명이 찼을 수 있다.
-    var granted = await grantClubAdmin(d.club_id, d.requested_by);
-    if (!granted.added) {
-        await ref.update({
-            status: "rejected",
-            reject_reason: granted.reason,
-            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-        });
-        say(granted.reason === "full"
+    // 결정이 났으니 증빙 사진을 지운다. 실패해도 결정은 그대로다.
+    await deleteAdminRequestPhoto(db.collection("club_admin_requests").doc(String(requestId)), d);
+
+    if (r.outcome === "rejected") { say("❌ 거절했어요.\n대상: " + target); return; }
+    if (r.outcome === "blocked") {
+        say(r.reason === "full"
             ? "관리자가 벌써 3명이라 승인하지 않았어요.\n대상: " + (d.club_name || "")
-            : granted.reason === "already_admin"
+            : r.reason === "already_admin"
                 ? "이미 이 팀의 관리자예요.\n대상: " + (d.club_name || "")
                 : "팀 문서를 찾지 못해 승인하지 않았어요.");
         return;
     }
-
-    await ref.update({
-        status: "approved",
-        reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-    });
-    say("✅ 승인했어요.\n대상: " + (d.club_name || d.club_id || "")
-        + "\n관리자 " + granted.admins.length + "/" + pure.MAX_CLUB_ADMINS + "명");
+    say("✅ 승인했어요.\n대상: " + target
+        + "\n관리자 " + r.admins.length + "/" + pure.MAX_CLUB_ADMINS + "명");
 }
 
 exports.chatbotAdminApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
@@ -1772,7 +1892,13 @@ exports.chatbotClaims = onRequest(CHATBOT_OPTS, async function (req, res) {
     }
 });
 
-// 승인/거절 공통. 승인일 때만 clubs.registered_by 를 바꾼다.
+// 승인/거절 공통. 승인일 때만 팀을 이 사람에게 넘긴다 — registered_by 와 함께
+// admins 도 [uid] 로 쓴다. registered_by 만 바꾸면 admins 배열이 있는 팀(빈 배열
+// 포함)에서는 아무 권한도 생기지 않는다 — 승인했다고 안내하고 실제로는 못 고치는 꼴.
+//
+// 클레임 읽기·팀 상태 확인·팀 쓰기·클레임 상태 기록을 한 트랜잭션에 묶는다. 두 번
+// 누르기나 승인·거절이 겹쳐도 한 번만 처리되고, 그 사이 누가 관리자가 됐으면
+// 덮어쓰지 않는다. 실패하면 아무것도 안 쓰여 클레임은 pending 그대로다.
 async function resolveClaim(req, res, approve) {
     if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
     var auth = await isAllowedKakaoUser(req);
@@ -1793,47 +1919,54 @@ async function resolveClaim(req, res, approve) {
     if (!claimId) { say("처리할 클레임 id가 없어요. '클레임관리'로 다시 해 주세요."); return; }
 
     var ref = db.collection("club_claim_requests").doc(String(claimId));
-    var doc = await ref.get();
-    if (!doc.exists) { say("이 클레임을 찾지 못했어요."); return; }
-    var d = doc.data() || {};
-    if (d.status !== "pending") { say("이미 처리된 클레임이에요."); return; }
+    var resolvedBy = auth.userId || "unknown";
+    var r = await db.runTransaction(async function (tx) {
+        var doc = await tx.get(ref);
+        if (!doc.exists) return { outcome: "missing", d: {} };
+        var d = doc.data() || {};
+        if (d.status !== "pending") return { outcome: "done", d: d };
+        var now = admin.firestore.FieldValue.serverTimestamp();
 
-    if (!approve) {
-        await ref.update({
-            status: "rejected",
-            resolved_at: admin.firestore.FieldValue.serverTimestamp(),
-            resolved_by: auth.userId || "unknown"
-        });
-        say("❌ 거절했어요.\n대상: " + (d.club_name || d.club_id || ""));
+        if (!approve) {
+            tx.update(ref, { status: "rejected", resolved_at: now, resolved_by: resolvedBy });
+            return { outcome: "rejected", d: d };
+        }
+
+        // 승인 시점에 관리자 유무를 **다시** 본다. 요청이 접수된 뒤 누군가 그 팀
+        // 관리자가 됐을 수 있고, 그걸 덮으면 권한을 빼앗는 셈이 된다.
+        var clubRef = d.club_id ? db.collection("clubs").doc(String(d.club_id)) : null;
+        var clubSnap = clubRef ? await tx.get(clubRef) : null;
+        var blocked = pure.claimBlockReason(clubSnap && clubSnap.exists ? clubSnap.data() : null);
+        if (blocked) {
+            tx.update(ref, { status: "rejected", reject_reason: blocked, resolved_at: now, resolved_by: resolvedBy });
+            return { outcome: "blocked", reason: blocked, d: d };
+        }
+        var update = pure.reassignOwnerUpdate(d.uid);
+        if (!update) return { outcome: "no_uid", d: d };
+        tx.update(clubRef, update);
+        tx.update(ref, { status: "approved", resolved_at: now, resolved_by: resolvedBy });
+        return { outcome: "approved", d: d };
+    });
+    var d = r.d || {};
+    var target = d.club_name || d.club_id || "";
+
+    if (r.outcome === "missing") { say("이 클레임을 찾지 못했어요."); return; }
+    if (r.outcome === "done") { say("이미 처리된 클레임이에요."); return; }
+    if (r.outcome === "rejected") { say("❌ 거절했어요.\n대상: " + target); return; }
+    if (r.outcome === "no_uid") {
+        say("신청자 정보가 없어 승인하지 못했어요. 클레임은 대기 중 그대로예요.\n대상: " + target);
         return;
     }
-
-    // 승인 시점에 소유 상태를 **다시** 본다. 요청이 접수된 뒤 누군가 그 팀을
-    // 가져갔을 수 있고, 그걸 덮으면 소유권을 빼앗는 셈이 된다.
-    var clubRef = db.collection("clubs").doc(String(d.club_id));
-    var clubDoc = await clubRef.get();
-    var blocked = pure.claimBlockReason(clubDoc.exists ? clubDoc.data() : null);
-    if (blocked) {
-        await ref.update({
-            status: "rejected",
-            reject_reason: blocked,
-            resolved_at: admin.firestore.FieldValue.serverTimestamp(),
-            resolved_by: auth.userId || "unknown"
-        });
-        say(blocked === "already_owned"
-            ? "이미 다른 사람이 소유한 팀이라 승인하지 않았어요.\n대상: " + (d.club_name || "")
+    if (r.outcome === "blocked") {
+        say(r.reason === "already_owned"
+            ? "이미 관리자가 있는 팀이라 승인하지 않았어요.\n대상: " + (d.club_name || "")
+                + "\n이분이 함께 관리해야 하면 '관리자 신청'(사진 증빙)으로 받아 주세요."
             : "팀 문서를 찾지 못해 승인하지 않았어요.");
         return;
     }
-
-    await clubRef.set({ registered_by: d.uid }, { merge: true });
-    await ref.update({
-        status: "approved",
-        resolved_at: admin.firestore.FieldValue.serverTimestamp(),
-        resolved_by: auth.userId || "unknown"
-    });
     console.log("클레임 승인 - club:", d.club_id, "uid:", d.uid);
-    say("✅ 승인했어요.\n대상: " + (d.club_name || d.club_id || "") + "\n이제 이분이 팀 정보를 고칠 수 있어요.");
+    say("✅ 승인했어요.\n대상: " + target
+        + "\n이제 이분이 이 팀의 관리자예요(1/" + pure.MAX_CLUB_ADMINS + "명) — 팀 정보를 고칠 수 있어요.");
 }
 
 // ── 스킬 11·12: 클레임 승인 / 거절 ──

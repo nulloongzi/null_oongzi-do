@@ -70,13 +70,34 @@ function makeTx() {
         set: (ref, data) => { docs[ref.path] = Object.assign({}, docs[ref.path], data); }
     };
 }
+// txFail 을 켜면 트랜잭션이 통째로 실패한다(경합 끝에 포기한 경우). 실제
+// Firestore 처럼 아무것도 쓰이지 않아야 하므로 fn 을 부르기 전에 던진다.
+let txFail = false;
+// 지운 Storage 객체 경로. deleteFail 을 켜면 삭제가 실패한다.
+let deletedObjects = [];
+let deleteFail = false;
+const BUCKET = 'nulloongzido.appspot.com';
 const adminStub = {
     initializeApp() {},
     firestore: Object.assign(() => ({
         collection: makeCollection,
         batch: () => ({ delete() {}, commit: async () => {} }),
-        runTransaction: async (fn) => fn(makeTx())
+        runTransaction: async (fn) => {
+            if (txFail) throw new Error('ABORTED: too much contention');
+            return fn(makeTx());
+        }
     }), { FieldValue, Timestamp: { now: () => '<now>' } }),
+    storage: () => ({
+        bucket: () => ({
+            name: BUCKET,
+            file: (p) => ({
+                delete: async () => {
+                    if (deleteFail) throw new Error('storage down');
+                    deletedObjects.push(p);
+                }
+            })
+        })
+    }),
     auth: () => ({ getUser: async () => ({ email: 'x@example.com', emailVerified: true }) })
 };
 
@@ -126,6 +147,9 @@ after(() => { Object.assign(console, _quiet); });
 beforeEach(() => {
     sent = [];
     queryDocs = {};
+    txFail = false;
+    deletedObjects = [];
+    deleteFail = false;
     docs = { 'system/kakao_token': { access_token: 'tok', expires_at: Date.now() + 3600e3 } };
 });
 
@@ -346,6 +370,168 @@ describe('관리자 권한 신청 (club_admin_requests)', () => {
         await fns.chatbotAdminApprove(req, c.res);
         assert.deepStrictEqual(docs['clubs/c5'].admins, ['a']);
         assert.strictEqual(docs['club_admin_requests/r5'].status, 'pending');
+    });
+});
+
+describe('관리자 신청 — 한 트랜잭션 처리 · 중복 거르기 · 사진 정리', () => {
+    const photoOf = (uid, name) => 'https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/'
+        + encodeURIComponent('admin_request_photos/' + uid + '/' + name) + '?alt=media&token=t';
+    function capture() {
+        let out = null;
+        return { res: { json: (v) => { out = v; }, status() { return this; }, send() {} }, get: () => out };
+    }
+    const textOf = (c) => c.get().template.outputs[0].simpleText.text;
+    function call(extra) {
+        docs['admin_kakao_ids/kakao-1'] = { ok: true };
+        return { body: { userRequest: { user: { id: 'kakao-1' } }, action: { clientExtra: extra } } };
+    }
+    const ts = (ms) => ({ toMillis: () => ms });
+    async function created(id, data) {
+        docs['club_admin_requests/' + id] = data;
+        await fns.onClubAdminRequestCreated._handler({
+            data: { ref: makeRef('club_admin_requests/' + id), data: () => data }
+        });
+    }
+
+    test('두 번 눌러도 한 번만 들어가고 두 번째는 "이미 처리"', async () => {
+        docs['club_admin_requests/q1'] = { status: 'pending', club_id: 'k1', club_name: '팀', requested_by: 'u-new', photo_url: photoOf('u-new', 'a.jpg') };
+        docs['clubs/k1'] = { name: '팀', admins: ['u-old'] };
+        await fns.chatbotAdminApprove(call({ request_id: 'q1' }), capture().res);
+        const c2 = capture();
+        await fns.chatbotAdminApprove(call({ request_id: 'q1' }), c2.res);
+        assert.deepStrictEqual(docs['clubs/k1'].admins, ['u-old', 'u-new']);
+        assert.match(textOf(c2), /이미 처리된/);
+    });
+
+    test('승인 뒤 거절이 와도 승인이 그대로', async () => {
+        docs['club_admin_requests/q2'] = { status: 'pending', club_id: 'k2', club_name: '팀', requested_by: 'u-new' };
+        docs['clubs/k2'] = { name: '팀', admins: [] };
+        await fns.chatbotAdminApprove(call({ request_id: 'q2' }), capture().res);
+        const c = capture();
+        await fns.chatbotAdminReject(call({ request_id: 'q2' }), c.res);
+        assert.strictEqual(docs['club_admin_requests/q2'].status, 'approved');
+        // admins: [] 는 관리자 없음 — 등록자가 되살아나지 않고 새 사람만
+        assert.deepStrictEqual(docs['clubs/k2'].admins, ['u-new']);
+        assert.match(textOf(c), /이미 처리된/);
+    });
+
+    // 오류를 '거절(error)'로 남기면 신청자에게 거절이 뜬다. 다시 누르면 될 일이다.
+    test('트랜잭션이 실패하면 신청은 pending 그대로, 다시 하라고 안내', async () => {
+        docs['club_admin_requests/q3'] = { status: 'pending', club_id: 'k3', club_name: '팀', requested_by: 'u-new', photo_url: photoOf('u-new', 'a.jpg') };
+        docs['clubs/k3'] = { name: '팀', admins: ['a'] };
+        txFail = true;
+        const c = capture();
+        await fns.chatbotAdminApprove(call({ request_id: 'q3' }), c.res);
+        assert.strictEqual(docs['club_admin_requests/q3'].status, 'pending');
+        assert.ok(!('reject_reason' in docs['club_admin_requests/q3']));
+        assert.deepStrictEqual(docs['clubs/k3'].admins, ['a']);
+        assert.deepStrictEqual(deletedObjects, [], '결정 전에 사진을 지웠다');
+        assert.match(textOf(c), /다시/);
+    });
+
+    test('팀이 없으면 not_found 로 거절', async () => {
+        docs['club_admin_requests/q4'] = { status: 'pending', club_id: 'gone', club_name: '팀', requested_by: 'u-new' };
+        await fns.chatbotAdminApprove(call({ request_id: 'q4' }), capture().res);
+        assert.strictEqual(docs['club_admin_requests/q4'].status, 'rejected');
+        assert.strictEqual(docs['club_admin_requests/q4'].reject_reason, 'not_found');
+    });
+
+    test('손으로 거절하면 사유를 남기지 않는다', async () => {
+        docs['club_admin_requests/q5'] = { status: 'pending', club_id: 'k5', club_name: '팀', requested_by: 'u-x' };
+        await fns.chatbotAdminReject(call({ request_id: 'q5' }), capture().res);
+        assert.strictEqual(docs['club_admin_requests/q5'].status, 'rejected');
+        assert.ok(!('reject_reason' in docs['club_admin_requests/q5']));
+    });
+
+    test('승인·거절하면 증빙 사진을 지우고 photo_deleted_at 을 남긴다', async () => {
+        docs['club_admin_requests/q6'] = { status: 'pending', club_id: 'k6', club_name: '팀', requested_by: 'u6', photo_url: photoOf('u6', 'p.jpg') };
+        docs['club_admin_requests/q7'] = { status: 'pending', club_id: 'k6', club_name: '팀', requested_by: 'u7', photo_url: photoOf('u7', 'q.jpg') };
+        docs['clubs/k6'] = { name: '팀', admins: [] };
+        await fns.chatbotAdminApprove(call({ request_id: 'q6' }), capture().res);
+        await fns.chatbotAdminReject(call({ request_id: 'q7' }), capture().res);
+        assert.deepStrictEqual(deletedObjects, ['admin_request_photos/u6/p.jpg', 'admin_request_photos/u7/q.jpg']);
+        assert.strictEqual(docs['club_admin_requests/q6'].photo_deleted_at, '<ts>');
+        assert.strictEqual(docs['club_admin_requests/q7'].photo_deleted_at, '<ts>');
+    });
+
+    test('남의 폴더·인증 사진을 가리키는 URL 은 지우지 않는다', async () => {
+        const verif = 'https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/'
+            + encodeURIComponent('verification_photos/u8/v.jpg') + '?alt=media';
+        docs['club_admin_requests/q8'] = { status: 'pending', club_id: 'k8', requested_by: 'u8', photo_url: verif };
+        docs['club_admin_requests/q9'] = { status: 'pending', club_id: 'k8', requested_by: 'u9', photo_url: photoOf('victim', 'v.jpg') };
+        await fns.chatbotAdminReject(call({ request_id: 'q8' }), capture().res);
+        await fns.chatbotAdminReject(call({ request_id: 'q9' }), capture().res);
+        assert.deepStrictEqual(deletedObjects, []);
+        assert.strictEqual(docs['club_admin_requests/q8'].status, 'rejected');
+        assert.ok(!('photo_deleted_at' in docs['club_admin_requests/q8']));
+    });
+
+    test('사진 삭제가 실패해도 결정은 그대로', async () => {
+        docs['club_admin_requests/q10'] = { status: 'pending', club_id: 'k10', club_name: '팀', requested_by: 'u10', photo_url: photoOf('u10', 'p.jpg') };
+        docs['clubs/k10'] = { name: '팀', admins: [] };
+        deleteFail = true;
+        const c = capture();
+        await fns.chatbotAdminApprove(call({ request_id: 'q10' }), c.res);
+        assert.strictEqual(docs['club_admin_requests/q10'].status, 'approved');
+        assert.deepStrictEqual(docs['clubs/k10'].admins, ['u10']);
+        assert.ok(!('photo_deleted_at' in docs['club_admin_requests/q10']));
+        assert.match(textOf(c), /승인했어요/);
+    });
+
+    test('같은 팀에 먼저 낸 신청이 대기 중이면 새 신청은 duplicate 로 닫고 알리지 않는다', async () => {
+        queryDocs['club_admin_requests'] = [
+            { id: 'first', data: { status: 'pending', club_id: 'd1', requested_by: 'ud', requested_at: ts(1000) } }
+        ];
+        docs['clubs/d1'] = { name: '팀', admins: [] };
+        await created('second', { status: 'pending', club_id: 'd1', club_name: '팀', requested_by: 'ud', requested_at: ts(2000), photo_url: photoOf('ud', 's.jpg') });
+        assert.strictEqual(sent.length, 0, '중복인데 운영자에게 알렸다');
+        assert.strictEqual(docs['club_admin_requests/second'].status, 'rejected');
+        assert.strictEqual(docs['club_admin_requests/second'].reject_reason, 'duplicate');
+        assert.strictEqual(docs['club_admin_requests/second'].reviewed_at, '<ts>');
+        assert.deepStrictEqual(deletedObjects, ['admin_request_photos/ud/s.jpg']);
+    });
+
+    test('먼저 낸 쪽은 나중 것이 있어도 그대로 알린다', async () => {
+        queryDocs['club_admin_requests'] = [
+            { id: 'later', data: { status: 'pending', club_id: 'd2', requested_by: 'ud', requested_at: ts(5000) } }
+        ];
+        await created('earlier', { status: 'pending', club_id: 'd2', club_name: '팀', requested_by: 'ud', requested_at: ts(1000), photo_url: photoOf('ud', 'e.jpg') });
+        assert.strictEqual(sent.length, 1);
+        assert.strictEqual(docs['club_admin_requests/earlier'].status, 'pending');
+    });
+
+    test('다른 팀 신청·끝난 신청은 중복이 아니다', async () => {
+        queryDocs['club_admin_requests'] = [
+            { id: 'o1', data: { status: 'pending', club_id: 'other', requested_by: 'ud', requested_at: ts(1) } },
+            { id: 'o2', data: { status: 'rejected', club_id: 'd3', requested_by: 'ud', requested_at: ts(1) } }
+        ];
+        await created('n3', { status: 'pending', club_id: 'd3', club_name: '팀', requested_by: 'ud', requested_at: ts(9) });
+        assert.strictEqual(sent.length, 1);
+        assert.strictEqual(docs['club_admin_requests/n3'].status, 'pending');
+    });
+
+    test('이미 그 팀 관리자면 already_admin 으로 닫고 알리지 않는다', async () => {
+        docs['clubs/d4'] = { name: '팀', admins: ['ud'] };
+        await created('n4', { status: 'pending', club_id: 'd4', club_name: '팀', requested_by: 'ud', requested_at: ts(9) });
+        assert.strictEqual(sent.length, 0);
+        assert.strictEqual(docs['club_admin_requests/n4'].status, 'rejected');
+        assert.strictEqual(docs['club_admin_requests/n4'].reject_reason, 'already_admin');
+    });
+
+    test('목록 카드: 사진이 없거나 지워진 신청도 깨지지 않는다', async () => {
+        docs['admin_kakao_ids/kakao-1'] = { ok: true };
+        queryDocs['club_admin_requests'] = [
+            { id: 'np', data: { status: 'pending', club_id: 'c1', club_name: '사진없음' } },
+            { id: 'gone', data: { status: 'pending', club_id: 'c2', club_name: '지움', photo_url: photoOf('u', 'x.jpg'), photo_deleted_at: '<ts>' } }
+        ];
+        const c = capture();
+        await fns.chatbotAdminRequests({ body: { userRequest: { user: { id: 'kakao-1' } }, action: {} } }, c.res);
+        const items = c.get().template.outputs[0].carousel.items;
+        items.forEach((item) => {
+            assert.ok(item.thumbnail.imageUrl, '썸네일이 비었다');
+            assert.ok(!item.buttons.some((b) => b.action === 'webLink'), '죽은 사진 링크 버튼');
+            assert.ok(item.buttons.some((b) => /승인/.test(b.label)));
+        });
     });
 });
 

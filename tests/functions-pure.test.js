@@ -250,6 +250,15 @@ describe('claimBlockReason', () => {
     // 이미 주인이 있는 팀을 빼앗으면 안 된다.
     test('이미 주인이 있으면 막는다', () => {
         assert.strictEqual(pure.claimBlockReason({ registered_by: 'uid-1' }), 'already_owned');
+        assert.strictEqual(pure.claimBlockReason({ admins: ['a'], registered_by: 'uid-1' }), 'already_owned');
+        assert.strictEqual(pure.claimBlockReason({ admins: ['a'] }), 'already_owned');
+    });
+
+    // 마지막 관리자가 빠진 팀은 아무도 못 고친다. registered_by 가 남아 있다고
+    // '주인 있음'으로 막으면 그 팀은 클레임으로도 영영 못 넘긴다.
+    test('admins: [] 인 팀은 registered_by 가 남아 있어도 넘길 수 있다', () => {
+        assert.strictEqual(pure.claimBlockReason({ admins: [], registered_by: 'left' }), null);
+        assert.strictEqual(pure.claimBlockReason({ admins: [' '], registered_by: 'left' }), null);
     });
 
     test('없는 팀', () => {
@@ -730,5 +739,94 @@ describe('extractInstaPoster / isInstaCdnUrl / instaReelCode (릴스 커버)', (
         assert.strictEqual(pure.instaReelCode('https://instagram.com/p/XYZ/'), 'XYZ');
         assert.strictEqual(pure.instaReelCode('https://www.instagram.com/null_oongzi/'), null);
         assert.strictEqual(pure.instaReelCode(null), null);
+    });
+});
+
+describe('관리자 신청 거절 사유 (서버가 쓰는 코드만)', () => {
+    test('정해진 네 가지만 통과', () => {
+        ['full', 'already_admin', 'not_found', 'duplicate'].forEach((r) => {
+            assert.strictEqual(pure.adminRejectReason(r), r);
+        });
+    });
+    // 오류로 거절을 쓰면 신청자에게 '거절됨'이 뜨는데 실은 다시 누르면 될 일이었다.
+    test('오류·모르는 값은 null — 거절로 쓰지 않는다', () => {
+        ['error', 'no_uid', '', null, undefined, 'FULL'].forEach((r) => {
+            assert.strictEqual(pure.adminRejectReason(r), null, String(r));
+        });
+    });
+});
+
+describe('adminRequestSkipReason (새 관리자 신청을 운영자에게 올리기 전 거르기)', () => {
+    const ts = (ms) => ({ toMillis: () => ms });
+    const mine = { club_id: 'c1', requested_by: 'u1', status: 'pending', requested_at: ts(2000) };
+
+    test('먼저 낸 같은 팀 pending 이 있으면 duplicate', () => {
+        const others = [{ id: 'old', data: { club_id: 'c1', requested_by: 'u1', status: 'pending', requested_at: ts(1000) } }];
+        assert.strictEqual(pure.adminRequestSkipReason(mine, 'new', others, { admins: [] }), 'duplicate');
+    });
+
+    test('자기 자신·다른 팀·끝난 신청은 세지 않는다', () => {
+        const others = [
+            { id: 'new', data: mine },
+            { id: 'x1', data: { club_id: 'c2', requested_by: 'u1', status: 'pending', requested_at: ts(1) } },
+            { id: 'x2', data: { club_id: 'c1', requested_by: 'u1', status: 'rejected', requested_at: ts(1) } },
+            { id: 'x3', data: { club_id: 'c1', requested_by: 'u1', status: 'approved', requested_at: ts(1) } }
+        ];
+        assert.strictEqual(pure.adminRequestSkipReason(mine, 'new', others, { admins: [] }), null);
+    });
+
+    // 거의 동시에 두 장이 들어와도 둘 다 스스로를 닫으면 안 된다 — 나중 것만.
+    test('나중에 낸 쪽만 duplicate (같은 시각이면 id 순)', () => {
+        const a = { club_id: 'c1', requested_by: 'u1', status: 'pending', requested_at: ts(5) };
+        const b = { club_id: 'c1', requested_by: 'u1', status: 'pending', requested_at: ts(5) };
+        const all = [{ id: 'a', data: a }, { id: 'b', data: b }];
+        assert.strictEqual(pure.adminRequestSkipReason(a, 'a', all, null), null);
+        assert.strictEqual(pure.adminRequestSkipReason(b, 'b', all, null), 'duplicate');
+    });
+
+    test('이미 그 팀 관리자면 already_admin', () => {
+        assert.strictEqual(pure.adminRequestSkipReason(mine, 'new', [], { admins: ['u1'] }), 'already_admin');
+        assert.strictEqual(pure.adminRequestSkipReason(mine, 'new', [], { registered_by: 'u1' }), 'already_admin');
+    });
+
+    test('빈 admins 팀의 등록자는 관리자가 아니다 — 신청이 올라간다', () => {
+        assert.strictEqual(pure.adminRequestSkipReason(mine, 'new', [], { admins: [], registered_by: 'u1' }), null);
+    });
+});
+
+describe('adminRequestPhotoPath (심사 끝난 증빙 사진 → Storage 경로)', () => {
+    const URL = 'https://firebasestorage.googleapis.com/v0/b/nulloongzido.appspot.com/o/'
+        + 'admin_request_photos%2Fuid-1%2Fclub_1700000000000_%EC%BA%A1%EC%B2%98.jpg?alt=media&token=abc';
+
+    test('다운로드 URL 에서 버킷과 경로를 꺼낸다', () => {
+        assert.deepStrictEqual(pure.adminRequestPhotoPath(URL), {
+            bucket: 'nulloongzido.appspot.com',
+            path: 'admin_request_photos/uid-1/club_1700000000000_캡처.jpg'
+        });
+    });
+
+    test('신청자 uid 를 주면 그 사람 폴더만', () => {
+        assert.ok(pure.adminRequestPhotoPath(URL, 'uid-1'));
+        assert.strictEqual(pure.adminRequestPhotoPath(URL, 'uid-2'), null);
+    });
+
+    // 지우는 함수다. 인증 사진·팀 사진·다른 경로는 절대 대상이 아니다.
+    test('admin_request_photos 밖은 null', () => {
+        const other = (p) => 'https://firebasestorage.googleapis.com/v0/b/b/o/' + encodeURIComponent(p) + '?alt=media';
+        assert.strictEqual(pure.adminRequestPhotoPath(other('verification_photos/uid-1/a.jpg')), null);
+        assert.strictEqual(pure.adminRequestPhotoPath(other('club_photos/uid-1/a.jpg')), null);
+        assert.strictEqual(pure.adminRequestPhotoPath(other('admin_request_photos/a.jpg')), null);
+        assert.strictEqual(pure.adminRequestPhotoPath(other('admin_request_photos/uid-1/sub/a.jpg')), null);
+        assert.strictEqual(pure.adminRequestPhotoPath(other('admin_request_photos/../reel_covers/x.jpg')), null);
+        assert.strictEqual(pure.adminRequestPhotoPath(other('admin_request_photos/uid-1/..')), null);
+    });
+
+    test('firebasestorage 다운로드 URL 이 아니면 null', () => {
+        ['https://example.com/v0/b/b/o/admin_request_photos%2Fu%2Fa.jpg',
+            'http://firebasestorage.googleapis.com/v0/b/b/o/admin_request_photos%2Fu%2Fa.jpg',
+            'https://firebasestorage.googleapis.com.evil.com/v0/b/b/o/admin_request_photos%2Fu%2Fa.jpg',
+            'https://firebasestorage.googleapis.com/v0/b/b/o/admin_request_photos%2Fu%2F%E0%A4%A.jpg',
+            '', null, undefined
+        ].forEach((u) => assert.strictEqual(pure.adminRequestPhotoPath(u), null, String(u)));
     });
 });

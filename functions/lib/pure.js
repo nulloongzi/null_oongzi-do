@@ -160,13 +160,15 @@ function maskEmail(v) {
     return local.slice(0, keep) + "***" + domain;
 }
 
-// 이 팀을 지금 이 사람에게 넘겨도 되나. 이미 주인이 있는 팀은 절대 건드리지
+// 이 팀을 지금 이 사람에게 넘겨도 되나. 지금 관리자가 있는 팀은 절대 건드리지
 // 않는다 — 메일이 맞다고 남의 팀을 빼앗을 수는 없다(시트의 메일이 낡았거나
 // 담당자가 바뀌었을 수 있다). 그런 건 운영자가 손으로 옮긴다.
+//
+// "관리자가 있다"는 clubAdminUids 로 본다. registered_by 만 보면, 마지막 관리자가
+// 빠져 admins: [] 가 된 팀(아무도 못 고친다)도 '주인 있음'으로 막혀 영영 갇힌다.
 function claimBlockReason(club) {
     if (!club) return "not_found";
-    var owner = club.registered_by;
-    if (owner != null && String(owner).length > 0) return "already_owned";
+    if (clubAdminUids(club).length > 0) return "already_owned";
     return null;
 }
 
@@ -306,6 +308,80 @@ function removeClubAdmin(club, uid) {
     if (at === -1) return { admins: admins, removed: false, reason: "not_admin" };
     var next = admins.slice(0, at).concat(admins.slice(at + 1));
     return { admins: next, removed: true, reason: null };
+}
+
+// 관리자 신청을 서버가 닫을 때 남기는 거절 사유. 화면이 이 코드를 문구로 바꾼다
+// (웹 i18n ad_reason_* · 앱 같은 키). 목록 밖의 이유(오류 등)로는 거절을 쓰지
+// 않는다 — 신청을 pending 으로 두고 운영자가 다시 누르게 한다.
+var ADMIN_REJECT_REASONS = ["full", "already_admin", "not_found", "duplicate"];
+
+function adminRejectReason(reason) {
+    var r = String(reason == null ? "" : reason);
+    return ADMIN_REJECT_REASONS.indexOf(r) !== -1 ? r : null;
+}
+
+function requestMillis(d) {
+    var t = d && d.requested_at;
+    if (t && typeof t.toMillis === "function") return t.toMillis();
+    if (t instanceof Date) return t.getTime();
+    return 0;
+}
+
+// 새 관리자 신청을 운영자에게 올리기 전에 거를 이유.
+//   · already_admin — 이미 이 팀 관리자다.
+//   · duplicate     — 같은 사람이 같은 팀에 **먼저** 낸 pending 신청이 있다.
+// "먼저"를 (신청 시각, 문서 id) 순으로 정하는 이유: 두 신청이 거의 동시에 들어오면
+// 두 트리거가 서로를 pending 으로 보고 둘 다 스스로를 거절할 수 있다. 순서를
+// 정해 두면 둘 중 나중 것만 닫힌다.
+// others 는 { id, data } 목록(같은 사람이 낸 신청들). club 은 팀 문서(없으면 null).
+function adminRequestSkipReason(mine, myId, others, club) {
+    var me = mine || {};
+    var uid = String(me.requested_by == null ? "" : me.requested_by).trim();
+    if (!uid) return null;
+    if (club && canManageClub(club, uid)) return "already_admin";
+    var myMs = requestMillis(me);
+    var list = Array.isArray(others) ? others : [];
+    for (var i = 0; i < list.length; i++) {
+        var o = list[i] || {};
+        var od = o.data || {};
+        if (String(o.id) === String(myId)) continue;
+        if (String(od.club_id) !== String(me.club_id)) continue;
+        if (String(od.requested_by) !== uid) continue;
+        if (od.status !== "pending") continue;
+        var oMs = requestMillis(od);
+        if (oMs < myMs || (oMs === myMs && String(o.id) < String(myId))) return "duplicate";
+    }
+    return null;
+}
+
+// 관리자 신청 사진(다운로드 URL) → Storage 객체 경로. 심사가 끝나면 지운다 —
+// 단톡방 캡처처럼 남의 이름이 찍힌 사진이라 결정 뒤엔 남겨 둘 이유가 없다.
+//
+// 지우는 함수라 받아들이는 모양을 좁힌다: firebasestorage 다운로드 URL 이고,
+// 경로가 admin_request_photos/{uid}/{파일} 한 겹이어야 한다(uid 를 주면 그 사람
+// 폴더만). 인증 사진(verification_photos)이나 다른 경로는 null — 건드리지 않는다.
+var FIREBASE_DL_RE = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/([^/?#]+)\/o\/([^?#]+)(?:[?#].*)?$/;
+
+function adminRequestPhotoPath(url, uid) {
+    var m = FIREBASE_DL_RE.exec(String(url == null ? "" : url).trim());
+    if (!m) return null;
+    var objectPath;
+    try {
+        objectPath = decodeURIComponent(m[2]);
+    } catch (e) {
+        return null;
+    }
+    var parts = objectPath.split("/");
+    if (parts.length !== 3 || parts[0] !== "admin_request_photos") return null;
+    if (!parts[1] || !parts[2] || parts[1] === "." || parts[1] === ".." || parts[2] === "." || parts[2] === "..") return null;
+    if (uid != null && String(uid).trim() && parts[1] !== String(uid).trim()) return null;
+    var bucket;
+    try {
+        bucket = decodeURIComponent(m[1]);
+    } catch (e2) {
+        return null;
+    }
+    return { bucket: bucket, path: objectPath };
 }
 
 // 운영자 소유자 재할당. registered_by 만 바꾸면 admins 배열이 있는 팀에서는
@@ -580,6 +656,10 @@ module.exports = {
     isAreaOnly: isAreaOnly,
     MAX_CLUB_ADMINS: MAX_CLUB_ADMINS,
     clubAdminUids: clubAdminUids,
+    ADMIN_REJECT_REASONS: ADMIN_REJECT_REASONS,
+    adminRejectReason: adminRejectReason,
+    adminRequestSkipReason: adminRequestSkipReason,
+    adminRequestPhotoPath: adminRequestPhotoPath,
     canManageClub: canManageClub,
     adminRequestBlockReason: adminRequestBlockReason,
     addClubAdmin: addClubAdmin,

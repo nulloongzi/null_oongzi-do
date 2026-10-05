@@ -181,6 +181,94 @@ describe('claimMyClubs — (팀, 사람)당 요청 하나', () => {
     });
 });
 
+describe('claimMyClubs — 관리자 유무로 판단', () => {
+    // 마지막 관리자가 빠진 팀(admins: [])은 아무도 못 고친다. registered_by 가
+    // 남아 있다고 막으면 그 팀은 클레임으로도 영영 못 넘긴다.
+    test('admins: [] 인 팀은 registered_by 가 남아 있어도 요청이 생긴다', async () => {
+        docs['clubs/' + CLUB] = { name: '가나배구', admins: [], registered_by: 'left-uid' };
+        const res = await call();
+        assert.strictEqual(res.status, 'requested');
+        assert.deepStrictEqual(claimDocs(), [REQ_PATH]);
+    });
+
+    test('이미 이 팀 관리자면 already_yours', async () => {
+        docs['clubs/' + CLUB] = { name: '가나배구', admins: [UID, 'other'], registered_by: 'other' };
+        const res = await call();
+        assert.deepStrictEqual(claimDocs(), []);
+        assert.deepStrictEqual(res.skipped, [{ clubId: CLUB, reason: 'already_yours' }]);
+    });
+
+    test('다른 관리자가 있으면 already_owned', async () => {
+        docs['clubs/' + CLUB] = { name: '가나배구', admins: ['other'] };
+        const res = await call();
+        assert.deepStrictEqual(res.skipped, [{ clubId: CLUB, reason: 'already_owned' }]);
+    });
+});
+
+describe('클레임 승인 (resolveClaim) — 승인이 실제로 관리 권한을 준다', () => {
+    function capture() {
+        let out = null;
+        return { res: { json: (v) => { out = v; }, status() { return this; }, send() {} }, get: () => out };
+    }
+    const textOf = (c) => c.get().template.outputs[0].simpleText.text;
+    function req(claimId) {
+        docs['admin_kakao_ids/kakao-op'] = { ok: true };
+        return { body: { userRequest: { user: { id: 'kakao-op' } }, action: { clientExtra: { claim_id: claimId } } } };
+    }
+    function seedPending(club) {
+        docs['clubs/' + CLUB] = club;
+        docs[REQ_PATH] = { club_id: CLUB, club_name: '가나배구', uid: UID, status: 'pending' };
+    }
+
+    // registered_by 만 바꾸면 admins 배열이 있는 팀에선 권한이 안 생긴다 —
+    // "이제 고칠 수 있어요"라고 안내하고 실제로는 못 고치는 꼴.
+    test('주인 없는 팀: registered_by 와 admins 를 함께 이 사람으로', async () => {
+        seedPending({ name: '가나배구' });
+        const c = capture();
+        await fns.chatbotClaimApprove(req(CLUB + '__' + UID), c.res);
+        assert.strictEqual(docs['clubs/' + CLUB].registered_by, UID);
+        assert.deepStrictEqual(docs['clubs/' + CLUB].admins, [UID]);
+        assert.ok(pure.canManageClub(docs['clubs/' + CLUB], UID));
+        assert.strictEqual(docs[REQ_PATH].status, 'approved');
+        assert.match(textOf(c), /승인했어요/);
+    });
+
+    test('admins: [] 팀: 떠난 등록자를 덮고 이 사람만 관리자', async () => {
+        seedPending({ name: '가나배구', admins: [], registered_by: 'left-uid' });
+        await fns.chatbotClaimApprove(req(CLUB + '__' + UID), capture().res);
+        assert.strictEqual(docs['clubs/' + CLUB].registered_by, UID);
+        assert.deepStrictEqual(docs['clubs/' + CLUB].admins, [UID]);
+    });
+
+    test('그새 관리자가 생겼으면 덮지 않고 already_owned 로 거절', async () => {
+        seedPending({ name: '가나배구', admins: ['someone'], registered_by: 'someone' });
+        const c = capture();
+        await fns.chatbotClaimApprove(req(CLUB + '__' + UID), c.res);
+        assert.deepStrictEqual(docs['clubs/' + CLUB].admins, ['someone']);
+        assert.strictEqual(docs['clubs/' + CLUB].registered_by, 'someone');
+        assert.strictEqual(docs[REQ_PATH].status, 'rejected');
+        assert.strictEqual(docs[REQ_PATH].reject_reason, 'already_owned');
+        assert.match(textOf(c), /이미 관리자가 있는 팀/);
+    });
+
+    test('두 번 눌러도 한 번만 — 두 번째는 "이미 처리"', async () => {
+        seedPending({ name: '가나배구' });
+        await fns.chatbotClaimApprove(req(CLUB + '__' + UID), capture().res);
+        const c = capture();
+        await fns.chatbotClaimReject(req(CLUB + '__' + UID), c.res);
+        assert.strictEqual(docs[REQ_PATH].status, 'approved');
+        assert.match(textOf(c), /이미 처리된/);
+    });
+
+    test('거절하면 팀은 그대로', async () => {
+        seedPending({ name: '가나배구' });
+        await fns.chatbotClaimReject(req(CLUB + '__' + UID), capture().res);
+        assert.strictEqual(docs[REQ_PATH].status, 'rejected');
+        assert.ok(!('admins' in docs['clubs/' + CLUB]));
+        assert.ok(!('registered_by' in docs['clubs/' + CLUB]));
+    });
+});
+
 describe('claimRequestId', () => {
     test('팀 id 와 uid 를 __ 로 잇는다', () => {
         assert.strictEqual(pure.claimRequestId('abc', 'uid1'), 'abc__uid1');
