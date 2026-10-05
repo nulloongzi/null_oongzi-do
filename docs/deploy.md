@@ -34,12 +34,22 @@ for ROLE in \
   roles/secretmanager.admin \
   roles/iam.serviceAccountUser \
   roles/serviceusage.serviceUsageAdmin \
+  roles/cloudscheduler.admin \
   roles/firebase.admin ; do
   gcloud projects add-iam-policy-binding $PROJECT --member="serviceAccount:$EMAIL" --role="$ROLE" --condition=None
 done
 
 gcloud iam service-accounts keys create key.json --iam-account=$EMAIL
 cat key.json
+```
+
+이미 만든 계정이라면 예약 함수(`sweepClubFlags`, 2026-10~)용 역할만 더한다 — Scheduler 잡을 만들 권한이다.
+
+```bash
+gcloud projects add-iam-policy-binding nulloongzi-do \
+  --member="serviceAccount:github-deployer@nulloongzi-do.iam.gserviceaccount.com" \
+  --role="roles/cloudscheduler.admin" --condition=None
+gcloud services enable cloudscheduler.googleapis.com --project=nulloongzi-do
 ```
 
 서비스 계정으로 배포하려면 **Cloud Billing API도 켜져 있어야 한다.**

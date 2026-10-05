@@ -102,6 +102,8 @@
 - 비owner 계정으로 인증된 팀 진입 → `🔥 급구` 버튼 자체가 안 보임
 - owner 계정 → 정상 토글, PIN 모달 사라진 상태
 - 미인증 팀 관리자가 콘솔/devtools 로 `is_urgent: true` 직접 쓰기 → 규칙에 막힘(끄기는 됨)
+- (2026-10-05~) **인증된 팀 관리자도** 직접 쓰기로는 급구를 못 켠다 — `postUrgent` 만. 떠 있는 급구의
+  문구·`urgent_until`·`urgent_at` 직접 수정, 끄면서 새 기한 심기, `urgent_blocked_until` 건드리기 → 거부
 
 ### Phase 2
 - `curl -X POST <verificationNotify URL>` → 404 (엔드포인트 제거됨)
@@ -152,3 +154,4 @@
 - `js/dom-utils.js` (신규) - 출력 escape 헬퍼
 - [`docs/security-review-log.md`](./security-review-log.md) - Phase 1-4 검증 시나리오 + 실측 결과 기록 (Chrome Extension용)
 | 2026-10-05 | 점검 | — | Storage 공개 사진 폴더 `read` → `get`(rules v2 의 `read` 는 list 까지 열어 uid 폴더 목록이 훑어졌다). `admins: []` = 관리자 없음(registered_by 폴백은 필드가 없을 때만). 급구 규칙: `is_urgent` bool 강제 · 새 팀은 꺼진 채로만 · 팀 관리자는 **인증된 팀에서만**, 비지 않은 문구와 함께 켤 수 있음(운영자 경로 그대로). 관리자 신청 생성: 심사 필드 금지 · 익명 금지 · 사진은 firebasestorage URL 만 |
+| 2026-10-05 | 급구·모집 | (이번 브랜치) | 급구 켜기를 서버 callable `postUrgent` 로만(인증·관리자·운영자 차단·기한 7일·문구 60자/링크·전화번호 금지 + `urgent_log`). 규칙: 관리자 경로는 급구 네 필드 그대로 두기 또는 끄기만(기한·시각은 지우기만), `urgent_blocked_until` 불변, 새 팀은 급구·모집 꺼진 채·기한/차단 필드 없이, timestamp 타입 검사. `urgent_log` 운영자 읽기·쓰기 금지. 회원 모집: 미인증 팀 관리자도, 켤 때·문구 바꿀 때 `recruit_at == request.time`, 켜진 채로는 그대로/지금 시각만(앞날짜로 60일 정리 피하기 차단). 매시간 `sweepClubFlags` 가 끝난·미인증·관리자 없는 급구 끄기 + 낡은 모집 끄기 |

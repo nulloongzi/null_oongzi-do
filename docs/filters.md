@@ -11,6 +11,7 @@
 | `region` | 서울, 경기, 충청, 전라, 경상... | 주소 prefix 매칭. 충청/전라/경상은 복수 시도 묶음 |
 | `day` | 월, 화, 수, 목, 금, 토, 일 | 스케줄 텍스트에 포함 여부. "매일"은 항상 매칭 |
 | `target` | 여성전용, 남성전용, 선출가능, 6인제... | 대상 문자열 포함. 특수 필터 없으면 "무관"도 매칭 |
+| `flag` | `urgent`(🔥 급구만), `recruiting`(🙋 모집 중) | `isUrgentActive` · `isRecruitingActive`. 둘 다 고르면 둘 다 맞는 팀(앱 `club_filter` 와 같다) |
 | keyword | 팀명 또는 주소 | `name` 또는 `address` 포함 여부 |
 
 ## 주요 함수
@@ -25,7 +26,7 @@
 ## 데이터 흐름
 1. 칩 클릭 -> `toggleFilter()` -> `activeFilters` 업데이트
 2. 적용 버튼 -> `applyFilters()` 실행
-3. `window.markers` 순회하며 4가지 조건 AND 매칭
+3. `window.markers` 순회하며 5가지 조건 AND 매칭
 4. 매칭된 마커만 표시: 급구 마커는 직접 setMap, 일반 마커는 clusterer에 추가
 5. 필터/키워드 활성 시 `setBounds`로 결과 영역에 맞춤
 
