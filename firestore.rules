@@ -81,7 +81,9 @@ service cloud.firestore {
           && (!('urgent_at' in d) || d.urgent_at is timestamp)
           && (!('urgent_blocked_until' in d) || d.urgent_blocked_until is timestamp)
           && (!('is_recruiting' in d) || d.is_recruiting is bool)
-          && (!('recruit_msg' in d) || (d.recruit_msg is string && d.recruit_msg.size() <= 60))
+          // 앱·웹은 글자(코드포인트) 60자로 막는다. 규칙의 size() 는 UTF-16 단위라 이모지가 2로
+          // 세어져, 60자 안의 문구도 거부됐다 — 넉넉히 120.
+          && (!('recruit_msg' in d) || (d.recruit_msg is string && d.recruit_msg.size() <= 120))
           && (!('recruit_at' in d) || d.recruit_at is timestamp)
           // 🥄 맛보기 환영(체험·게스트도 받음) — 식구 모집이 켜져 있을 때만 화면에 뜬다.
           && (!('recruit_drop_in' in d) || d.recruit_drop_in is bool)
@@ -243,8 +245,10 @@ service cloud.firestore {
                     && (isAdmin()
                     || (request.auth != null
                         && isClubManager(resource.data)
-                        && request.resource.data.is_verified == resource.data.is_verified
-                        && request.resource.data.registered_by == resource.data.registered_by
+                        // get(…, null): 필드가 없는 예전 팀(registered_by 없이 admins 만 있는 '레거시')도
+                        // 비교가 오류로 거부되지 않게. 없으면 없는 채로 둬야 통과한다.
+                        && request.resource.data.get('is_verified', null) == resource.data.get('is_verified', null)
+                        && request.resource.data.get('registered_by', null) == resource.data.get('registered_by', null)
                         && adminsUnchanged()
                         && moderationUnchanged()
                         && urgentChangeOk()

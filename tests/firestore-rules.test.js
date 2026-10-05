@@ -937,6 +937,8 @@ describe('회원 모집(is_recruiting) — 팀 관리자가 직접, 인증과 �
             await db.collection('clubs').doc('rc-unverified').set({
                 name: '미인증모집팀', admins: ['r1'], registered_by: 'r1', is_verified: false
             });
+            // registered_by·is_verified 필드가 아예 없는 예전 팀(관리자 신청 승인으로 admins 만 생김)
+            await db.collection('clubs').doc('rc-legacy').set({ name: '레거시팀', admins: ['lg1'] });
             await db.collection('clubs').doc('rc-on').set({
                 name: '모집중팀', admins: ['r1'], registered_by: 'r1', is_verified: false,
                 is_recruiting: true, recruit_msg: '20대 여성', recruit_at: Timestamp.fromMillis(Date.now() - 10 * D)
@@ -974,10 +976,23 @@ describe('회원 모집(is_recruiting) — 팀 관리자가 직접, 인증과 �
     test('타입·길이', async () => {
         const ref = as('r1').collection('clubs').doc('rc-unverified');
         await assertFails(ref.update({ is_recruiting: 'true', recruit_at: FieldValue.serverTimestamp() }));
-        await assertFails(ref.update({ is_recruiting: true, recruit_msg: 'x'.repeat(61), recruit_at: FieldValue.serverTimestamp() }));
+        // 규칙은 UTF-16 120 까지(앱·웹이 글자 60 으로 막는다) — 이모지 섞인 60자 문구가 거부되지 않게
+        await assertFails(ref.update({ is_recruiting: true, recruit_msg: 'x'.repeat(121), recruit_at: FieldValue.serverTimestamp() }));
+        await assertSucceeds(ref.update({ is_recruiting: true, recruit_msg: '가'.repeat(55) + '😀'.repeat(5), recruit_at: FieldValue.serverTimestamp() }));
         await assertFails(ref.update({ is_recruiting: true, recruit_msg: 5, recruit_at: FieldValue.serverTimestamp() }));
         await assertSucceeds(ref.update({ is_recruiting: true, recruit_msg: '가'.repeat(60), recruit_at: FieldValue.serverTimestamp() }));
         await assertFails(ref.update({ recruit_at: '2026-10-05' }));
+    });
+
+    test('registered_by·is_verified 가 없는 예전 팀의 관리자도 저장할 수 있다', async () => {
+        const ref = as('lg1').collection('clubs').doc('rc-legacy');
+        await assertSucceeds(ref.update({ is_recruiting: true, recruit_msg: '', recruit_at: FieldValue.serverTimestamp() }));
+        await assertSucceeds(ref.update({ is_recruiting: false }));
+        await assertSucceeds(ref.update({ price: '월 3만원' }));
+        // 없는 필드를 새로 심는 건 여전히 막는다(소유권·인증 배지는 심사를 거친 값)
+        await assertFails(ref.update({ registered_by: 'lg1' }));
+        await assertFails(ref.update({ is_verified: true }));
+        await assertFails(as('stranger').collection('clubs').doc('rc-legacy').update({ price: 'x' }));
     });
 
     test('관리자가 아니면 켜지도 끄지도 못한다', async () => {
