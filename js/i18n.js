@@ -401,9 +401,9 @@
         rc_saved: { ko: '🍚 식구 모집을 올렸어요', en: '🍚 Now taking new members' },
         rc_closed: { ko: '식구 모집을 마감했어요', en: 'Stopped taking members' },
         ug_badge_desc: { ko: '이번 운동에 같이 뛸 사람을 급하게 찾아요', en: 'Looking for players for this session.' },
-        // 🍽️ 이번 주 차림표 — 7일 안에 가서 뛸 수 있는 곳(픽업 · 게스트 급구 · 맛보기 환영 팀)
-        tw_entry: { ko: '🍽️ 이번 주 차림표 · {n}곳', en: "🍽️ This week's menu · {n}" },
-        tw_title: { ko: '🍽️ 이번 주 차림표', en: "🍽️ This week's menu" },
+        // 🍚 여기 자리 있어요?(키 tw_*) — 7일 안에 가서 뛸 수 있는 곳(픽업 · 게스트 급구 · 맛보기 환영 팀)
+        tw_entry: { ko: '🍚 여기 자리 있어요? · {n}곳', en: '🍚 Room for one more? · {n}' },
+        tw_title: { ko: '🍚 여기 자리 있어요?', en: '🍚 Room for one more?' },
         tw_sub: { ko: '이번 주에 가서 뛸 수 있는 곳', en: 'Places you can go and play this week' },
         tw_empty: { ko: '고른 조건에 맞는 곳이 아직 없어요', en: 'Nothing matches yet.' },
         tw_kind_guest: { ko: '🔥 게스트 급구', en: '🔥 Guests needed' },

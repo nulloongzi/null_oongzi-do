@@ -131,78 +131,66 @@
             display: block;
         }
 
-        .urgent-ticker-bar {
+        /* 🍚 여기 자리 있어요? 띠(예전 급구 티커 자리) — 위: 제목 · n곳 ›, 아래: 다가오는 운동 한 줄(4초마다) */
+        .this-week-strip {
             position: absolute;
             top: 75px;
             left: 15px;
             right: 15px;
             z-index: 18;
-            height: 44px;
-            background: rgba(255, 251, 240, 0.85);
+            min-height: 48px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1px;
+            padding: 6px 14px;
+            background: rgba(255, 251, 240, 0.9);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 112, 67, 0.3);
+            border: 1px solid rgba(250, 199, 16, 0.55);
             border-radius: 16px;
             box-shadow: var(--shadow-sm);
-            display: none;
+            font-family: inherit;
+            text-align: left;
+            color: var(--nurungji-dark);
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .this-week-strip[hidden] { display: none; }
+        .this-week-strip:active { opacity: 0.8; }
+        .tw-strip-head {
+            display: flex;
             align-items: center;
-            padding: 0 12px;
-            overflow: hidden;
-            will-change: top;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 800;
+            white-space: nowrap;
         }
-
-        .ticker-icon {
-            font-size: 18px;
-            margin-right: 10px;
-            animation: pulse 1.5s infinite;
-        }
-
-        .ticker-content {
-            flex: 1;
-            height: 100%;
-            position: relative;
+        .tw-strip-chev { font-size: 18px; line-height: 1; color: var(--nurungji-brown); }
+        .tw-strip-roll {
+            display: block;
+            height: 18px;
             overflow: hidden;
         }
-
-        .ticker-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            position: absolute;
-            width: 100%;
-            top: 0;
-            left: 0;
-            transition: top 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        .ticker-item {
-            height: 44px;
-            line-height: 44px;
+        #twStripRoll {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 18px;
+            color: var(--nurungji-brown);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--nurungji-dark);
-            transition: opacity 0.2s;
         }
-
-        .ticker-item:active {
-            opacity: 0.7;
+        #twStripRoll.tw-roll-in { animation: twRollIn 0.4s ease-out; }
+        @keyframes twRollIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-
-        .ticker-item b {
-            color: var(--today-color);
-            margin-right: 5px;
-        }
-
-        /* 급구 마감('오늘 21:00까지') — 이름 바로 뒤라 문구가 말줄임돼도 보인다 */
-        .ticker-item .ticker-until {
-            color: var(--urgent-ink);
-            font-size: 12px;
-            font-weight: 700;
-            margin-right: 2px;
+        @media (prefers-reduced-motion: reduce) {
+            #twStripRoll.tw-roll-in { animation: none; }
         }
 
         .fab-group {
@@ -1804,7 +1792,7 @@
             white-space: nowrap;
         }
 
-        /* 회원 모집 중 — 급구(주황)와 섞이지 않게 브랜드 옐로 계열 */
+        /* 🍚 식구 모집(+ 🥄 맛보기) — 급구(주황)와 섞이지 않게 브랜드 옐로 계열. 배지·풀이·문구를 줄마다 */
         .recruit-banner {
             margin-bottom: 6px;
             padding: 8px 10px;
@@ -1815,8 +1803,8 @@
             font-size: 13px;
             line-height: 1.4;
             display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
+            flex-direction: column;
+            gap: 4px;
         }
         .recruit-hint {
             margin: -2px 2px 10px;
@@ -1834,6 +1822,154 @@
         .flag-actions .btn.flag-btn-urgent { background: var(--urgent-ink); color: #fff; }
         .flag-actions .btn.flag-btn-urgent-ghost { background: #fff; color: var(--urgent-ink); border: 1px solid var(--urgent-ink); }
         .flag-actions .btn.flag-btn-recruit { background: #fff; color: var(--nurungji-dark); border: 1px solid var(--nurungji-yellow); }
+
+        /* 배지 옆 풀이 한 줄(급구·식구 모집·맛보기) — 꾸밈 없이 */
+        .flag-desc { margin: -4px 2px 10px; font-size: 12px; color: #6d5d55; line-height: 1.4; }
+        .recruit-banner .rc-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+        .recruit-banner .rc-desc { font-size: 12px; color: #6d5d55; }
+        .recruit-banner .rc-msg { word-break: break-word; }
+        .recruit-banner .rc-drop-in { padding-top: 4px; border-top: 1px dashed rgba(250, 199, 16, 0.6); }
+
+        /* 식구 모집 폼: 맛보기 체크 */
+        .rc-check {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 0 2px 14px;
+            font-size: 14px;
+            color: var(--nurungji-dark);
+            cursor: pointer;
+            line-height: 1.4;
+        }
+        .rc-check input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--nurungji-yellow); }
+
+        /* 🍚 여기 자리 있어요? 시트 — 아래에서 올라오는 한 장(지도 시트와 같은 모서리) */
+        .tw-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9000;
+            background: var(--dim);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .tw-overlay[hidden] { display: none; }
+        .tw-sheet {
+            width: 100%;
+            max-width: 560px;
+            max-height: 85vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            background: var(--nurungji-light);
+            border-top-left-radius: var(--radius-sheet);
+            border-top-right-radius: var(--radius-sheet);
+            box-shadow: 0 -6px 28px rgba(93, 64, 55, 0.15);
+            padding: 18px 16px 0;
+            animation: slideUp 0.25s ease-out;
+        }
+        .tw-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .tw-head h3 { margin: 0; font-size: 18px; color: var(--nurungji-dark); }
+        .tw-sub { margin: 4px 0 0; font-size: 13px; color: #6d5d55; }
+        .tw-close {
+            flex: none;
+            width: 44px;
+            height: 44px;
+            margin: -10px -8px 0 0;
+            border: 0;
+            background: none;
+            font-size: 26px;
+            line-height: 1;
+            color: var(--nurungji-brown);
+            cursor: pointer;
+        }
+        .tw-chips {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            flex: none;
+        }
+        .tw-chips::-webkit-scrollbar { display: none; }
+        #twKindChips { flex-wrap: wrap; overflow: visible; }
+        .tw-days { margin-top: 8px; padding-bottom: 4px; }
+        .tw-chips .tw-chip { flex: none; padding: 7px 12px; font-size: 13px; font-family: inherit; white-space: nowrap; }
+        .tw-body {
+            flex: 1;
+            min-height: 120px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 8px -16px 0;
+            padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+        }
+        .tw-day-head { margin: 12px 2px 6px; font-size: 13px; font-weight: 800; color: var(--nurungji-brown); }
+        .tw-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background: var(--white);
+            border: 1px solid rgba(141, 110, 99, 0.15);
+            border-radius: 14px;
+            cursor: pointer;
+        }
+        .tw-row:active { background: var(--nurungji-bg); }
+        .tw-row-main { flex: 1; min-width: 0; }
+        .tw-row-top { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+        .tw-row-time {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--nurungji-dark);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .tw-kind-guest .tw-row-time { color: var(--urgent-ink); }
+        .tw-row-title {
+            margin-top: 2px;
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--nurungji-dark);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tw-badge {
+            flex: none;
+            padding: 1px 6px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            background: var(--chip-bg);
+            color: var(--chip-fg);
+            white-space: nowrap;
+        }
+        .tw-badge-guest { background: #fff3e0; color: var(--urgent-ink); }
+        .tw-badge-drop_in { background: #fffbe6; color: var(--nurungji-dark); }
+        .tw-row-place, .tw-row-msg {
+            font-size: 12px;
+            color: #6d5d55;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tw-row-msg { color: var(--nurungji-dark); }
+        .tw-contact {
+            flex: none;
+            min-height: 36px;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 12px;
+            border-radius: var(--radius-button);
+            background: var(--nurungji-yellow);
+            color: var(--nurungji-dark);
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .tw-empty { padding: 32px 8px; text-align: center; font-size: 14px; color: #6d5d55; }
 
         /* 급구 올리기 폼 */
         .ug-sessions .chip { padding: 8px 12px; font-size: 13px; font-family: inherit; }
@@ -3003,8 +3139,8 @@
             cursor: pointer;
         }
 
-        /* 탭바가 상단에 상주 → 급구 티커를 그 아래로 내림 */
-        .urgent-ticker-bar {
+        /* 탭바가 상단에 상주 → '여기 자리 있어요?' 띠를 그 아래로 내림 */
+        .this-week-strip {
             top: 116px;
         }
 

@@ -248,7 +248,8 @@
                 ev.stopPropagation(); // 카드 클릭(상세 열기)과 분리
                 if (window.track) {
                     window.track('pickup_contact', { id: g.id, type: 'insta', sport: g.sport }); // 기존 대시보드 연속성 유지
-                    window.track('contact_click', { channel: 'instagram', id: g.id, source: 'pickup' }); // North Star Metric 보조 지표
+                    // North Star Metric. via 는 계약상 'detail' | 'this_week' 둘뿐 — 목록 카드의 인스타도 기존 경로라 'detail'
+                    window.track('contact_click', { channel: 'instagram', id: g.id, source: 'pickup', via: 'detail', flag: 'pickup' });
                 }
             });
             item.appendChild(ig);

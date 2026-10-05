@@ -137,7 +137,7 @@ const PAIRS = {
     rc_msg_hint: 'rc_msg_hint',
     rc_auto_off: 'rc_auto_off',
     rc_filter: 'rc_filter',
-    // 식구 모집 폼 · 🥄 맛보기 · 급구 풀이 · 🍽️ 이번 주 차림표
+    // 식구 모집 폼 · 🥄 맛보기 · 급구 풀이 · 🍚 여기 자리 있어요?
     rc_badge_desc: 'rc_badge_desc',
     rc_edit: 'rc_edit',
     rc_msg_label: 'rc_msg_label',

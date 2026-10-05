@@ -30,7 +30,7 @@
          dynamic-subset 이면 아직 안 받은 글자가 카드에 대체 폰트로 찍힌다. 규칙: docs/design-system.md §1 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable.css">
     <!-- ?v=N: JS/CSS 수정 후 배포할 때마다 버전을 올려 캐시 무효화 (returning user 혼합버전 방지) -->
-    <link rel="stylesheet" href="css/main.css?v=46">
+    <link rel="stylesheet" href="css/main.css?v=47">
 
     <!-- Firebase compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -40,15 +40,16 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
-    <script src="js/firebase-init.js?v=53"></script>
-    <script src="js/dom-utils.js?v=53"></script>
-    <script src="js/urgent.js?v=53"></script>
-    <script src="js/back-nav.js?v=53"></script>
-    <script src="js/toast.js?v=53"></script>
-    <script src="js/field-error.js?v=53"></script>
-    <script src="js/dialog.js?v=53"></script>
+    <script src="js/firebase-init.js?v=54"></script>
+    <script src="js/dom-utils.js?v=54"></script>
+    <script src="js/urgent.js?v=54"></script>
+    <script src="js/this-week.js?v=54"></script>
+    <script src="js/back-nav.js?v=54"></script>
+    <script src="js/toast.js?v=54"></script>
+    <script src="js/field-error.js?v=54"></script>
+    <script src="js/dialog.js?v=54"></script>
     <!-- 소셜 로그인 진행 오버레이 — 첫 페인트 전에 상태를 잡아야 해서 head에서 로드 -->
-    <script src="js/auth-loading.js?v=53"></script>
+    <script src="js/auth-loading.js?v=54"></script>
 
 
     <!-- QR 코드 (인스타 스토리 카드의 ?spot= 딥링크) — 폰트와 동일 CDN(jsDelivr) 핀.
@@ -94,10 +95,25 @@
         <button type="button" class="empty-result-reset" onclick="resetFilters()" data-i18n="empty_result_reset">필터 지우기</button>
     </div>
 
-    <div id="urgentTicker" class="urgent-ticker-bar">
-        <div class="ticker-icon">🔥</div>
-        <div class="ticker-content">
-            <ul id="tickerList" class="ticker-list"></ul>
+    <!-- 🍚 여기 자리 있어요?띠 — 예전 급구 티커 자리. 동호회·픽업 탭 모두, 갈 곳이 있을 때만 (js/this-week-ui.js) -->
+    <button type="button" id="thisWeekStrip" class="this-week-strip" onclick="openThisWeek()" hidden>
+        <span class="tw-strip-head"><span id="twStripTitle"></span><span class="tw-strip-chev" aria-hidden="true">›</span></span>
+        <span class="tw-strip-roll" aria-live="off"><span id="twStripRoll"></span></span>
+    </button>
+
+    <!-- 🍚 여기 자리 있어요? 시트: 종류 칩 · 날짜 칩 · 날짜별 줄 -->
+    <div id="thisWeekOverlay" class="tw-overlay" hidden>
+        <div class="tw-sheet" role="dialog" aria-modal="true" aria-labelledby="twTitle">
+            <div class="tw-head">
+                <div class="tw-head-text">
+                    <h3 id="twTitle" data-i18n="tw_title">🍚 여기 자리 있어요?</h3>
+                    <p class="tw-sub" data-i18n="tw_sub">이번 주에 가서 뛸 수 있는 곳</p>
+                </div>
+                <button type="button" class="tw-close" onclick="closeThisWeek()" aria-label="닫기" data-i18n-aria="dlg_close">&times;</button>
+            </div>
+            <div id="twKindChips" class="tw-chips"></div>
+            <div id="twDayChips" class="tw-chips tw-days"></div>
+            <div id="twBody" class="tw-body"></div>
         </div>
     </div>
 
@@ -580,30 +596,31 @@
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
     <!-- App modules (순서 중요) -->
-    <script src="js/i18n.js?v=53"></script>
-    <script src="js/data.js?v=53"></script>
-    <script src="js/pickup-filter.js?v=53"></script>
-    <script src="js/pickup-data.js?v=53"></script>
-    <script src="js/profile.js?v=53"></script>
-    <script src="js/friends.js?v=53"></script>
-    <script src="js/friends-share.js?v=53"></script>
-    <script src="js/auth.js?v=53"></script>
-    <script src="js/social-auth.js?v=53"></script>
-    <script src="js/lunchbox.js?v=53"></script>
-    <script src="js/share.js?v=53"></script>
-    <script src="js/my-card.js?v=53"></script>
-    <script src="js/insta-embed.js?v=53"></script>
-    <script src="js/map-core.js?v=53"></script>
-    <script src="js/data-trust.js?v=53"></script>
-    <script src="js/club-detail.js?v=53"></script>
-    <script src="js/filters.js?v=53"></script>
-    <script src="js/registration.js?v=53"></script>
-    <script src="js/verification.js?v=53"></script>
-    <script src="js/pickup-ui.js?v=53"></script>
-    <script src="js/tabs.js?v=53"></script>
-    <script src="js/pickup-host.js?v=53"></script>
-    <script src="js/pickup-detail.js?v=53"></script>
-    <script src="js/app.js?v=53"></script>
-    <script src="js/app-banner.js?v=53"></script>
+    <script src="js/i18n.js?v=54"></script>
+    <script src="js/data.js?v=54"></script>
+    <script src="js/pickup-filter.js?v=54"></script>
+    <script src="js/pickup-data.js?v=54"></script>
+    <script src="js/profile.js?v=54"></script>
+    <script src="js/friends.js?v=54"></script>
+    <script src="js/friends-share.js?v=54"></script>
+    <script src="js/auth.js?v=54"></script>
+    <script src="js/social-auth.js?v=54"></script>
+    <script src="js/lunchbox.js?v=54"></script>
+    <script src="js/share.js?v=54"></script>
+    <script src="js/my-card.js?v=54"></script>
+    <script src="js/insta-embed.js?v=54"></script>
+    <script src="js/map-core.js?v=54"></script>
+    <script src="js/data-trust.js?v=54"></script>
+    <script src="js/club-detail.js?v=54"></script>
+    <script src="js/filters.js?v=54"></script>
+    <script src="js/registration.js?v=54"></script>
+    <script src="js/verification.js?v=54"></script>
+    <script src="js/pickup-ui.js?v=54"></script>
+    <script src="js/tabs.js?v=54"></script>
+    <script src="js/pickup-host.js?v=54"></script>
+    <script src="js/pickup-detail.js?v=54"></script>
+    <script src="js/this-week-ui.js?v=54"></script>
+    <script src="js/app.js?v=54"></script>
+    <script src="js/app-banner.js?v=54"></script>
 </body>
 </html>

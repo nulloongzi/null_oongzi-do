@@ -69,8 +69,10 @@ function buildClubLabelEl(club, includeVerifiedBadge) {
         badgeSpan.innerHTML = VERIFIED_BADGE_SVG; // 정적 SVG, 사용자 입력 없음
         el.appendChild(badgeSpan);
     }
-    if (urgent) {
-        el.appendChild(document.createTextNode('🔥 '));
+    // 🔥 게스트 급구 → 🍚 식구 모집 → 🥄 맛보기 환영. 이모지끼리는 붙여서 라벨이 길어지지 않게
+    var marks = window.clubFlagMarks ? window.clubFlagMarks(club) : (urgent ? '🔥' : '');
+    if (marks) {
+        el.appendChild(document.createTextNode(marks + ' '));
     }
     el.appendChild(document.createTextNode(club.name || ''));
     // 릴스 있는 팀: 이름 뒤에 미세한 발견 링(앱 패리티). insta_reels 배열 우선, insta_reel 단일 폴백.
@@ -115,7 +117,8 @@ function showReelPeek(club) {
         'padding:14px;box-shadow:0 20px 50px rgba(93,64,55,.3);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);');
     var title = document.createElement('div');
     title.setAttribute('style', 'font-weight:800;color:#4e342e;margin:2px 4px 8px;');
-    title.textContent = (window.isUrgentActive(club) ? '🔥 ' : '') + (club.name || '');
+    var marks = window.clubFlagMarks ? window.clubFlagMarks(club) : '';
+    title.textContent = (marks ? marks + ' ' : '') + (club.name || '');
     var box = document.createElement('div');
     card.appendChild(title);
     card.appendChild(box);

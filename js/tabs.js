@@ -47,12 +47,7 @@
 
         // 픽업 리스트 패널
         show($('pickupListPanel'), isPickup);
-        // 급구 티커: 픽업에선 숨김, 동호회에선 내용 있을 때만 표시
-        var ticker = $('urgentTicker');
-        if (ticker) {
-            var list = $('tickerList');
-            ticker.style.display = (!isPickup && list && list.children.length > 0) ? 'flex' : 'none';
-        }
+        // 🍚 여기 자리 있어요? 띠는 두 탭 모두에 뜬다(갈 곳이 있을 때만 — this-week-ui.js 가 정한다)
         // 검색 placeholder를 모드에 맞게 (data-i18n-placeholder를 런타임으로 덮어씀)
         var si = $('topSearchInput');
         if (si) si.setAttribute('placeholder', window.t(isPickup ? 'pk_search_ph' : 'search_ph'));
@@ -77,6 +72,7 @@
                     if (window.currentTab !== 'pickup') return; // 그새 다시 전환됐으면 무시
                     if (window.renderPickupMarkers) window.renderPickupMarkers();
                     if (window.renderPickupList) window.renderPickupList();
+                    if (window.refreshThisWeek) window.refreshThisWeek(); // 새로 읽은 픽업으로
                 });
             }
         }
@@ -92,7 +88,7 @@
         }
     };
 
-    // 언어 전환 후 검색 placeholder/티커 상태를 현재 탭 기준으로 다시 맞춤
+    // 언어 전환 후 검색 placeholder 를 현재 탭 기준으로 다시 맞춤
     document.addEventListener('nurungji:langchange', function () {
         applyChrome(window.currentTab);
     });
