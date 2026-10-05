@@ -174,9 +174,30 @@ window.isAreaOnly = function (club) {
 // 지도 마커·라벨·티커·상세 배너가 **같은 판정**을 써야 한다. 예전엔 마커는
 // is_urgent 만, 티커·배너는 문구까지 봐서, 문구 없이 켜진 팀은 빨간 마커만
 // 있고 무슨 급구인지는 아무 데도 안 떴다. 켜져 있고(true) 문구가 비지 않아야 급구다.
-window.isUrgentActive = function (club) {
-    return !!club && club.is_urgent === true
-        && typeof club.urgent_msg === 'string' && club.urgent_msg.trim().length > 0;
+// 급구는 운동 한 번에 묶여서 urgent_until(그 운동이 끝나는 시각)이 지나면 내려간 것으로
+// 본다 — 서버 정리(sweepClubFlags)는 한 시간마다라 그 사이에도 화면엔 안 뜨게.
+// urgent_until 이 없는 예전 급구는 떠 있는 걸로 본다(정리가 7일 기한을 붙인다).
+// functions/lib/pure.js isUrgentActive · 앱과 같은 판정이다.
+window.isUrgentActive = function (club, nowMs) {
+    if (!club || club.is_urgent !== true) return false;
+    if (typeof club.urgent_msg !== 'string' || club.urgent_msg.trim().length === 0) return false;
+    if (club.urgent_until == null) return true;
+    var until = window.tsMillis(club.urgent_until);
+    return until != null && until > (nowMs == null ? Date.now() : nowMs);
+};
+
+// Firestore Timestamp · Date · ms 숫자 → ms. 그 밖은 null. (pure.js toMillis 와 같다)
+window.tsMillis = function (v) {
+    if (v == null) return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    if (v instanceof Date) { var t = v.getTime(); return isFinite(t) ? t : null; }
+    if (typeof v.toMillis === 'function') {
+        var ms = v.toMillis();
+        return typeof ms === 'number' && isFinite(ms) ? ms : null;
+    }
+    // 직렬화된 Timestamp({seconds, nanoseconds}) — localStorage 등을 거친 값
+    if (typeof v.seconds === 'number') return v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+    return null;
 };
 
 // ── 장소 검색 질의 변형 ─────────────────────────────────────────

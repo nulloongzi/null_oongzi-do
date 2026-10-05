@@ -1,6 +1,7 @@
 // club-detail.js
 // Bottom sheet club detail, timetable rendering, urgent ticker
-// Depends on: map-core.js (window.map, window.markers, window.clusterer, window.instaCssIcon, window.initMarkers)
+// Depends on: map-core.js (window.map, window.markers, window.clusterer, window.instaCssIcon, window.initMarkers),
+//             urgent.js (급구 칩·마감 표시·문구 검사)
 
 // ── Schedule parsing ──
 
@@ -496,39 +497,93 @@ window.openClubDetail = function (id, opts) {
         (club.insta_reels && club.insta_reels.length) ? club.insta_reels : (club.insta_reel ? [club.insta_reel] : []),
         club.insta_reel_covers, { source: 'club', id: club.id });
 
+    // 급구 배너: 문구 + 마감(고른 운동이 끝나는 시각). XSS 방지: 사용자 입력은 textContent
     var urgentArea = document.getElementById('urgentArea');
-    if (window.isUrgentActive(club)) {
-        // XSS 방지: urgent_msg는 textContent로 삽입
+    var urgentNow = window.isUrgentActive(club);
+    if (urgentNow) {
         urgentArea.innerHTML = '';
         var urgentBanner = document.createElement('div');
         urgentBanner.className = 'urgent-banner';
-        urgentBanner.textContent = '🔥 ' + club.urgent_msg;
+        var urgentText = document.createElement('span');
+        urgentText.className = 'urgent-banner-msg';
+        urgentText.textContent = '🔥 ' + club.urgent_msg;
+        urgentBanner.appendChild(urgentText);
+        var untilLabel = window.urgentDeadlineLabel(club);
+        if (untilLabel) {
+            var untilSpan = document.createElement('span');
+            untilSpan.className = 'urgent-banner-until';
+            untilSpan.textContent = untilLabel;
+            urgentBanner.appendChild(untilSpan);
+        }
         urgentArea.appendChild(urgentBanner);
         urgentArea.style.display = 'block';
     } else {
         urgentArea.style.display = 'none';
     }
 
-    // Urgent management button (verified clubs only)
-    var actionBtns = document.querySelector('.action-buttons');
-    var existingManageBtn = document.getElementById('btnManageUrgent');
-    if (existingManageBtn) existingManageBtn.remove();
+    // 회원 모집 표시 + (관리자에게만) 60일 자동 꺼짐 안내
+    var canManage = !!(window.canModifyClub && window.canModifyClub(club));
+    var recruitArea = document.getElementById('recruitArea');
+    if (recruitArea) {
+        recruitArea.innerHTML = '';
+        if (window.isRecruitingActive(club)) {
+            var rcBox = document.createElement('div');
+            rcBox.className = 'recruit-banner';
+            var rcBadge = document.createElement('b');
+            rcBadge.textContent = window.t('rc_badge');
+            rcBox.appendChild(rcBadge);
+            if (typeof club.recruit_msg === 'string' && club.recruit_msg.trim()) {
+                var rcMsg = document.createElement('span');
+                rcMsg.textContent = club.recruit_msg.trim();
+                rcBox.appendChild(rcMsg);
+            }
+            recruitArea.appendChild(rcBox);
+            if (canManage) {
+                var rcHint = document.createElement('div');
+                rcHint.className = 'recruit-hint';
+                rcHint.textContent = window.t('rc_auto_off');
+                recruitArea.appendChild(rcHint);
+            }
+            recruitArea.style.display = 'block';
+        } else {
+            recruitArea.style.display = 'none';
+        }
+    }
 
-    // 인증된 팀의 owner/admin만 급구 토글 노출. 규칙(firestore.rules urgentChangeOk)도
-    // 팀 관리자가 급구를 **켜는** 건 인증된 팀에서만 받는다 — 끄기는 언제나 된다.
     // 데이터 신선도 + 신고 통로 (guidelines.html 2-3 · 3-1)
     if (window.renderDataTrust) {
         window.renderDataTrust(document.getElementById('clubDataTrust'), club, 'club');
     }
 
-    if (club.is_verified && window.canModifyClub && window.canModifyClub(club)) {
-        var manageBtn = document.createElement('button');
-        manageBtn.id = 'btnManageUrgent';
-        manageBtn.className = 'btn';
-        manageBtn.style = 'background: #ff5252; color: #fff;';
-        manageBtn.innerText = window.isUrgentActive(club) ? window.t('cd_urgent_off') : window.t('cd_urgent_on');
-        manageBtn.onclick = function () { window.toggleClubUrgentState(club); };
-        actionBtns.appendChild(manageBtn);
+    // 급구 · 회원 모집 버튼(팀 관리자·운영자만).
+    //   급구 — 새로 올리기는 인증된 팀만(서버 postUrgent 도 unverified 로 거절한다).
+    //          떠 있으면 '급구 수정'(같은 폼을 채워서) + '급구 내리기'. 내리기는 인증이
+    //          풀린 팀도 할 수 있어야 해서 인증 여부와 상관없이 보인다.
+    //   모집 — 인증 여부와 상관없이 켜고 끈다.
+    var actionBtns = document.querySelector('.action-buttons');
+    var existingFlags = document.getElementById('clubFlagActions');
+    if (existingFlags) existingFlags.remove();
+    if (canManage) {
+        var flags = document.createElement('div');
+        flags.id = 'clubFlagActions';
+        flags.className = 'flag-actions';
+        var addFlagBtn = function (cls, label, onClick) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn ' + cls;
+            b.textContent = label;
+            b.onclick = onClick;
+            flags.appendChild(b);
+        };
+        if (urgentNow) {
+            addFlagBtn('flag-btn-urgent-ghost', window.t('ug_edit'), function () { window.openUrgentForm(club); });
+            addFlagBtn('flag-btn-urgent', window.t('cd_urgent_off'), function () { window.closeClubUrgent(club); });
+        } else if (club.is_verified) {
+            addFlagBtn('flag-btn-urgent', window.t('cd_urgent_on'), function () { window.openUrgentForm(club); });
+        }
+        addFlagBtn('flag-btn-recruit', window.t(window.isRecruitingActive(club) ? 'rc_off' : 'rc_on'),
+            function () { window.toggleClubRecruiting(club); });
+        actionBtns.appendChild(flags);
     }
 
     // Verification status area (registered owner only, unverified clubs)
@@ -753,7 +808,9 @@ window.initUrgentTicker = function () {
     tickerList.style.transition = 'none';
     tickerList.style.top = '0px';
 
-    var urgentClubs = (window.clubs || []).filter(window.isUrgentActive);
+    // 곧 끝나는 급구가 먼저(기한 없는 예전 급구는 맨 뒤). filter 에 함수를 그대로 넘기면
+    // 두 번째 인자(index)가 nowMs 로 들어간다 — 감싸서 부른다.
+    var urgentClubs = window.urgentTickerOrder((window.clubs || []).filter(function (c) { return window.isUrgentActive(c); }));
     var uniqueTickerList = [];
     var processedTeams = {};
 
@@ -776,10 +833,18 @@ window.initUrgentTicker = function () {
     uniqueTickerList.forEach(function (c) {
         var li = document.createElement('li');
         li.className = 'ticker-item';
-        // XSS 방지: c.name / c.urgent_msg를 textContent로
+        // XSS 방지: c.name / c.urgent_msg를 textContent로. 마감은 이름 바로 뒤 — 문구가 길어
+        // 말줄임(…)으로 잘려도 '언제까지'는 보이게.
         var nameB = document.createElement('b');
         nameB.textContent = '[' + (c.name || '') + ']';
         li.appendChild(nameB);
+        var until = window.urgentDeadlineLabel(c);
+        if (until) {
+            var untilSpan = document.createElement('span');
+            untilSpan.className = 'ticker-until';
+            untilSpan.textContent = until;
+            li.appendChild(untilSpan);
+        }
         li.appendChild(document.createTextNode(' ' + (c.urgent_msg || '')));
         li.onclick = function () { window.openClubDetail(c.id); };
         tickerList.appendChild(li);
@@ -807,8 +872,6 @@ window.initUrgentTicker = function () {
         tickerList.appendChild(firstClone);
     }
 };
-
-// ── Toggle urgent state ──
 
 // Delete a club (owner or admin only; rules enforce this)
 window.deleteClub = async function (club) {
@@ -852,49 +915,265 @@ window.deleteClub = async function (club) {
     }
 };
 
-window.toggleClubUrgentState = async function (club) {
-    // PIN 1234(클라이언트 평문 가짜 보안) 제거. owner/admin만 토글 가능.
+// ── 급구 올리기 폼 ──
+// 급구는 운동 **한 번**에 묶인다: 시간표에서 다가오는 운동(7일 안, 3개까지)을 칩으로
+// 고르거나 '다른 날'(날짜 + 끝나는 시각)을 고른다. 고른 운동이 끝나면 저절로 내려간다.
+// 켜기·고치기는 서버 postUrgent 만 받는다(firestore.rules 가 직접 쓰기를 막는다) — 문구
+// 검사는 여기서 먼저 같은 규칙(js/urgent.js)으로 해서 칸 아래에 바로 알린다.
+
+function urgentCallable() {
+    if (window.firebaseCallable) return window.firebaseCallable('postUrgent');
+    return firebase.functions().httpsCallable('postUrgent');
+}
+
+function urgentTimestamp(ms) {
+    var fs = window.firebase && firebase.firestore;
+    return (fs && fs.Timestamp) ? fs.Timestamp.fromMillis(ms) : ms;
+}
+
+// 메모리의 팀 객체(allClubs·clubs 가 같은 객체를 나눠 쓴다)를 고치고 지도·티커·시트를 다시 그린다.
+function refreshAfterFlagChange(club) {
+    window.initMarkers();
+    if (window.initUrgentTicker) window.initUrgentTicker();
+    if (window.clubSheetShows(club)) window.openClubDetail(club.id, { silent: true });
+}
+
+function hideUrgentForm() {
+    var overlay = document.getElementById('urgentFormOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+window.closeUrgentForm = function () {
+    hideUrgentForm();
+    if (window.backNav) window.backNav.closed('urgentForm');
+};
+
+window.openUrgentForm = function (club) {
     if (!window.canModifyClub || !window.canModifyClub(club)) {
         window.showToast(window.t('cd_no_urgent_perm'));
         return;
     }
-
-    var newStatus = !window.isUrgentActive(club);
-    var newMsg = "";
-    if (newStatus) {
-        // 급구 메시지 — 빈 칸·200자 넘김은 팝업을 닫지 않고 칸 아래에 알린다
-        var v = await window.nzPrompt({
-            title: window.t('cd_urgent_title'),
-            message: window.t('cd_urgent_prompt'),
-            fields: [{ name: 'msg', value: window.t('cd_urgent_default'), maxLength: 200, select: true }],
-            confirm: window.t('cd_urgent_btn'),
-            validate: function (x) {
-                if (!x.msg) return { msg: window.t('cd_urgent_empty') };
-                if (x.msg.length > 200) return { msg: window.t('cd_urgent_max') };
-                return null;
-            }
-        });
-        if (!v) return;
-        newMsg = v.msg;
+    var editing = window.isUrgentActive(club);
+    var overlay = document.getElementById('urgentFormOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'urgentFormOverlay';
+        overlay.className = 'reg-modal-overlay';
+        document.body.appendChild(overlay);
     }
+    // 팀·언어마다 칩이 달라서 열 때마다 새로 짠다. 고정 문구만 innerHTML, 나머지는 textContent.
+    overlay.innerHTML =
+        '<div class="reg-modal-content urgent-form" role="dialog" aria-modal="true" aria-labelledby="ugTitle">' +
+            '<div class="reg-modal-header">' +
+                '<h3 id="ugTitle"></h3>' +
+                '<span class="reg-modal-close" role="button" tabindex="0" aria-label="' + window.escapeHtml(window.t('dlg_close')) + '">&times;</span>' +
+            '</div>' +
+            '<div class="reg-modal-body">' +
+                '<div class="reg-form-group">' +
+                    '<label id="ugWhenLabel"></label>' +
+                    '<div class="chip-group ug-sessions" id="ugSessions" role="radiogroup" aria-labelledby="ugWhenLabel" tabindex="-1"></div>' +
+                    '<div class="ug-other" id="ugOtherBox" hidden>' +
+                        '<input type="date" id="ugDate">' +
+                        '<label for="ugEnd" id="ugEndLabel"></label>' +
+                        '<input type="time" id="ugEnd" step="300">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="reg-form-group">' +
+                    '<label for="ugMsg" id="ugMsgLabel"></label>' +
+                    '<input type="text" id="ugMsg" maxlength="60" autocomplete="off">' +
+                '</div>' +
+                '<div class="ug-auto-off" id="ugAutoOff"></div>' +
+                '<button type="button" id="ugSubmit" class="reg-submit-btn"></button>' +
+            '</div>' +
+        '</div>';
+    var $ = function (id) { return document.getElementById(id); };
+    $('ugTitle').textContent = editing ? window.t('ug_edit') : window.t('cd_urgent_title');
+    $('ugWhenLabel').textContent = window.t('ug_when');
+    $('ugEndLabel').textContent = window.t('ug_end_time');
+    $('ugMsgLabel').textContent = window.t('ug_msg_label');
+    $('ugAutoOff').textContent = window.t('ug_auto_off');
+    $('ugSubmit').textContent = editing ? window.t('ug_edit') : window.t('ug_submit');
+    var msgInput = $('ugMsg');
+    msgInput.placeholder = window.t('ug_msg_hint');
+    msgInput.value = editing ? club.urgent_msg.trim() : '';
 
-    var clubRef = window.firebaseDoc(window.firebaseDB, 'clubs', club.id);
-    window.firebaseSetDoc(clubRef, {
-        is_urgent: newStatus,
-        urgent_msg: newMsg
-    }, { merge: true }).then(function () {
-        window.showToast(newStatus ? window.t('cd_urgent_posted') : window.t('cd_urgent_closed'));
-        club.is_urgent = newStatus;
-        club.urgent_msg = newMsg;
+    var now = Date.now();
+    var dateInput = $('ugDate'), endInput = $('ugEnd');
+    dateInput.min = window.urgentDateInputValue(now);
+    dateInput.max = window.urgentDateInputValue(now + window.URGENT_PICK_AHEAD_MS);
 
-        // 마커(initMarkers 가 이전 벌을 먼저 걷는다) · 티커 · 시트를 새 상태로
-        window.initMarkers();
-        if (window.initUrgentTicker) window.initUrgentTicker();
-        window.openClubDetail(club.id);
-    }).catch(function (e) {
+    // 칩: 다가오는 운동 + '다른 날'. 고른 것 하나만 selected(radio).
+    var sessions = window.urgentNextSessions(window.parseScheduleText(club.schedule), now, 3);
+    var box = $('ugSessions');
+    var pick = null; // { until } | 'other'
+    var chips = [];
+    function select(chip, value) {
+        chips.forEach(function (c) { c.classList.remove('selected'); c.setAttribute('aria-checked', 'false'); });
+        chip.classList.add('selected');
+        chip.setAttribute('aria-checked', 'true');
+        pick = value;
+        $('ugOtherBox').hidden = value !== 'other';
+        if (window.clearFieldError) window.clearFieldError(box);
+    }
+    function addChip(label, value) {
+        var c = document.createElement('button');
+        c.type = 'button';
+        c.className = 'chip';
+        c.setAttribute('role', 'radio');
+        c.setAttribute('aria-checked', 'false');
+        c.textContent = label;
+        c.onclick = function () { select(c, value); };
+        box.appendChild(c);
+        chips.push(c);
+        return c;
+    }
+    var dayName = function (k) { return window.i18nDay(k); };
+    var currentUntil = editing ? window.tsMillis(club.urgent_until) : null;
+    var preselect = null; // 새로 올릴 땐 가장 이른 운동, 고칠 땐 지금 기한과 같은 운동
+    sessions.forEach(function (sess) {
+        var c = addChip(window.urgentSessionLabel(sess, window.currentLang, dayName), { until: sess.endMs });
+        if (!preselect && (currentUntil == null || currentUntil === sess.endMs)) preselect = { chip: c, value: { until: sess.endMs } };
+    });
+    var otherChip = addChip(window.t('ug_other_day'), 'other');
+
+    // '다른 날' 기본값: 고치는 중이면 지금 기한, 아니면 오늘 22:00(이미 지났으면 내일)
+    var otherDefault = currentUntil;
+    if (otherDefault == null) {
+        var d = new Date(now);
+        otherDefault = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 22, 0).getTime();
+        if (otherDefault <= now + window.URGENT_MIN_LEAD_MS) otherDefault += 24 * 3600 * 1000;
+    }
+    var od = new Date(otherDefault);
+    dateInput.value = window.urgentDateInputValue(otherDefault);
+    endInput.value = (od.getHours() < 10 ? '0' : '') + od.getHours() + ':' + (od.getMinutes() < 10 ? '0' : '') + od.getMinutes();
+    // 고치는 중인데 지금 기한이 칩에 없으면(다른 날로 올렸던 급구) '다른 날'에 그 기한이 채워진다
+    if (preselect) select(preselect.chip, preselect.value); else select(otherChip, 'other');
+
+    overlay.querySelector('.reg-modal-close').onclick = window.closeUrgentForm;
+    overlay.querySelector('.reg-modal-close').onkeydown = function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.closeUrgentForm(); }
+    };
+    $('ugSubmit').onclick = function () { submitUrgentForm(club, function () { return pick; }); };
+    overlay.style.display = 'flex';
+    if (window.backNav) window.backNav.open('urgentForm', hideUrgentForm);
+    setTimeout(function () { msgInput.focus(); }, 0);
+};
+
+// 서버가 준 이유 → 문구 키. 모르는 이유는 ug_err_generic.
+function urgentErrorKey(reason) {
+    if (reason === 'login') return 'sh_login_required';
+    var key = 'ug_err_' + String(reason || '');
+    return window.t(key) !== key ? key : 'ug_err_generic';
+}
+
+async function submitUrgentForm(club, getPick) {
+    var msgInput = document.getElementById('ugMsg');
+    var pick = getPick();
+    var timeTarget = pick === 'other' ? 'ugEnd' : 'ugSessions';
+    var until = pick === 'other'
+        ? window.urgentOtherDayUntil(document.getElementById('ugDate').value, document.getElementById('ugEnd').value)
+        : (pick && pick.until);
+    var now = Date.now();
+    if (until == null || until <= now + window.URGENT_MIN_LEAD_MS) {
+        window.fieldError(timeTarget, window.t('ug_err_past'));
+        return;
+    }
+    if (until > now + window.URGENT_MAX_AHEAD_MS) {
+        window.fieldError(timeTarget, window.t('ug_err_too_far'));
+        return;
+    }
+    var problem = window.urgentMsgProblem(msgInput.value);
+    if (problem) {
+        window.fieldError(msgInput, window.t('ug_err_' + problem));
+        return;
+    }
+    var msg = msgInput.value.trim();
+    var btn = document.getElementById('ugSubmit');
+    var label = btn.textContent;
+    btn.textContent = window.t('processing');
+    btn.disabled = true;
+    try {
+        var call = urgentCallable();
+        if (!call) throw new Error('functions 미초기화');
+        var res = await call({ clubId: String(club.id), until: until, msg: msg });
+        var savedUntil = (res && res.data && typeof res.data.until === 'number') ? res.data.until : until;
+        club.is_urgent = true;
+        club.urgent_msg = msg;
+        club.urgent_until = urgentTimestamp(savedUntil);
+        club.urgent_at = urgentTimestamp(Date.now());
+        window.closeUrgentForm();
+        window.showToast(window.t('cd_urgent_posted'));
+        if (window.track) window.track('urgent_post', { club_id: club.id });
+        refreshAfterFlagChange(club);
+    } catch (e) {
+        var reason = e && e.details && e.details.reason;
+        console.warn('급구 올리기 실패:', reason || (e && e.message));
+        var key = urgentErrorKey(reason);
+        if (/^msg_/.test(reason || '')) window.fieldError(msgInput, window.t(key));
+        else if (reason === 'past' || reason === 'too_far') window.fieldError(timeTarget, window.t(key));
+        else window.showToast(window.t(key));
+    } finally {
+        btn.textContent = label;
+        btn.disabled = false;
+    }
+}
+
+// 급구 내리기 — 클라이언트가 직접 쓴다(규칙이 끄기는 허용). 기한·올린 시각도 지운다.
+window.closeClubUrgent = async function (club) {
+    if (!window.canModifyClub || !window.canModifyClub(club)) {
+        window.showToast(window.t('cd_no_urgent_perm'));
+        return;
+    }
+    var del = firebase.firestore.FieldValue.delete();
+    try {
+        await window.firebaseDB.collection('clubs').doc(String(club.id)).update({
+            is_urgent: false, urgent_msg: '', urgent_until: del, urgent_at: del
+        });
+        club.is_urgent = false;
+        club.urgent_msg = '';
+        delete club.urgent_until;
+        delete club.urgent_at;
+        window.showToast(window.t('cd_urgent_closed'));
+        refreshAfterFlagChange(club);
+    } catch (e) {
         console.error(e);
         window.showToast(window.t('cd_update_error'));
-    });
+    }
+};
+
+// ── 회원 모집 켜기/끄기 ──
+// 팀 관리자가 직접 쓴다(인증 여부 상관없음). 켤 때는 문구(선택)를 받고 recruit_at 을
+// 서버 시각으로 — 규칙이 그걸 요구하고, 정리(sweepClubFlags)가 거기서 60일을 센다.
+window.toggleClubRecruiting = async function (club) {
+    if (!window.canModifyClub || !window.canModifyClub(club)) return;
+    var ref = window.firebaseDB.collection('clubs').doc(String(club.id));
+    try {
+        if (window.isRecruitingActive(club)) {
+            await ref.update({ is_recruiting: false });
+            club.is_recruiting = false;
+        } else {
+            var v = await window.nzPrompt({
+                title: window.t('rc_on'),
+                message: window.t('rc_auto_off'),
+                fields: [{ name: 'msg', value: club.recruit_msg || '', placeholder: window.t('rc_msg_hint'), maxLength: window.URGENT_MSG_MAX }],
+                confirm: window.t('rc_on'),
+                validate: function (x) {
+                    var p = window.recruitMsgProblem(x.msg);
+                    return p ? { msg: window.t('ug_err_' + p) } : null;
+                }
+            });
+            if (!v) return;
+            await ref.update({ is_recruiting: true, recruit_msg: v.msg, recruit_at: window.firebaseServerTimestamp() });
+            club.is_recruiting = true;
+            club.recruit_msg = v.msg;
+            club.recruit_at = urgentTimestamp(Date.now());
+            if (window.track) window.track('recruit_on', { club_id: club.id });
+        }
+        refreshAfterFlagChange(club);
+    } catch (e) {
+        console.error(e);
+        window.showToast(window.t('cd_update_error'));
+    }
 };
 
 // ── Bottom sheet touch/mouse drag handlers ──

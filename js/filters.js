@@ -2,7 +2,8 @@
 // Filter logic, search, region/day/target filtering, GPS location
 // Depends on: map-core.js (window.map, window.markers, window.clusterer, window.updateLabelVisibility, window.gpsImage, window.myMarker)
 
-window.activeFilters = { region: [], day: [], target: [] };
+// flag: 'urgent'(🔥 급구만) · 'recruiting'(🙋 모집 중) — 둘 다 고르면 둘 다 맞는 팀만(앱 club_filter 와 같다)
+window.activeFilters = { region: [], day: [], target: [], flag: [] };
 
 window.toggleFilter = function (category, value, element) {
     var index = window.activeFilters[category].indexOf(value);
@@ -16,7 +17,7 @@ window.toggleFilter = function (category, value, element) {
 };
 
 window.resetFilters = function () {
-    window.activeFilters = { region: [], day: [], target: [] };
+    window.activeFilters = { region: [], day: [], target: [], flag: [] };
     document.querySelectorAll('.chip').forEach(function (el) { el.classList.remove('selected'); });
     document.getElementById('topSearchInput').value = "";
     window.applyFilters();
@@ -33,7 +34,8 @@ window.applyFilters = function () {
     }
 
     var keyword = document.getElementById('topSearchInput').value.trim();
-    var filterCount = window.activeFilters.region.length + window.activeFilters.day.length + window.activeFilters.target.length;
+    var filterCount = window.activeFilters.region.length + window.activeFilters.day.length +
+        window.activeFilters.target.length + window.activeFilters.flag.length;
 
     // 필터 시트 '적용하기'(사용자 클릭)만 센다 — 탭 전환·딥링크·초기화 재적용은 제외.
     // 6인제(외국인 교두보)·요일("무슨 요일에 할 곳?")이 실제로 쓰이는지 보는 계측. 앱 map_screen 과 같은 스키마.
@@ -47,6 +49,8 @@ window.applyFilters = function () {
             day: af.day.join(','),
             target: af.target.join(','),
             six: af.target.indexOf('6인제') !== -1 ? 1 : 0,
+            urgent: af.flag.indexOf('urgent') !== -1 ? 1 : 0,
+            recruiting: af.flag.indexOf('recruiting') !== -1 ? 1 : 0,
             has_keyword: keyword ? 1 : 0
         });
     }
@@ -107,6 +111,11 @@ window.applyFilters = function () {
             if (!hasSpecialFilter && club.target.includes("무관")) targetMatch = true;
         }
 
+        // 🔥 급구만 · 🙋 모집 중 — 지금 떠 있는 급구(기한 포함), 모집 깃발을 켠 팀
+        var flagMatch = true;
+        if (window.activeFilters.flag.indexOf('urgent') !== -1 && !window.isUrgentActive(club)) flagMatch = false;
+        if (window.activeFilters.flag.indexOf('recruiting') !== -1 && !window.isRecruitingActive(club)) flagMatch = false;
+
         // Keyword match
         var keywordMatch = true;
         if (keyword.length > 0) {
@@ -115,7 +124,7 @@ window.applyFilters = function () {
             }
         }
 
-        if (regionMatch && dayMatch && targetMatch && keywordMatch) {
+        if (regionMatch && dayMatch && targetMatch && flagMatch && keywordMatch) {
             item.isVisible = true;
             if (item.urgent) {
                 item.marker.setMap(window.map);
