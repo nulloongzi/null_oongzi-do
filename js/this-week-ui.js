@@ -114,14 +114,21 @@
         return null;
     };
 
+    // 상세의 연락 버튼과 같은 이벤트를 남긴다 — 예전 대시보드용 club_contact/pickup_contact 도 함께
+    // (앱 room_sheet 와 같은 묶음. 웹·앱이 같은 이름·같은 파라미터로 보내야 비교가 된다).
+    function hasReelOf(r) { return ((r.insta_reels && r.insta_reels.length) || r.insta_reel) ? 1 : 0; }
+
     function trackContact(it, contact) {
         if (!window.track) return;
+        var type = contact.channel === 'instagram' ? 'insta' : 'link';
         if (it.refType === 'club') {
+            window.track('club_contact', { type: type, club_id: it.refId, has_reel: hasReelOf(contact.ref) });
             window.track('contact_click', {
                 channel: contact.channel, club_id: it.refId, source: 'club',
                 via: 'this_week', flag: window.contactFlag(contact.ref)
             });
         } else {
+            window.track('pickup_contact', { id: it.refId, type: type, sport: contact.ref.sport, has_reel: hasReelOf(contact.ref) });
             window.track('contact_click', {
                 channel: contact.channel, id: it.refId, source: 'pickup', via: 'this_week', flag: 'pickup'
             });
