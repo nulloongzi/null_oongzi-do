@@ -170,6 +170,15 @@ window.isAreaOnly = function (club) {
     return !!club && club.location_precision === 'area';
 };
 
+// ── 급구 표시 ──────────────────────────────────────────────────
+// 지도 마커·라벨·티커·상세 배너가 **같은 판정**을 써야 한다. 예전엔 마커는
+// is_urgent 만, 티커·배너는 문구까지 봐서, 문구 없이 켜진 팀은 빨간 마커만
+// 있고 무슨 급구인지는 아무 데도 안 떴다. 켜져 있고(true) 문구가 비지 않아야 급구다.
+window.isUrgentActive = function (club) {
+    return !!club && club.is_urgent === true
+        && typeof club.urgent_msg === 'string' && club.urgent_msg.trim().length > 0;
+};
+
 // ── 장소 검색 질의 변형 ─────────────────────────────────────────
 // 주소 검색이 0건일 때 카카오 키워드 검색에 던질 질의들. 좁은 것부터 넓은 것 순.
 // functions/lib/pure.js 의 placeQueryVariants 와 **같은 규칙**이어야 한다

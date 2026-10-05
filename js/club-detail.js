@@ -274,6 +274,124 @@ window.toggleTimeExpand = function () {
 
 // ── Open club detail ──
 
+// 비동기 조회가 끝났을 때 시트가 아직 그 팀을 보이고 있는지. 시트는 요소 id 를
+// 재사용해서(verifyStatusArea · clubAdminArea), 그새 다른 팀을 열었으면 늦게 온
+// 응답이 새 팀 자리에 앞 팀의 상태·버튼을 그려 넣는다.
+window.clubSheetShows = function (club, el) {
+    if (!club || String(window.currentClubId) !== String(club.id)) return false;
+    return !el || el.isConnected !== false;
+};
+
+// requested_by 로 받은 내 신청들 중 이 팀 것의 최신 하나(없으면 null).
+// orderBy 를 걸면 복합 인덱스가 필요해 메모리에서 고른다.
+window.latestRequestFor = function (snap, clubId) {
+    var latest = null, latestMs = -1;
+    snap.forEach(function (doc) {
+        var d = doc.data() || {};
+        if (String(d.club_id) !== String(clubId)) return;
+        var ms = d.requested_at && d.requested_at.toMillis ? d.requested_at.toMillis() : 0;
+        if (ms > latestMs) { latest = d; latestMs = ms; }
+    });
+    return latest;
+};
+
+// 관리자 신청 거절 사유 코드 → 문구. 서버가 쓰는 코드(full · already_admin ·
+// not_found · duplicate)만 문구가 있고, 모르는 코드나 사유 없는 수동 거절은 ''
+// — 사유 줄을 아예 안 보인다.
+window.adminRejectReasonText = function (code) {
+    var key = {
+        full: 'ad_reason_full',
+        already_admin: 'ad_reason_already_admin',
+        not_found: 'ad_reason_not_found',
+        duplicate: 'ad_reason_duplicate'
+    }[String(code == null ? '' : code)];
+    return key ? window.t(key) : '';
+};
+
+function adminApplyButton(club, area, label) {
+    area.innerHTML =
+        '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
+    var b = area.querySelector('#btnRequestAdmin');
+    b.textContent = label;
+    b.onclick = function () { window.openAdminRequestModal(club); };
+}
+
+// 심사 중 안내. 신청을 막 보낸 직후에도 이걸로 바꾼다 — 버튼이 그대로 남으면
+// 한 번 더 누르기 쉽다(서버가 duplicate 로 닫지만 사진은 한 장 더 올라간다).
+window.showAdminRequestPending = function (area) {
+    if (!area) return;
+    area.innerHTML =
+        '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:10px 14px;border-radius:4px;font-size:13px;color:#1565c0;">' +
+        window.escapeHtml(window.t('ad_pending')) + '</div>';
+};
+
+// 내 관리자 신청 상태를 보여준다(관리자가 아닐 때).
+// requested_by 단일 조건으로만 거른다. club_id 를 함께 걸면 복합 인덱스가 필요해지고,
+// 없으면 매번 실패한다. 한 사람이 내는 신청은 많아야 몇 건이라 나머지는 메모리에서
+// 고른다. (규칙상 남의 신청은 애초에 안 읽힌다.)
+window.renderAdminRequestStatus = function (club, adminArea) {
+    var uid = window.currentUser && window.currentUser.uid;
+    if (!uid) return;
+    window.firebaseDB.collection('club_admin_requests')
+        .where('requested_by', '==', uid)
+        .limit(20)
+        .get().then(function (snap) {
+            if (!window.clubSheetShows(club, adminArea)) return;
+            var latest = window.latestRequestFor(snap, club.id);
+            if (latest && latest.status === 'pending') {
+                window.showAdminRequestPending(adminArea);
+                return;
+            }
+            if (latest && latest.status === 'approved') {
+                // 승인됐는데 메모리의 팀 문서가 낡아 내가 명단에 없다(시트를 연 뒤 승인).
+                // 한 번만 다시 읽어 실제로 관리자면 관리자 화면으로 다시 그린다.
+                window.firebaseDB.collection('clubs').doc(String(club.id)).get().then(function (doc) {
+                    if (!window.clubSheetShows(club, adminArea)) return;
+                    var fresh = doc.exists ? (doc.data() || {}) : null;
+                    if (fresh && window.clubAdminUids(fresh).indexOf(uid) !== -1) {
+                        ['allClubs', 'clubs'].forEach(function (key) {
+                            if (!Array.isArray(window[key])) return;
+                            window[key].forEach(function (c) {
+                                if (String(c.id) !== String(club.id)) return;
+                                c.admins = fresh.admins;
+                                c.registered_by = fresh.registered_by;
+                            });
+                        });
+                        club.admins = fresh.admins;
+                        club.registered_by = fresh.registered_by;
+                        window.openClubDetail(club.id, { silent: true });
+                        return;
+                    }
+                    adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+                }).catch(function (err) {
+                    console.warn('팀 문서 다시 읽기 실패:', err && err.message);
+                    if (window.clubSheetShows(club, adminArea)) adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+                });
+                return;
+            }
+            if (latest && latest.status === 'rejected') {
+                // 거절 안내 + (알아들을 수 있는 사유면) 사유 한 줄 + 다시 신청. XSS 방지: textContent.
+                var reason = window.adminRejectReasonText(latest.reject_reason);
+                adminArea.innerHTML =
+                    '<div style="background:rgba(244,67,54,0.08);border-left:3px solid #f44336;padding:10px 14px;border-radius:4px;margin-bottom:8px;font-size:13px;line-height:1.5;">' +
+                    '<div id="adRejectedTitle" style="color:#d32f2f;font-weight:600;"></div>' +
+                    (reason ? '<div id="adRejectedReason" style="color:#555;margin-top:4px;"></div>' : '') +
+                    '</div><div id="adReapplyBox"></div>';
+                adminArea.querySelector('#adRejectedTitle').textContent = window.t('ad_rejected');
+                if (reason) adminArea.querySelector('#adRejectedReason').textContent = reason;
+                var box = adminArea.querySelector('#adReapplyBox');
+                adminApplyButton(club, box, window.t('ad_reapply'));
+                return;
+            }
+            adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+        }).catch(function (err) {
+            // 조회가 막혀도 신청 자체는 할 수 있어야 한다.
+            console.warn('관리자 신청 상태 조회 실패:', err && err.message);
+            if (!window.clubSheetShows(club, adminArea)) return;
+            adminApplyButton(club, adminArea, window.t('ad_apply_btn'));
+        });
+};
+
 window.openClubDetail = function (id, opts) {
     // silent: 언어 전환 시 재렌더링용 (analytics/지도이동/주소갱신 등 부작용 생략)
     var silent = !!(opts && opts.silent);
@@ -379,7 +497,7 @@ window.openClubDetail = function (id, opts) {
         club.insta_reel_covers, { source: 'club', id: club.id });
 
     var urgentArea = document.getElementById('urgentArea');
-    if (club.is_urgent && club.urgent_msg) {
+    if (window.isUrgentActive(club)) {
         // XSS 방지: urgent_msg는 textContent로 삽입
         urgentArea.innerHTML = '';
         var urgentBanner = document.createElement('div');
@@ -408,7 +526,7 @@ window.openClubDetail = function (id, opts) {
         manageBtn.id = 'btnManageUrgent';
         manageBtn.className = 'btn';
         manageBtn.style = 'background: #ff5252; color: #fff;';
-        manageBtn.innerText = club.is_urgent ? window.t('cd_urgent_off') : window.t('cd_urgent_on');
+        manageBtn.innerText = window.isUrgentActive(club) ? window.t('cd_urgent_off') : window.t('cd_urgent_on');
         manageBtn.onclick = function () { window.toggleClubUrgentState(club); };
         actionBtns.appendChild(manageBtn);
     }
@@ -425,20 +543,26 @@ window.openClubDetail = function (id, opts) {
         verifyArea.style = 'margin-top:8px;';
         actionBtns.parentElement.insertBefore(verifyArea, actionBtns.nextSibling);
 
-        // Firestore에서 최신 인증 요청 상태 조회
+        // Firestore에서 최신 인증 요청 상태 조회.
+        // 규칙은 신청자 본인 문서만 읽게 한다(requested_by == uid). club_id 로만 거르면
+        // 남의 문서가 섞일 수 있는 질의라 통째로 거부된다 — 그래서 늘 '신청 버튼'만
+        // 떴다. requested_by 하나로 조회하고 이 팀 것 중 최신은 메모리에서 고른다
+        // (orderBy·복합 인덱스 없이, 관리자 신청 조회와 같은 모양).
+        var verifyUid = window.currentUser.uid;
         window.firebaseDB.collection('verification_requests')
-            .where('club_id', '==', club.id)
-            .orderBy('requested_at', 'desc')
-            .limit(1)
+            .where('requested_by', '==', verifyUid)
+            .limit(20)
             .get().then(function (snap) {
-            if (snap.empty) {
+            // 조회하는 사이 시트가 다른 팀으로 바뀌었으면 손대지 않는다(요소 id 를 재사용한다).
+            if (!window.clubSheetShows(club, verifyArea)) return;
+            var reqData = window.latestRequestFor(snap, club.id);
+            if (!reqData) {
                 // 신청 이력 없음 → 인증 신청 버튼
                 verifyArea.innerHTML =
                     '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
                     window.t('vf_apply_btn') + '</button>';
-                document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+                verifyArea.querySelector('#btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
             } else {
-                var reqData = snap.docs[0].data();
                 if (reqData.status === 'pending') {
                     // 심사 중
                     verifyArea.innerHTML =
@@ -453,17 +577,18 @@ window.openClubDetail = function (id, opts) {
                         '<div style="color:#555;">' + window.t('vf_reason') + '<span id="rejectReasonText"></span></div></div>' +
                         '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
                         window.t('vf_reapply') + '</button>';
-                    document.getElementById('rejectReasonText').textContent = reasonText;
-                    document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+                    verifyArea.querySelector('#rejectReasonText').textContent = reasonText;
+                    verifyArea.querySelector('#btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
                 }
             }
         }).catch(function (err) {
             console.error('인증 상태 조회 오류:', err);
+            if (!window.clubSheetShows(club, verifyArea)) return;
             // 조회 실패 시 기본 인증 신청 버튼 표시
             verifyArea.innerHTML =
                 '<button id="btnRequestVerify" class="btn" style="background:var(--nurungji-yellow);color:var(--nurungji-dark);width:100%;font-weight:600;">' +
                 window.t('vf_apply_btn') + '</button>';
-            document.getElementById('btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
+            verifyArea.querySelector('#btnRequestVerify').onclick = function () { window.openVerificationModal(club); };
         });
     }
 
@@ -495,50 +620,13 @@ window.openClubDetail = function (id, opts) {
                     '<span id="clubAdminCount"></span>' +
                     '<button id="btnLeaveAdmin" style="background:none;border:none;color:#d32f2f;font-size:12px;text-decoration:underline;cursor:pointer;padding:0;"></button>' +
                     '</div>';
-                document.getElementById('clubAdminCount').textContent =
+                adminArea.querySelector('#clubAdminCount').textContent =
                     window.tf('ad_count', { n: adminUids.length });
-                var leaveBtn = document.getElementById('btnLeaveAdmin');
+                var leaveBtn = adminArea.querySelector('#btnLeaveAdmin');
                 leaveBtn.textContent = window.t('ad_leave');
                 leaveBtn.onclick = function () { window.leaveClubAdmin(club); };
             } else {
-                // 이미 낸 신청이 있으면 그 상태를 보여준다 — 없으면 계속 다시 낸다.
-                // requested_by 단일 조건으로만 거른다. club_id 를 함께 걸면 복합
-                // 인덱스가 필요해지고, 없으면 매번 실패한다. 한 사람이 내는 신청은
-                // 많아야 몇 건이라 나머지는 메모리에서 고른다.
-                // (규칙상 남의 신청은 애초에 안 읽힌다.)
-                window.firebaseDB.collection('club_admin_requests')
-                    .where('requested_by', '==', window.currentUser.uid)
-                    .limit(20)
-                    .get().then(function (snap) {
-                        var latest = null;
-                        snap.forEach(function (doc) {
-                            var d = doc.data();
-                            if (String(d.club_id) !== String(club.id)) return;
-                            var ms = d.requested_at && d.requested_at.toMillis ? d.requested_at.toMillis() : 0;
-                            if (!latest || ms > latest._ms) { latest = d; latest._ms = ms; }
-                        });
-                        if (latest && latest.status === 'pending') {
-                            adminArea.innerHTML =
-                                '<div style="background:rgba(33,150,243,0.1);border-left:3px solid #2196f3;padding:10px 14px;border-radius:4px;font-size:13px;color:#1565c0;">' +
-                                window.t('ad_pending') + '</div>';
-                            return;
-                        }
-                        var label = (latest && latest.status === 'rejected')
-                            ? window.t('ad_reapply') : window.t('ad_apply_btn');
-                        adminArea.innerHTML =
-                            '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
-                        var b = document.getElementById('btnRequestAdmin');
-                        b.textContent = label;
-                        b.onclick = function () { window.openAdminRequestModal(club); };
-                    }).catch(function (err) {
-                        // 조회가 막혀도 신청 자체는 할 수 있어야 한다.
-                        console.warn('관리자 신청 상태 조회 실패:', err && err.message);
-                        adminArea.innerHTML =
-                            '<button id="btnRequestAdmin" class="btn" style="background:#fff;color:var(--nurungji-dark);border:1px solid var(--nurungji-yellow);width:100%;font-weight:600;"></button>';
-                        var b2 = document.getElementById('btnRequestAdmin');
-                        b2.textContent = window.t('ad_apply_btn');
-                        b2.onclick = function () { window.openAdminRequestModal(club); };
-                    });
+                window.renderAdminRequestStatus(club, adminArea);
             }
         }
     }
@@ -650,8 +738,22 @@ window.copyAddress = function (addr) {
 
 // ── Urgent ticker ──
 
+// 몇 번 불러도 같은 결과여야 한다 — 급구를 켜고 끈 뒤·팀을 지운 뒤 다시 부른다.
+// 예전엔 목록을 비우지 않고 덧붙이고, 굴리는 타이머도 하나씩 더 늘렸다.
+var urgentTickerTimer = null;
+
 window.initUrgentTicker = function () {
-    var urgentClubs = window.clubs.filter(function (c) { return c.is_urgent && c.urgent_msg; });
+    var tickerContainer = document.getElementById('urgentTicker');
+    var tickerList = document.getElementById('tickerList');
+    if (!tickerContainer || !tickerList) return;
+
+    // 이전 벌 정리: 타이머 · 항목 · 굴린 위치
+    if (urgentTickerTimer) { clearInterval(urgentTickerTimer); urgentTickerTimer = null; }
+    tickerList.innerHTML = '';
+    tickerList.style.transition = 'none';
+    tickerList.style.top = '0px';
+
+    var urgentClubs = (window.clubs || []).filter(window.isUrgentActive);
     var uniqueTickerList = [];
     var processedTeams = {};
 
@@ -662,44 +764,47 @@ window.initUrgentTicker = function () {
         }
     });
 
-    if (uniqueTickerList.length > 0) {
-        var tickerContainer = document.getElementById('urgentTicker');
-        var tickerList = document.getElementById('tickerList');
-        tickerContainer.style.display = 'flex';
+    if (!uniqueTickerList.length) {
+        tickerContainer.style.display = 'none';
+        return;
+    }
+    // 픽업 탭에선 숨긴다(tabs.js 가 동호회로 돌아올 때 항목이 있으면 다시 보인다).
+    var onClubsTab = !window.currentTab || window.currentTab === 'clubs';
+    tickerContainer.style.display = onClubsTab ? 'flex' : 'none';
+    setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
 
-        uniqueTickerList.forEach(function (c) {
-            var li = document.createElement('li');
-            li.className = 'ticker-item';
-            // XSS 방지: c.name / c.urgent_msg를 textContent로
-            var nameB = document.createElement('b');
-            nameB.textContent = '[' + (c.name || '') + ']';
-            li.appendChild(nameB);
-            li.appendChild(document.createTextNode(' ' + (c.urgent_msg || '')));
-            li.onclick = function () { window.openClubDetail(c.id); };
-            tickerList.appendChild(li);
-        });
+    uniqueTickerList.forEach(function (c) {
+        var li = document.createElement('li');
+        li.className = 'ticker-item';
+        // XSS 방지: c.name / c.urgent_msg를 textContent로
+        var nameB = document.createElement('b');
+        nameB.textContent = '[' + (c.name || '') + ']';
+        li.appendChild(nameB);
+        li.appendChild(document.createTextNode(' ' + (c.urgent_msg || '')));
+        li.onclick = function () { window.openClubDetail(c.id); };
+        tickerList.appendChild(li);
+    });
 
-        if (uniqueTickerList.length > 1) {
-            var tickerHeight = 44;
-            var currentIndex = 0;
-            setInterval(function () {
-                currentIndex++;
-                tickerList.style.top = '-' + (currentIndex * tickerHeight) + 'px';
+    if (uniqueTickerList.length > 1) {
+        var tickerHeight = 44;
+        var currentIndex = 0;
+        urgentTickerTimer = setInterval(function () {
+            currentIndex++;
+            tickerList.style.top = '-' + (currentIndex * tickerHeight) + 'px';
 
-                if (currentIndex === uniqueTickerList.length) {
-                    setTimeout(function () {
-                        tickerList.style.transition = 'none';
-                        tickerList.style.top = '0px';
-                        currentIndex = 0;
-                        setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
-                    }, 500);
-                }
-            }, 3000);
+            if (currentIndex === uniqueTickerList.length) {
+                setTimeout(function () {
+                    tickerList.style.transition = 'none';
+                    tickerList.style.top = '0px';
+                    currentIndex = 0;
+                    setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
+                }, 500);
+            }
+        }, 3000);
 
-            var firstClone = tickerList.children[0].cloneNode(true);
-            firstClone.onclick = function () { window.openClubDetail(uniqueTickerList[0].id); };
-            tickerList.appendChild(firstClone);
-        }
+        var firstClone = tickerList.children[0].cloneNode(true);
+        firstClone.onclick = function () { window.openClubDetail(uniqueTickerList[0].id); };
+        tickerList.appendChild(firstClone);
     }
 };
 
@@ -736,13 +841,7 @@ window.deleteClub = async function (club) {
         var sheet = document.getElementById('bottomSheet');
         if (sheet) sheet.classList.remove('open');
 
-        // Re-render markers
-        if (window.markers) {
-            window.markers.forEach(function (m) { if (m.marker) m.marker.setMap(null); });
-            window.markers.forEach(function (m) { if (m.overlay) m.overlay.setMap(null); });
-            window.markers = [];
-        }
-        if (window.clusterer) window.clusterer.clear();
+        // Re-render markers — initMarkers 가 이전 마커·라벨·원을 먼저 걷는다
         if (window.initMarkers) window.initMarkers();
         if (window.initUrgentTicker) window.initUrgentTicker();
 
@@ -760,7 +859,7 @@ window.toggleClubUrgentState = async function (club) {
         return;
     }
 
-    var newStatus = !club.is_urgent;
+    var newStatus = !window.isUrgentActive(club);
     var newMsg = "";
     if (newStatus) {
         // 급구 메시지 — 빈 칸·200자 넘김은 팝업을 닫지 않고 칸 아래에 알린다
@@ -788,12 +887,9 @@ window.toggleClubUrgentState = async function (club) {
         club.is_urgent = newStatus;
         club.urgent_msg = newMsg;
 
-        // Re-render markers
-        window.markers.forEach(function (m) { m.marker.setMap(null); });
-        window.markers.forEach(function (m) { m.overlay.setMap(null); });
-        window.clusterer.clear();
-        window.markers = [];
+        // 마커(initMarkers 가 이전 벌을 먼저 걷는다) · 티커 · 시트를 새 상태로
         window.initMarkers();
+        if (window.initUrgentTicker) window.initUrgentTicker();
         window.openClubDetail(club.id);
     }).catch(function (e) {
         console.error(e);

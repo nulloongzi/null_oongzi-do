@@ -15,15 +15,17 @@ Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, 급구 티커
 |------|------|------|
 | `initMarkers()` | map-core | allClubs 기반 전체 마커 생성 + 클러스터러 등록 |
 | `refreshMarkers()` | map-core | 신규 클럽만 추가 (기존 마커 유지) |
+| `clearClubMarkers()` | map-core | 마커·라벨·반경 원·클러스터 모두 걷기. `initMarkers()` 가 늘 먼저 부른다(다시 불러도 겹치지 않음) |
 | `updateLabelVisibility()` | map-core | 줌 레벨에 따라 라벨 표시/숨김 (일반 <=5, 급구 <=8) |
 | `openClubDetail(id)` | club-detail | 바텀시트 열기 + 지도 이동 |
 | `renderTimetables(schedule)` | club-detail | 요약 버블 + 풀 타임테이블 렌더링 |
-| `initUrgentTicker()` | club-detail | 급구 팀 티커 자동 롤링 (3초 간격) |
-| `toggleClubUrgentState(club)` | club-detail | PIN 인증 후 급구 상태 토글 |
+| `initUrgentTicker()` | club-detail | 급구 팀 티커 자동 롤링 (3초 간격). 다시 불러도 목록·타이머를 새로 짠다, 급구가 없으면 숨김 |
+| `toggleClubUrgentState(club)` | club-detail | 급구 켜기/끄기 — 인증된 팀의 관리자만(`canModifyClub`, 규칙 `urgentChangeOk`). 저장 뒤 마커·티커·시트를 다시 그린다 |
+| `isUrgentActive(club)` | dom-utils | 급구 판정 하나: `is_urgent === true` 이고 `urgent_msg` 가 비지 않음. 마커·라벨·티커·배너가 모두 이걸 쓴다 |
 
 ## 마커 구조
-각 마커 항목: `{ marker, overlay(CustomOverlay 라벨), club, isVisible }`
-- 급구 마커: 지도에 직접 표시 (`setMap`), zIndex 9999
+각 마커 항목: `{ marker, overlay(CustomOverlay 라벨), circle(대략 위치 원, 있으면), club, urgent, isVisible }`
+- 급구 마커: 지도에 직접 표시 (`setMap`), zIndex 9999 — 클러스터 밖이라 `clearClubMarkers()` 로만 지워진다
 - 일반 마커: `MarkerClusterer`로 관리
 - 인증 팀: 라벨에 파란 체크 배지 표시
 

@@ -198,6 +198,12 @@ window.submitAdminRequest = async function (club) {
         if (window.track) window.track('club_admin_request', { id: club.id });
         window.showToast(window.t('ad_done'));
         window.closeAdminRequestModal();
+        // 시트의 신청 버튼을 '확인 중' 안내로 바로 바꾼다 — 버튼이 남아 있으면 한 번
+        // 더 누르기 쉽다(서버가 duplicate 로 닫아도 사진은 한 장 더 올라간다).
+        var area = document.getElementById('clubAdminArea');
+        if (area && window.clubSheetShows && window.clubSheetShows(club, area) && window.showAdminRequestPending) {
+            window.showAdminRequestPending(area);
+        }
     } catch (error) {
         console.error('관리자 신청 오류:', error);
         console.warn('관리자 신청 실패:', error); window.showToast(window.t('ad_error'));
@@ -213,7 +219,14 @@ window.leaveClubAdmin = async function (club) {
     if (!(await window.nzConfirm({ title: window.t('ad_leave_confirm'), confirm: window.t('ad_leave_btn'), danger: true }))) return;
     try {
         var fn = firebase.functions().httpsCallable('leaveClubAdmin');
-        await fn({ clubId: club.id });
+        var res = await fn({ clubId: club.id });
+        // 서버가 { status: 'left' | 'not_admin', remaining } 를 돌려준다. 빠지지 않았는데
+        // '빠졌어요'라고 하면 수정 버튼은 사라지는데 실제 권한은 그대로 남는다.
+        var result = (res && res.data) || {};
+        if (result.status !== 'left') {
+            window.showToast(window.t('ad_leave_error'));
+            return;
+        }
         window.showToast(window.t('ad_leave_done'));
         // 메모리의 클럽 객체에서도 빼준다 — 안 그러면 시트를 다시 열 때까지
         // 수정 버튼이 그대로 남아, 눌렀다가 규칙에 거부당한다.

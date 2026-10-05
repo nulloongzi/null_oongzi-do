@@ -117,7 +117,7 @@ window.applyFilters = function () {
 
         if (regionMatch && dayMatch && targetMatch && keywordMatch) {
             item.isVisible = true;
-            if (club.is_urgent) {
+            if (item.urgent) {
                 item.marker.setMap(window.map);
             } else {
                 visibleNormalMarkers.push(item.marker);

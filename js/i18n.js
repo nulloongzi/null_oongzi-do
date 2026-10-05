@@ -242,7 +242,6 @@
         addr_copied: { ko: '주소를 복사했어요', en: 'Address copied' },
 
         // 팀 등록
-        reg_title_urgent: { ko: '급구/제보하기', en: 'Post an urgent call' },
         reg_edit_title: { ko: '팀 정보 수정', en: 'Edit team info' },
         reg_edit_submit: { ko: '수정하기', en: 'Save changes' },
         reg_no_edit_perm: { ko: '올린 사람이나 관리자만 고칠 수 있어요', en: 'Only the person who posted it or an admin can edit this.' },
@@ -304,6 +303,13 @@
         ad_pending: { ko: '⏳ 관리자 신청을 확인하고 있어요', en: '⏳ Your admin request is under review.' },
         ad_rejected: { ko: '❌ 관리자 신청이 받아들여지지 않았어요', en: '❌ Admin request was not accepted' },
         ad_reapply: { ko: '🔄 다시 신청', en: '🔄 Apply again' },
+        // 거절 사유 코드(club_admin_requests.reject_reason) → 사람이 읽는 말. 앱 strings.dart 와 같다.
+        // 서버가 쓰는 코드는 full · already_admin · not_found · duplicate 뿐이다.
+        // 모르는 코드(옛 문서의 error 등)나 사유 없는 수동 거절은 사유 줄을 아예 안 보인다.
+        ad_reason_full: { ko: '관리자가 이미 3명이에요', en: 'This team already has 3 admins' },
+        ad_reason_already_admin: { ko: '이미 이 팀 관리자예요', en: 'You\'re already an admin of this team' },
+        ad_reason_not_found: { ko: '팀 정보를 찾지 못했어요', en: 'We couldn\'t find this team' },
+        ad_reason_duplicate: { ko: '같은 신청이 이미 들어가 있어요', en: 'The same request is already in' },
         ad_full: { ko: '이 팀은 관리자가 벌써 3명이에요', en: 'This team already has 3 admins.' },
         ad_count: { ko: '관리자 {n}/3명', en: 'Admins {n}/3' },
         ad_leave: { ko: '관리자에서 빠지기', en: 'Leave as admin' },
