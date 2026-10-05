@@ -1,7 +1,7 @@
 # 지도 시스템 (Map)
 
 ## 개요
-Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, 급구 티커, 바텀시트 상세를 표시한다.
+Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, '🍚 여기 자리 있어요?' 띠, 바텀시트 상세를 표시한다.
 `map-core.js`가 지도/마커를, `club-detail.js`가 상세 UI를 담당한다.
 
 ## 지도 초기화 (map-core.js)
@@ -19,11 +19,12 @@ Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, 급구 티커
 | `updateLabelVisibility()` | map-core | 줌 레벨에 따라 라벨 표시/숨김 (일반 <=5, 급구 <=8) |
 | `openClubDetail(id)` | club-detail | 바텀시트 열기 + 지도 이동 |
 | `renderTimetables(schedule)` | club-detail | 요약 버블 + 풀 타임테이블 렌더링 |
-| `initUrgentTicker()` | club-detail | 급구 팀 티커 자동 롤링 (3초 간격). **마감이 이른 순**(기한 없는 예전 급구는 맨 뒤), 항목마다 마감 표시. 다시 불러도 목록·타이머를 새로 짠다, 급구가 없으면 숨김 |
+| `refreshThisWeek()` | this-week-ui | '여기 자리 있어요?' 띠·시트 다시 그리기. 데이터 로드·급구/식구 모집 토글·팀/픽업 삭제·등록 뒤에 부른다. 다시 불러도 타이머 하나 |
+| `thisWeekItems({clubs, pickups, parseText}, nowMs)` | this-week | 순수 — 7일 안 갈 곳(게스트 급구 · 🥄 맛보기 · 픽업). `tests/this-week.test.js` |
 | `openUrgentForm(club)` | club-detail | 급구 올리기/수정 폼 — 운동 칩(다가오는 3개) + '다른 날', 문구 60자. 올리기는 `postUrgent`(callable)로만. 새로 올리기는 인증된 팀 관리자만 |
 | `closeClubUrgent(club)` | club-detail | 급구 내리기 — 직접 쓰기(`is_urgent:false, urgent_msg:''`, 기한·시각 삭제). 인증이 풀린 팀도 된다 |
-| `toggleClubRecruiting(club)` | club-detail | 회원 모집 켜기(문구 선택 + `recruit_at` 서버 시각)/끄기. 관리자면 인증 여부 상관없이 |
-| `isUrgentActive(club, nowMs?)` | dom-utils | 급구 판정 하나: `is_urgent === true` · `urgent_msg` 가 비지 않음 · `urgent_until` 이 없거나 지나지 않음. 마커·라벨·티커·배너·필터가 모두 이걸 쓴다(`functions/lib/pure.js` 와 같은 판정) |
+| `openRecruitForm(club)` · `closeClubRecruiting(club)` | club-detail | 🍚 식구 모집 폼(문구 선택 + 🥄 맛보기 체크 + 60일 안내) — 켜기·수정 모두 `recruit_at` 서버 시각 / 마감은 `{is_recruiting:false}` 만. 관리자면 인증 여부 상관없이 |
+| `isUrgentActive(club, nowMs?)` | dom-utils | 급구 판정 하나: `is_urgent === true` · `urgent_msg` 가 비지 않음 · `urgent_until` 이 없거나 지나지 않음. 마커·라벨·'여기 자리 있어요?'·배너·필터가 모두 이걸 쓴다(`functions/lib/pure.js` 와 같은 판정) |
 | `urgentNextSessions` · `urgentDeadlineLabel` · `urgentMsgProblem` | urgent | 순수 계산(화면 안 만짐) — 운동 칩, 마감 글자, 문구 검사. `tests/urgent.test.js` |
 
 ## 마커 구조
@@ -31,6 +32,7 @@ Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, 급구 티커
 - 급구 마커: 지도에 직접 표시 (`setMap`), zIndex 9999 — 클러스터 밖이라 `clearClubMarkers()` 로만 지워진다
 - 일반 마커: `MarkerClusterer`로 관리
 - 인증 팀: 라벨에 파란 체크 배지 표시
+- 라벨 앞 표시 `clubFlagMarks`: 🔥(게스트 급구) → 🍚(식구 모집) → 🥄(맛보기 환영), 이모지끼리 붙여 쓴다. 릴스 미리보기 제목도 같다
 
 ## 바텀시트 (Bottom Sheet)
 - 3단계 상태: `CLOSED` / `PEEK` (390px) / `EXPANDED` (90vh)
@@ -60,18 +62,31 @@ Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, 급구 티커
 - 마감 표시: 같은 날 `오늘 21:00까지` · 다음 날 `내일 …까지` · 그 뒤 `D-n · 목 21:00까지`(기기
   달력 날짜로 센다). 기한 없는 예전 급구는 표시 없음.
 
-## 회원 모집 중
-급구와 따로 있는 평범한 깃발(`is_recruiting` · `recruit_msg` ≤60 · `recruit_at`). 팀 관리자가
+## 🍚 식구 모집 (예전 이름 '회원 모집 중')
+급구와 따로 있는 평범한 깃발(`is_recruiting` · `recruit_msg` ≤60 · `recruit_at` · `recruit_drop_in`).
+식구 = 같이 밥 먹는 사람 = 회원. 상세엔 배지마다 풀이 한 줄(`rc_badge_desc` · `rc_drop_in_desc`,
+급구는 `ug_badge_desc`) — 밥 이름을 몰라도 읽히게.
+**🥄 맛보기 환영**(`recruit_drop_in: true`) = 한 번 와서 같이 뛰어 봐도 된다(체험·게스트). 식구 모집이
+켜져 있을 때만 뜬다. 모집을 끌 때는 `is_recruiting:false` 만 — 문구·맛보기는 남겨 두고 다음에 채워 쓴다. 팀 관리자가
 인증 여부와 상관없이 직접 켜고 끈다(callable 없음). 켤 때·문구를 바꿀 때 `recruit_at` 은 서버
 시각(규칙이 강제). `max(recruit_at, last_verified_at)` 가 60일을 넘으면 정리가 끈다 — 팀 정보를
 고치면(수정 폼 저장 = `last_verified_at` 갱신) 다시 60일. `recruit_at` 이 없는 값(콘솔에서 켠
 것)은 바로 끄지 않고 지금 시각을 붙인 뒤 그때부터 센다. 앞날짜가 박힌 값은 기준으로 안 쓴다.
 
-## 급구 티커
-- 화면 상단 롤링 배너, 급구 클럽 목록 순환 표시 — 마감이 이른 순
-- `[팀 이름] 오늘 21:00까지 문구` — 마감은 이름 바로 뒤라 문구가 말줄임돼도 보인다
-- 클릭 시 해당 클럽 상세 열기
-- 첫 항목 복제(clone)로 무한 루프 효과
+## 🍚 여기 자리 있어요? (예전 급구 티커 자리)
+7일 안에 **가서 뛸 수 있는 곳**을 시간순 한 줄로: 픽업 회차 + 게스트 급구 + 식구 모집·맛보기 팀의 회차.
+(처음엔 '이번 주 차림표'라 불렀다 — 개인 시간표 '식단표'와 헷갈려 바꿨다. 키·파일은 `tw_*` · `this-week*.js`)
+- **띠**: 동호회·픽업 두 탭 모두. `🍚 여기 자리 있어요? · {n}곳 ›`(n = 서로 다른 팀·크루) + 다가오는 3개를
+  4초마다 한 줄씩(`수 19:00 · 이름 · 🔥 문구`). 갈 곳이 없으면 숨김. 픽업도 세려고 시작할 때 픽업 스팟을 한 번 읽는다.
+- **시트**: 종류 칩(🔥 게스트 급구 · 🥄 맛보기 · 픽업, 여럿) + 날짜 칩(7일 전체 또는 하루) + 날짜별 줄.
+  지금 탭의 지역·필터는 따르지 않는다(따로 보는 목록). 줄 = 시간 · 종류 · 이름 · 곳 · 문구 · '연락하기'.
+  줄을 누르면 그 팀/크루 상세(필요하면 탭을 옮긴다), '연락하기'는 상세의 첫 연락과 같은 곳
+  (동호회 인스타 → 홈 링크, 픽업 단톡 링크 → 인스타) + `contact_click {via:'this_week', flag}`.
+- **항목 규칙**(`thisWeekItems`, 앱과 같은 계약): 창은 끝이 지금+5분 ~ 지금+7일인 회차.
+  - 게스트 급구: 끝 = `urgent_until`, 시작 = 끝이 같은 회차(없으면 `~21:00`). 기한 없는 예전 급구는 뺀다.
+  - 🥄 맛보기: 식구 모집 + `recruit_drop_in` + 읽히는 일정, 팀당 3회차. 급구와 같은 회차(같은 끝)는 빼고 급구만.
+  - 픽업: 만료(`expire_at`) 안 된 스팟, 크루당 3회차, 문구 = `this_week`.
+  - 일정은 `schedule_raw` 우선, 없으면 글자(`parseScheduleText`). 밤샘(22:00~01:00)은 다음 날 끝.
 
 ## 데이터 흐름
 1. `data.js` -> `window.allClubs` 로드
@@ -81,7 +96,8 @@ Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, 급구 티커
 
 ## 관련 파일
 - `js/map-core.js` - 지도 초기화, 마커, 클러스터러
-- `js/club-detail.js` - 바텀시트, 타임테이블, 급구 티커/폼, 회원 모집 토글
-- `js/urgent.js` - 급구 순수 계산(운동 칩·마감·문구 검사·티커 순서)
+- `js/club-detail.js` - 바텀시트, 타임테이블, 급구 폼, 식구 모집 폼
+- `js/urgent.js` - 급구 순수 계산(운동 칩·마감·문구 검사)
+- `js/this-week.js` · `js/this-week-ui.js` - '여기 자리 있어요?' 항목 계산(순수) · 띠와 시트
 - `functions/index.js` `postUrgent` · `sweepClubFlags` / `functions/lib/pure.js` - 서버 판정
 - `js/filters.js` - 마커 필터링 (`applyFilters`)

@@ -110,9 +110,16 @@ Firestore 스키마, Firestore 보안 규칙, Cloud Functions, 애널리틱스 �
 | **챗봇 공개 발화** | `chatbotHelp` · `chatbotPublicReport` | 지도를 흉내내지 않는다 — 길잡이와 로그인 없는 제보 둘만 |
 | App Links | `.well-known/assetlinks.json` + `.nojekyll` | 앱 레포 `docs/play-store-listing.md` §5 |
 | **급구 = 운동 한 번** | `postUrgent`(callable) · `sweepClubFlags`(매시간) · `urgent_until` · `urgent_log` | 켜기는 서버만, 고른 운동이 끝나면 자동으로 내려간다. 7일 안. `docs/map.md` '급구' |
-| **회원 모집 중** | `is_recruiting` · `recruit_msg` · `recruit_at` | 관리자 직접 토글(미인증 팀도). 60일 손대지 않으면 정리가 끈다 |
+| **🍚 식구 모집**(예전 '회원 모집 중') | `is_recruiting` · `recruit_msg` · `recruit_at` | 관리자 직접 토글(미인증 팀도). 60일 손대지 않으면 정리가 끈다. 폼으로 켜고 고친다 |
+| **🥄 맛보기 환영** | `recruit_drop_in` | 식구 모집에 붙는 옵션 — 한 번 와서 뛰어 봐도 된다. 규칙: bool, 새 팀은 false/없음 |
+| **🍚 여기 자리 있어요?** | `js/this-week.js` · `this-week-ui.js` | 예전 급구 티커 자리. 7일 안 갈 곳(픽업 + 게스트 급구 + 맛보기 팀) 시간순 띠·시트. `docs/map.md` |
+| **연락 출처** | `contact_click` 의 `via` · `flag` | 상세에서냐 '여기 자리 있어요?'에서냐 + 그때 팀 상태. `docs/metrics.md` |
 
 ### 배포 메모 — 급구 개편 · 회원 모집 (2026-10)
+
+> 이어서(식구 모집 · 맛보기 · 여기 자리 있어요?): **규칙 먼저 → 웹.** 새 웹은 식구 모집을 켤 때
+> `recruit_drop_in` 을 함께 쓰는데, 옛 규칙은 그 필드를 막지 않지만(clubFieldsValid 에 없는 필드는 통과)
+> 타입·새 팀 검사는 새 규칙에만 있다. GA 맞춤 측정기준 `via` · `flag` 를 등록할 것(`docs/metrics.md`).
 
 1. **Cloud Scheduler API 를 켠다.** `sweepClubFlags` 는 처음 생기는 예약 함수(`onSchedule`)라
    Scheduler 잡을 만든다. `gcloud services enable cloudscheduler.googleapis.com --project=nulloongzi-do`.
