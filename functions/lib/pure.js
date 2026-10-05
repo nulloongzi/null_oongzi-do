@@ -246,20 +246,24 @@ var MAX_CLUB_ADMINS = 3;
 // 이 팀을 관리할 수 있는 uid 목록.
 //
 // admins 배열이 정본이지만, 그 필드가 생기기 전에 만들어진 문서에는 없다.
-// 그때는 registered_by 한 사람을 관리자로 본다 — 마이그레이션을 안 돌려도
-// 기존 소유자가 권한을 잃지 않는다. (firestore.rules 도 같은 폴백을 쓴다.
-// 두 곳의 규칙이 어긋나면 화면엔 버튼이 보이는데 저장은 거부되는 꼴이 된다.)
+// 그때(필드가 없거나 배열이 아닐 때)만 registered_by 한 사람을 관리자로 본다 —
+// 마이그레이션을 안 돌려도 기존 소유자가 권한을 잃지 않는다.
+//
+// 배열이 있으면 비어 있어도 그게 답이다: `admins: []` 는 "관리자 없음"이다.
+// 마지막 관리자가 스스로 빠진 팀이 registered_by 로 되살아나면, 떠난 사람이
+// 수정 권한을 도로 쥔다. (firestore.rules 의 clubAdmins() 도 같은 규칙이다.
+// 두 곳이 어긋나면 화면엔 버튼이 보이는데 저장은 거부되는 꼴이 된다.)
 function clubAdminUids(club) {
     var c = club || {};
     var out = [];
-    var list = Array.isArray(c.admins) ? c.admins : [];
-    for (var i = 0; i < list.length; i++) {
-        var s = String(list[i] == null ? "" : list[i]).trim();
-        if (s && out.indexOf(s) === -1) out.push(s);
-    }
-    if (!out.length && c.registered_by) {
-        var owner = String(c.registered_by).trim();
+    if (!Array.isArray(c.admins)) {
+        var owner = c.registered_by == null ? "" : String(c.registered_by).trim();
         if (owner) out.push(owner);
+        return out;
+    }
+    for (var i = 0; i < c.admins.length; i++) {
+        var s = String(c.admins[i] == null ? "" : c.admins[i]).trim();
+        if (s && out.indexOf(s) === -1) out.push(s);
     }
     return out;
 }

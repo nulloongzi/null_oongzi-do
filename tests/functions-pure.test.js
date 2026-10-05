@@ -326,6 +326,22 @@ describe('clubAdminUids (팀 관리자 목록)', () => {
         assert.deepStrictEqual(pure.clubAdminUids({}), []);
         assert.deepStrictEqual(pure.clubAdminUids(null), []);
     });
+
+    // 빈 배열은 "관리자 없음"이다. 마지막 관리자가 빠진 팀을 registered_by 로
+    // 되살리면 떠난 사람이 수정 권한을 도로 쥔다(firestore.rules 도 같은 답).
+    test('admins: [] 는 관리자 없음 — registered_by 로 되살리지 않는다', () => {
+        assert.deepStrictEqual(pure.clubAdminUids({ admins: [], registered_by: 'x' }), []);
+    });
+
+    test('정리하고 나니 빈 배열이어도 관리자 없음', () => {
+        assert.deepStrictEqual(pure.clubAdminUids({ admins: ['', ' ', null], registered_by: 'x' }), []);
+        assert.strictEqual(pure.canManageClub({ admins: [], registered_by: 'x' }, 'x'), false);
+    });
+
+    test('admins 가 배열이 아니면 구 문서로 보고 registered_by 폴백', () => {
+        assert.deepStrictEqual(pure.clubAdminUids({ admins: 'a', registered_by: 'owner' }), ['owner']);
+        assert.deepStrictEqual(pure.clubAdminUids({ admins: null, registered_by: ' owner ' }), ['owner']);
+    });
 });
 
 describe('canManageClub', () => {
@@ -393,6 +409,17 @@ describe('removeClubAdmin (스스로 빠지기)', () => {
         const r = pure.removeClubAdmin({ admins: ['a'] }, 'a');
         assert.strictEqual(r.removed, true);
         assert.deepStrictEqual(r.admins, []);
+    });
+
+    // 마지막 사람이 나간 뒤 새 사람을 받으면 그 사람 혼자다 — 처음 등록한
+    // 사람(registered_by)이 명단에 다시 끼어들지 않는다.
+    test('마지막 사람이 나간 뒤 승인하면 새 사람만 관리자', () => {
+        const left = pure.removeClubAdmin({ admins: ['owner'], registered_by: 'owner' }, 'owner');
+        const after = { admins: left.admins, registered_by: 'owner' };
+        assert.deepStrictEqual(pure.clubAdminUids(after), []);
+        const r = pure.addClubAdmin(after, 'newUid');
+        assert.strictEqual(r.added, true);
+        assert.deepStrictEqual(r.admins, ['newUid']);
     });
 
     test('관리자가 아니면 not_admin', () => {
