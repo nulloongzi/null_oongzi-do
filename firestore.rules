@@ -10,10 +10,11 @@ service cloud.firestore {
 
     // 이 팀을 관리할 수 있는 uid 목록.
     //
-    // admins 가 정본이지만 그 필드가 생기기 전 문서에는 없다. 그때는
-    // registered_by 한 사람을 관리자로 본다 — 마이그레이션을 안 돌려도 기존
-    // 소유자가 권한을 잃지 않는다. functions/lib/pure.js 의 clubAdminUids 와
-    // 같은 규칙이다. 둘이 어긋나면 화면엔 버튼이 보이는데 저장은 거부된다.
+    // admins 가 정본이지만 그 필드가 생기기 전 문서에는 없다. 그때(필드가 없거나
+    // 배열이 아닐 때)만 registered_by 한 사람을 관리자로 본다 — 마이그레이션을
+    // 안 돌려도 기존 소유자가 권한을 잃지 않는다. 빈 배열 `admins: []` 는
+    // "관리자 없음"이다. functions/lib/pure.js 의 clubAdminUids 와 같은 규칙이다.
+    // 둘이 어긋나면 화면엔 버튼이 보이는데 저장은 거부된다.
     function clubAdmins(d) {
       return ('admins' in d && d.admins is list)
              ? d.admins
@@ -73,6 +74,7 @@ service cloud.firestore {
           && (!('price' in d) || (d.price is string && d.price.size() <= 120))
           && (!('schedule' in d) || (d.schedule is string && d.schedule.size() <= 600))
           && (!('urgent_msg' in d) || (d.urgent_msg is string && d.urgent_msg.size() <= 250))
+          && (!('is_urgent' in d) || d.is_urgent is bool)
           && (!('contact' in d) || (d.contact is map
                 && (!('insta' in d.contact) || (d.contact.insta is string && d.contact.insta.size() <= 60))
                 && (!('link' in d.contact) || (d.contact.link is string && d.contact.link.size() <= 500))))
@@ -87,6 +89,24 @@ service cloud.firestore {
           && (!('location_precision' in d) || d.location_precision in ['exact', 'area'])
           && reelFieldsValid(d)
           && areaCoordsCoarse();
+    }
+
+    // 급구(is_urgent) — 지도에 빨간 마커·티커로 크게 뜨는 표시라 인증된 팀만 켤 수 있다.
+    // 팀 관리자 경로에서만 쓴다(운영자 경로는 그대로 신뢰).
+    //   · 끄는 건 언제나 된다.
+    //   · 켜져 있던 그대로(상태·문구 모두 그대로)면 다른 필드 수정은 막지 않는다 —
+    //     인증이 풀린 팀이 예전 급구 때문에 아무것도 못 고치는 일이 없게.
+    //   · 새로 켜거나 문구를 바꾸려면 인증된 팀이어야 하고 문구가 비어 있으면 안 된다.
+    // 화면(js/club-detail.js 의 급구 버튼)도 인증된 팀에서만 버튼을 보인다.
+    function urgentChangeOk() {
+      let after = request.resource.data;
+      let before = resource.data;
+      return after.get('is_urgent', false) != true
+          || (before.get('is_urgent', false) == true
+              && after.get('urgent_msg', '') == before.get('urgent_msg', ''))
+          || (before.get('is_verified', false) == true
+              && after.get('urgent_msg', null) is string
+              && after.urgent_msg.trim().size() > 0);
     }
 
     // 위치를 '대략만' 공개하기로 한 팀은 **정확한 좌표를 저장하지 못하게** 한다.
@@ -152,9 +172,11 @@ service cloud.firestore {
       // 새 팀 등록: 인증된 사용자가 자신을 registered_by 로 기록, is_verified=false 강제.
       // 등록자가 곧 1번 관리자다. admins 를 함께 쓰더라도
       // 본인 혼자만 넣을 수 있다 — 만들면서 남을 끼워넣지 못하게.
+      // 급구는 인증된 팀만 켤 수 있으니 갓 만든(미인증) 팀은 꺼진 채로만 들어온다.
       allow create: if request.auth != null
                     && request.resource.data.registered_by == request.auth.uid
                     && request.resource.data.is_verified == false
+                    && request.resource.data.get('is_urgent', false) == false
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && (!('admins' in request.resource.data)
@@ -184,6 +206,7 @@ service cloud.firestore {
                         && request.resource.data.registered_by == resource.data.registered_by
                         && adminsUnchanged()
                         && moderationUnchanged()
+                        && urgentChangeOk()
                         && clubFieldsValid()));
 
       // 삭제: 운영자 또는 팀 관리자
@@ -342,15 +365,21 @@ service cloud.firestore {
     //
     // 승인·거절은 Functions(admin SDK)만 한다. 신청자가 자기 요청을 승인으로
     // 바꿀 수 있으면 절차 전체가 무의미하다.
+    //
+    // 만들 때는 신청 필드만 받는다. reviewed_at·reject_reason 은 심사 결과라
+    // 서버(admin SDK)만 쓴다 — 신청자가 거절 사유를 미리 박아 넣을 이유가 없다.
+    // 사진은 우리 Storage 의 다운로드 URL 만 받는다. 아무 URL 이나 받으면 챗봇
+    // 카드가 바깥 이미지를 그대로 띄우고, 운영자가 그 링크를 누르게 된다.
     function adminReqFieldsValid() {
       let d = request.resource.data;
       return d.keys().hasOnly([
                'club_id', 'club_name', 'photo_url',
-               'requested_by', 'requested_at', 'status', 'reviewed_at', 'reject_reason'
+               'requested_by', 'requested_at', 'status'
              ])
           && d.club_id is string && d.club_id.size() > 0 && d.club_id.size() <= 200
           && (!('club_name' in d) || (d.club_name is string && d.club_name.size() <= 120))
           && d.photo_url is string && d.photo_url.size() > 0 && d.photo_url.size() <= 1000
+          && d.photo_url.matches('^https://firebasestorage[.]googleapis[.]com/.*')
           && d.requested_at is timestamp;
     }
 
@@ -360,7 +389,10 @@ service cloud.firestore {
                   || (request.auth != null
                       && resource.data.requested_by == request.auth.uid);
 
+      // 익명 인증(무로그인 픽업 등록용)으로는 신청할 수 없다 — 승인되면 그 uid 가
+      // 팀 관리자가 되는데, 익명 계정은 기기를 바꾸면 사라진다.
       allow create: if request.auth != null
+                    && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous'
                     && request.resource.data.requested_by == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && adminReqFieldsValid();

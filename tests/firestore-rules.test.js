@@ -771,11 +771,103 @@ describe('팀 관리자(admins) 룰 — 정원 3명 · 명단은 서버만', () 
     });
 });
 
+describe('급구(is_urgent) — 인증된 팀 관리자만 켠다', () => {
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            const db = ctx.firestore();
+            await db.collection('clubs').doc('urg-unverified').set({
+                name: '미인증급구팀', admins: ['m1'], registered_by: 'm1', is_verified: false,
+                is_urgent: false, urgent_msg: ''
+            });
+            // 인증이 풀렸는데 예전 급구가 켜진 채 남은 팀
+            await db.collection('clubs').doc('urg-unverified-on').set({
+                name: '예전급구팀', admins: ['m1'], registered_by: 'm1', is_verified: false,
+                is_urgent: true, urgent_msg: '예전 급구'
+            });
+            await db.collection('clubs').doc('urg-verified').set({
+                name: '인증급구팀', admins: ['m1', 'm2'], registered_by: 'm1', is_verified: true,
+                is_urgent: false, urgent_msg: ''
+            });
+        });
+    });
+
+    test('미인증 팀 관리자는 급구를 켤 수 없다', async () => {
+        await assertFails(as('m1').collection('clubs').doc('urg-unverified')
+            .update({ is_urgent: true, urgent_msg: '센터 급구' }));
+    });
+
+    test('미인증 팀이라도 켜진 급구를 끌 수는 있다', async () => {
+        const ref = as('m1').collection('clubs').doc('urg-unverified-on');
+        // 그대로 둔 채 다른 필드 수정은 막지 않는다
+        await assertSucceeds(ref.update({ price: '월 1만원' }));
+        // 문구를 바꾸는 건 새로 켜는 것과 같다
+        await assertFails(ref.update({ urgent_msg: '새 문구' }));
+        await assertSucceeds(ref.update({ is_urgent: false, urgent_msg: '' }));
+    });
+
+    test('인증 팀의 공동 관리자(admins[])는 켤 수 있다', async () => {
+        await assertSucceeds(as('m2').collection('clubs').doc('urg-verified')
+            .update({ is_urgent: true, urgent_msg: '레프트 1명 급구' }));
+        await assertSucceeds(as('m2').collection('clubs').doc('urg-verified')
+            .update({ is_urgent: false, urgent_msg: '' }));
+    });
+
+    test('켤 때 문구가 비었거나 공백뿐이면 거부', async () => {
+        const ref = as('m1').collection('clubs').doc('urg-verified');
+        await assertFails(ref.update({ is_urgent: true, urgent_msg: '' }));
+        await assertFails(ref.update({ is_urgent: true, urgent_msg: '   ' }));
+        await assertFails(ref.update({ is_urgent: true }));
+    });
+
+    test('is_urgent 가 bool 이 아니면 거부', async () => {
+        const ref = as('m1').collection('clubs').doc('urg-verified');
+        await assertFails(ref.update({ is_urgent: 'true', urgent_msg: '급구' }));
+        await assertFails(ref.update({ is_urgent: 1, urgent_msg: '급구' }));
+    });
+
+    test('남은 인증 팀이라도 켤 수 없다', async () => {
+        await assertFails(as('stranger').collection('clubs').doc('urg-verified')
+            .update({ is_urgent: true, urgent_msg: '급구' }));
+    });
+
+    test('새 팀은 급구를 켠 채 만들 수 없다', async () => {
+        const club = (id) => ({ name: id, registered_by: 'newbie2', is_verified: false });
+        await assertFails(as('newbie2').collection('clubs').doc('urg-new-on')
+            .set(Object.assign(club('a'), { is_urgent: true, urgent_msg: '급구' })));
+        await assertFails(as('newbie2').collection('clubs').doc('urg-new-str')
+            .set(Object.assign(club('b'), { is_urgent: 'false' })));
+        await assertSucceeds(as('newbie2').collection('clubs').doc('urg-new-off')
+            .set(Object.assign(club('c'), { is_urgent: false, urgent_msg: '' })));
+    });
+
+    test('운영자 경로는 그대로 — 미인증 팀도 켤 수 있다', async () => {
+        await assertSucceeds(as('admin-uid').collection('clubs').doc('urg-unverified')
+            .update({ is_urgent: true, urgent_msg: '운영자 공지' }));
+    });
+});
+
+describe('빈 admins 배열은 관리자 없음 — registered_by 로 되살아나지 않는다', () => {
+    function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    before(async () => {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+            await ctx.firestore().collection('clubs').doc('club-emptied').set({
+                name: '관리자떠난팀', admins: [], registered_by: 'left-uid', is_verified: true
+            });
+        });
+    });
+    test('마지막 관리자가 빠진 팀은 등록자도 못 고친다', async () => {
+        await assertFails(as('left-uid').collection('clubs').doc('club-emptied').update({ price: '월 1원' }));
+    });
+});
+
 describe('club_admin_requests 룰 (관리자 신청)', () => {
     function as(uid) { return testEnv.authenticatedContext(uid).firestore(); }
+    const PHOTO = 'https://firebasestorage.googleapis.com/v0/b/x.appspot.com/o/admin_request_photos%2Freq-1%2Fp.jpg?alt=media&token=t';
     const base = (uid) => ({
         club_id: 'club-1', club_name: '테스트팀',
-        photo_url: 'https://example.com/p.jpg',
+        photo_url: PHOTO,
         requested_by: uid, requested_at: new Date(), status: 'pending'
     });
 
@@ -805,6 +897,31 @@ describe('club_admin_requests 룰 (관리자 신청)', () => {
     test('화이트리스트 밖 필드는 거부 (문서 비대화 방지)', async () => {
         const d = base('req-1'); d.note = 'x'.repeat(100);
         await assertFails(as('req-1').collection('club_admin_requests').doc('r5').set(d));
+    });
+
+    // 심사 결과 필드는 서버만 쓴다. 만들 때 끼워 넣을 수 있으면 신청자가
+    // '거절 사유'를 미리 박거나 심사 시각을 꾸밀 수 있다.
+    test('만들 때 reviewed_at · reject_reason 은 못 넣는다', async () => {
+        const d1 = base('req-1'); d1.reviewed_at = null;
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r6').set(d1));
+        const d2 = base('req-1'); d2.reject_reason = 'full';
+        await assertFails(as('req-1').collection('club_admin_requests').doc('r7').set(d2));
+    });
+
+    // 승인되면 그 uid 가 팀 관리자가 된다. 익명 계정은 기기를 바꾸면 사라진다.
+    test('익명 인증으로는 신청할 수 없다', async () => {
+        const anon = testEnv.authenticatedContext('anon-req', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+        await assertFails(anon.collection('club_admin_requests').doc('r8').set(base('anon-req')));
+    });
+
+    // 바깥 URL 을 받으면 챗봇 카드가 아무 이미지나 띄우고 운영자가 그 링크를 누른다.
+    test('사진은 우리 Storage 다운로드 URL 만 받는다', async () => {
+        const bad = ['https://example.com/p.jpg', 'http://firebasestorage.googleapis.com/v0/b/x',
+            'https://firebasestorage.googleapis.com.evil.com/x', 'javascript:alert(1)'];
+        for (let i = 0; i < bad.length; i++) {
+            const d = base('req-1'); d.photo_url = bad[i];
+            await assertFails(as('req-1').collection('club_admin_requests').doc('rb' + i).set(d), bad[i]);
+        }
     });
 
     test('신청자 본인과 운영자만 읽는다', async () => {

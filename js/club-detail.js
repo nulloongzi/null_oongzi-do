@@ -396,7 +396,8 @@ window.openClubDetail = function (id, opts) {
     var existingManageBtn = document.getElementById('btnManageUrgent');
     if (existingManageBtn) existingManageBtn.remove();
 
-    // 인증된 팀의 owner/admin만 급구 토글 노출 (Firestore rule이 동일 조건으로 write 차단)
+    // 인증된 팀의 owner/admin만 급구 토글 노출. 규칙(firestore.rules urgentChangeOk)도
+    // 팀 관리자가 급구를 **켜는** 건 인증된 팀에서만 받는다 — 끄기는 언제나 된다.
     // 데이터 신선도 + 신고 통로 (guidelines.html 2-3 · 3-1)
     if (window.renderDataTrust) {
         window.renderDataTrust(document.getElementById('clubDataTrust'), club, 'club');
