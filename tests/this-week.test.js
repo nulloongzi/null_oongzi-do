@@ -118,6 +118,11 @@ describe('픽업(pickup)', () => {
             title: '한강 픽업', place: '뚝섬 체육관', msg: '이번 주는 2코트', refId: 'p1', refType: 'pickup'
         }]);
     });
+    test('공개 정보로 대신 올린 크루(curated)는 넣지 않는다 · 직접 올린 크루(self·없음)는 넣는다', () => {
+        assert.strictEqual(build({ pickups: [Object.assign({}, spot, { source: 'curated' })] }).length, 0);
+        assert.strictEqual(build({ pickups: [Object.assign({}, spot, { source: 'self' })] }).length, 1);
+        assert.strictEqual(build({ pickups: [spot] }).length, 1);
+    });
     test('만료됐으면 뺀다 · expire_at 이 없거나 뒤면 남긴다', () => {
         assert.strictEqual(build({ pickups: [Object.assign({}, spot, { expire_at: ts(NOW - 1) })] }).length, 0);
         assert.strictEqual(build({ pickups: [Object.assign({}, spot, { expire_at: ts(NOW + D) })] }).length, 1);

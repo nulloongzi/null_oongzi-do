@@ -3,7 +3,7 @@
 // 앞으로 7일 안에 "가서 뛸 수 있는 곳"을 한 줄로 세운다:
 //   - 'guest'   🔥 게스트 급구 — 급구가 떠 있는 팀. 끝 = urgent_until
 //   - 'drop_in' 🥄 맛보기 환영 — 식구 모집 + 맛보기를 켠 팀의 운동(팀당 3개까지)
-//   - 'pickup'  픽업 — 만료 안 된 픽업 스팟의 운동(크루당 3개까지)
+//   - 'pickup'  픽업 — 크루가 직접 올린(대신 올린 curated 제외), 만료 안 된 픽업 스팟의 운동(크루당 3개까지)
 // 항목 = { kind, start(ms|null), end(ms), title, place, msg, refId, refType:'club'|'pickup' }
 // 앱(Flutter)도 같은 규칙으로 만든다(공통 계약). 화면(띠·시트)은 this-week-ui.js 가 그린다.
 // Depends on: dom-utils.js (tsMillis · isUrgentActive), urgent.js (isRecruitingActive · URGENT_MIN_LEAD_MS)
@@ -149,6 +149,10 @@
 
         (input && input.pickups || []).forEach(function (g) {
             if (!g || g.id == null) return;
+            // 공개 정보로 운영자가 대신 올린 크루(source:'curated')는 넣지 않는다 — 크루가 직접 올린
+            // 게 아니라 일정이 바뀌어도 그대로라, '이번 주 몇 시'로 보여 주면 헛걸음을 만들 수 있다.
+            // 픽업 탭·상세·목록 공유에는 그대로 나온다. 앱 this_week.dart 와 같은 규칙.
+            if (g.source === 'curated') return;
             var exp = window.tsMillis(g.expire_at);
             if (exp != null && exp <= now) return;
             window.twOccurrences(window.twScheduleSlots(g, parseText), now, 7)
