@@ -20,7 +20,7 @@
             // 지도/필터 초기화: 실패해도 딥링크 착지는 별도로 진행한다
             try {
                 if (window.initMarkers) window.initMarkers();
-                if (window.initUrgentTicker) window.initUrgentTicker();
+                if (window.refreshThisWeek) window.refreshThisWeek();
                 if (window.applyFilters) window.applyFilters();
             } catch (e) {
                 console.error('초기화 중 오류:', e);
@@ -30,6 +30,14 @@
             openDeepLinkClub();
             openDeepLinkSpot();
             openPickupListLink();
+
+            // 🍚 여기 자리 있어요? 띠는 픽업도 함께 센다 — 동호회 탭에서도 픽업 스팟을 한 번 읽는다.
+            // 픽업 탭(딥링크로 막 옮겼으면 그쪽)은 tabs.js 가 읽고 띠를 새로 그린다.
+            if (window.loadPickupGames && window.currentTab !== 'pickup') {
+                window.loadPickupGames().then(function () {
+                    if (window.refreshThisWeek) window.refreshThisWeek();
+                });
+            }
         });
     }
 

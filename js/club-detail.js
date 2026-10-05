@@ -1,7 +1,8 @@
 // club-detail.js
-// Bottom sheet club detail, timetable rendering, urgent ticker
+// Bottom sheet club detail, timetable rendering, 급구 폼 · 식구 모집 폼
 // Depends on: map-core.js (window.map, window.markers, window.clusterer, window.instaCssIcon, window.initMarkers),
 //             urgent.js (급구 칩·마감 표시·문구 검사)
+//             this-week.js (contactFlag · isDropInActive), this-week-ui.js (refreshThisWeek)
 
 // ── Schedule parsing ──
 
@@ -425,7 +426,8 @@ window.openClubDetail = function (id, opts) {
         instaLink.onclick = function () {
             if (window.track) {
                 window.track('club_contact', { type: 'insta', club_id: club.id, has_reel: hasReel }); // 기존 대시보드 연속성 유지
-                window.track('contact_click', { channel: 'instagram', club_id: club.id, source: 'club' }); // North Star Metric 보조 지표
+                // North Star Metric. via = 어디서 눌렀나, flag = 그때 팀 상태(게스트 급구·맛보기·식구 모집)
+                window.track('contact_click', { channel: 'instagram', club_id: club.id, source: 'club', via: 'detail', flag: window.contactFlag(club) });
             }
         };
         sheetTitleEl.appendChild(document.createTextNode(' '));
@@ -477,7 +479,7 @@ window.openClubDetail = function (id, opts) {
             if (window.track) {
                 window.track('club_contact', { type: 'link', club_id: club.id, has_reel: hasReel });
                 // NSM 전용 이벤트 — 홈페이지 링크도 연락 전환으로 집계
-                window.track('contact_click', { channel: 'link', club_id: club.id, source: 'club' });
+                window.track('contact_click', { channel: 'link', club_id: club.id, source: 'club', via: 'detail', flag: window.contactFlag(club) });
             }
         };
         linkA.appendChild(linkSpan);
@@ -516,12 +518,18 @@ window.openClubDetail = function (id, opts) {
             urgentBanner.appendChild(untilSpan);
         }
         urgentArea.appendChild(urgentBanner);
+        // 처음 온 사람도 '급구'가 뭔지 알게 — 풀이 한 줄(꾸밈 없이)
+        var urgentDesc = document.createElement('div');
+        urgentDesc.className = 'flag-desc';
+        urgentDesc.textContent = window.t('ug_badge_desc');
+        urgentArea.appendChild(urgentDesc);
         urgentArea.style.display = 'block';
     } else {
         urgentArea.style.display = 'none';
     }
 
-    // 회원 모집 표시 + (관리자에게만) 60일 자동 꺼짐 안내
+    // 🍚 식구 모집 표시(+ 🥄 맛보기 환영) + (관리자에게만) 60일 자동 꺼짐 안내.
+    // 이름(밥 세계관) 옆에 풀이를 한 줄씩 — 처음 온 사람이 '식구'·'맛보기'를 몰라도 읽히게.
     var canManage = !!(window.canModifyClub && window.canModifyClub(club));
     var recruitArea = document.getElementById('recruitArea');
     if (recruitArea) {
@@ -529,14 +537,26 @@ window.openClubDetail = function (id, opts) {
         if (window.isRecruitingActive(club)) {
             var rcBox = document.createElement('div');
             rcBox.className = 'recruit-banner';
-            var rcBadge = document.createElement('b');
-            rcBadge.textContent = window.t('rc_badge');
-            rcBox.appendChild(rcBadge);
+            var flagLine = function (badgeKey, descKey, cls) {
+                var line = document.createElement('div');
+                line.className = 'rc-line' + (cls ? ' ' + cls : '');
+                var b = document.createElement('b');
+                b.textContent = window.t(badgeKey);
+                var d = document.createElement('span');
+                d.className = 'rc-desc';
+                d.textContent = window.t(descKey);
+                line.appendChild(b);
+                line.appendChild(d);
+                rcBox.appendChild(line);
+            };
+            flagLine('rc_badge', 'rc_badge_desc');
             if (typeof club.recruit_msg === 'string' && club.recruit_msg.trim()) {
-                var rcMsg = document.createElement('span');
+                var rcMsg = document.createElement('div');
+                rcMsg.className = 'rc-msg';
                 rcMsg.textContent = club.recruit_msg.trim();
                 rcBox.appendChild(rcMsg);
             }
+            if (window.isDropInActive(club)) flagLine('rc_drop_in', 'rc_drop_in_desc', 'rc-drop-in');
             recruitArea.appendChild(rcBox);
             if (canManage) {
                 var rcHint = document.createElement('div');
@@ -559,7 +579,7 @@ window.openClubDetail = function (id, opts) {
     //   급구 — 새로 올리기는 인증된 팀만(서버 postUrgent 도 unverified 로 거절한다).
     //          떠 있으면 '급구 수정'(같은 폼을 채워서) + '급구 내리기'. 내리기는 인증이
     //          풀린 팀도 할 수 있어야 해서 인증 여부와 상관없이 보인다.
-    //   모집 — 인증 여부와 상관없이 켜고 끈다.
+    //   식구 모집 — 인증 여부와 상관없이 켜고 끈다. 켜져 있으면 '식구 모집 수정'(채운 폼) + '마감'.
     var actionBtns = document.querySelector('.action-buttons');
     var existingFlags = document.getElementById('clubFlagActions');
     if (existingFlags) existingFlags.remove();
@@ -581,8 +601,12 @@ window.openClubDetail = function (id, opts) {
         } else if (club.is_verified) {
             addFlagBtn('flag-btn-urgent', window.t('cd_urgent_on'), function () { window.openUrgentForm(club); });
         }
-        addFlagBtn('flag-btn-recruit', window.t(window.isRecruitingActive(club) ? 'rc_off' : 'rc_on'),
-            function () { window.toggleClubRecruiting(club); });
+        if (window.isRecruitingActive(club)) {
+            addFlagBtn('flag-btn-recruit', window.t('rc_edit'), function () { window.openRecruitForm(club); });
+            addFlagBtn('flag-btn-recruit', window.t('rc_off'), function () { window.closeClubRecruiting(club); });
+        } else {
+            addFlagBtn('flag-btn-recruit', window.t('rc_on'), function () { window.openRecruitForm(club); });
+        }
         actionBtns.appendChild(flags);
     }
 
@@ -795,88 +819,6 @@ window.copyAddress = function (addr) {
     }
 };
 
-// ── Urgent ticker ──
-
-// 몇 번 불러도 같은 결과여야 한다 — 급구를 켜고 끈 뒤·팀을 지운 뒤 다시 부른다.
-// 예전엔 목록을 비우지 않고 덧붙이고, 굴리는 타이머도 하나씩 더 늘렸다.
-var urgentTickerTimer = null;
-
-window.initUrgentTicker = function () {
-    var tickerContainer = document.getElementById('urgentTicker');
-    var tickerList = document.getElementById('tickerList');
-    if (!tickerContainer || !tickerList) return;
-
-    // 이전 벌 정리: 타이머 · 항목 · 굴린 위치
-    if (urgentTickerTimer) { clearInterval(urgentTickerTimer); urgentTickerTimer = null; }
-    tickerList.innerHTML = '';
-    tickerList.style.transition = 'none';
-    tickerList.style.top = '0px';
-
-    // 곧 끝나는 급구가 먼저(기한 없는 예전 급구는 맨 뒤). filter 에 함수를 그대로 넘기면
-    // 두 번째 인자(index)가 nowMs 로 들어간다 — 감싸서 부른다.
-    var urgentClubs = window.urgentTickerOrder((window.clubs || []).filter(function (c) { return window.isUrgentActive(c); }));
-    var uniqueTickerList = [];
-    var processedTeams = {};
-
-    urgentClubs.forEach(function (c) {
-        if (!processedTeams[c.name]) {
-            uniqueTickerList.push(c);
-            processedTeams[c.name] = true;
-        }
-    });
-
-    if (!uniqueTickerList.length) {
-        tickerContainer.style.display = 'none';
-        return;
-    }
-    // 픽업 탭에선 숨긴다(tabs.js 가 동호회로 돌아올 때 항목이 있으면 다시 보인다).
-    var onClubsTab = !window.currentTab || window.currentTab === 'clubs';
-    tickerContainer.style.display = onClubsTab ? 'flex' : 'none';
-    setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
-
-    uniqueTickerList.forEach(function (c) {
-        var li = document.createElement('li');
-        li.className = 'ticker-item';
-        // XSS 방지: c.name / c.urgent_msg를 textContent로. 마감은 이름 바로 뒤 — 문구가 길어
-        // 말줄임(…)으로 잘려도 '언제까지'는 보이게.
-        var nameB = document.createElement('b');
-        nameB.textContent = '[' + (c.name || '') + ']';
-        li.appendChild(nameB);
-        var until = window.urgentDeadlineLabel(c);
-        if (until) {
-            var untilSpan = document.createElement('span');
-            untilSpan.className = 'ticker-until';
-            untilSpan.textContent = until;
-            li.appendChild(untilSpan);
-        }
-        li.appendChild(document.createTextNode(' ' + (c.urgent_msg || '')));
-        li.onclick = function () { window.openClubDetail(c.id); };
-        tickerList.appendChild(li);
-    });
-
-    if (uniqueTickerList.length > 1) {
-        var tickerHeight = 44;
-        var currentIndex = 0;
-        urgentTickerTimer = setInterval(function () {
-            currentIndex++;
-            tickerList.style.top = '-' + (currentIndex * tickerHeight) + 'px';
-
-            if (currentIndex === uniqueTickerList.length) {
-                setTimeout(function () {
-                    tickerList.style.transition = 'none';
-                    tickerList.style.top = '0px';
-                    currentIndex = 0;
-                    setTimeout(function () { tickerList.style.transition = 'top 0.5s ease-in-out'; }, 50);
-                }, 500);
-            }
-        }, 3000);
-
-        var firstClone = tickerList.children[0].cloneNode(true);
-        firstClone.onclick = function () { window.openClubDetail(uniqueTickerList[0].id); };
-        tickerList.appendChild(firstClone);
-    }
-};
-
 // Delete a club (owner or admin only; rules enforce this)
 window.deleteClub = async function (club) {
     if (!club || !club.id) return;
@@ -910,7 +852,7 @@ window.deleteClub = async function (club) {
 
         // Re-render markers — initMarkers 가 이전 마커·라벨·원을 먼저 걷는다
         if (window.initMarkers) window.initMarkers();
-        if (window.initUrgentTicker) window.initUrgentTicker();
+        if (window.refreshThisWeek) window.refreshThisWeek();
 
         window.showToast(window.t('cd_deleted'));
     } catch (e) {
@@ -935,10 +877,10 @@ function urgentTimestamp(ms) {
     return (fs && fs.Timestamp) ? fs.Timestamp.fromMillis(ms) : ms;
 }
 
-// 메모리의 팀 객체(allClubs·clubs 가 같은 객체를 나눠 쓴다)를 고치고 지도·티커·시트를 다시 그린다.
+// 메모리의 팀 객체(allClubs·clubs 가 같은 객체를 나눠 쓴다)를 고치고 지도·'여기 자리 있어요?'·시트를 다시 그린다.
 function refreshAfterFlagChange(club) {
     window.initMarkers();
-    if (window.initUrgentTicker) window.initUrgentTicker();
+    if (window.refreshThisWeek) window.refreshThisWeek();
     if (window.clubSheetShows(club)) window.openClubDetail(club.id, { silent: true });
 }
 
@@ -1145,37 +1087,114 @@ window.closeClubUrgent = async function (club) {
     }
 };
 
-// ── 회원 모집 켜기/끄기 ──
-// 팀 관리자가 직접 쓴다(인증 여부 상관없음). 켤 때는 문구(선택)를 받고 recruit_at 을
-// 서버 시각으로 — 규칙이 그걸 요구하고, 정리(sweepClubFlags)가 거기서 60일을 센다.
-window.toggleClubRecruiting = async function (club) {
+// ── 🍚 식구 모집 폼 ──
+// 팀 관리자가 직접 쓴다(인증 여부 상관없음). 문구(선택, 60자 · 링크/전화번호 금지) +
+// 🥄 맛보기 환영 체크. 켤 때·고칠 때 늘 recruit_at 을 서버 시각으로 — 규칙이 켤 때·문구를
+// 바꿀 때 그걸 요구하고, 정리(sweepClubFlags)가 거기서 60일을 센다.
+// 끌 때는 is_recruiting 만 false — 문구·맛보기는 남겨 두고 다음에 켤 때 채워 쓴다.
+
+function hideRecruitForm() {
+    var overlay = document.getElementById('recruitFormOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+window.closeRecruitForm = function () {
+    hideRecruitForm();
+    if (window.backNav) window.backNav.closed('recruitForm');
+};
+
+window.openRecruitForm = function (club) {
     if (!window.canModifyClub || !window.canModifyClub(club)) return;
-    var ref = window.firebaseDB.collection('clubs').doc(String(club.id));
+    var editing = window.isRecruitingActive(club);
+    var overlay = document.getElementById('recruitFormOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'recruitFormOverlay';
+        overlay.className = 'reg-modal-overlay';
+        document.body.appendChild(overlay);
+    }
+    // 고정 마크업만 innerHTML, 문구는 textContent
+    overlay.innerHTML =
+        '<div class="reg-modal-content recruit-form" role="dialog" aria-modal="true" aria-labelledby="rcTitle">' +
+            '<div class="reg-modal-header">' +
+                '<h3 id="rcTitle"></h3>' +
+                '<span class="reg-modal-close" role="button" tabindex="0" aria-label="' + window.escapeHtml(window.t('dlg_close')) + '">&times;</span>' +
+            '</div>' +
+            '<div class="reg-modal-body">' +
+                '<div class="reg-form-group">' +
+                    '<label for="rcMsg" id="rcMsgLabel"></label>' +
+                    '<input type="text" id="rcMsg" maxlength="60" autocomplete="off">' +
+                '</div>' +
+                '<label class="rc-check"><input type="checkbox" id="rcDropIn"><span id="rcDropInLabel"></span></label>' +
+                '<div class="ug-auto-off" id="rcAutoOff"></div>' +
+                '<button type="button" id="rcSubmit" class="reg-submit-btn"></button>' +
+            '</div>' +
+        '</div>';
+    var $ = function (id) { return document.getElementById(id); };
+    $('rcTitle').textContent = window.t(editing ? 'rc_edit' : 'rc_on');
+    $('rcMsgLabel').textContent = window.t('rc_msg_label');
+    $('rcDropInLabel').textContent = window.t('rc_drop_in_ask');
+    $('rcAutoOff').textContent = window.t('rc_auto_off');
+    $('rcSubmit').textContent = window.t(editing ? 'rc_save' : 'rc_on');
+    var msgInput = $('rcMsg');
+    msgInput.placeholder = window.t('rc_msg_hint');
+    msgInput.value = typeof club.recruit_msg === 'string' ? club.recruit_msg.trim() : '';
+    $('rcDropIn').checked = club.recruit_drop_in === true;
+
+    overlay.querySelector('.reg-modal-close').onclick = window.closeRecruitForm;
+    overlay.querySelector('.reg-modal-close').onkeydown = function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.closeRecruitForm(); }
+    };
+    $('rcSubmit').onclick = function () { submitRecruitForm(club, editing); };
+    overlay.style.display = 'flex';
+    if (window.backNav) window.backNav.open('recruitForm', hideRecruitForm);
+    setTimeout(function () { msgInput.focus(); }, 0);
+};
+
+async function submitRecruitForm(club, editing) {
+    var msgInput = document.getElementById('rcMsg');
+    var problem = window.recruitMsgProblem(msgInput.value);
+    if (problem) {
+        window.fieldError(msgInput, window.t('ug_err_' + problem));
+        return;
+    }
+    var msg = msgInput.value.trim();
+    var dropIn = !!document.getElementById('rcDropIn').checked;
+    var btn = document.getElementById('rcSubmit');
+    var label = btn.textContent;
+    btn.textContent = window.t('processing');
+    btn.disabled = true;
     try {
-        if (window.isRecruitingActive(club)) {
-            await ref.update({ is_recruiting: false });
-            club.is_recruiting = false;
-        } else {
-            var v = await window.nzPrompt({
-                title: window.t('rc_on'),
-                message: window.t('rc_auto_off'),
-                fields: [{ name: 'msg', value: club.recruit_msg || '', placeholder: window.t('rc_msg_hint'), maxLength: window.URGENT_MSG_MAX }],
-                confirm: window.t('rc_on'),
-                validate: function (x) {
-                    var p = window.recruitMsgProblem(x.msg);
-                    return p ? { msg: window.t('ug_err_' + p) } : null;
-                }
-            });
-            if (!v) return;
-            await ref.update({ is_recruiting: true, recruit_msg: v.msg, recruit_at: window.firebaseServerTimestamp() });
-            club.is_recruiting = true;
-            club.recruit_msg = v.msg;
-            club.recruit_at = urgentTimestamp(Date.now());
-            if (window.track) window.track('recruit_on', { club_id: club.id });
-        }
+        await window.firebaseDB.collection('clubs').doc(String(club.id)).update({
+            is_recruiting: true, recruit_msg: msg, recruit_drop_in: dropIn, recruit_at: window.firebaseServerTimestamp()
+        });
+        club.is_recruiting = true;
+        club.recruit_msg = msg;
+        club.recruit_drop_in = dropIn;
+        club.recruit_at = urgentTimestamp(Date.now());
+        window.closeRecruitForm();
+        window.showToast(window.t('rc_saved'));
+        if (window.track) window.track('recruit_on', { club_id: club.id, mode: editing ? 'edit' : 'create', drop_in: dropIn ? 1 : 0 });
         refreshAfterFlagChange(club);
     } catch (e) {
-        console.error(e);
+        console.warn('식구 모집 저장 실패:', e && e.message);
+        window.showToast(window.t('cd_update_error'));
+    } finally {
+        btn.textContent = label;
+        btn.disabled = false;
+    }
+}
+
+// 식구 모집 마감 — { is_recruiting:false } 하나만
+window.closeClubRecruiting = async function (club) {
+    if (!window.canModifyClub || !window.canModifyClub(club)) return;
+    try {
+        await window.firebaseDB.collection('clubs').doc(String(club.id)).update({ is_recruiting: false });
+        club.is_recruiting = false;
+        window.showToast(window.t('rc_closed'));
+        refreshAfterFlagChange(club);
+    } catch (e) {
+        console.warn('식구 모집 마감 실패:', e && e.message);
         window.showToast(window.t('cd_update_error'));
     }
 };

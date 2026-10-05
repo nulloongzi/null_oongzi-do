@@ -1,9 +1,9 @@
 // urgent.js
-// 급구 · 회원 모집의 순수 계산(화면을 만지지 않는다). classic script, window.* 전역.
+// 급구 · 식구 모집의 순수 계산(화면을 만지지 않는다). classic script, window.* 전역.
 //   - 급구 문구 검사(urgentMsgProblem) — functions/lib/pure.js · 앱과 같은 정규식
 //   - 다가오는 운동 고르기(urgentNextSessions) — 급구 폼의 운동 칩
-//   - 마감 표시(urgentDeadlineParts / urgentDeadlineLabel) — 티커·상세 배너
-//   - 티커 순서(urgentTickerOrder) — 곧 끝나는 급구가 먼저
+//   - 마감 표시(urgentDeadlineParts / urgentDeadlineLabel) — 상세 배너
+//   (예전 급구 티커는 🍚 여기 자리 있어요?(this-week.js)로 바뀌었다 — 순서도 거기서 시간순)
 // 화면(폼·버튼)은 club-detail.js 가 그린다.
 // Depends on: dom-utils.js (window.tsMillis). i18n.js(window.tf · i18nDay)는 라벨을 만들 때만.
 
@@ -117,18 +117,7 @@
         return window.tf(p.key, { time: p.params.time, n: p.params.n, day: dayName });
     };
 
-    // 티커 순서: 곧 끝나는 급구가 먼저, 기한 없는 예전 급구는 맨 뒤(그 안에선 원래 순서).
-    window.urgentTickerOrder = function (clubs) {
-        return (clubs || []).map(function (c, i) {
-            var u = window.tsMillis(c && c.urgent_until);
-            return { c: c, i: i, u: u == null ? Infinity : u };
-        }).sort(function (a, b) {
-            if (a.u !== b.u) return a.u < b.u ? -1 : 1;
-            return a.i - b.i;
-        }).map(function (x) { return x.c; });
-    };
-
-    // 회원 모집 중인가. 단순한 표시라 is_recruiting 하나로 본다(pure.js · 앱과 같다).
+    // 🍚 식구 모집(회원 모집) 중인가. 단순한 표시라 is_recruiting 하나로 본다(pure.js · 앱과 같다).
     window.isRecruitingActive = function (club) {
         return !!club && club.is_recruiting === true;
     };

@@ -798,6 +798,7 @@ window.submitRegistration = async function () {
 
         // Re-render markers (수정/등록 모두) — initMarkers 가 이전 마커·라벨·원을 먼저 걷는다
         if (window.initMarkers) window.initMarkers();
+        if (window.refreshThisWeek) window.refreshThisWeek(); // 일정이 바뀌었을 수 있다
 
         if (window.track) window.track('club_register', { mode: isEditing ? 'edit' : 'create' });
 

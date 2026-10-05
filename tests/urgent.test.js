@@ -280,17 +280,3 @@ describe('urgentDeadlineParts / Label — 마감 표시', () => {
         delete W.tf; delete W.i18nDay;
     });
 });
-
-describe('urgentTickerOrder — 곧 끝나는 급구가 먼저', () => {
-    test('기한 순, 예전 급구는 맨 뒤(원래 순서 유지)', () => {
-        const list = [
-            { id: 'legacy1' },
-            { id: 'late', urgent_until: ts(NOW + 3 * D) },
-            { id: 'soon', urgent_until: NOW + H },
-            { id: 'legacy2' },
-            { id: 'mid', urgent_until: ts(NOW + D) }
-        ];
-        assert.deepStrictEqual(plain(W.urgentTickerOrder(list).map((c) => c.id)),
-            ['soon', 'mid', 'late', 'legacy1', 'legacy2']);
-    });
-});

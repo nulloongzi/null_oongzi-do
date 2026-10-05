@@ -650,7 +650,7 @@ test('소셜 로그인은 /auth/callback/ 으로 돌아오도록 요청한다', 
 
 // 급구는 운동 한 번에 묶인다: 시간표에서 다가오는 운동 칩(3개) + '다른 날'. 문구 검사는
 // 서버와 같은 규칙으로 칸 아래에 먼저 알리고, 통과하면 postUrgent 로만 올린다(직접 쓰기 X).
-test('급구 폼: 운동 칩 · 문구 검사 · postUrgent 호출 · 티커 마감 표시', async ({ page }) => {
+test('급구 폼: 운동 칩 · 문구 검사 · postUrgent 호출 · 여기 자리 있어요? 띠', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => {
         window.currentUser = { uid: 'm1' };
@@ -692,10 +692,174 @@ test('급구 폼: 운동 칩 · 문구 검사 · postUrgent 호출 · 티커 마
     expect(call.data.msg).toBe('센터 1명');
     expect(call.data.until).toBeGreaterThan(Date.now());
 
-    // 올라간 급구는 티커에 이름 · 마감 · 문구로
-    const item = page.locator('#tickerList .ticker-item').first();
-    await expect(item).toContainText('스모크급구');
-    await expect(item.locator('.ticker-until')).toHaveText(/\d{2}:\d{2}/);
+    // 올라간 급구는 '여기 자리 있어요?' 띠에 뜬다(예전 급구 티커 자리)
+    await expect(page.locator('#thisWeekStrip')).toBeVisible();
+    await expect(page.locator('#twStripRoll')).toContainText('스모크급구');
+    await expect(page.locator('#twStripRoll')).toContainText('센터 1명');
+});
+
+// 🍚 여기 자리 있어요? — 띠(갈 곳 수 + 다가오는 줄) → 시트(종류·날짜 칩, 날짜별 줄) →
+// 줄 누르면 상세, '연락하기'는 contact_click {via:'this_week', flag}.
+test('여기 자리 있어요?: 띠 · 시트 칩 · 줄 → 상세 · 연락 계측 (폰 폭)', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.__tracks = [];
+        window.track = function (name, params) { window.__tracks.push({ name, params }); };
+        window.__opened = [];
+        window.openClubDetail = function (id) { window.__opened.push(['club', id]); };
+        window.openPickupDetail = function (id) { window.__opened.push(['pickup', id]); };
+        window.switchTab = function (tab) { window.currentTab = tab; };
+        // 연락 링크는 새 창을 열지 않게(계측만 본다)
+        document.addEventListener('click', (e) => { if (e.target.closest('.tw-contact')) e.preventDefault(); }, true);
+        const now = Date.now();
+        const inDays = (n, h) => { const d = new Date(now); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, h, 0).getTime(); };
+        window.clubs = [
+            { id: 'tw-guest', name: '스모크급구팀', address: '서울 광진구 능동로', insta: 'tw_guest',
+              schedule: '월화수목금토일 19:00~21:00',
+              is_urgent: true, urgent_msg: '레프트 1명', urgent_until: { toMillis: () => inDays(1, 21) } },
+            { id: 'tw-drop', name: '스모크맛보기팀', address: '경기 성남시 분당구', link: 'https://example.org/join',
+              schedule: '월화수목금토일 10:00~12:00', is_recruiting: true, recruit_drop_in: true, recruit_msg: '초보 환영' }
+        ];
+        window.allClubs = window.clubs;
+        window.pickupGames = [{ id: 'tw-spot', title: '스모크픽업크루', venue_name: '뚝섬 체육관',
+            schedule: '월화수목금토일 20:00~22:00', contact_link: 'https://open.example.org/room' }];
+        window.refreshThisWeek();
+    });
+    const strip = page.locator('#thisWeekStrip');
+    await expect(strip).toBeVisible();
+    expect(await strip.locator('#twStripTitle').textContent())
+        .toBe(await page.evaluate(() => window.tf('tw_entry', { n: 3 })));
+    await expect(page.locator('#twStripRoll')).not.toBeEmpty();
+
+    await strip.click();
+    const sheet = page.locator('#thisWeekOverlay');
+    await expect(sheet).toBeVisible();
+    await expect(page.locator('#twKindChips .chip')).toHaveCount(3);
+    expect(await page.locator('#twDayChips .chip').count()).toBeGreaterThanOrEqual(8); // 7일 전체 + 7일
+    const rows = page.locator('#twBody .tw-row');
+    // 급구 1 + 맛보기 3 + 픽업 3
+    await expect(rows).toHaveCount(7);
+    await expect(page.locator('#twBody .tw-kind-guest .tw-row-time')).toHaveText(/19:00.21:00/);
+
+    // 폰 폭: 시트·줄이 가로로 넘치지 않는다
+    const overflow = await page.evaluate(() => {
+        const sh = document.querySelector('.tw-sheet');
+        const r = sh.getBoundingClientRect();
+        const rowOver = [...document.querySelectorAll('.tw-row')].some((x) => x.scrollWidth > x.clientWidth + 1);
+        return { right: r.right, vw: window.innerWidth, rowOver, docOver: document.documentElement.scrollWidth > window.innerWidth };
+    });
+    expect(overflow.right).toBeLessThanOrEqual(overflow.vw);
+    expect(overflow.rowOver).toBe(false);
+    expect(overflow.docOver).toBe(false);
+
+    // 종류 칩: 픽업 끄기 → 픽업 줄이 빠진다
+    await page.locator('#twKindChips .chip').nth(2).click();
+    await expect(rows).toHaveCount(4);
+    await expect(page.locator('#twBody .tw-kind-pickup')).toHaveCount(0);
+    // 날짜 칩: 내일 하루 → 그날 것만(급구 + 맛보기 1)
+    await page.locator('#twDayChips .chip').nth(2).click();
+    await expect(rows).toHaveCount(2);
+    await page.locator('#twDayChips .chip').nth(0).click();
+    await expect(rows).toHaveCount(4);
+
+    // 연락하기: 상세의 첫 연락과 같은 곳 + via/flag
+    const guestContact = page.locator('#twBody .tw-kind-guest .tw-contact');
+    await expect(guestContact).toHaveAttribute('href', 'https://instagram.com/tw_guest');
+    await guestContact.click();
+    await expect(sheet).toBeVisible(); // 연락은 줄 누르기(상세 열기)와 따로
+    const dropContact = page.locator('#twBody .tw-kind-drop_in .tw-contact').first();
+    await expect(dropContact).toHaveAttribute('href', 'https://example.org/join');
+    await dropContact.click();
+    const tracks = await page.evaluate(() => window.__tracks.filter((t) => t.name === 'contact_click').map((t) => t.params));
+    expect(tracks).toEqual([
+        { channel: 'instagram', club_id: 'tw-guest', source: 'club', via: 'this_week', flag: 'guest' },
+        { channel: 'link', club_id: 'tw-drop', source: 'club', via: 'this_week', flag: 'drop_in' }
+    ]);
+
+    // 줄 누르기 → 시트 닫고 상세
+    await page.locator('#twBody .tw-kind-guest').click();
+    await expect(sheet).toBeHidden();
+    expect(await page.evaluate(() => window.__opened)).toEqual([['club', 'tw-guest']]);
+
+    // 픽업 줄 → 픽업 탭으로 옮겨 픽업 상세. 픽업 연락은 단톡 링크 + flag 'pickup'
+    await strip.click();
+    await page.locator('#twBody .tw-kind-pickup .tw-contact').first().click();
+    await page.locator('#twBody .tw-kind-pickup').first().click();
+    expect(await page.evaluate(() => [window.currentTab, window.__opened[1]])).toEqual(['pickup', ['pickup', 'tw-spot']]);
+    const last = await page.evaluate(() => window.__tracks.filter((t) => t.name === 'contact_click').pop().params);
+    expect(last).toEqual({ channel: 'link', id: 'tw-spot', source: 'pickup', via: 'this_week', flag: 'pickup' });
+
+    // 갈 곳이 없으면 띠가 사라진다(다시 불러도 같은 결과)
+    await page.evaluate(() => { window.clubs = []; window.pickupGames = []; window.refreshThisWeek(); window.refreshThisWeek(); });
+    await expect(strip).toBeHidden();
+});
+
+// 🍚 식구 모집 폼: 문구(선택) + 🥄 맛보기 체크 + 자동 꺼짐 안내. 켜기·수정은 늘 recruit_at 서버 시각,
+// 끄기는 is_recruiting 하나만.
+test('식구 모집 폼: 문구 검사 · 맛보기 체크 · 저장 · 수정 · 마감', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+        window.currentUser = { uid: 'm1' };
+        window.isAdmin = false;
+        window.canModifyClub = () => true;
+        window.initMarkers = function () {};   // 지도 SDK 없이 돈다
+        window.__writes = [];
+        window.firebaseServerTimestamp = () => 'SERVER_TS';
+        window.firebaseDB = {
+            collection: (c) => ({ doc: (id) => ({ update: (data) => { window.__writes.push({ c, id, data }); return Promise.resolve(); } }) })
+        };
+        const club = { id: 'smoke-rc', name: '스모크식구팀', address: '서울 성북구', schedule: '월화수목금토일 19:00~21:00', admins: ['m1'] };
+        window.clubs = [club];
+        window.allClubs = window.clubs;
+        window.pickupGames = [];
+        window.__club = club;
+        window.openRecruitForm(club);
+    });
+    const t = (k) => page.evaluate((key) => window.t(key), k);
+    await expect(page.locator('#recruitFormOverlay')).toBeVisible();
+    await expect(page.locator('#rcTitle')).toHaveText(await t('rc_on'));
+    await expect(page.locator('#rcDropInLabel')).toHaveText(await t('rc_drop_in_ask'));
+    await expect(page.locator('#rcAutoOff')).toHaveText(await t('rc_auto_off'));
+    await expect(page.locator('#rcDropIn')).not.toBeChecked();
+
+    // 링크는 칸 아래에서 막고 쓰지 않는다
+    await page.locator('#rcMsg').fill('open.kakao.com/o/abc');
+    await page.locator('#rcSubmit').click();
+    await expect(page.locator('#rcMsg')).toHaveClass(/field-invalid/);
+    expect(await page.evaluate(() => window.__writes.length)).toBe(0);
+
+    await page.locator('#rcMsg').fill('  20대 여성  ');
+    await page.locator('#rcDropIn').check();
+    await page.locator('#rcSubmit').click();
+    await expect(page.locator('#recruitFormOverlay')).toBeHidden();
+    expect(await page.evaluate(() => window.__writes[0])).toEqual({
+        c: 'clubs', id: 'smoke-rc',
+        data: { is_recruiting: true, recruit_msg: '20대 여성', recruit_drop_in: true, recruit_at: 'SERVER_TS' }
+    });
+    // 맛보기 팀은 '여기 자리 있어요?' 띠에 들어간다
+    await expect(page.locator('#thisWeekStrip')).toBeVisible();
+    await expect(page.locator('#twStripRoll')).toContainText('스모크식구팀');
+
+    // 켜진 채 다시 열면 '식구 모집 수정' + 채운 값. (닫을 때 뒤로가기 칸을 비우는 history.go 가
+    // 끝난 뒤에 연다 — 사람 손으로는 그보다 빨리 다시 열 수 없다)
+    await page.waitForTimeout(300);
+    await page.evaluate(() => window.openRecruitForm(window.__club));
+    await expect(page.locator('#rcTitle')).toHaveText(await t('rc_edit'));
+    await expect(page.locator('#rcSubmit')).toHaveText(await t('rc_save'));
+    await expect(page.locator('#rcMsg')).toHaveValue('20대 여성');
+    await expect(page.locator('#rcDropIn')).toBeChecked();
+    await page.locator('#rcDropIn').uncheck();
+    await page.locator('#rcSubmit').click();
+    await expect(page.locator('#recruitFormOverlay')).toBeHidden();
+    expect(await page.evaluate(() => window.__writes[1].data)).toEqual(
+        { is_recruiting: true, recruit_msg: '20대 여성', recruit_drop_in: false, recruit_at: 'SERVER_TS' });
+    await expect(page.locator('#thisWeekStrip')).toBeHidden(); // 맛보기를 끄면 빠진다
+
+    // 마감: is_recruiting 하나만
+    await page.evaluate(() => window.closeClubRecruiting(window.__club));
+    await expect.poll(() => page.evaluate(() => window.__writes.length)).toBe(3);
+    expect(await page.evaluate(() => window.__writes[2].data)).toEqual({ is_recruiting: false });
 });
 
 // 인증 신청 칸은 미인증 팀의 '관리자'(admins)에게 — 처음 등록한 사람만이 아니다.

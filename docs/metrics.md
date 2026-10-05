@@ -55,6 +55,17 @@
 | 사용자 속성 `ui_lang` | 시작 시 + 전환 시 | `ko` \| `en` | `i18n.js` / `main.dart`·`i18n.dart` |
 | `sign_up` | **소셜 첫 로그인도** (`isNewUser`) | `method` | `auth.js`·`social-auth.js` / `login_screen.dart` |
 
+### 2026-10 추가 — 연락 출처 · 식구 모집
+
+| 이벤트 | 언제 | 파라미터 | 웹 / 앱 |
+|---|---|---|---|
+| `contact_click` | 인스타·링크·단톡으로 연락(NSM) | 기존 `channel`(`instagram`\|`link`), `source`(`club`\|`pickup`), `club_id`/`id` + **`via`**: `detail`(상세 시트·픽업 목록 카드 — 예전부터 있던 자리) \| `this_week`('🍚 여기 자리 있어요?' 줄의 '연락하기') + **`flag`**: 누른 순간 팀 상태 `guest`(게스트 급구 떠 있음) \| `drop_in`(식구 모집 + 맛보기) \| `recruit`(식구 모집) \| `none`, 픽업은 늘 `pickup` | `club-detail.js`·`pickup-detail.js`·`pickup-ui.js`·`this-week-ui.js` / 앱 같은 이름·값 |
+| `recruit_on` | 식구 모집 폼 저장(켜기·수정) | `club_id`, `mode`(`create`\|`edit`), `drop_in`(1/0) | `club-detail.js` |
+
+- 읽는 법: '여기 자리 있어요?'가 물꼬를 트는지 = `contact_click` 중 `via = this_week` 사용자 수.
+  급구·맛보기 표시가 연락을 부르는지 = `flag` 별 연락 사용자(조회 쪽엔 flag 가 없으니 비율이 아니라 양으로 본다).
+- `via`·`flag` 가 없는 `contact_click` 은 이 변경 전 웹·앱이다.
+
 그 밖의 이벤트(조회·연락·공유·등록·밥친구 등)는 코드의 `track(` / `Track.event(` 를 grep 하면 전부 나온다.
 **새 이벤트는 웹·앱이 같은 이름·같은 파라미터**로 보낸다 — 플랫폼 비교가 그걸로 된다.
 
@@ -80,9 +91,9 @@
 GA 는 **맞춤 측정기준으로 등록한 파라미터만** 보고서·탐색에서 쪼갤 수 있고, **등록한 날부터만** 모인다(소급 없음).
 2026-09-29 기준 등록 0개였다 → 그 전의 파라미터별 분해는 영영 볼 수 없다.
 
-- **이벤트 범위**: `has_reel`, `source`, `channel`, `type`, `mode`, `method`, `scope`, `six`, `english`, `day`, `target`, `level`, `to`, `region`, `has_keyword`
+- **이벤트 범위**: `has_reel`, `source`, `channel`, `type`, `mode`, `method`, `scope`, `six`, `english`, `day`, `target`, `level`, `to`, `region`, `has_keyword`, `via`, `flag`
 - **사용자 범위**: `ui_lang`
-- 등록 현황: 2026-09-29 에 `region`·`has_keyword` 를 뺀 14개 등록 완료(앞 6개는 그 전날). `region`·`has_keyword` 는 추가로 등록할 것.
+- 등록 현황: 2026-09-29 에 `region`·`has_keyword` 를 뺀 14개 등록 완료(앞 6개는 그 전날). `region`·`has_keyword` 는 추가로 등록할 것. `via`·`flag`(2026-10, 연락 출처)도 등록할 것.
   아직 한 번도 수집 안 된 매개변수는 GA 목록에 안 뜨니 이름을 직접 입력한다(철자는 위 표와 코드의 `track(`/`Track.event(` 그대로).
 - 데이터 보관 기간: **14개월**(기본 2개월이면 탐색에서 두 달 전까지만 보인다. 표준 보고서의 집계치는 영향 없음)
 

@@ -83,6 +83,8 @@ service cloud.firestore {
           && (!('is_recruiting' in d) || d.is_recruiting is bool)
           && (!('recruit_msg' in d) || (d.recruit_msg is string && d.recruit_msg.size() <= 60))
           && (!('recruit_at' in d) || d.recruit_at is timestamp)
+          // 🥄 맛보기 환영(체험·게스트도 받음) — 식구 모집이 켜져 있을 때만 화면에 뜬다.
+          && (!('recruit_drop_in' in d) || d.recruit_drop_in is bool)
           && (!('contact' in d) || (d.contact is map
                 && (!('insta' in d.contact) || (d.contact.insta is string && d.contact.insta.size() <= 60))
                 && (!('link' in d.contact) || (d.contact.link is string && d.contact.link.size() <= 500))))
@@ -131,6 +133,7 @@ service cloud.firestore {
     // (sweepClubFlags)가 max(recruit_at, last_verified_at) 로 60일을 세므로, 켜진 채
     // 그 밖의 수정에서도 recruit_at 은 그대로 두거나 지금 시각으로만 바꿀 수 있다 —
     // 앞날짜를 심어 영영 안 꺼지는 모집을 막는다. 끄기는 언제나 된다.
+    // 맛보기(recruit_drop_in)만 바꾸는 건 recruit_at 을 건드리지 않아도 된다(타입은 clubFieldsValid).
     function recruitChangeOk() {
       let after = request.resource.data;
       let before = resource.data;
@@ -205,12 +208,13 @@ service cloud.firestore {
       // 등록자가 곧 1번 관리자다. admins 를 함께 쓰더라도
       // 본인 혼자만 넣을 수 있다 — 만들면서 남을 끼워넣지 못하게.
       // 급구는 서버(postUrgent)만 켜니 새 팀은 꺼진 채로, 기한·차단 필드 없이 들어온다.
-      // 회원 모집도 꺼진 채로 시작한다(켜기는 recruit_at 규칙을 타는 update 로).
+      // 회원 모집도 꺼진 채로 시작한다(켜기는 recruit_at 규칙을 타는 update 로). 맛보기도 꺼진 채.
       allow create: if request.auth != null
                     && request.resource.data.registered_by == request.auth.uid
                     && request.resource.data.is_verified == false
                     && request.resource.data.get('is_urgent', false) == false
                     && request.resource.data.get('is_recruiting', false) == false
+                    && request.resource.data.get('recruit_drop_in', false) == false
                     && !('urgent_until' in request.resource.data)
                     && !('urgent_at' in request.resource.data)
                     && !('urgent_blocked_until' in request.resource.data)

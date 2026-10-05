@@ -135,7 +135,7 @@
             igLink.onclick = function () {
                 if (window.track) {
                     window.track('pickup_contact', { id: spot.id, type: 'insta', sport: spot.sport, has_reel: hasReel }); // 기존 대시보드 연속성 유지
-                    window.track('contact_click', { channel: 'instagram', id: spot.id, source: 'pickup' }); // North Star Metric 보조 지표
+                    window.track('contact_click', { channel: 'instagram', id: spot.id, source: 'pickup', via: 'detail', flag: 'pickup' }); // North Star Metric 보조 지표
                 }
             };
             c.appendChild(infoRow('📷', igLink));
@@ -154,7 +154,7 @@
                 if (window.track) {
                     window.track('pickup_contact', { id: spot.id, type: 'link', sport: spot.sport, has_reel: hasReel });
                     // NSM 전용 이벤트 — 단톡 링크도 연락 전환이므로 channel:'link'로 집계
-                    window.track('contact_click', { channel: 'link', id: spot.id, source: 'pickup' });
+                    window.track('contact_click', { channel: 'link', id: spot.id, source: 'pickup', via: 'detail', flag: 'pickup' });
                 }
             };
             var wrap = el('div', 'ps-rsvp');
@@ -230,6 +230,7 @@
             window.closePickupSheet();
             if (window.renderPickupMarkers) window.renderPickupMarkers();
             if (window.renderPickupList) window.renderPickupList();
+            if (window.refreshThisWeek) window.refreshThisWeek();
         }).catch(function (e) { console.warn('픽업 삭제 실패:', e); window.showToast(t('pk_delete_error')); });
     }
 

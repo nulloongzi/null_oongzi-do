@@ -986,6 +986,31 @@ describe('회원 모집(is_recruiting) — 팀 관리자가 직접, 인증과 �
         await assertFails(as('stranger').collection('clubs').doc('rc-on').update({ is_recruiting: false }));
     });
 
+    test('🥄 맛보기(recruit_drop_in) — 모집과 함께 켜고, 혼자 바꿔도 되고, bool 만', async () => {
+        const ref = as('r1').collection('clubs').doc('rc-unverified');
+        await assertSucceeds(ref.update({
+            is_recruiting: true, recruit_msg: '', recruit_drop_in: true, recruit_at: FieldValue.serverTimestamp()
+        }));
+        // 맛보기만 바꾸는 건 recruit_at 을 다시 찍지 않아도 된다
+        await assertSucceeds(ref.update({ recruit_drop_in: false }));
+        await assertSucceeds(ref.update({ recruit_drop_in: true }));
+        await assertFails(ref.update({ recruit_drop_in: 'yes' }));
+        await assertFails(ref.update({ recruit_drop_in: 1 }));
+        // 끌 때 맛보기·문구는 남겨 둬도 된다(다음에 채워 쓰려고)
+        await assertSucceeds(ref.update({ is_recruiting: false }));
+        // 관리자가 아니면 못 바꾼다
+        await assertFails(as('stranger').collection('clubs').doc('rc-on').update({ recruit_drop_in: true }));
+    });
+
+    test('새 팀은 맛보기를 켠 채 만들 수 없다(빠지거나 false 만)', async () => {
+        const club = { name: 'rc-new-di', registered_by: 'newbie4', is_verified: false };
+        await assertFails(as('newbie4').collection('clubs').doc('rc-new-di-on')
+            .set(Object.assign({}, club, { recruit_drop_in: true })));
+        await assertSucceeds(as('newbie4').collection('clubs').doc('rc-new-di-off')
+            .set(Object.assign({}, club, { recruit_drop_in: false })));
+        await assertSucceeds(as('newbie4').collection('clubs').doc('rc-new-di-none').set(club));
+    });
+
     test('새 팀은 모집을 켠 채 만들 수 없다', async () => {
         const club = { name: 'rc-new', registered_by: 'newbie3', is_verified: false };
         await assertFails(as('newbie3').collection('clubs').doc('rc-new-on')

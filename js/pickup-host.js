@@ -262,6 +262,7 @@
                 await window.loadPickupGames();
                 if (window.renderPickupMarkers) window.renderPickupMarkers();
                 if (window.renderPickupList) window.renderPickupList();
+                if (window.refreshThisWeek) window.refreshThisWeek();
             }
             if (window.track) window.track('pickup_create', { mode: capturedEditId ? 'edit' : 'create' });
         } catch (e) {
