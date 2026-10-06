@@ -19,8 +19,9 @@ Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, '🍚 여기 
 | `updateLabelVisibility()` | map-core | 줌 레벨에 따라 라벨 표시/숨김 (일반 <=5, 급구 <=8) |
 | `openClubDetail(id)` | club-detail | 바텀시트 열기 + 지도 이동 |
 | `renderTimetables(schedule)` | club-detail | 요약 버블 + 풀 타임테이블 렌더링 |
-| `refreshThisWeek()` | this-week-ui | '여기 자리 있어요?' 띠·시트 다시 그리기. 데이터 로드·급구/식구 모집 토글·팀/픽업 삭제·등록 뒤에 부른다. 다시 불러도 타이머 하나 |
+| `refreshThisWeek()` | this-week-ui | '여기 자리 있어요?' 띠·시트 다시 그리기. 데이터 로드·급구/식구 모집 토글·팀/픽업 삭제·등록 뒤에 부른다. 처음 부를 때 1분 다시 계산 타이머를 건다(다시 불러도 타이머 하나) |
 | `thisWeekItems({clubs, pickups, parseText}, nowMs)` | this-week | 순수 — 7일 안 갈 곳(게스트 급구 · 🥄 맛보기 · 픽업). `tests/this-week.test.js` |
+| `twSameItems(a, b)` | this-week | 순수 — 두 항목 목록이 같은지(곳·종류·시각·문구). 1분 다시 계산에서 바뀌었을 때만 다시 그리려고 |
 | `openUrgentForm(club)` | club-detail | 급구 올리기/수정 폼 — 운동 칩(다가오는 3개) + '다른 날', 문구 60자. 올리기는 `postUrgent`(callable)로만. 새로 올리기는 인증된 팀 관리자만 |
 | `closeClubUrgent(club)` | club-detail | 급구 내리기 — 직접 쓰기(`is_urgent:false, urgent_msg:''`, 기한·시각 삭제). 인증이 풀린 팀도 된다 |
 | `openRecruitForm(club)` · `closeClubRecruiting(club)` | club-detail | 🍚 식구 모집 폼(문구 선택 + 🥄 맛보기 체크 + 60일 안내) — 켜기·수정 모두 `recruit_at` 서버 시각 / 마감은 `{is_recruiting:false}` 만. 관리자면 인증 여부 상관없이 |
@@ -78,7 +79,9 @@ Kakao Maps SDK 기반 지도에 동호회 마커, 클러스터러, '🍚 여기 
 (처음엔 '이번 주 차림표'라 불렀다 — 개인 시간표 '식단표'와 헷갈려 바꿨다. 키·파일은 `tw_*` · `this-week*.js`)
 - **띠**: 동호회·픽업 두 탭 모두. `🍚 여기 자리 있어요? · {n}곳 ›`(n = 서로 다른 팀·크루) + 다가오는 3개를
   4초마다 한 줄씩(`수 19:00 · 이름 · 🔥 문구`). 갈 곳이 없으면 숨김. 픽업도 세려고 시작할 때 픽업 스팟을 한 번 읽는다.
-- **시트**: 종류 칩(🔥 게스트 급구 · 🥄 맛보기 · 픽업, 여럿) + 날짜 칩(7일 전체 또는 하루) + 날짜별 줄.
+  페이지를 켜 둔 채로도 마감 지난 급구·끝난 운동이 빠지도록 1분마다 다시 계산하고, 바뀌었을 때만 다시 그린다
+  (`twSameItems`, 앱 `sameThisWeekItems`).
+- **시트**: 종류 칩(🔥 게스트 급구 · 🥄 맛보기 · 픽업, 여럿) + 날짜 칩(7일 전체 또는 하루 — 먼 미래 마감이 있어도 오늘+8일까지만) + 날짜별 줄.
   지금 탭의 지역·필터는 따르지 않는다(따로 보는 목록). 줄 = 시간 · 종류 · 이름 · 곳 · 문구 · '연락하기'.
   줄을 누르면 그 팀/크루 상세(필요하면 탭을 옮긴다), '연락하기'는 상세의 첫 연락과 같은 곳
   (동호회 인스타 → 홈 링크, 픽업 단톡 링크 → 인스타) + `contact_click {via:'this_week', flag}`.
