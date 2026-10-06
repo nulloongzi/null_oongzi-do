@@ -199,9 +199,13 @@
     window.twDayChips = function (items, nowMs) {
         var today = window.twDayKey(nowMs == null ? Date.now() : nowMs);
         var last = today + 6 * DAY;
+        // 서버는 마감을 8일 뒤까지만 받는다. 콘솔에서 먼 날을 넣은 급구가 있어도 칩이 몇 년 치로
+        // 늘어나지 않게 8일째에서 멈춘다(그 항목은 '7일 전체'에 남는다). 앱 thisWeekDays 와 같다.
+        var t0 = new Date(today);
+        var cap = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() + 8).getTime();
         (items || []).forEach(function (it) {
             var k = window.twDayKey(window.twItemTime(it));
-            if (k > last) last = k;
+            if (k > last) last = Math.min(k, cap);
         });
         var out = [];
         var d0 = new Date(today);
@@ -223,5 +227,18 @@
             g.items.push(it);
         });
         return groups;
+    };
+
+    // 두 목록이 같은 항목(같은 곳 · 같은 종류 · 같은 시각 · 같은 문구)을 같은 순서로 담았는지.
+    // 1분마다 다시 계산한 결과가 그대로면 띠를 다시 그리지 않으려고 쓴다(앱 sameThisWeekItems).
+    window.twSameItems = function (a, b) {
+        if (a === b) return true;
+        if (!a || !b || a.length !== b.length) return false;
+        for (var i = 0; i < a.length; i++) {
+            var x = a[i], y = b[i];
+            if (x.refType !== y.refType || x.refId !== y.refId || x.kind !== y.kind ||
+                x.start !== y.start || x.end !== y.end || x.msg !== y.msg) return false;
+        }
+        return true;
     };
 })();

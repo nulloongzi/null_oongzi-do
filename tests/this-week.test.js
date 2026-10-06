@@ -212,3 +212,18 @@ describe('clubFlagMarks — 지도 라벨 앞 표시', () => {
         assert.strictEqual(W.clubFlagMarks({ is_urgent: true, urgent_msg: 'm', urgent_until: until }, NOW), '🔥');
     });
 });
+
+describe('게시 후 다듬기', () => {
+    test('날짜 칩은 먼 미래 마감이 있어도 8일째에서 멈춘다', () => {
+        const far = { kind: 'guest', start: null, end: at(2029, 0, 1, 21, 0), refId: 'far', refType: 'club' };
+        const chips = W.twDayChips([far], NOW);
+        assert.strictEqual(chips.length, 9); // 오늘 + 8일
+    });
+    test('twSameItems — 같으면 true, 끝 시각·종류·개수가 다르면 false', () => {
+        const a = [{ kind: 'guest', start: null, end: 100, refId: 'a', refType: 'club', msg: 'x' }];
+        assert.strictEqual(W.twSameItems(a, [Object.assign({}, a[0])]), true);
+        assert.strictEqual(W.twSameItems(a, [Object.assign({}, a[0], { end: 200 })]), false);
+        assert.strictEqual(W.twSameItems(a, [Object.assign({}, a[0], { kind: 'pickup' })]), false);
+        assert.strictEqual(W.twSameItems(a, []), false);
+    });
+});

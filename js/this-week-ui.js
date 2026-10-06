@@ -92,7 +92,23 @@
         }
         renderStrip();
         if (isSheetOpen()) renderSheet();
+        startMinuteTick();
     };
+
+    // 항목은 시각에 따라 바뀐다(마감이 지난 급구·끝난 운동이 빠진다). 이벤트가 있을 때만 다시
+    // 계산하면 페이지를 켜 둔 채로는 낡은 항목이 남으므로 1분마다 다시 보고, 바뀌었을 때만 그린다.
+    var minuteTimer = null;
+    function startMinuteTick() {
+        if (minuteTimer) return;
+        minuteTimer = setInterval(function () {
+            var next;
+            try { next = computeItems(); } catch (e) { return; }
+            if (window.twSameItems(next, items)) return;
+            items = next;
+            renderStrip();
+            if (isSheetOpen()) renderSheet();
+        }, 60 * 1000);
+    }
 
     // ── 연락(상세의 첫 연락과 같은 곳) ──
     // 동호회: 인스타 → 홈 링크. 픽업: 단톡·신청 링크(주 CTA) → 인스타. 없으면 null(버튼 안 그림)
