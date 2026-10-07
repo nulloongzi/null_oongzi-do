@@ -303,12 +303,16 @@
         ad_rejected: { ko: '❌ 관리자 신청이 받아들여지지 않았어요', en: '❌ Admin request was not accepted' },
         ad_reapply: { ko: '🔄 다시 신청', en: '🔄 Apply again' },
         // 거절 사유 코드(club_admin_requests.reject_reason) → 사람이 읽는 말. 앱 strings.dart 와 같다.
-        // 서버가 쓰는 코드는 full · already_admin · not_found · duplicate 뿐이다.
+        // 서버가 스스로 닫을 때 full · already_admin · not_found · duplicate, 운영자가 고를 때
+        // photo_unclear · photo_unrelated · duplicate · other (functions/lib/pure.js).
         // 모르는 코드(옛 문서의 error 등)나 사유 없는 수동 거절은 사유 줄을 아예 안 보인다.
         ad_reason_full: { ko: '관리자가 이미 3명이에요', en: 'This team already has 3 admins' },
         ad_reason_already_admin: { ko: '이미 이 팀 관리자예요', en: 'You\'re already an admin of this team' },
         ad_reason_not_found: { ko: '팀 정보를 찾지 못했어요', en: 'We couldn\'t find this team' },
         ad_reason_duplicate: { ko: '같은 신청이 이미 들어가 있어요', en: 'The same request is already in' },
+        ad_reason_photo_unclear: { ko: '사진으로는 이 팀 사람인지 확인하지 못했어요', en: 'We couldn\'t tell from the photo that you\'re with this team' },
+        ad_reason_photo_unrelated: { ko: '이 팀과 관련 없는 사진이에요', en: 'The photo isn\'t related to this team' },
+        ad_reason_other: { ko: '확인이 어려워 받아들이지 않았어요', en: 'We couldn\'t confirm this request' },
         ad_full: { ko: '이 팀은 관리자가 벌써 3명이에요', en: 'This team already has 3 admins.' },
         ad_count: { ko: '관리자 {n}/3명', en: 'Admins {n}/3' },
         ad_leave: { ko: '관리자에서 빠지기', en: 'Leave as admin' },

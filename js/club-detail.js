@@ -305,7 +305,10 @@ window.adminRejectReasonText = function (code) {
         full: 'ad_reason_full',
         already_admin: 'ad_reason_already_admin',
         not_found: 'ad_reason_not_found',
-        duplicate: 'ad_reason_duplicate'
+        duplicate: 'ad_reason_duplicate',
+        photo_unclear: 'ad_reason_photo_unclear',
+        photo_unrelated: 'ad_reason_photo_unrelated',
+        other: 'ad_reason_other'
     }[String(code == null ? '' : code)];
     return key ? window.t(key) : '';
 };
