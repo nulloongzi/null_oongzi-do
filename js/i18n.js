@@ -323,7 +323,7 @@
         // 학교 체육관을 쓰는 팀이 많다. 장소+시간표가 같이 공개되면 대관에서 밀린
         // 사람이 누가 쓰는지 알 수 있어, 실제로 민원을 받은 팀이 있었다(2026-09).
         reg_area_only: { ko: '대략적인 위치만 공개', en: 'Show approximate location only' },
-        reg_area_only_desc: { ko: '지도에 정확한 핀 대신 동네 범위로 표시하고, 주소는 시·군·구까지만 보여요. 체육관 이름과 상세 주소는 저장하지 않아요. 학교나 공공 체육관을 빌려 쓰는 팀에 권해요.', en: 'Shows a neighbourhood area instead of an exact pin, and the address only down to the district. The venue name and full address are not stored. Recommended for teams renting school or public gyms.' },
+        reg_area_only_desc: { ko: '지도에 정확한 핀 대신 동네 범위로 표시하고, 주소는 시·군·구까지만 보여요. 체육관 이름과 상세 주소는 저장하지 않아요. 세부 위치를 공개하고 싶지 않은 팀에 권해요.', en: 'Shows a neighbourhood area instead of an exact pin, and the address only down to the district. The venue name and full address are not stored. Recommended for teams that would rather not share their exact location.' },
         reg_area_label_fail: { ko: '이 주소로는 동네 범위를 만들지 못했어요. 지도에서 위치를 찍어 주세요.', en: 'Couldn\'t work out the area from this address. Pick the location on the map.' },
         cd_area_only: { ko: '대략 위치', en: 'Approximate' },
         cd_area_only_note: { ko: '이 팀은 대략적인 위치만 공개해요. 정확한 장소는 팀에 물어봐 주세요.', en: 'This team shares only an approximate location. Ask them for the exact venue.' },
