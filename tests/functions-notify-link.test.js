@@ -140,6 +140,7 @@ Module._load = function (req) {
     return origLoad.apply(this, arguments);
 };
 const fns = require(path.join(process.cwd(), 'functions', 'index.js'));
+const pure = require(path.join(process.cwd(), 'functions', 'lib', 'pure.js'));
 Module._load = origLoad;
 
 after(() => { Object.assign(console, _quiet); });
@@ -201,6 +202,19 @@ describe('신고 알림 링크 (onReportCreated)', () => {
 });
 
 describe('인증 신청 알림 링크 (onVerificationCreated)', () => {
+    test('알림에 ✅승인 / ❌거절 버튼이 붙는다 (k=verify)', async () => {
+        await fns.onVerificationCreated._handler({
+            params: { requestId: 'v9' },
+            data: { ref: makeRef('verification_requests/v9'), data: () => ({ status: 'pending', club_id: 'c9', club_name: '팀9' }) }
+        });
+        const body = JSON.parse(decodeURIComponent(sent[0].body.replace(/^template_object=/, '')));
+        const u = new URL(body.buttons[1].link.web_url);
+        assert.strictEqual(u.searchParams.get('k'), 'verify');
+        assert.strictEqual(u.searchParams.get('a'), 'reject');
+        assert.ok(pure.reviewTokenOk('secret', 'verify', 'v9', u.searchParams.get('t')));
+        assert.match(body.text, /인증관리/);
+    });
+
     test('신청한 팀으로 간다', async () => {
         await fns.onVerificationCreated._handler(snapshotOf('verification_requests/v1', {
             status: 'pending', club_name: '테스트팀', club_id: 'club-xyz'
@@ -302,6 +316,31 @@ describe('관리자 권한 신청 (club_admin_requests)', () => {
         assert.match(body.text, /관리자관리/);
     });
 
+    // 챗봇에 '관리자관리'를 치지 않고도 알림에서 바로 심사한다. 버튼은 우리 사이트의
+    // 확인 페이지로 가고(카카오는 등록된 도메인만 연다), 링크에 서명이 실린다.
+    test('알림에 ✅승인 / ❌거절 버튼이 붙고, 서명된 확인 페이지로 간다', async () => {
+        await fns.onClubAdminRequestCreated._handler({
+            params: { requestId: 'a1' },
+            data: {
+                ref: makeRef('club_admin_requests/a1'),
+                data: () => ({ status: 'pending', club_id: 'club-7', club_name: '테스트팀', photo_url: PHOTO })
+            }
+        });
+        const body = JSON.parse(decodeURIComponent(sent[0].body.replace(/^template_object=/, '')));
+        assert.strictEqual(body.buttons.length, 2);
+        const [ok, no] = body.buttons;
+        assert.match(ok.title, /승인/);
+        assert.match(no.title, /거절/);
+        const u = new URL(ok.link.web_url);
+        assert.strictEqual(u.origin + u.pathname, 'https://do.nulloongzi.com/review.html');
+        assert.strictEqual(u.searchParams.get('k'), 'admin');
+        assert.strictEqual(u.searchParams.get('id'), 'a1');
+        assert.strictEqual(u.searchParams.get('a'), 'approve');
+        assert.ok(pure.reviewTokenOk('secret', 'admin', 'a1', u.searchParams.get('t')));
+        assert.strictEqual(new URL(no.link.web_url).searchParams.get('a'), 'reject');
+        assert.strictEqual(ok.link.web_url, ok.link.mobile_web_url);
+    });
+
     test('목록 카드에 사진 원본 버튼이 있고 썸네일이 안 잘린다', async () => {
         docs['admin_kakao_ids/kakao-1'] = { ok: true };
         queryDocs['club_admin_requests'] = [
@@ -356,7 +395,7 @@ describe('관리자 권한 신청 (club_admin_requests)', () => {
         docs['club_admin_requests/r4'] = { status: 'pending', club_id: 'c4', club_name: '팀', requested_by: 'u-x' };
         docs['clubs/c4'] = { name: '팀', admins: ['a'] };
         const c = capture();
-        await fns.chatbotAdminReject(seedAdminCall({ request_id: 'r4' }), c.res);
+        await fns.chatbotAdminReject(seedAdminCall({ request_id: 'r4', reason: 'photo_unclear' }), c.res);
         assert.deepStrictEqual(docs['clubs/c4'].admins, ['a']);
         assert.strictEqual(docs['club_admin_requests/r4'].status, 'rejected');
     });
@@ -409,7 +448,7 @@ describe('관리자 신청 — 한 트랜잭션 처리 · 중복 거르기 · �
         docs['clubs/k2'] = { name: '팀', admins: [] };
         await fns.chatbotAdminApprove(call({ request_id: 'q2' }), capture().res);
         const c = capture();
-        await fns.chatbotAdminReject(call({ request_id: 'q2' }), c.res);
+        await fns.chatbotAdminReject(call({ request_id: 'q2', reason: 'other' }), c.res);
         assert.strictEqual(docs['club_admin_requests/q2'].status, 'approved');
         // admins: [] 는 관리자 없음 — 등록자가 되살아나지 않고 새 사람만
         assert.deepStrictEqual(docs['clubs/k2'].admins, ['u-new']);
@@ -437,11 +476,42 @@ describe('관리자 신청 — 한 트랜잭션 처리 · 중복 거르기 · �
         assert.strictEqual(docs['club_admin_requests/q4'].reject_reason, 'not_found');
     });
 
-    test('손으로 거절하면 사유를 남기지 않는다', async () => {
+    // 거절 사유를 신청자가 본다(앱·웹 ad_reason_*). 사유 없이 눌리면 먼저 사유를 고르게 한다.
+    test('사유 없이 거절을 누르면 사유 버튼만 보이고 아무것도 안 바뀐다', async () => {
         docs['club_admin_requests/q5'] = { status: 'pending', club_id: 'k5', club_name: '팀', requested_by: 'u-x' };
-        await fns.chatbotAdminReject(call({ request_id: 'q5' }), capture().res);
+        const c = capture();
+        await fns.chatbotAdminReject(call({ request_id: 'q5' }), c.res);
+        assert.strictEqual(docs['club_admin_requests/q5'].status, 'pending');
+        const qr = c.get().template.quickReplies;
+        assert.deepStrictEqual(qr.map((q) => q.extra.reason), ['photo_unclear', 'photo_unrelated', 'duplicate', 'other']);
+        // 같은 '관리자거절' 블록으로 사유를 싣고 다시 들어온다 — 새 블록이 필요 없다.
+        assert.ok(qr.every((q) => q.action === 'block' && q.blockId === 'blk-reject' && q.extra.request_id === 'q5'));
+    });
+
+    test('고른 사유를 reject_reason 에 남긴다', async () => {
+        docs['club_admin_requests/q5'] = { status: 'pending', club_id: 'k5', club_name: '팀', requested_by: 'u-x' };
+        const c = capture();
+        await fns.chatbotAdminReject(call({ request_id: 'q5', reason: 'photo_unrelated' }), c.res);
         assert.strictEqual(docs['club_admin_requests/q5'].status, 'rejected');
-        assert.ok(!('reject_reason' in docs['club_admin_requests/q5']));
+        assert.strictEqual(docs['club_admin_requests/q5'].reject_reason, 'photo_unrelated');
+        assert.match(textOf(c), /거절했어요[\s\S]*사유: 관련 없는 사진/);
+    });
+
+    test('모르는 사유(서버 전용 코드 포함)는 받지 않고 다시 고르게 한다', async () => {
+        docs['club_admin_requests/q5'] = { status: 'pending', club_id: 'k5', club_name: '팀', requested_by: 'u-x' };
+        for (const bad of ['full', 'error', '<b>x</b>']) {
+            const c = capture();
+            await fns.chatbotAdminReject(call({ request_id: 'q5', reason: bad }), c.res);
+            assert.strictEqual(docs['club_admin_requests/q5'].status, 'pending', bad);
+            assert.ok(c.get().template.quickReplies.length === 4, bad);
+        }
+    });
+
+    test('이미 처리된 신청에 거절을 누르면 사유 버튼 없이 "이미 처리"', async () => {
+        docs['club_admin_requests/q5'] = { status: 'approved', club_id: 'k5', club_name: '팀', requested_by: 'u-x' };
+        const c = capture();
+        await fns.chatbotAdminReject(call({ request_id: 'q5' }), c.res);
+        assert.match(textOf(c), /이미 처리/);
     });
 
     test('승인·거절하면 증빙 사진을 지우고 photo_deleted_at 을 남긴다', async () => {
@@ -449,7 +519,7 @@ describe('관리자 신청 — 한 트랜잭션 처리 · 중복 거르기 · �
         docs['club_admin_requests/q7'] = { status: 'pending', club_id: 'k6', club_name: '팀', requested_by: 'u7', photo_url: photoOf('u7', 'q.jpg') };
         docs['clubs/k6'] = { name: '팀', admins: [] };
         await fns.chatbotAdminApprove(call({ request_id: 'q6' }), capture().res);
-        await fns.chatbotAdminReject(call({ request_id: 'q7' }), capture().res);
+        await fns.chatbotAdminReject(call({ request_id: 'q7', reason: 'other' }), capture().res);
         assert.deepStrictEqual(deletedObjects, ['admin_request_photos/u6/p.jpg', 'admin_request_photos/u7/q.jpg']);
         assert.strictEqual(docs['club_admin_requests/q6'].photo_deleted_at, '<ts>');
         assert.strictEqual(docs['club_admin_requests/q7'].photo_deleted_at, '<ts>');
@@ -460,8 +530,8 @@ describe('관리자 신청 — 한 트랜잭션 처리 · 중복 거르기 · �
             + encodeURIComponent('verification_photos/u8/v.jpg') + '?alt=media';
         docs['club_admin_requests/q8'] = { status: 'pending', club_id: 'k8', requested_by: 'u8', photo_url: verif };
         docs['club_admin_requests/q9'] = { status: 'pending', club_id: 'k8', requested_by: 'u9', photo_url: photoOf('victim', 'v.jpg') };
-        await fns.chatbotAdminReject(call({ request_id: 'q8' }), capture().res);
-        await fns.chatbotAdminReject(call({ request_id: 'q9' }), capture().res);
+        await fns.chatbotAdminReject(call({ request_id: 'q8', reason: 'other' }), capture().res);
+        await fns.chatbotAdminReject(call({ request_id: 'q9', reason: 'other' }), capture().res);
         assert.deepStrictEqual(deletedObjects, []);
         assert.strictEqual(docs['club_admin_requests/q8'].status, 'rejected');
         assert.ok(!('photo_deleted_at' in docs['club_admin_requests/q8']));

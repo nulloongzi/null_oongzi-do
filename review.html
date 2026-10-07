@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<title>신청 심사 · 누룽지도</title>
+<!--
+  운영자 전용 — 카카오톡 알림(인증 신청 · 관리자 신청)의 ✅승인 / ❌거절 버튼이 여는 확인 페이지.
+  링크에 실린 서명(k, id, t)을 들고 서버 reviewRequest 를 부른다. 링크를 연다고 바로
+  처리되지 않는다 — 여기서 한 번 더 눌러야 한다. 처리는 챗봇 '인증관리' · '관리자관리'와 같은
+  함수가 한다(functions/index.js). Firebase 를 싣지 않는 단독 페이지다.
+-->
+<style>
+  :root{--bg:#FFF8E1;--card:#FFFDE7;--ink:#4E342E;--sub:#8D6E63;--accent:#FAC710;--line:#0000001a;
+    --ok:#2E7D32;--no:#C62828}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    line-height:1.6;font-size:15px}
+  .wrap{max-width:520px;margin:0 auto;padding:24px 16px 64px}
+  h1{font-size:20px;font-weight:800;margin:4px 0 2px}
+  .meta{color:var(--sub);font-size:13px;margin:0 0 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+  .team{font-size:18px;font-weight:800;margin:0}
+  .team a{color:inherit}
+  .sub{color:var(--sub);font-size:13px;margin:2px 0 0}
+  .photo{display:block;margin:12px 0 0;border-radius:12px;overflow:hidden;background:#0000000d}
+  .photo img{display:block;width:100%;max-height:70vh;object-fit:contain}
+  .nophoto{color:var(--sub);font-size:13px;margin:10px 0 0}
+  h2{font-size:15px;font-weight:800;margin:0 0 10px}
+  button{font:inherit;cursor:pointer;border-radius:12px;border:1px solid var(--line);min-height:48px;padding:10px 14px}
+  .primary{width:100%;font-weight:800;border:0}
+  .approve{background:var(--ok);color:#fff}
+  .reject{background:var(--no);color:#fff}
+  .primary:disabled{opacity:.45;cursor:default}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+  .chip{background:#fff;min-height:40px;padding:6px 14px;border-radius:999px;border:1px solid #D7CCC8}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);font-weight:800}
+  .note{font-size:13px;color:var(--sub);margin:8px 0 0}
+  .result{font-size:16px;font-weight:700;white-space:pre-line}
+  .focus{outline:3px solid var(--accent);outline-offset:2px}
+  [hidden]{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">신청 심사</h1>
+  <p class="meta">누룽지도 운영자용 · 카카오톡 알림에서 열렸어요</p>
+
+  <div id="loading" class="card">불러오는 중…</div>
+  <div id="msg" class="card result" hidden></div>
+
+  <div id="body" hidden>
+    <div class="card">
+      <p class="team" id="team"></p>
+      <p class="sub" id="info"></p>
+      <a class="photo" id="photoLink" target="_blank" rel="noopener noreferrer" hidden><img id="photo" alt="증빙 사진"></a>
+      <p class="nophoto" id="noPhoto" hidden>증빙 사진이 없어요.</p>
+    </div>
+
+    <div id="decide">
+      <div class="card" id="approveCard">
+        <h2>승인</h2>
+        <button type="button" class="primary approve" id="approveBtn">✅ 승인하기</button>
+        <p class="note" id="approveNote"></p>
+      </div>
+      <div class="card" id="rejectCard">
+        <h2>거절 — 사유 고르기</h2>
+        <div class="chips" id="reasons" role="group" aria-label="거절 사유"></div>
+        <button type="button" class="primary reject" id="rejectBtn" disabled>❌ 거절하기</button>
+        <p class="note">신청한 사람에게 이 사유가 보여요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+    var ENDPOINT = 'https://us-central1-nulloongzi-do.cloudfunctions.net/reviewRequest';
+    var q = new URLSearchParams(location.search);
+    var link = { k: q.get('k') || '', id: q.get('id') || '', t: q.get('t') || '' };
+    var wanted = q.get('a') === 'reject' ? 'reject' : 'approve';
+    var picked = null;
+    var busy = false;
+
+    function $(id) { return document.getElementById(id); }
+    function show(id, on) { $(id).hidden = !on; }
+    function say(text) {
+        show('loading', false);
+        $('msg').textContent = text;
+        show('msg', true);
+    }
+
+    function call(op, reason) {
+        return fetch(ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ k: link.k, id: link.id, t: link.t, op: op, reason: reason || null })
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (b) {
+                b._status = r.status;
+                return b;
+            });
+        });
+    }
+
+    var STATUS = { approved: '승인됨', rejected: '거절됨', pending: '심사 중' };
+
+    function render(d) {
+        $('title').textContent = d.kind === 'verify' ? '팀 인증 신청' : '팀 관리자 신청';
+        $('team').textContent = d.club_name || '(이름 없음)';
+        if (d.club_url) {
+            var a = document.createElement('a');
+            a.href = d.club_url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = $('team').textContent + ' ›';
+            $('team').textContent = '';
+            $('team').appendChild(a);
+        }
+        var bits = [];
+        if (d.requested_at) bits.push('신청일 ' + new Date(d.requested_at).toLocaleDateString('ko-KR'));
+        if (d.kind === 'admin' && typeof d.admin_count === 'number') {
+            bits.push('지금 관리자 ' + d.admin_count + '/' + (d.admin_max || 3) + '명');
+        }
+        bits.push(STATUS[d.status] || d.status);
+        $('info').textContent = bits.join(' · ');
+
+        if (d.status !== 'pending') {
+            show('loading', false);
+            show('body', true);
+            show('decide', false);
+            say('이미 처리된 신청이에요 (' + (STATUS[d.status] || d.status) + ')'
+                + (d.reject_reason ? '\n사유: ' + d.reject_reason : ''));
+            return;
+        }
+
+        if (d.photo_url) {
+            $('photo').src = d.photo_url;
+            $('photoLink').href = d.photo_url;
+            show('photoLink', true);
+        } else {
+            show('noPhoto', true);
+        }
+        if (d.kind === 'verify') {
+            $('approveNote').textContent = '승인하면 인증 배지가 붙고, 신청한 사람이 이 팀 관리자가 돼요.';
+        } else {
+            $('approveNote').textContent = '승인하면 신청한 사람이 이 팀 정보를 고칠 수 있어요.';
+        }
+
+        var box = $('reasons');
+        (d.reasons || []).forEach(function (r) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'chip';
+            b.textContent = r.label;
+            b.setAttribute('aria-pressed', 'false');
+            b.addEventListener('click', function () {
+                picked = r.code;
+                Array.prototype.forEach.call(box.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+                b.setAttribute('aria-pressed', 'true');
+                $('rejectBtn').disabled = false;
+            });
+            box.appendChild(b);
+        });
+
+        // 알림에서 누른 쪽을 먼저 보인다.
+        if (wanted === 'reject') $('decide').insertBefore($('rejectCard'), $('approveCard'));
+        $(wanted === 'reject' ? 'rejectCard' : 'approveCard').classList.add('focus');
+
+        show('loading', false);
+        show('body', true);
+    }
+
+    function decide(op) {
+        if (busy) return;
+        if (op === 'reject' && !picked) return;
+        busy = true;
+        $('approveBtn').disabled = true;
+        $('rejectBtn').disabled = true;
+        call(op, op === 'reject' ? picked : null).then(function (b) {
+            if (b._status === 403) { say('이 링크로는 처리할 수 없어요. 카카오톡 알림의 버튼으로 다시 열어 주세요.'); return; }
+            // 사유가 빠졌거나 서버 오류면 아무것도 쓰이지 않았다 — 다시 누를 수 있게 둔다.
+            // unprocessable(관리자 신청 정보가 덜 됨)은 거절로 닫을 수 있게 남긴다.
+            if (b.outcome === 'need_reason' || b.outcome === 'error' || b.outcome === 'unprocessable'
+                || b._status >= 500 || !b.outcome) {
+                again(b.message || '처리하지 못했어요. 잠시 후 다시 눌러 주세요.');
+                return;
+            }
+            show('decide', false);
+            say(b.message);
+        }).catch(function () {
+            again('연결이 안 됐어요. 잠시 후 다시 눌러 주세요.');
+        });
+    }
+
+    function again(text) {
+        busy = false;
+        $('approveBtn').disabled = false;
+        $('rejectBtn').disabled = !picked;
+        say(text);
+    }
+
+    $('approveBtn').addEventListener('click', function () { decide('approve'); });
+    $('rejectBtn').addEventListener('click', function () { decide('reject'); });
+
+    if (!link.k || !link.id || !link.t) {
+        say('링크가 온전하지 않아요. 카카오톡 알림의 버튼으로 다시 열어 주세요.');
+        return;
+    }
+    call('info').then(function (d) {
+        if (d._status === 403) { say('이 링크로는 처리할 수 없어요. 카카오톡 알림의 버튼으로 다시 열어 주세요.'); return; }
+        if (d._status !== 200) { say('불러오지 못했어요. 잠시 후 다시 열어 주세요.'); return; }
+        if (!d.found) { say('이 신청을 찾지 못했어요. 지워졌을 수 있어요.'); return; }
+        render(d);
+    }).catch(function () {
+        say('연결이 안 됐어요. 잠시 후 다시 열어 주세요.');
+    });
+})();
+</script>
+</body>
+</html>

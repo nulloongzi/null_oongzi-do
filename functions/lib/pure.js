@@ -310,14 +310,88 @@ function removeClubAdmin(club, uid) {
     return { admins: next, removed: true, reason: null };
 }
 
-// 관리자 신청을 서버가 닫을 때 남기는 거절 사유. 화면이 이 코드를 문구로 바꾼다
-// (웹 i18n ad_reason_* · 앱 같은 키). 목록 밖의 이유(오류 등)로는 거절을 쓰지
+// 운영자가 관리자 신청을 손으로 거절할 때 고르는 사유. 챗봇 '관리자관리'의 거절 버튼과
+// 알림의 거절 링크(review.html)가 같은 목록을 쓴다. label 은 운영자가 보는 짧은 말,
+// 신청자가 보는 문장은 웹 i18n ad_reason_* · 앱 strings.dart 같은 키가 따로 갖는다.
+var ADMIN_MANUAL_REJECT_REASONS = [
+    { code: "photo_unclear", label: "사진으로 확인 안 됨" },
+    { code: "photo_unrelated", label: "관련 없는 사진" },
+    { code: "duplicate", label: "중복 신청" },
+    { code: "other", label: "기타" }
+];
+
+// 관리자 신청에 서버가 남길 수 있는 거절 사유 — 서버가 스스로 닫을 때(full ·
+// already_admin · not_found · duplicate) + 운영자가 고른 것. 화면이 이 코드를 문구로
+// 바꾼다(웹 i18n ad_reason_* · 앱 같은 키). 목록 밖의 이유(오류 등)로는 거절을 쓰지
 // 않는다 — 신청을 pending 으로 두고 운영자가 다시 누르게 한다.
-var ADMIN_REJECT_REASONS = ["full", "already_admin", "not_found", "duplicate"];
+var ADMIN_REJECT_REASONS = ["full", "already_admin", "not_found", "duplicate"]
+    .concat(ADMIN_MANUAL_REJECT_REASONS.map(function (r) { return r.code; })
+        .filter(function (c) { return c !== "duplicate"; }));
 
 function adminRejectReason(reason) {
     var r = String(reason == null ? "" : reason);
     return ADMIN_REJECT_REASONS.indexOf(r) !== -1 ? r : null;
+}
+
+// 운영자가 고를 수 있는 사유인가(챗봇·링크에서 들어온 값 검사). 아니면 null.
+function adminManualRejectReason(reason) {
+    var r = String(reason == null ? "" : reason);
+    for (var i = 0; i < ADMIN_MANUAL_REJECT_REASONS.length; i++) {
+        if (ADMIN_MANUAL_REJECT_REASONS[i].code === r) return r;
+    }
+    return null;
+}
+
+// 팀 인증 거절 사유 — 예전부터 글자 그대로 reject_reason 에 들어가고 화면도 그대로
+// 보여 준다(코드 아님). 챗봇 '인증관리'와 알림 링크가 같은 목록을 쓴다.
+var VERIFY_REJECT_REASONS = ["사진 불분명", "관련 없는 사진", "내용 부족", "중복 신청", "기타 부적합"];
+
+function verifyRejectReason(reason) {
+    var r = String(reason == null ? "" : reason);
+    return VERIFY_REJECT_REASONS.indexOf(r) !== -1 ? r : null;
+}
+
+// ── 알림에서 바로 심사 (do.nulloongzi.com/review.html) ──────────────
+// 운영자에게 가는 카카오 알림에 ✅승인 / ❌거절 버튼을 단다. 버튼은 우리 사이트의
+// 확인 페이지로 가고(카카오 메시지 링크는 등록된 도메인만 열린다), 페이지가 이 서명을
+// 들고 서버(reviewRequest)를 부른다. 서명은 (종류, 요청 id) 에 묶여 있어 다른 요청에
+// 못 쓰고, 요청이 처리되고 나면 할 일이 없다. 링크를 연다고 바로 처리되지 않는다 —
+// 페이지에서 한 번 더 눌러야 한다(미리보기·실수 방지).
+var REVIEW_KINDS = ["verify", "admin"];
+
+function reviewToken(secret, kind, id) {
+    return crypto
+        .createHmac("sha256", String(secret || ""))
+        .update("review|" + kind + "|" + id)
+        .digest("hex")
+        .substring(0, 32);
+}
+
+function reviewTokenOk(secret, kind, id, token) {
+    if (!secret) return false;
+    if (REVIEW_KINDS.indexOf(kind) === -1) return false;
+    if (typeof id !== "string" || !id || id.length > 200 || id.indexOf("/") !== -1) return false;
+    if (typeof token !== "string" || !/^[0-9a-f]{32}$/.test(token)) return false;
+    var want = Buffer.from(reviewToken(secret, kind, id));
+    var got = Buffer.from(token);
+    return want.length === got.length && crypto.timingSafeEqual(want, got);
+}
+
+function reviewUrl(kind, id, token, action) {
+    return SITE_ORIGIN + "/review.html?k=" + encodeURIComponent(kind)
+        + "&id=" + encodeURIComponent(id) + "&t=" + encodeURIComponent(token)
+        + (action ? "&a=" + encodeURIComponent(action) : "");
+}
+
+// 카카오 텍스트 템플릿의 buttons(최대 2개). 서명이 없으면 버튼 없이 보낸다.
+function reviewButtons(secret, kind, id) {
+    if (!secret || !id || REVIEW_KINDS.indexOf(kind) === -1) return null;
+    var token = reviewToken(secret, kind, String(id));
+    function btn(title, action) {
+        var url = reviewUrl(kind, String(id), token, action);
+        return { title: title, link: { web_url: url, mobile_web_url: url } };
+    }
+    return [btn("✅ 승인", "approve"), btn("❌ 거절", "reject")];
 }
 
 function requestMillis(d) {
@@ -767,6 +841,15 @@ module.exports = {
     clubAdminUids: clubAdminUids,
     ADMIN_REJECT_REASONS: ADMIN_REJECT_REASONS,
     adminRejectReason: adminRejectReason,
+    ADMIN_MANUAL_REJECT_REASONS: ADMIN_MANUAL_REJECT_REASONS,
+    adminManualRejectReason: adminManualRejectReason,
+    VERIFY_REJECT_REASONS: VERIFY_REJECT_REASONS,
+    verifyRejectReason: verifyRejectReason,
+    REVIEW_KINDS: REVIEW_KINDS,
+    reviewToken: reviewToken,
+    reviewTokenOk: reviewTokenOk,
+    reviewUrl: reviewUrl,
+    reviewButtons: reviewButtons,
     adminRequestSkipReason: adminRequestSkipReason,
     adminRequestPhotoPath: adminRequestPhotoPath,
     canManageClub: canManageClub,

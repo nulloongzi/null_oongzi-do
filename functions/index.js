@@ -266,7 +266,7 @@ async function markNotifyResult(ref, ok, message) {
 exports.onVerificationCreated = onDocumentCreated(
     {
         document: "verification_requests/{requestId}",
-        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
+        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET, APP_SECRET]
     },
     async function (event) {
         var snap = event.data;
@@ -299,11 +299,16 @@ exports.onVerificationCreated = onDocumentCreated(
         }
 
         try {
+            var reviewBtns = pure.reviewButtons(reviewSecret(), "verify", snap.id || (event.params && event.params.requestId));
             var templateObject = {
                 object_type: "text",
-                text: "[인증 신청] " + data.club_name + "\n\n새 팀 인증 신청이 왔어요.\n\n카카오톡 챗봇에서 '인증관리'를 입력해 사진을 보고 승인하거나 거절해 주세요.",
+                text: "[인증 신청] " + data.club_name + "\n\n새 팀 인증 신청이 왔어요.\n\n"
+                    + (reviewBtns
+                        ? "아래 버튼으로 사진을 보고 바로 승인하거나 거절할 수 있어요. 챗봇 '인증관리'에서도 돼요."
+                        : "카카오톡 챗봇에서 '인증관리'를 입력해 사진을 보고 승인하거나 거절해 주세요."),
                 link: pure.kakaoLink("club", data.club_id)
             };
+            if (reviewBtns) templateObject.buttons = reviewBtns;
             var body = "template_object=" + encodeURIComponent(JSON.stringify(templateObject));
             var kakaoRes = await providerHttp.postForm(
                 providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send", body, kakaoToken);
@@ -467,6 +472,55 @@ exports.chatbotPending = onRequest(CHATBOT_OPTS, async function (req, res) {
     }
 });
 
+// 팀 인증 신청 승인 — 챗봇 '인증관리'와 알림 링크(reviewRequest) 공통.
+// 팀부터 확인한다. 예전에는 요청을 approved 로 바꾼 **뒤에** 팀을 썼다 —
+// 팀이 없으면 요청만 승인된 채 남거나(이메일 경로) 유령 문서가 생겼다.
+// 결과: missing | done | club_missing(팀이 없어 거절로 닫음) | error | approved
+async function approveVerification(requestId) {
+    var requestRef = db.collection("verification_requests").doc(String(requestId));
+    var requestSnap = await requestRef.get();
+    if (!requestSnap.exists) return { outcome: "missing", d: {} };
+    var d = requestSnap.data() || {};
+    if (d.status !== "pending") return { outcome: "done", d: d };
+
+    var verified = await markClubVerified(d.club_id);
+    if (!verified.ok) {
+        if (verified.reason === "club_missing") {
+            await requestRef.update({
+                status: "rejected",
+                reject_reason: "club_missing",
+                reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+            });
+            return { outcome: "club_missing", d: d };
+        }
+        return { outcome: "error", d: d };
+    }
+    await requestRef.update({
+        status: "approved",
+        reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    // 인증을 신청한 사람이 곧 그 팀을 돌보는 사람이다. 배지만 주고 수정
+    // 권한을 안 주면, 정작 정보를 고칠 사람이 없는 팀이 인증만 받는다.
+    await grantClubAdmin(d.club_id, d.requested_by);
+    return { outcome: "approved", d: d };
+}
+
+// 팀 인증 신청 거절 — 사유는 글자 그대로 남긴다(화면이 그대로 보여 준다).
+// 결과: missing | done | rejected
+async function rejectVerification(requestId, reason) {
+    var requestRef = db.collection("verification_requests").doc(String(requestId));
+    var requestSnap = await requestRef.get();
+    if (!requestSnap.exists) return { outcome: "missing", d: {} };
+    var d = requestSnap.data() || {};
+    if (d.status !== "pending") return { outcome: "done", d: d };
+    await requestRef.update({
+        status: "rejected",
+        reject_reason: reason,
+        reviewed_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { outcome: "rejected", d: d };
+}
+
 // ── 스킬 2: 승인 처리 ──
 exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
     try {
@@ -479,61 +533,40 @@ exports.chatbotApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
         var requestId = parsed.requestId;
         console.log("chatbotApprove - requestId:", JSON.stringify(requestId), "source:", parsed.source);
 
-        var requestRef = db.collection("verification_requests").doc(requestId);
-        var requestSnap = await requestRef.get();
-        console.log("chatbotApprove - exists:", requestSnap.exists);
+        var r = await approveVerification(requestId);
+        var requestData = r.d || {};
 
-        if (!requestSnap.exists) {
+        if (r.outcome === "missing") {
             res.json({
                 version: "2.0",
                 template: { outputs: [{ simpleText: { text: "이 인증 요청을 찾지 못했어요. (id: " + requestId + ")" } }] }
             });
             return;
         }
-
-        var requestData = requestSnap.data();
-
-        if (requestData.status !== "pending") {
+        if (r.outcome === "done") {
             res.json({
                 version: "2.0",
                 template: { outputs: [{ simpleText: { text: "이미 " + requestData.status + " 처리된 요청이에요." } }] }
             });
             return;
         }
-
-        // 팀부터 확인한다. 예전에는 요청을 approved 로 바꾼 **뒤에** 팀을 썼다 —
-        // 팀이 없으면 요청만 승인된 채 남거나(이메일 경로) 유령 문서가 생겼다.
-        var verified = await markClubVerified(requestData.club_id);
-        if (!verified.ok) {
-            if (verified.reason === "club_missing") {
-                await requestRef.update({
-                    status: "rejected",
-                    reject_reason: "club_missing",
-                    reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-                });
-                res.json({
-                    version: "2.0",
-                    template: {
-                        outputs: [{ simpleText: { text: "❌ " + (requestData.club_name || "") + " 팀이 이미 없어졌어요.\n요청을 거절했어요." } }],
-                        quickReplies: [{ label: "📋 인증 목록", action: "message", messageText: "인증관리" }]
-                    }
-                });
-                return;
-            }
+        if (r.outcome === "club_missing") {
+            res.json({
+                version: "2.0",
+                template: {
+                    outputs: [{ simpleText: { text: "❌ " + (requestData.club_name || "") + " 팀이 이미 없어졌어요.\n요청을 거절했어요." } }],
+                    quickReplies: [{ label: "📋 인증 목록", action: "message", messageText: "인증관리" }]
+                }
+            });
+            return;
+        }
+        if (r.outcome !== "approved") {
             res.json({
                 version: "2.0",
                 template: { outputs: [{ simpleText: { text: "승인하지 못했어요. 잠시 후 다시 해 주세요." } }] }
             });
             return;
         }
-
-        await requestRef.update({
-            status: "approved",
-            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-        });
-        // 인증을 신청한 사람이 곧 그 팀을 돌보는 사람이다. 배지만 주고 수정
-        // 권한을 안 주면, 정작 정보를 고칠 사람이 없는 팀이 인증만 받는다.
-        await grantClubAdmin(requestData.club_id, requestData.requested_by);
 
         res.json({
             version: "2.0",
@@ -585,7 +618,7 @@ exports.chatbotRejectAsk = onRequest(CHATBOT_OPTS, async function (req, res) {
 
         // QuickReply로 preset 거절 사유 제공 (action=block으로 거절확정 블록 직접 호출)
         var REJECT_CONFIRM_BLOCK_ID = "69dcf06a192d2e03bfe549e2"; // 거절확정 블록 ID
-        var reasons = ["사진 불분명", "관련 없는 사진", "내용 부족", "중복 신청", "기타 부적합"];
+        var reasons = pure.VERIFY_REJECT_REASONS;
         var quickReplies = reasons.map(function (reason) {
             return {
                 label: reason,
@@ -637,23 +670,15 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
             return;
         }
 
-        var requestRef = db.collection("verification_requests").doc(requestId);
-        var requestSnap = await requestRef.get();
-
-        if (!requestSnap.exists || requestSnap.data().status !== "pending") {
+        // Firestore에 거절 사유 저장
+        var rejected = await rejectVerification(requestId, reason);
+        if (rejected.outcome !== "rejected") {
             res.json({
                 version: "2.0",
                 template: { outputs: [{ simpleText: { text: "요청이 없거나 이미 처리됐어요." } }] }
             });
             return;
         }
-
-        // Firestore에 거절 사유 저장
-        await requestRef.update({
-            status: "rejected",
-            reject_reason: reason,
-            reviewed_at: admin.firestore.FieldValue.serverTimestamp()
-        });
 
         // 카카오톡 알림 (나에게 보내기로 거절 사유 기록)
         var kakaoToken = null;
@@ -667,7 +692,7 @@ exports.chatbotRejectConfirm = onRequest({ cors: true, invoker: "public", secret
                 var templateObject = {
                     object_type: "text",
                     text: "[인증 거절 완료]\n\n팀: " + clubName + "\n사유: " + reason,
-                    link: pure.kakaoLink("club", requestSnap.data().club_id)
+                    link: pure.kakaoLink("club", rejected.d.club_id)
                 };
                 await providerHttp.postForm(providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
                     "template_object=" + encodeURIComponent(JSON.stringify(templateObject)),
@@ -1497,7 +1522,7 @@ async function deleteAdminRequestPhoto(ref, d) {
 exports.onClubAdminRequestCreated = onDocumentCreated(
     {
         document: "club_admin_requests/{requestId}",
-        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
+        secrets: [KAKAO_TOKEN, KAKAO_REFRESH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET, APP_SECRET]
     },
     async function (event) {
         var snap = event.data;
@@ -1531,10 +1556,13 @@ exports.onClubAdminRequestCreated = onDocumentCreated(
             return;
         }
 
+        var reviewBtns = pure.reviewButtons(reviewSecret(), "admin", snap.id || (event.params && event.params.requestId));
         var lines = [
             "[관리자 권한 신청] " + (d.club_name || d.club_id || ""),
             "",
-            "카카오톡 챗봇에서 '관리자관리'를 입력해 사진을 확인하고 승인해 주세요."
+            reviewBtns
+                ? "아래 버튼으로 사진을 보고 바로 승인하거나 거절할 수 있어요. 챗봇 '관리자관리'에서도 돼요."
+                : "카카오톡 챗봇에서 '관리자관리'를 입력해 사진을 확인하고 승인하거나 거절해 주세요."
         ];
         try {
             var templateObject = {
@@ -1542,6 +1570,7 @@ exports.onClubAdminRequestCreated = onDocumentCreated(
                 text: lines.join("\n"),
                 link: pure.kakaoLink("club", d.club_id)
             };
+            if (reviewBtns) templateObject.buttons = reviewBtns;
             var kakaoRes = await providerHttp.postForm(
                 providerHttp.KAPI_HOST, "/v2/api/talk/memo/default/send",
                 "template_object=" + encodeURIComponent(JSON.stringify(templateObject)), kakaoToken);
@@ -1657,7 +1686,7 @@ exports.chatbotAdminRequests = onRequest(CHATBOT_OPTS, async function (req, res)
 //
 // 서버가 남기는 거절 사유는 pure.ADMIN_REJECT_REASONS 뿐이다. 그 밖의 이유(오류 등)
 // 로는 거절을 쓰지 않고 pending 그대로 둔다 — 운영자가 다시 누르면 된다.
-async function settleAdminRequest(requestId, approve) {
+async function settleAdminRequest(requestId, approve, rejectReason) {
     var reqRef = db.collection("club_admin_requests").doc(String(requestId));
     return await db.runTransaction(async function (tx) {
         var reqSnap = await tx.get(reqRef);
@@ -1667,9 +1696,13 @@ async function settleAdminRequest(requestId, approve) {
         var now = admin.firestore.FieldValue.serverTimestamp();
 
         if (!approve) {
-            // 운영자가 손으로 거절할 때는 사유를 남기지 않는다(화면은 사유 줄을 생략한다).
-            tx.update(reqRef, { status: "rejected", reviewed_at: now });
-            return { outcome: "rejected", d: d };
+            // 운영자가 고른 사유(pure.ADMIN_MANUAL_REJECT_REASONS)만 남긴다. 사유가
+            // 없으면 남기지 않는다(화면은 사유 줄을 생략한다).
+            var manual = pure.adminManualRejectReason(rejectReason);
+            var upd = { status: "rejected", reviewed_at: now };
+            if (manual) upd.reject_reason = manual;
+            tx.update(reqRef, upd);
+            return { outcome: "rejected", reason: manual, d: d };
         }
 
         // 정원은 승인 시점에 다시 본다 — 신청이 접수된 뒤 3명이 찼을 수 있다.
@@ -1690,7 +1723,44 @@ async function settleAdminRequest(requestId, approve) {
     });
 }
 
-// 승인/거절 공통.
+// 결정 + 증빙 사진 정리. 챗봇과 알림 링크(reviewRequest) 공통.
+async function decideAdminRequest(requestId, approve, reason) {
+    var r = await settleAdminRequest(requestId, approve, reason);
+    // 결정이 났으니 증빙 사진을 지운다. 실패해도 결정은 그대로다.
+    if (r.outcome === "rejected" || r.outcome === "blocked" || r.outcome === "approved") {
+        await deleteAdminRequestPhoto(db.collection("club_admin_requests").doc(String(requestId)), r.d || {});
+    }
+    return r;
+}
+
+// 결과를 운영자에게 보일 한 줄로. 챗봇과 알림 링크가 같은 말을 쓴다.
+function adminDecisionText(r) {
+    var d = r.d || {};
+    var target = d.club_name || d.club_id || "";
+    if (r.outcome === "missing") return "이 신청을 찾지 못했어요.";
+    if (r.outcome === "done") return "이미 처리된 신청이에요.";
+    if (r.outcome === "unprocessable") {
+        return "신청 정보가 온전하지 않아 승인하지 못했어요. 신청은 대기 중 그대로예요 — 확인 뒤 거절해 주세요.\n대상: " + target;
+    }
+    if (r.outcome === "rejected") {
+        var label = "";
+        pure.ADMIN_MANUAL_REJECT_REASONS.forEach(function (x) { if (x.code === r.reason) label = x.label; });
+        return "❌ 거절했어요.\n대상: " + target + (label ? "\n사유: " + label : "");
+    }
+    if (r.outcome === "blocked") {
+        return r.reason === "full"
+            ? "관리자가 벌써 3명이라 승인하지 않았어요.\n대상: " + (d.club_name || "")
+            : r.reason === "already_admin"
+                ? "이미 이 팀의 관리자예요.\n대상: " + (d.club_name || "")
+                : "팀 문서를 찾지 못해 승인하지 않았어요.";
+    }
+    return "✅ 승인했어요.\n대상: " + target
+        + "\n관리자 " + r.admins.length + "/" + pure.MAX_CLUB_ADMINS + "명";
+}
+
+// 승인/거절 공통. 거절은 사유를 먼저 고르게 한다 — 사유 없이 눌리면 사유 버튼을
+// 보여 주고, 사유를 실은 버튼이 같은 '관리자거절' 블록으로 다시 들어온다
+// (인증관리의 거절사유요청 → 거절확정과 같은 흐름이지만 블록을 새로 만들 필요가 없다).
 async function resolveAdminRequest(req, res, approve) {
     if (!(await skillCallAllowed(req))) { rejectSkillCall(res); return; }
     var auth = await isAllowedKakaoUser(req);
@@ -1709,39 +1779,41 @@ async function resolveAdminRequest(req, res, approve) {
     }
     if (!requestId) { say("처리할 신청 id가 없어요. '관리자관리'로 다시 해 주세요."); return; }
 
+    var extra = (req.body && req.body.action && req.body.action.clientExtra) || {};
+    var reason = null;
+    if (!approve) {
+        reason = pure.adminManualRejectReason(extra.reason);
+        if (!reason) {
+            var snap = await db.collection("club_admin_requests").doc(String(requestId)).get();
+            if (!snap.exists) { say("이 신청을 찾지 못했어요."); return; }
+            var cur = snap.data() || {};
+            if (cur.status !== "pending") { say("이미 처리된 신청이에요."); return; }
+            res.json({
+                version: "2.0",
+                template: {
+                    outputs: [{ simpleText: { text: "'" + (cur.club_name || cur.club_id || "") + "' 관리자 신청의 거절 사유를 골라 주세요.\n신청한 사람에게 이 사유가 보여요." } }],
+                    quickReplies: pure.ADMIN_MANUAL_REJECT_REASONS.map(function (x) {
+                        return {
+                            label: x.label, action: "block", blockId: ADMIN_REJECT_BLOCK_ID,
+                            extra: { request_id: requestId, club_name: cur.club_name || "", reason: x.code }
+                        };
+                    })
+                }
+            });
+            return;
+        }
+    }
+
     var r;
     try {
-        r = await settleAdminRequest(requestId, approve);
+        r = await decideAdminRequest(requestId, approve, reason);
     } catch (e) {
         // 트랜잭션이 실패하면 아무것도 쓰이지 않았다 — 신청은 pending 그대로다.
         console.error("관리자 신청 처리 실패 - id:", requestId, e && e.message);
         say("처리하지 못했어요. 신청은 대기 중 그대로예요 — 잠시 후 다시 눌러 주세요.");
         return;
     }
-    var d = r.d || {};
-    var target = d.club_name || d.club_id || "";
-
-    if (r.outcome === "missing") { say("이 신청을 찾지 못했어요."); return; }
-    if (r.outcome === "done") { say("이미 처리된 신청이에요."); return; }
-    if (r.outcome === "unprocessable") {
-        say("신청 정보가 온전하지 않아 승인하지 못했어요. 신청은 대기 중 그대로예요 — 확인 뒤 거절해 주세요.\n대상: " + target);
-        return;
-    }
-
-    // 결정이 났으니 증빙 사진을 지운다. 실패해도 결정은 그대로다.
-    await deleteAdminRequestPhoto(db.collection("club_admin_requests").doc(String(requestId)), d);
-
-    if (r.outcome === "rejected") { say("❌ 거절했어요.\n대상: " + target); return; }
-    if (r.outcome === "blocked") {
-        say(r.reason === "full"
-            ? "관리자가 벌써 3명이라 승인하지 않았어요.\n대상: " + (d.club_name || "")
-            : r.reason === "already_admin"
-                ? "이미 이 팀의 관리자예요.\n대상: " + (d.club_name || "")
-                : "팀 문서를 찾지 못해 승인하지 않았어요.");
-        return;
-    }
-    say("✅ 승인했어요.\n대상: " + target
-        + "\n관리자 " + r.admins.length + "/" + pure.MAX_CLUB_ADMINS + "명");
+    say(adminDecisionText(r));
 }
 
 exports.chatbotAdminApprove = onRequest(CHATBOT_OPTS, async function (req, res) {
@@ -1760,6 +1832,99 @@ exports.chatbotAdminReject = onRequest(CHATBOT_OPTS, async function (req, res) {
 
 // 스스로 관리자에서 빠진다. 팀을 그만둔 사람이 수정 권한을 쥔 채 남지 않도록.
 // 남을 빼는 건 못 한다 — 그건 운영자가 한다.
+// ══════════════════════════════════════════════════════════
+// 알림에서 바로 심사 — do.nulloongzi.com/review.html 이 부른다
+// ══════════════════════════════════════════════════════════
+// 인증 신청 · 관리자 신청 알림(카카오 나에게 보내기)의 ✅승인 / ❌거절 버튼이 확인
+// 페이지를 열고, 페이지가 여기를 부른다. 챗봇 '인증관리' · '관리자관리'와 같은 함수로
+// 처리한다(approveVerification · rejectVerification · decideAdminRequest).
+// 권한은 링크에 실린 서명(pure.reviewToken — WEBHOOK_SECRET 로 (종류, id) 를 서명)
+// 하나다. 그 링크는 운영자 본인에게 보낸 메시지에만 있다.
+function reviewSecret() {
+    try { return APP_SECRET.value() || ""; } catch (e) { return ""; }
+}
+
+async function reviewInfo(kind, id) {
+    var col = kind === "verify" ? "verification_requests" : "club_admin_requests";
+    var snap = await db.collection(col).doc(id).get();
+    if (!snap.exists) return { found: false };
+    var d = snap.data() || {};
+    var pending = d.status === "pending";
+    var out = {
+        found: true,
+        kind: kind,
+        status: d.status || "",
+        club_name: d.club_name || "",
+        club_url: d.club_id ? pure.deepLinkUrl("club", d.club_id) : "",
+        requested_at: d.requested_at && d.requested_at.toMillis ? d.requested_at.toMillis() : 0,
+        // 사진은 심사 중일 때만 — 관리자 신청 사진은 결정 뒤 지운다.
+        photo_url: (pending && d.photo_url && !d.photo_deleted_at) ? String(d.photo_url) : "",
+        reject_reason: d.status === "rejected" && d.reject_reason ? String(d.reject_reason) : "",
+        reasons: kind === "verify"
+            ? pure.VERIFY_REJECT_REASONS.map(function (l) { return { code: l, label: l }; })
+            : pure.ADMIN_MANUAL_REJECT_REASONS
+    };
+    if (kind === "admin" && d.club_id) {
+        var club = await db.collection("clubs").doc(String(d.club_id)).get();
+        out.admin_count = club.exists ? pure.clubAdminUids(club.data()).length : 0;
+        out.admin_max = pure.MAX_CLUB_ADMINS;
+    }
+    return out;
+}
+
+async function reviewDecide(kind, id, approve, reasonIn) {
+    if (kind === "verify") {
+        if (approve) {
+            var a = await approveVerification(id);
+            var name = (a.d && a.d.club_name) || "";
+            if (a.outcome === "approved") return { outcome: "approved", message: "✅ " + name + " 팀 인증을 승인했어요." };
+            if (a.outcome === "club_missing") return { outcome: "rejected", message: "❌ " + name + " 팀이 이미 없어져서 요청을 거절로 닫았어요." };
+            if (a.outcome === "done") return { outcome: "done", message: "이미 처리된 요청이에요." };
+            if (a.outcome === "missing") return { outcome: "missing", message: "이 인증 요청을 찾지 못했어요." };
+            return { outcome: "error", message: "승인하지 못했어요. 잠시 후 다시 해 주세요." };
+        }
+        var vr = pure.verifyRejectReason(reasonIn);
+        if (!vr) return { outcome: "need_reason", message: "거절 사유를 골라 주세요." };
+        var j = await rejectVerification(id, vr);
+        if (j.outcome === "rejected") return { outcome: "rejected", message: "❌ " + (j.d.club_name || "") + " 팀 인증을 거절했어요.\n사유: " + vr };
+        if (j.outcome === "done") return { outcome: "done", message: "이미 처리된 요청이에요." };
+        return { outcome: "missing", message: "이 인증 요청을 찾지 못했어요." };
+    }
+    var ar = null;
+    if (!approve) {
+        ar = pure.adminManualRejectReason(reasonIn);
+        if (!ar) return { outcome: "need_reason", message: "거절 사유를 골라 주세요." };
+    }
+    var r = await decideAdminRequest(id, approve, ar);
+    return { outcome: r.outcome, message: adminDecisionText(r) };
+}
+
+exports.reviewRequest = onRequest(
+    { cors: [pure.SITE_ORIGIN], invoker: "public", secrets: [APP_SECRET] },
+    async function (req, res) {
+        if (req.method !== "POST") { res.status(405).json({ error: "method" }); return; }
+        var b = req.body || {};
+        var kind = String(b.k || "");
+        var id = String(b.id || "");
+        var op = String(b.op || "info");
+        if (!pure.reviewTokenOk(reviewSecret(), kind, id, b.t)) {
+            res.status(403).json({ error: "bad_link" });
+            return;
+        }
+        try {
+            if (op === "info") { res.json(await reviewInfo(kind, id)); return; }
+            if (op !== "approve" && op !== "reject") { res.status(400).json({ error: "bad_op" }); return; }
+            var out = await reviewDecide(kind, id, op === "approve", b.reason);
+            console.log("알림 링크 심사 - kind:", kind, "id:", id, "op:", op, "outcome:", out.outcome);
+            res.json(out);
+        } catch (e) {
+            // 트랜잭션·쓰기가 실패하면 요청은 pending 그대로다 — 다시 누르면 된다.
+            console.error("reviewRequest 오류 - kind:", kind, "id:", id, e && e.message);
+            res.status(500).json({ error: "server", message: "처리하지 못했어요. 요청은 대기 중 그대로예요 — 잠시 후 다시 눌러 주세요." });
+        }
+    }
+);
+
 exports.leaveClubAdmin = onCall(async function (request) {
     if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     var uid = request.auth.uid;
