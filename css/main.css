@@ -369,6 +369,14 @@
             transform: scale(0.9);
         }
 
+        /* 🍚 버튼 그림 = 로고(그림 둘레 여백이 있어 버튼보다 조금 작게) */
+        .fab-logo {
+            width: 46px;
+            height: 46px;
+            display: block;
+            pointer-events: none;
+        }
+
         .fab-lunchbox {
             position: absolute;
             bottom: 95px;
