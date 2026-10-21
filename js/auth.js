@@ -164,6 +164,45 @@ window.logout = async function () {
     });
 };
 
+// 회원 탈퇴: 서버(deleteMyAccount)가 개인 데이터와 로그인 계정을 지운다. 지운 뒤 이 기기에
+// 남은 내 흔적(담아 둔 도시락·지난 로그인 수단·uid 가 붙은 표시 기록)도 지우고 로그아웃한다.
+var accountDeleting = false;
+window.deleteMyAccount = async function () {
+    if (accountDeleting || !window.currentUser) return;
+    var ok = await window.nzConfirm({
+        title: window.t('acct_delete_title'),
+        message: window.t('acct_delete_body'),
+        confirm: window.t('acct_delete_btn'),
+        danger: true
+    });
+    if (!ok) return;
+    accountDeleting = true;
+    var uid = window.currentUser.uid;
+    window.showToast(window.t('acct_deleting'));
+    try {
+        await firebase.functions().httpsCallable('deleteMyAccount')({});
+    } catch (e) {
+        console.error('회원 탈퇴 실패:', e && e.message);
+        accountDeleting = false;
+        window.showToast(window.t('acct_delete_err'));
+        return;
+    }
+    if (window.track) window.track('account_delete');
+    try {
+        [LS_BOOKMARKS_KEY, LS_CUSTOM_TEAMS_KEY, 'nulloong_last_login_provider'].forEach(function (k) { localStorage.removeItem(k); });
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+            var key = localStorage.key(i);
+            if (key && key.indexOf(uid) !== -1) localStorage.removeItem(key);
+        }
+    } catch (e) { /* 저장소를 못 쓰는 브라우저 */ }
+    try { await firebase.auth().signOut(); } catch (e) { /* 계정이 이미 없다 */ }
+    accountDeleting = false;
+    document.getElementById('profileOverlay').style.display = 'none';
+    document.getElementById('lunchboxOverlay').style.display = 'none';
+    if (window.backNav) { window.backNav.closed('profile'); window.backNav.closed('lunchbox'); }
+    window.showToast(window.t('acct_deleted'));
+};
+
 window.updateProfileUI = function (isLoggedIn) {
     var loginSection = document.getElementById('loginSection');
     var profileContent = document.getElementById('profileContent');

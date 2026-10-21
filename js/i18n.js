@@ -267,6 +267,13 @@
         // 로그인/인증(auth)
         au_login_fail: { ko: '로그인하지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t log you in. Please try again in a moment.' },
         au_logout_confirm: { ko: '로그아웃할까요?', en: 'Log out?' },
+        acct_delete: { ko: '계정 삭제', en: 'Delete account' },
+        acct_delete_title: { ko: '계정을 지울까요?', en: 'Delete your account?' },
+        acct_delete_body: { ko: '밥이름·도시락·밥친구, 인증·관리자 신청과 사진, 내가 연 픽업 게임이 모두 지워지고 되돌릴 수 없어요.\n내가 등록한 동호회는 다른 사람도 보는 정보라 남고, 관리자 명단에서만 빠져요.', en: 'Your rice name, lunchbox, rice friends, verification and admin requests with their photos, and the pickup games you host will be deleted. This can\'t be undone.\nClubs you registered stay on the map for others — you\'re only removed from their admins.' },
+        acct_delete_btn: { ko: '계정 지우기', en: 'Delete account' },
+        acct_deleting: { ko: '계정을 지우고 있어요…', en: 'Deleting your account…' },
+        acct_deleted: { ko: '계정을 지웠어요. 그동안 함께해 줘서 고마워요', en: 'Your account was deleted. Thanks for playing with us.' },
+        acct_delete_err: { ko: '계정을 지우지 못했어요. 잠시 후 다시 해 주세요.', en: 'Couldn\'t delete your account. Please try again in a moment.' },
         au_welcome: { ko: '반가워요! 오늘부터 밥이름은 [{name}] 🍚', en: 'Welcome! Your rice name is [{name}] 🍚' },
         au_login_cancelled: { ko: '로그인을 취소했어요', en: 'Login cancelled' },
 

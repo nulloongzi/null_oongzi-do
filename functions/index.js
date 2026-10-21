@@ -1943,6 +1943,115 @@ exports.leaveClubAdmin = onCall(async function (request) {
 });
 
 // ══════════════════════════════════════════════════════════
+// 회원 탈퇴 — 앱·웹 프로필의 '계정 삭제'
+// ══════════════════════════════════════════════════════════
+// 본인 요청으로 계정과 개인 데이터를 지운다(data-deletion.html 의 '앱·웹에서 직접').
+//   지우는 것: 공개 프로필(users/{uid})·비공개 프로필(도시락·이메일)·밥친구 공유 사본,
+//             초대코드, 밥친구 관계·신청, 인증·관리자·소유권 신청과 그 사진, 내가 연 픽업 게임,
+//             올린 팀 사진, 그리고 로그인 계정(Firebase Auth).
+//   남기는 것: 내가 등록한 동호회(다른 사람도 쓰는 공개 팀 정보) — 관리자 명단·등록자에서만
+//             빠진다(pure.accountDeletionClubPatch). 신고는 운영 기록이라 남기되 신고자 uid 를 지운다.
+//             급구 기록(clubs/*/urgent_log)은 운영 기록이라 남는다(로그인 계정이 사라져 누구인지 이어지지 않음).
+// 다 지운 뒤 마지막에 Auth 계정을 지운다 — 중간에 실패하면 다시 눌러 이어서 지울 수 있게.
+var ACCOUNT_DELETE_BATCH = 400;
+
+async function deleteRefsInBatches(refs) {
+    for (var i = 0; i < refs.length; i += ACCOUNT_DELETE_BATCH) {
+        var batch = db.batch();
+        refs.slice(i, i + ACCOUNT_DELETE_BATCH).forEach(function (ref) { batch.delete(ref); });
+        await batch.commit();
+    }
+}
+
+async function refsWhere(collection, field, op, value) {
+    var snap = await db.collection(collection).where(field, op, value).get();
+    return snap.docs.map(function (d) { return d.ref; });
+}
+
+exports.deleteMyAccount = onCall({ timeoutSeconds: 120 }, async function (request) {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    var uid = request.auth.uid;
+    var userRef = db.collection("users").doc(uid);
+    var counts = {};
+
+    // 1) 팀: 관리자 명단·등록자에서 빠진다(팀 정보는 남김)
+    var clubSnaps = await Promise.all([
+        db.collection("clubs").where("admins", "array-contains", uid).get(),
+        db.collection("clubs").where("registered_by", "==", uid).get()
+    ]);
+    var seenClubs = {};
+    var clubUpdates = 0;
+    for (var q = 0; q < clubSnaps.length; q++) {
+        for (var k = 0; k < clubSnaps[q].docs.length; k++) {
+            var clubDoc = clubSnaps[q].docs[k];
+            if (seenClubs[clubDoc.id]) continue;
+            seenClubs[clubDoc.id] = true;
+            await db.runTransaction(async function (tx) {
+                var cur = await tx.get(clubDoc.ref);
+                if (!cur.exists) return;
+                var patch = pure.accountDeletionClubPatch(cur.data(), uid);
+                if (!patch) return;
+                var upd = {};
+                if (patch.admins) upd.admins = patch.admins;
+                if (patch.unsetRegisteredBy) upd.registered_by = admin.firestore.FieldValue.delete();
+                tx.update(clubDoc.ref, upd);
+                clubUpdates += 1;
+            });
+        }
+    }
+    counts.clubs_left = clubUpdates;
+
+    // 2) 신고: 운영 기록이라 남기고 신고자만 지운다
+    var reportRefs = await refsWhere("reports", "reporter_uid", "==", uid);
+    for (var r = 0; r < reportRefs.length; r += ACCOUNT_DELETE_BATCH) {
+        var rb = db.batch();
+        reportRefs.slice(r, r + ACCOUNT_DELETE_BATCH).forEach(function (ref) {
+            rb.update(ref, { reporter_uid: admin.firestore.FieldValue.delete() });
+        });
+        await rb.commit();
+    }
+    counts.reports_anonymized = reportRefs.length;
+
+    // 3) 지울 문서
+    var lists = await Promise.all([
+        userRef.collection("private").listDocuments(),
+        userRef.collection("shared").listDocuments(),
+        refsWhere("invite_codes", "uid", "==", uid),
+        refsWhere("friendships", "members", "array-contains", uid),
+        refsWhere("verification_requests", "requested_by", "==", uid),
+        refsWhere("club_admin_requests", "requested_by", "==", uid),
+        refsWhere("club_claim_requests", "uid", "==", uid),
+        refsWhere("pickup_games", "owner_uid", "==", uid)
+    ]);
+    var names = ["private", "shared", "invite_codes", "friendships",
+        "verification_requests", "club_admin_requests", "club_claim_requests", "pickup_games"];
+    var refs = [];
+    lists.forEach(function (list, i) { counts[names[i]] = list.length; refs = refs.concat(list); });
+    refs.push(userRef);
+    await deleteRefsInBatches(refs);
+
+    // 4) 올린 사진(인증·관리자 신청·팀 사진) — 경로가 uid 로 시작한다(storage.rules)
+    var bucket = admin.storage().bucket();
+    var prefixes = ["verification_photos/", "admin_request_photos/", "club_photos/"];
+    for (var p = 0; p < prefixes.length; p++) {
+        try {
+            await bucket.deleteFiles({ prefix: prefixes[p] + uid + "/" });
+        } catch (e) {
+            console.warn("탈퇴 사진 삭제 실패 - 경로:", prefixes[p], e && e.message);
+        }
+    }
+
+    // 5) 마지막으로 로그인 계정
+    try {
+        await admin.auth().deleteUser(uid);
+    } catch (e) {
+        if (!e || e.code !== "auth/user-not-found") throw new HttpsError("internal", "계정을 지우지 못했습니다.");
+    }
+    console.log("회원 탈퇴 완료:", JSON.stringify(counts));
+    return { status: "deleted" };
+});
+
+// ══════════════════════════════════════════════════════════
 // 급구 · 회원 모집
 // ══════════════════════════════════════════════════════════
 // 급구를 **켜는** 길은 이 callable 하나다(firestore.rules 가 클라이언트의 급구 켜기·고치기를
