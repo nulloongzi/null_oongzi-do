@@ -127,13 +127,14 @@ ol.todo li::marker { color: var(--muted); }
   <section>
     <div class="eyebrow">05 · 조합</div>
     <h2>둘을 합치는 방법</h2>
+    <p class="lead">02의 두 부품만 가지고 맞춰 놓았다. 모양은 그대로 두고 위치·크기·기울기만 바꿨다. 공이 그릇에 담기는 선은 원본처럼 그릇 입구 타원의 앞쪽 테두리다.</p>
     <div class="grid three">
-      <figure><svg data-draw="combo-34" viewBox="0 0 200 200" role="img" aria-label="비스듬히 본 로고"></svg><figcaption><b>비스듬히 얹힘</b><span>원본을 30° 위에서 본 모습</span></figcaption></figure>
-      <figure><svg data-draw="combo-bounce" viewBox="0 0 200 200" role="img" aria-label="그릇에서 튀어 오른 공"></svg><figcaption><b>튀어 오름</b><span>원본에서 공만 띄웠다. 불러오는 중·당겨서 새로고침 동작에</span></figcaption></figure>
-      <figure><svg data-draw="combo-top" viewBox="0 0 200 200" role="img" aria-label="위에서 본 로고"></svg><figcaption><b>위에서</b><span>동그라미 안에 동그라미. 지도 마커·앱 아이콘 후보</span></figcaption></figure>
-      <figure><svg data-draw="combo-roll" viewBox="0 0 200 200" role="img" aria-label="엎어진 그릇과 굴러 나온 공"></svg><figcaption><b>굴러 나옴</b><span>그릇이 쓰러지고 공이 굴러 나왔다. 빈 결과·404 자리</span></figcaption></figure>
-      <figure><svg data-draw="combo-stack" viewBox="0 0 200 200" role="img" aria-label="공 두 개가 담긴 그릇"></svg><figcaption><b>수북이</b><span>공 셋이 담긴 그릇. 한솥밥(3팀 이상) 표현</span></figcaption></figure>
-      <figure><svg data-draw="combo-side" viewBox="0 0 200 200" role="img" aria-label="옆으로 돌린 공이 얹힌 로고"></svg><figcaption><b>공만 돌림</b><span>원본에서 공만 90° 돌렸다. 회전 애니메이션의 중간 장면</span></figcaption></figure>
+      <figure><svg data-draw="combo-orig" viewBox="0 0 200 200" role="img" aria-label="부품을 다시 얹은 로고"></svg><figcaption><b>다시 얹음</b><span>부품 둘을 원래 자리에 얹은 것. 원본과 같아야 하는 기준 그림</span></figcaption></figure>
+      <figure><svg data-draw="combo-bounce" viewBox="0 0 200 200" role="img" aria-label="그릇에서 튀어 오른 공"></svg><figcaption><b>튀어 오름</b><span>공이 떠오르고 빈 그릇에 그림자. 불러오는 중·당겨서 새로고침에</span></figcaption></figure>
+      <figure><svg data-draw="combo-spin" viewBox="0 0 200 200" role="img" aria-label="그릇 안에서 공을 돌린 로고"></svg><figcaption><b>공만 돌림</b><span>그릇은 그대로, 공만 60° 굴렸다. 돌아가는 애니메이션의 중간 장면</span></figcaption></figure>
+      <figure><svg data-draw="combo-roll" viewBox="0 0 200 200" role="img" aria-label="쓰러진 그릇과 굴러 나온 공"></svg><figcaption><b>굴러 나옴</b><span>그릇이 쓰러지고 공이 굴러 나왔다. 빈 결과·404 자리</span></figcaption></figure>
+      <figure><svg data-draw="combo-two" viewBox="0 0 200 200" role="img" aria-label="공 두 개가 담긴 그릇"></svg><figcaption><b>한 그릇</b><span>공 둘. 합석 단계 2(한 그릇)</span></figcaption></figure>
+      <figure><svg data-draw="combo-three" viewBox="0 0 200 200" role="img" aria-label="공 세 개가 담긴 그릇"></svg><figcaption><b>한솥밥</b><span>공 셋. 합석 단계 3(한솥밥, 3팀 이상)</span></figcaption></figure>
     </div>
   </section>
 
@@ -358,6 +359,28 @@ ol.todo li::marker { color: var(--muted); }
     return g + '<path d="' + PARTS.bowl + '" fill="' + C.bowl + '"/><ellipse cx="' + e[0] + '" cy="' + e[1] + '" rx="' + e[2] + '" ry="' + e[3] + '" fill="' + C.bowlIn + '"/></g>';
   }
 
+  // Scenes built from the two parts, in the parts' own 2048px space.
+  var BC = [PARTS.ballBox[0] + PARTS.ballBox[2] / 2, PARTS.ballBox[1] + PARTS.ballBox[3] / 2];
+  function P2(content, k, ox, oy) {  // 2048 space -> 200 viewBox, optionally shrunk (k) and shifted (ox, oy in 2048 px)
+    k = k || 1;
+    return '<g transform="scale(' + (200 / 2048) + ') translate(' + (1024 + (ox || 0)) + ' ' + (1024 + (oy || 0)) + ') scale(' + k + ') translate(-1024 -1024)">' + content + '</g>';
+  }
+  function bowlPart() {
+    var e = PARTS.opening;
+    return '<path d="' + PARTS.bowl + '" fill="' + C.bowl + '"/><ellipse cx="' + e[0] + '" cy="' + e[1] + '" rx="' + e[2] + '" ry="' + e[3] + '" fill="' + C.bowlIn + '"/>';
+  }
+  // Ball moved by (dx, dy), rolled by rot degrees and scaled about its own centre.
+  function ballPart(dx, dy, rot, sc) {
+    return '<g transform="translate(' + (BC[0] + dx) + ' ' + (BC[1] + dy) + ') rotate(' + rot + ') scale(' + sc + ') translate(' + (-BC[0]) + ' ' + (-BC[1]) + ')">' +
+      '<path d="' + PARTS.ball + '" fill="' + C.rice + '"/><path d="' + PARTS.ballGold + '" fill="' + C.seam + '"/></g>';
+  }
+  // What sits in the bowl shows above the rim line and inside the opening, as in the original.
+  function inBowl(content) {
+    var e = PARTS.opening, id = 'ib' + (uid++);
+    return '<defs><clipPath id="' + id + '"><path d="M0 0H2048V' + e[1] + 'H' + (e[0] + e[2]) + 'A' + e[2] + ' ' + e[3] + ' 0 0 1 ' + (e[0] - e[2]) + ' ' + e[1] + 'H0Z"/></clipPath></defs>' +
+      '<g clip-path="url(#' + id + ')">' + content + '</g>';
+  }
+
   // ---------- scenes ----------
   // Same proportions as the original, any angle. Default angle = the original's.
   function lockup(o) {
@@ -385,25 +408,26 @@ ol.todo li::marker { color: var(--muted); }
     'bowl-front': function () { return part('bowl', 100, 100, 172); },
     'bowl-open': function () { var b = bowl(100, 72, 78, 32); return b.back + b.front; },
     'apart': function () { return part('ball', 56, 104, 82) + part('bowl', 140, 120, 104); },
-    'combo-34': function () { return lockup({ elev: 30 }); },
-    'combo-bounce': function () { return lockup({ elev: 22, lift: 40 }); },
-    'combo-top': function () {
-      var b = bowl(100, 100, 86, 90);
-      return b.back + ball(100, 100, 75, { pitch: -90 });
+    'combo-orig': function () { return P2(bowlPart() + inBowl(ballPart(0, 0, 0, 1))); },
+    'combo-bounce': function () {
+      var e = PARTS.opening;
+      return P2(bowlPart() + '<ellipse cx="' + e[0] + '" cy="' + (e[1] + 10) + '" rx="300" ry="62" fill="#000" opacity="0.16"/>' +
+        ballPart(0, -620, 0, 0.8), 0.74, 0, 230);
     },
+    'combo-spin': function () { return P2(bowlPart() + inBowl(ballPart(0, 0, 60, 1))); },
     'combo-roll': function () {
-      var b = bowl(0, 0, 58, 18);
-      return groundShadow(78, 160, 54) + groundShadow(156, 164, 26) +
-        '<g transform="translate(66 114) rotate(-68)">' + b.back + b.front + '</g>' +
-        ball(156, 138, 28, { yaw: 70, pitch: -10, roll: 40 });
+      // the bowl tips over onto its rim, the ball rolls out to the right (a roll turns the seams with it)
+      return P2('<ellipse cx="660" cy="1600" rx="470" ry="48" fill="' + C.ground + '"/>' +
+        '<ellipse cx="1590" cy="1600" rx="240" ry="30" fill="' + C.ground + '"/>' +
+        '<g transform="translate(60 -416) rotate(-68 1024 1640)">' + bowlPart() + '</g>' +
+        ballPart(563, 360, 150, 0.5), 0.8, 0, -40);
     },
-    'combo-stack': function () {
-      var R = 66, rimY = 120, b = bowl(100, rimY, R, 14);
-      return b.back +
-        ball(70, rimY - 14, 32, { yaw: -40, pitch: 10, phase: -100 }) + ball(130, rimY - 14, 32, { yaw: 50, pitch: -20, phase: -30 }) +
-        ball(100, rimY - 46, 34, { yaw: 10, pitch: -15 }) + b.front;
+    'combo-two': function () {
+      return P2(bowlPart() + inBowl(ballPart(-250, 40, -25, 0.66) + ballPart(250, 30, 35, 0.66)));
     },
-    'combo-side': function () { return lockup({ yaw: 90 }); },
+    'combo-three': function () {
+      return P2(bowlPart() + inBowl(ballPart(-300, 70, -30, 0.58) + ballPart(300, 60, 40, 0.58) + ballPart(0, -170, 10, 0.62)));
+    },
     'mono': function () { return original({ mono: true }); },
     'on-yellow': function () { return '<rect x="0" y="0" width="200" height="200" rx="28" fill="var(--accent)"/>' + original({ outline: true }); }
   };
@@ -444,7 +468,7 @@ ol.todo li::marker { color: var(--muted); }
     document.getElementById('playSvg').innerHTML = lockup({ yaw: v.yaw, pitch: v.pitch, elev: v.elev, lift: v.lift });
   }
   ids.forEach(function (k) { document.getElementById(k).addEventListener('input', drawPlay); });
-  window.__logo = { original: original, lockup: lockup, ball: ball };
+  window.__logo = { original: original, lockup: lockup, ball: ball, combo: function () { return P2(bowlPart() + inBowl(ballPart(0, 0, 0, 1))); } };
   drawAll();
 })();
 </script>
