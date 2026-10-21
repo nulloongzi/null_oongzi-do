@@ -830,3 +830,32 @@ describe('adminRequestPhotoPath (심사 끝난 증빙 사진 → Storage 경로)
         ].forEach((u) => assert.strictEqual(pure.adminRequestPhotoPath(u), null, String(u)));
     });
 });
+
+describe('accountDeletionClubPatch (회원 탈퇴 때 팀에서 빠지기)', () => {
+    test('admins 에 있으면 빼고, 등록자이기도 하면 registered_by 도 지운다', () => {
+        assert.deepStrictEqual(
+            pure.accountDeletionClubPatch({ admins: ['a', 'b'], registered_by: 'a' }, 'a'),
+            { admins: ['b'], unsetRegisteredBy: true });
+    });
+    test('admins 에만 있으면 admins 만', () => {
+        assert.deepStrictEqual(
+            pure.accountDeletionClubPatch({ admins: ['a', 'b'], registered_by: 'c' }, 'b'),
+            { admins: ['a'], unsetRegisteredBy: false });
+    });
+    test('admins 배열에서 빠진 등록자는 registered_by 만 지운다', () => {
+        assert.deepStrictEqual(
+            pure.accountDeletionClubPatch({ admins: ['b'], registered_by: 'a' }, 'a'),
+            { unsetRegisteredBy: true });
+    });
+    test('admins 가 없는 예전 팀의 등록자면 admins 를 [] 로 못박는다', () => {
+        assert.deepStrictEqual(
+            pure.accountDeletionClubPatch({ registered_by: 'a' }, 'a'),
+            { admins: [], unsetRegisteredBy: true });
+    });
+    test('상관없는 팀이나 빈 uid 는 null', () => {
+        assert.strictEqual(pure.accountDeletionClubPatch({ admins: ['b'], registered_by: 'c' }, 'a'), null);
+        assert.strictEqual(pure.accountDeletionClubPatch({ registered_by: 'c' }, 'a'), null);
+        assert.strictEqual(pure.accountDeletionClubPatch({ admins: ['a'] }, ''), null);
+        assert.strictEqual(pure.accountDeletionClubPatch(null, 'a'), null);
+    });
+});

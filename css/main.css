@@ -1346,6 +1346,22 @@
             transform: scale(0.95);
         }
 
+        /* 회원 탈퇴 입구 — 눈에 띄지 않게, 그러나 찾을 수 있게(Play 계정 삭제 요건) */
+        .pc-delete-link {
+            display: block;
+            margin: 14px auto 0;
+            padding: 6px 10px;
+            background: none;
+            border: none;
+            color: var(--nurungji-dark);
+            opacity: 0.55;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
         .divider {
             color: var(--nurungji-brown);
             font-size: 13px;

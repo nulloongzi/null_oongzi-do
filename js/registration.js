@@ -218,6 +218,7 @@ window.openRegistrationModal = function () {
         }
 
         document.getElementById('regModalOverlay').style.display = 'flex';
+        if (window.backNav) window.backNav.open('register', window.closeRegistrationModal); // 폰 뒤로가기로 닫기
         if (window.track) window.track('registration_open', { mode: 'create' });
         console.log('Successfully opened registration modal');
     } catch (e) {
@@ -225,7 +226,9 @@ window.openRegistrationModal = function () {
     }
 };
 
+// 뒤로가기로 닫힐 때도 이걸 부른다(back-nav 가 칸을 이미 뺐으면 closed 는 아무것도 안 한다)
 window.closeRegistrationModal = function () {
+    if (window.backNav) window.backNav.closed('register');
     document.getElementById('regModalOverlay').style.display = 'none';
     window.editingClubId = null; // 편집 모드 초기화
     window.selectedCoords = null;
@@ -343,6 +346,7 @@ window.openEditModal = function (club) {
         }
 
         document.getElementById('regModalOverlay').style.display = 'flex';
+        if (window.backNav) window.backNav.open('register', window.closeRegistrationModal);
     } catch (e) {
         console.error('Error opening edit modal:', e);
     }
@@ -462,6 +466,8 @@ window.startMapPicker = function (opts) {
 
     document.getElementById(window._mpReturn).style.display = 'none';
     document.getElementById('mapPickerOverlay').style.display = 'block';
+    // 뒤로가기는 폼이 아니라 지도 고르기만 끝낸다(취소와 같음)
+    if (window.backNav) window.backNav.open('mapPicker', function () { finishMapPicker({ ok: false }); });
 };
 
 // 지오코딩 결과를 지도에 보여주고 확인받는다. 사용자가 옮겼으면 옮긴 좌표를 준다.
@@ -478,6 +484,7 @@ window.confirmLocationOnMap = function (coords, meta) {
 
 function finishMapPicker(result) {
     var resolve = window._mpResolve;
+    if (window.backNav) window.backNav.closed('mapPicker');
     window._mpConfirmMode = false;
     window._mpResolve = null;
     document.getElementById('mapPickerOverlay').style.display = 'none';
@@ -836,5 +843,6 @@ window.resumePendingRegistration = function () {
     var prof = document.getElementById('profileOverlay');
     if (prof) prof.style.display = 'none';
     document.getElementById('regModalOverlay').style.display = 'flex';
+    if (window.backNav) window.backNav.open('register', window.closeRegistrationModal);
     window.submitRegistration();
 };

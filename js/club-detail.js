@@ -599,7 +599,8 @@ window.openClubDetail = function (id, opts) {
             flags.appendChild(b);
         };
         if (urgentNow) {
-            addFlagBtn('flag-btn-urgent-ghost', window.t('ug_edit'), function () { window.openUrgentForm(club); });
+            // 고치기는 서버가 인증 팀에만 허락한다. 내리기는 인증과 상관없이 늘 된다(예전에 올라간 급구도 내릴 수 있게)
+            if (club.is_verified) addFlagBtn('flag-btn-urgent-ghost', window.t('ug_edit'), function () { window.openUrgentForm(club); });
             addFlagBtn('flag-btn-urgent', window.t('cd_urgent_off'), function () { window.closeClubUrgent(club); });
         } else if (club.is_verified) {
             addFlagBtn('flag-btn-urgent', window.t('cd_urgent_on'), function () { window.openUrgentForm(club); });
@@ -849,9 +850,8 @@ window.deleteClub = async function (club) {
             }
         });
 
-        // Close bottom sheet
-        var sheet = document.getElementById('bottomSheet');
-        if (sheet) sheet.classList.remove('open');
+        // 지운 팀의 시트를 닫는다 — 뒤로가기 칸과 주소창 ?club= 도 함께 정리
+        window.closeBottomSheet();
 
         // Re-render markers — initMarkers 가 이전 마커·라벨·원을 먼저 걷는다
         if (window.initMarkers) window.initMarkers();

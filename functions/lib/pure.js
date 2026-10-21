@@ -310,6 +310,33 @@ function removeClubAdmin(club, uid) {
     return { admins: next, removed: true, reason: null };
 }
 
+// 회원 탈퇴(deleteMyAccount) 때 팀 문서에서 이 사람을 빼는 패치. 팀 정보는 다른 사람도 쓰는
+// 공개 정보라 남기고, 관리자 명단(admins)과 등록자(registered_by)에서만 빠진다.
+// 반환: { admins?: [...], unsetRegisteredBy: bool } — 바꿀 게 없으면 null.
+//   · admins 배열이 있으면 거기서 뺀다(없던 사람이면 그대로).
+//   · admins 배열이 없고 registered_by 가 이 사람이면, 지금 관리자는 이 사람뿐이라
+//     admins 를 [] 로 못박는다 — registered_by 만 지우면 '관리자 없음' 판정이 흔들리지 않게.
+//   · registered_by 가 이 사람이면 지운다(내부 고유 ID 도 삭제 대상, data-deletion.html).
+function accountDeletionClubPatch(club, uid) {
+    var u = String(uid == null ? "" : uid).trim();
+    if (!u) return null;
+    var c = club || {};
+    var patch = { unsetRegisteredBy: false };
+    var changed = false;
+    if (Array.isArray(c.admins)) {
+        var r = removeClubAdmin(c, u);
+        if (r.removed) { patch.admins = r.admins; changed = true; }
+    } else if (String(c.registered_by == null ? "" : c.registered_by).trim() === u) {
+        patch.admins = [];
+        changed = true;
+    }
+    if (String(c.registered_by == null ? "" : c.registered_by).trim() === u) {
+        patch.unsetRegisteredBy = true;
+        changed = true;
+    }
+    return changed ? patch : null;
+}
+
 // 운영자가 관리자 신청을 손으로 거절할 때 고르는 사유. 챗봇 '관리자관리'의 거절 버튼과
 // 알림의 거절 링크(review.html)가 같은 목록을 쓴다. label 은 운영자가 보는 짧은 말,
 // 신청자가 보는 문장은 웹 i18n ad_reason_* · 앱 strings.dart 같은 키가 따로 갖는다.
@@ -856,6 +883,7 @@ module.exports = {
     adminRequestBlockReason: adminRequestBlockReason,
     addClubAdmin: addClubAdmin,
     removeClubAdmin: removeClubAdmin,
+    accountDeletionClubPatch: accountDeletionClubPatch,
     SITE_ORIGIN: SITE_ORIGIN,
     deepLinkUrl: deepLinkUrl,
     kakaoLink: kakaoLink,

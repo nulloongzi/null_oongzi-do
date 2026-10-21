@@ -88,6 +88,7 @@
         var sc = document.getElementById('pkScheduleContainer');
         if (sc) { sc.innerHTML = ''; window.addScheduleBlock(null, 'pkScheduleContainer'); }
         document.getElementById('pkModalOverlay').style.display = 'flex';
+        if (window.backNav) window.backNav.open('pickupForm', window.closePickupModal); // 폰 뒤로가기로 닫기
     };
 
     window.openPickupEditModal = function (spot) {
@@ -143,9 +144,12 @@
             window.addScheduleBlock(null, 'pkScheduleContainer');
         }
         document.getElementById('pkModalOverlay').style.display = 'flex';
+        if (window.backNav) window.backNav.open('pickupForm', window.closePickupModal); // 폰 뒤로가기로 닫기
     };
 
+    // 뒤로가기로 닫힐 때도 이걸 부른다(칸이 이미 빠졌으면 closed 는 아무것도 안 한다)
     window.closePickupModal = function () {
+        if (window.backNav) window.backNav.closed('pickupForm');
         document.getElementById('pkModalOverlay').style.display = 'none';
         window.editingPickupId = null;
         window.selectedCoords = null;
