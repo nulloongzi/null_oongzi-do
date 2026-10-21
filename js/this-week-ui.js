@@ -65,7 +65,7 @@
         var n = window.twPlaceCount(items);
         if (!n) { strip.hidden = true; return; }
         strip.hidden = false;
-        $('twStripTitle').textContent = window.tf('tw_entry', { n: n });
+        window.setBowlText($('twStripTitle'), window.tf('tw_entry', { n: n }));
         var roll = $('twStripRoll');
         var next = items.slice(0, 3);
         rollIndex = 0;

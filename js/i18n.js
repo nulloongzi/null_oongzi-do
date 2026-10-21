@@ -854,12 +854,26 @@
         return k ? window.t(k) : kchar;
     };
 
+    // 문구 맨 앞 🍚 는 이모지 대신 로고 아이콘으로 그린다(식구 모집 배지·여기 자리 있어요? 등).
+    // 문구(KO/EN·앱과 같은 키)는 그대로 두고 그리는 자리에서만 바꾼다.
+    window.setBowlText = function (el, text) {
+        text = String(text == null ? '' : text);
+        if (text.indexOf('🍚') !== 0) { el.textContent = text; return; }
+        el.textContent = '';
+        var img = document.createElement('img');
+        img.className = 'nz-bowl-ic';
+        img.src = 'assets/logo-512.png';
+        img.alt = '';
+        el.appendChild(img);
+        el.appendChild(document.createTextNode(text.slice(2).replace(/^\s+/, '')));
+    };
+
     window.applyI18n = function () {
         var i, els;
 
         els = document.querySelectorAll('[data-i18n]');
         for (i = 0; i < els.length; i++) {
-            els[i].textContent = window.t(els[i].getAttribute('data-i18n'));
+            window.setBowlText(els[i], window.t(els[i].getAttribute('data-i18n')));
         }
 
         els = document.querySelectorAll('[data-i18n-placeholder]');
