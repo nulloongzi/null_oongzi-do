@@ -276,20 +276,28 @@ ol.todo li::marker { color: var(--muted); }
   }
 
   // ---------- ball ----------
-  // Rice-mound edge: 46 small bumps whose peaks touch the sphere radius (as in the original).
-  function scallop(cx, cy, r) {
-    var n = 46, base = r * 0.975, d = '', step = Math.PI * 2 / n, rc = base * 1.055;
-    for (var i = 0; i < n; i++) {
-      var a0 = i * step - Math.PI / 2, a1 = a0 + step, am = a0 + step / 2;
-      if (i === 0) d += 'M' + f(cx + base * Math.cos(a0)) + ' ' + f(cy + base * Math.sin(a0));
-      d += 'Q' + f(cx + rc * Math.cos(am)) + ' ' + f(cy + rc * Math.sin(am)) + ' ' + f(cx + base * Math.cos(a1)) + ' ' + f(cy + base * Math.sin(a1));
-    }
+  // Rice-mound edge: piled rice, so the bumps are uneven. These are the original's own bumps, measured
+  // left to right along its top: [width in degrees, height in px at radius ~130, where the peak sits 0–1].
+  var BUMPS = [[14.5,5.87,0.5],[14.25,6.32,0.53],[15.25,5.7,0.57],[8.25,2.81,0.39],[6.5,2.56,0.88],[7.0,2.42,0.11],[6.25,1.71,0.52],[14.0,5.25,0.41],[8.25,2.2,0.64],[4.25,1.19,0.76],[5.0,2.47,0.1],[7.75,2.85,0.9],[5.5,2.07,0.14],[9.0,2.87,0.5],[5.5,1.84,0.86],[6.0,3.35,0.17],[12.5,6.15,0.54],[7.5,1.79,0.53]];
+  function scallop(cx, cy, r, phase) {
+    // Go round once with the measured run, then back with it mirrored, then the run again, and stretch to 360°.
+    var run = BUMPS.concat(BUMPS.slice().reverse().map(function (b) { return [b[0], b[1], 1 - b[2]]; }));
+    run = run.concat(BUMPS.slice(0, 8));
+    var total = run.reduce(function (s, b) { return s + b[0]; }, 0);
+    var base = r * 0.955, a = rad(phase == null ? -170 : phase), d = '';
+    var pt = function (ang, rr) { return f(cx + rr * Math.cos(ang)) + ' ' + f(cy + rr * Math.sin(ang)); };
+    d = 'M' + pt(a, base);
+    run.forEach(function (b) {
+      var w = rad(b[0] * 360 / total), h = b[1] / 130 * r;
+      d += 'Q' + pt(a + w * b[2], base + 2 * h) + ' ' + pt(a + w, base);
+      a += w;
+    });
     return d + 'Z';
   }
   function ball(cx, cy, r, o) {
     o = o || {};
     var yaw = rad(o.yaw || 0), pitch = rad(o.pitch || 0), roll = rad(o.roll || 0);
-    var id = 'b' + (uid++), edge = scallop(cx, cy, r);
+    var id = 'b' + (uid++), edge = scallop(cx, cy, r, o.phase);
     var fill = o.mono ? C.bowl : C.rice, seam = o.mono ? 'var(--tile)' : C.seam;
     var lines = '';
     SEAMS.forEach(function (curve) {
@@ -399,7 +407,7 @@ ol.todo li::marker { color: var(--muted); }
     'combo-stack': function () {
       var R = 66, rimY = 120, b = bowl(100, rimY, R, 14);
       return b.back +
-        ball(70, rimY - 14, 32, { yaw: -40, pitch: 10 }) + ball(130, rimY - 14, 32, { yaw: 50, pitch: -20 }) +
+        ball(70, rimY - 14, 32, { yaw: -40, pitch: 10, phase: -100 }) + ball(130, rimY - 14, 32, { yaw: 50, pitch: -20, phase: -30 }) +
         ball(100, rimY - 46, 34, { yaw: 10, pitch: -15 }) + b.front;
     },
     'combo-side': function () { return lockup({ yaw: 90 }); },
