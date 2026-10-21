@@ -594,7 +594,7 @@
 #### F3. 시간표 모프 / 펼치면 드러나기 (펼침 비율 연동)
 | 항목 | 값 |
 |---|---|
-| 트리거 | A2의 펼침 비율이 **0.5**를 넘거나 내려올 때 (끄는 도중에도 발동) |
+| 트리거 | F2의 펼침 비율이 **0.5**를 넘거나 내려올 때 (끄는 도중에도 발동) |
 | 시간표 모프 | `AnimatedCrossFade` **220ms**. 크로스페이드는 `Curves.linear`(firstCurve/secondCurve 기본값), 크기는 `Curves.easeOut`. 요약 한 줄 ↔ 주간 그리드 — `screens/detail_sheet.dart:359-366` |
 | 펼치면 드러나기 | `AnimatedSize` **220ms `Curves.easeOut`**, 위쪽 정렬, 높이 0 ↔ 내용 높이. 릴스·소유자 버튼 — `detail_sheet.dart:385-392`, 사용 `:1739`, `:1990` |
 | 펼침 힌트 글자 | "올려보기/접기" 글자는 **즉시 바뀜** — `map_detail_panel.dart:224-235`, `pickup_list_sheet.dart:196` |
@@ -759,7 +759,7 @@
 | 24 | 급구·식구모집 시트(상세 소유자 버튼) | 시트 | 바운스 → 바텀시트(F1). 날짜·시간 선택은 F5 페이드 150ms | 시트 | `detail_sheet.dart:863, 969`, `urgent_sheet.dart:40, 142, 149`, `recruit_sheet.dart:36` |
 | 25 | 동호회 ↔ 픽업 탭 전환 | 탭 알약 색 | 바운스 + AnimatedContainer 180ms linear | 선택 탭 노랑 | `map_screen.dart:2574-2590` |
 | 26 | (같은 전환) 그 밖의 요소 | 픽업 목록 시트, 픽업 필터 바, FAB(🍱·🍚 ↔ 🏐, 📝·📍 위치 이동), 상세 패널, 마커 | **모두 즉시**(Positioned·조건부 렌더, 애니메이션 없음). 상세 패널과 릴스 피크도 즉시 닫힘 | – | `map_screen.dart:1988-1998`, `:2172-2248` |
-| 27 | 픽업 목록 시트 끌기·놓기 | 시트 높이 | A2와 같음(0ms → 240ms easeOutCubic). 접힘 아래로 안 내려감 | 접힘·펼침 | `pickup_list_sheet.dart:124, 92-115` |
+| 27 | 픽업 목록 시트 끌기·놓기 | 시트 높이 | F2와 같음(0ms → 240ms easeOutCubic). 접힘 아래로 안 내려감 | 접힘·펼침 | `pickup_list_sheet.dart:124, 92-115` |
 | 28 | 픽업 줄·마커 탭 → 상세 | 카메라 → 시트 내용 | 카메라 800ms → 목록 ↔ 상세 **내용 즉시 교체**(높이 그대로) | 상세 모드 | `map_screen.dart:1655-1669`, `pickup_list_sheet.dart:166-172` |
 | 29 | 픽업 상세 → 목록(뒤로 버튼·뒤로가기·60% 아래로 끌기) | 시트 | 끌었을 때만 접힘으로 240ms 스냅. 내용은 **즉시** 목록으로 | 목록 | `pickup_list_sheet.dart:92-99`, `map_screen.dart:1671` |
 | 30 | 픽업 지역·레벨 메뉴 | 팝업 메뉴 | Material 메뉴 300ms linear | 선택 → 마커 즉시 | `map_screen.dart:2694, 2754` |
@@ -771,7 +771,7 @@
 | 36 | 도시락 직접 담기 | AlertDialog | F5 150ms easeOut 페이드 | – | `lunchbox_screen.dart:245` |
 | 37 | 도시락 칸 탭 → 팀 상세 | 팝업 → 카메라 → 패널 | popUntil(300ms 페이드아웃) → 카메라 800ms(focusMapRequest) → 패널 **즉시** | 상세 | `lunchbox_screen.dart:557-585` |
 | 38 | 식단표 펼치기 | DietGrid | 바운스 + AnimatedSize 320ms easeOutCubic. 버튼 글자는 즉시 바뀜 | 그리드 | `lunchbox_screen.dart:380-418` |
-| 39 | 프로필(밥이름 카드) 열기 | 딤 + 블러 + 카드 | A4와 같음(300ms 페이드 + 340ms easeOutBack) | 카드 | `profile_screen.dart:29-72` |
+| 39 | 프로필(밥이름 카드) 열기 | 딤 + 블러 + 카드 | F4와 같음(300ms 페이드 + 340ms easeOutBack) | 카드 | `profile_screen.dart:29-72` |
 | 40 | 프로필 ↔ 밥친구 스와이프 / 점 탭 | 페이지, 팝업 높이, 점 | PageView 스와이프(높이를 실시간 보간) / 점 탭 animateToPage 280ms easeOutCubic. 점은 220ms linear(너비 8→22) | 둘째 장 | `profile_screen.dart:639-663, 700` |
 | 41 | 밥친구 화면 이동(목록 ↔ 추가 ↔ 상세), QR 보기, 2단계 확인 | 카드 내용 | **모션 없음(즉시)**. 팝업 높이도 즉시 맞춰짐 | – | `friends_page.dart:85-94, 202-206, 735` |
 | 42 | 밥친구 카드 안 알림 | 다크 알약 | **즉시** 나타나고 **2400ms** 뒤 즉시 사라짐 | – | `friends_page.dart:76-83, 207` |
