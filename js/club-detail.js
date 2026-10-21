@@ -544,7 +544,7 @@ window.openClubDetail = function (id, opts) {
                 var line = document.createElement('div');
                 line.className = 'rc-line' + (cls ? ' ' + cls : '');
                 var b = document.createElement('b');
-                b.textContent = window.t(badgeKey);
+                window.setBowlText(b, window.t(badgeKey));
                 var d = document.createElement('span');
                 d.className = 'rc-desc';
                 d.textContent = window.t(descKey);
@@ -594,7 +594,7 @@ window.openClubDetail = function (id, opts) {
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'btn ' + cls;
-            b.textContent = label;
+            window.setBowlText(b, label);
             b.onclick = onClick;
             flags.appendChild(b);
         };
@@ -1134,11 +1134,11 @@ window.openRecruitForm = function (club) {
             '</div>' +
         '</div>';
     var $ = function (id) { return document.getElementById(id); };
-    $('rcTitle').textContent = window.t(editing ? 'rc_edit' : 'rc_on');
+    window.setBowlText($('rcTitle'), window.t(editing ? 'rc_edit' : 'rc_on'));
     $('rcMsgLabel').textContent = window.t('rc_msg_label');
     $('rcDropInLabel').textContent = window.t('rc_drop_in_ask');
     $('rcAutoOff').textContent = window.t('rc_auto_off');
-    $('rcSubmit').textContent = window.t(editing ? 'rc_save' : 'rc_on');
+    window.setBowlText($('rcSubmit'), window.t(editing ? 'rc_save' : 'rc_on'));
     var msgInput = $('rcMsg');
     msgInput.placeholder = window.t('rc_msg_hint');
     msgInput.value = typeof club.recruit_msg === 'string' ? club.recruit_msg.trim() : '';

@@ -169,3 +169,16 @@ describe('그리기', () => {
         }
     });
 });
+
+describe('식단표 좁은 블록 세로 글자', () => {
+    test('같은 날 겹쳐 좁아진 블록은 띄어쓰기를 빼고 한 자씩, 넘치면 끝을 ⋮ 로 (앱 verticalChars 와 같은 규칙)', () => {
+        const w = load();
+        const v = w.myCardVerticalChars('서울 배구왕', 200, 18);
+        assert.deepStrictEqual(Array.from(v.chars), ['서', '울', '배', '구', '왕']);
+        assert.strictEqual(v.lh, 21);
+        // 높이 80 → (80-10)/21 = 3자 → 2자 + ⋮
+        assert.deepStrictEqual(Array.from(w.myCardVerticalChars('불꽃 스파이크', 80, 18).chars), ['불', '꽃', '⋮']);
+        // 한 자 자리뿐이면 첫 글자만
+        assert.deepStrictEqual(Array.from(w.myCardVerticalChars('목요배구', 20, 18).chars), ['목']);
+    });
+});

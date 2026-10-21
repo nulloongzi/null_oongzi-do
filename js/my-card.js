@@ -507,6 +507,15 @@
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     }
 
+    // 좁은 블록에 세로로 쓸 글자들: 띄어쓰기는 빼고 한 자씩, 블록 높이에 안 들어가면 끝을 ⋮ 로(한 자 자리뿐이면 첫 글자만).
+    function verticalChars(name, bh, size) {
+        var chars = Array.from(String(name || '').replace(/\s+/g, ''));
+        var lh = size + 3, max = Math.max(1, Math.floor((bh - 10) / lh));
+        if (chars.length > max) chars = max <= 1 ? chars.slice(0, 1) : chars.slice(0, max - 1).concat(['⋮']);
+        return { chars: chars, size: size, lh: lh };
+    }
+    window.myCardVerticalChars = verticalChars;
+
     // 겹치는 일정은 칸을 레인으로 나눠 나란히 (앱 assignLanes 와 같은 규칙).
     // 반환: 각 이벤트의 { lane, lanes }. 같은 시간대에 겹치는 무리 안에서 레인 수를 맞춘다.
     function assignLanes(evs) {
@@ -586,12 +595,19 @@
                 var bh = Math.max(14, (ev.end - ev.start) * rowH - 3);
                 rr(ctx, bx, by, bw, bh, 6); ctx.fillStyle = SLOTFILL[slot]; ctx.fill();
                 ctx.fillStyle = RAIL[slot]; ctx.fillRect(bx, by, Math.min(5, bw), bh);
-                // 팀 이름: 블록이 충분히 클 때만 (작으면 색이 곧 범례)
-                if (bw >= 56 && bh >= 44) {
+                // 팀 이름: 넓은 블록은 가로로 두 줄까지, 같은 날 겹쳐 좁아진 블록은 세로로 한 자씩
+                // (앱 my_card.dart _timetable 과 같은 규칙). 아주 작으면 색이 곧 범례
+                if (bw >= 80 && bh >= 44) {
                     ctx.save(); rr(ctx, bx, by, bw, bh, 6); ctx.clip();
                     ctx.font = fnt(18, 800); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                     var nl = wrapWords(ctx, ev.name, bw - 12, 2);
                     for (var n = 0; n < nl.length; n++) ctx.fillText(nl[n], bx + bw / 2 + 2, by + bh / 2 + (n - (nl.length - 1) / 2) * 22);
+                    ctx.restore();
+                } else if (bw >= 20 && bh >= 44) {
+                    var vc = verticalChars(ev.name, bh, Math.min(18, bw - 6));
+                    ctx.save(); rr(ctx, bx, by, bw, bh, 6); ctx.clip();
+                    ctx.font = fnt(vc.size, 800); ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    for (var v = 0; v < vc.chars.length; v++) ctx.fillText(vc.chars[v], bx + bw / 2 + 2, by + bh / 2 + (v - (vc.chars.length - 1) / 2) * vc.lh);
                     ctx.restore();
                 }
             }

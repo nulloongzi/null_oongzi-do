@@ -10,6 +10,9 @@
 
 const { test, expect } = require('@playwright/test');
 
+// 문구 맨 앞 🍚 는 화면에서 로고 아이콘으로 바뀐다(js/i18n.js setBowlText) — 글자 비교는 그 뒤만
+const noBowl = (s) => String(s).replace(/^🍚\s*/, '');
+
 // 외부 SDK 부재/차단에서 비롯되는 에러만 허용 (우리 코드 회귀는 통과 불가)
 const EXTERNAL_ERROR = /kakao|firebase|gstatic|html2canvas|qrcode|Failed to fetch|NetworkError|ERR_/i;
 
@@ -728,8 +731,10 @@ test('여기 자리 있어요?: 띠 · 시트 칩 · 줄 → 상세 · 연락 �
     });
     const strip = page.locator('#thisWeekStrip');
     await expect(strip).toBeVisible();
+    // 맨 앞 🍚 는 로고 아이콘(img.nz-bowl-ic)으로 그려진다 — 글자는 그 뒤만
     expect(await strip.locator('#twStripTitle').textContent())
-        .toBe(await page.evaluate(() => window.tf('tw_entry', { n: 3 })));
+        .toBe(noBowl(await page.evaluate(() => window.tf('tw_entry', { n: 3 }))));
+    await expect(strip.locator('#twStripTitle img.nz-bowl-ic')).toHaveCount(1);
     await expect(page.locator('#twStripRoll')).not.toBeEmpty();
 
     await strip.click();
@@ -818,7 +823,8 @@ test('식구 모집 폼: 문구 검사 · 맛보기 체크 · 저장 · 수정 �
     });
     const t = (k) => page.evaluate((key) => window.t(key), k);
     await expect(page.locator('#recruitFormOverlay')).toBeVisible();
-    await expect(page.locator('#rcTitle')).toHaveText(await t('rc_on'));
+    await expect(page.locator('#rcTitle')).toHaveText(noBowl(await t('rc_on')));
+    await expect(page.locator('#rcTitle img.nz-bowl-ic')).toHaveCount(1);
     await expect(page.locator('#rcDropInLabel')).toHaveText(await t('rc_drop_in_ask'));
     await expect(page.locator('#rcAutoOff')).toHaveText(await t('rc_auto_off'));
     await expect(page.locator('#rcDropIn')).not.toBeChecked();

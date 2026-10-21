@@ -369,6 +369,22 @@
             transform: scale(0.9);
         }
 
+        /* 문구 맨 앞 🍚 대신 그리는 로고 아이콘(js/i18n.js setBowlText). 그림 둘레 여백이 있어 글자보다 크게 */
+        .nz-bowl-ic {
+            width: 1.45em;
+            height: 1.45em;
+            margin: -0.25em 0.05em -0.25em -0.2em;
+            vertical-align: middle;
+        }
+
+        /* 🍚 버튼 그림 = 로고(그림 둘레 여백이 있어 버튼보다 조금 작게) */
+        .fab-logo {
+            width: 46px;
+            height: 46px;
+            display: block;
+            pointer-events: none;
+        }
+
         .fab-lunchbox {
             position: absolute;
             bottom: 95px;
