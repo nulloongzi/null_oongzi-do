@@ -20,6 +20,9 @@ window.resetFilters = function () {
     window.activeFilters = { region: [], day: [], target: [], flag: [] };
     document.querySelectorAll('.chip').forEach(function (el) { el.classList.remove('selected'); });
     document.getElementById('topSearchInput').value = "";
+    // 시트 안 키워드도 비운다 — 초기화도 클릭이라 applyFilters 가 이 칸을 검색바로 다시 옮긴다
+    var fsKw = document.getElementById('fsKeyword');
+    if (fsKw) fsKw.value = "";
     window.applyFilters();
 };
 

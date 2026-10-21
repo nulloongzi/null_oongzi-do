@@ -29,6 +29,7 @@ window.openVerificationModal = function (club) {
     }
 
     overlay.style.display = 'flex';
+    if (window.backNav) window.backNav.open('verifyForm', window.closeVerificationModal); // 폰 뒤로가기로 닫기
     var photoInput = document.getElementById('verifyPhoto');
     if (photoInput) photoInput.value = '';
 
@@ -37,7 +38,9 @@ window.openVerificationModal = function (club) {
     };
 };
 
+// 뒤로가기로 닫힐 때도 이걸 부른다
 window.closeVerificationModal = function () {
+    if (window.backNav) window.backNav.closed('verifyForm');
     var overlay = document.getElementById('verifyModalOverlay');
     if (overlay) overlay.style.display = 'none';
 };
@@ -137,6 +140,7 @@ window.openAdminRequestModal = function (club) {
     }
 
     overlay.style.display = 'flex';
+    if (window.backNav) window.backNav.open('adminReqForm', window.closeAdminRequestModal);
     var photoInput = document.getElementById('adminReqPhoto');
     if (photoInput) photoInput.value = '';
 
@@ -145,7 +149,9 @@ window.openAdminRequestModal = function (club) {
     };
 };
 
+// 뒤로가기로 닫힐 때도 이걸 부른다
 window.closeAdminRequestModal = function () {
+    if (window.backNav) window.backNav.closed('adminReqForm');
     var overlay = document.getElementById('adminReqModalOverlay');
     if (overlay) overlay.style.display = 'none';
 };
