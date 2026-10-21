@@ -323,13 +323,23 @@ ol.todo li::marker { color: var(--muted); }
       '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(inRx) + '" ry="' + f(inRy) + '" fill="' + inner + '"/>' +
       (o.mono || e < 20 ? '' : '<ellipse clip-path="url(#' + id + ')" cx="' + f(cx) + '" cy="' + f(floorY) + '" rx="' + f(floorR) + '" ry="' + f(floorR * se) + '" fill="' + C.floor + '"/>');
     if (e >= 89) return { back: back, front: '' };
-    var pts = PROFILE.map(function (p) { return [p[0] * R, cy + p[1] * R * ce]; });
-    var last = pts[pts.length - 1];
+    // Seen from above, each height of the bowl is an ellipse; the outline below the rim is the lowest
+    // point any of them reaches at each x (the foot's base disc included).
+    var low = function (x) {
+      var y = cy;
+      PROFILE.forEach(function (p) {
+        var r = p[0] * R;
+        if (Math.abs(x) <= r) y = Math.max(y, cy + p[1] * R * ce + se * Math.sqrt(r * r - x * x));
+      });
+      return y;
+    };
     var d = 'M' + f(cx - R) + ' ' + f(cy);
-    pts.forEach(function (p) { d += 'L' + f(cx - p[0]) + ' ' + f(p[1]); });
-    d += 'A' + f(last[0]) + ' ' + f(Math.max(last[0] * se, 0.6)) + ' 0 0 0 ' + f(cx + last[0]) + ' ' + f(last[1]);
-    pts.slice().reverse().forEach(function (p) { d += 'L' + f(cx + p[0]) + ' ' + f(p[1]); });
-    d += 'L' + f(cx + R) + ' ' + f(cy) + 'A' + f(R) + ' ' + f(ry) + ' 0 0 1 ' + f(cx - R) + ' ' + f(cy) + 'Z';
+    for (var i = 0; i <= 120; i++) {
+      var x = -R + 2 * R * i / 120;
+      d += 'L' + f(cx + x) + ' ' + f(low(x));
+    }
+    // back up to the rim's right end, then along the front rim (slightly inside the lip, so no hairline shows)
+    d += 'L' + f(cx + R) + ' ' + f(cy) + 'A' + f(R) + ' ' + f(ry * 0.97) + ' 0 0 1 ' + f(cx - R) + ' ' + f(cy) + 'Z';
     return { back: back, front: '<path d="' + d + '" fill="' + col + '"/>' };
   }
   function groundShadow(cx, cy, rx) {
@@ -411,7 +421,11 @@ ol.todo li::marker { color: var(--muted); }
     'combo-orig': function () { return P2(bowlPart() + inBowl(ballPart(0, 0, 0, 1))); },
     'combo-bounce': function () {
       var e = PARTS.opening;
-      return P2(bowlPart() + '<ellipse cx="' + e[0] + '" cy="' + (e[1] + 10) + '" rx="300" ry="62" fill="#000" opacity="0.16"/>' +
+      // a soft shadow inside the opening, about as wide as the ball, fading out toward its edge
+      var id = 'sh' + (uid++);
+      return P2('<defs><radialGradient id="' + id + '"><stop offset="0" stop-color="#000" stop-opacity="0.28"/>' +
+          '<stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>' +
+        bowlPart() + inBowl('<ellipse cx="' + e[0] + '" cy="' + (e[1] + 6) + '" rx="360" ry="' + f(e[3] * 0.8) + '" fill="url(#' + id + ')"/>') +
         ballPart(0, -620, 0, 0.8), 0.74, 0, 230);
     },
     'combo-spin': function () { return P2(bowlPart() + inBowl(ballPart(0, 0, 60, 1))); },
