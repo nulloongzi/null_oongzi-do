@@ -88,8 +88,10 @@
 | 묻는 팝업 | 가운데 흰 카드 · 모서리 `radius-dialog` 20 · 제목 17/800. **버튼엔 누르면 일어나는 일**('팀 지우기', '로그아웃' — '확인'만 쓰지 않음). 되돌릴 수 없는 일은 확인 버튼 `urgent-ink` + 처음 포커스 '취소'. 입력이 틀리면 팝업을 닫지 않고 칸 아래에. 바깥 누르기·Esc·뒤로가기 = 취소. 브라우저 기본 창(alert·confirm·prompt)은 쓰지 않는다 | `window.nzConfirm` · `nzPrompt` (`js/dialog.js`) | `AlertDialog` (`theme.dart` `dialogTheme` · 글자 버튼 다크) |
 
 - 사진 위 스크림(릴스 커버 그라데이션·이미지 미리보기)만 검정을 허용한다 — 사진 색을 물들이지 않기 위해서.
-- 로고 비트맵: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일)를 쓴다.
-  원본은 앱 `assets/nulloongzido logo_without bg.png`(2048). 웹 PWA 아이콘은 같은 원본을 흰 바탕에 얹은 `assets/icon-192.png` · `icon-512.png`.
+- 로고 원본은 벡터 `assets/logo/nulloongzido-logo.svg`(2048). 부품은 같은 폴더의 `nulloongzido-ball.svg` · `nulloongzido-bowl.svg`,
+  만든 과정과 각도·조합은 `docs/logo-concepts.html`. 2026-10 공 이음선을 조각 크기가 같은 배구공으로 바꿨다(그릇·누룽지 윤곽·색은 그대로).
+- 로고 비트맵은 모두 이 SVG에서 뽑는다: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일),
+  앱 `assets/nulloongzido logo_without bg.png`·`assets/icon.png`(2048, 투명), 웹 PWA 아이콘은 흰 바탕에 얹은 `assets/icon-192.png` · `icon-512.png`.
 
 ## 4. 보이스 & 톤
 - **이름**: 서비스는 **누룽지도 / Nulloongzi-do**(영어는 이 표기 하나 — 2026-10 결정, 규칙 테스트가 지킨다). 사람·브랜드는 **누룽지 / Nulloongzi**(인스타·틱톡 @null_oongzi).
