@@ -12,12 +12,10 @@
   --muted: #84675d;     /* 누룽지 브라운 */
   --accent: #fac710;    /* 누룽지 옐로 */
   --rice: #ede8e7;
-  --rice-shade: #ddd5d0;
   --seam: #d7ae44;
   --bowl: #b6774f;
-  --bowl-dark: #94593a;
-  --bowl-in: #7c4a30;
-  --floor: #c98f68;
+  --bowl-in: #925a39;
+  --floor: #a86b44;
   --ground: rgba(93, 64, 55, 0.14);
   --font-display: "Jua", "IBM Plex Sans KR", system-ui, sans-serif;
   --font-body: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
@@ -79,15 +77,15 @@ ol.todo li::marker { color: var(--muted); }
   <header>
     <div class="eyebrow">NULLOONGZI-DO · LOGO PARTS · 초안</div>
     <h1>누룽지도 로고 시트</h1>
-    <p class="lead">지금 로고는 밥그릇 위에 누룽지 공이 얹힌 한 장뿐이다. 둘을 떼어 각각 그리고, 정면·비스듬히·위·옆에서 본 모습과 조합을 한 장에 모았다. 모든 그림은 같은 3D 규칙(공의 이음선은 구 위의 곡선, 그릇은 회전체)으로 그려서 각도가 바뀌어도 같은 물건으로 보인다.</p>
+    <p class="lead">기준은 지금 로고다. 원본 PNG에서 그릇 윤곽·누룽지 윤곽·이음선을 그대로 따내 벡터로 옮겼고, 정면 모습은 원본과 같다. 다른 각도는 원본 공 무늬를 구에 입히고 그릇 윤곽을 회전체로 돌려서 만들었다. 원본에서 안 보이는 공 아래쪽과 뒤쪽은 보이는 무늬를 반 바퀴 돌려 채웠다.</p>
   </header>
 
   <section>
-    <div class="eyebrow">01 · 원본과 다시 그린 것</div>
+    <div class="eyebrow">01 · 원본과 벡터</div>
     <h2>지금 로고를 벡터로</h2>
     <div class="grid two">
       <figure><img src="../assets/logo-512.png" alt="지금 쓰는 로고 비트맵"><figcaption><b>지금 로고</b><span>assets/logo-512.png (비트맵)</span></figcaption></figure>
-      <figure><svg data-draw="lockup" viewBox="0 0 200 200" role="img" aria-label="다시 그린 기본 로고"></svg><figcaption><b>다시 그린 기본형</b><span>같은 색·같은 구도. 아래 부품을 합친 것이다</span></figcaption></figure>
+      <figure><svg data-draw="lockup" viewBox="0 0 200 200" role="img" aria-label="벡터로 옮긴 원본 로고"></svg><figcaption><b>벡터로 옮긴 원본</b><span>원본에서 윤곽과 이음선을 따냈다. 모양·색·자세 모두 원본과 같다</span></figcaption></figure>
     </div>
   </section>
 
@@ -95,9 +93,9 @@ ol.todo li::marker { color: var(--muted); }
     <div class="eyebrow">02 · 부품</div>
     <h2>떼어 놓은 두 부품</h2>
     <div class="grid">
-      <figure><svg data-draw="ball-front" viewBox="0 0 200 200" role="img" aria-label="누룽지 공 단독"></svg><figcaption><b>누룽지 공</b><span>가장자리 오돌토돌 = 바삭한 누룽지, 금색 선 = 배구공 이음선</span></figcaption></figure>
-      <figure><svg data-draw="bowl-front" viewBox="0 0 200 200" role="img" aria-label="밥그릇 단독 정면"></svg><figcaption><b>밥그릇</b><span>정면. 굽(받침)까지 포함</span></figcaption></figure>
-      <figure><svg data-draw="bowl-open" viewBox="0 0 200 200" role="img" aria-label="빈 밥그릇 비스듬히"></svg><figcaption><b>빈 그릇</b><span>안쪽이 보이게 비스듬히. 합석 단계(밥 차오름)의 바탕</span></figcaption></figure>
+      <figure><svg data-draw="ball-front" viewBox="0 0 200 200" role="img" aria-label="누룽지 공 단독"></svg><figcaption><b>누룽지 공</b><span>원본 자세 그대로 꺼낸 것. 원본에서 그릇에 가려진 아래쪽은 위쪽 무늬를 돌려 채웠다</span></figcaption></figure>
+      <figure><svg data-draw="bowl-front" viewBox="0 0 200 200" role="img" aria-label="밥그릇 단독 정면"></svg><figcaption><b>밥그릇</b><span>원본과 같은 높이(11°)에서 본 빈 그릇</span></figcaption></figure>
+      <figure><svg data-draw="bowl-open" viewBox="0 0 200 200" role="img" aria-label="빈 밥그릇 비스듬히"></svg><figcaption><b>빈 그릇, 비스듬히</b><span>32°에서 안쪽 바닥까지 보이게. 합석 단계(밥 차오름)의 바탕</span></figcaption></figure>
       <figure><svg data-draw="apart" viewBox="0 0 200 200" role="img" aria-label="공과 그릇을 나란히"></svg><figcaption><b>나란히</b><span>둘을 떨어뜨려 놓은 기본 배치</span></figcaption></figure>
     </div>
   </section>
@@ -106,9 +104,9 @@ ol.todo li::marker { color: var(--muted); }
     <div class="eyebrow">03 · 각도 — 누룽지 공</div>
     <h2>공을 돌려 본 모습</h2>
     <div class="grid">
-      <figure><svg data-draw="ball:0:0" viewBox="0 0 200 200" role="img" aria-label="공 기본 자세"></svg><figcaption><b>기본 자세</b><span>세 조각이 만나는 Y자가 가운데 조금 오른쪽. 지금 로고와 같은 자세</span></figcaption></figure>
-      <figure><svg data-draw="ball:-45:0" viewBox="0 0 200 200" role="img" aria-label="공 왼쪽으로 45도"></svg><figcaption><b>왼쪽으로 45°</b><span>기본 자세에서 좌우로 45° 돌린 모습</span></figcaption></figure>
-      <figure><svg data-draw="ball:0:-90" viewBox="0 0 200 200" role="img" aria-label="공 위에서"></svg><figcaption><b>위에서</b><span>기본 자세를 위에서 내려다본 모습</span></figcaption></figure>
+      <figure><svg data-draw="ball:0:0" viewBox="0 0 200 200" role="img" aria-label="공 정면"></svg><figcaption><b>정면</b><span>원본 로고와 같은 자세</span></figcaption></figure>
+      <figure><svg data-draw="ball:-45:0" viewBox="0 0 200 200" role="img" aria-label="공 왼쪽으로 45도"></svg><figcaption><b>왼쪽으로 45°</b><span>원본 자세에서 좌우로 45° 돌린 모습</span></figcaption></figure>
+      <figure><svg data-draw="ball:0:-90" viewBox="0 0 200 200" role="img" aria-label="공 위에서"></svg><figcaption><b>위에서</b><span>원본 자세를 위에서 내려다본 모습</span></figcaption></figure>
       <figure><svg data-draw="ball:180:0" viewBox="0 0 200 200" role="img" aria-label="공 뒤에서"></svg><figcaption><b>뒤에서</b><span>반 바퀴 돌린 모습</span></figcaption></figure>
     </div>
   </section>
@@ -117,7 +115,7 @@ ol.todo li::marker { color: var(--muted); }
     <div class="eyebrow">04 · 각도 — 밥그릇</div>
     <h2>그릇을 내려다보는 높이별</h2>
     <div class="grid">
-      <figure><svg data-draw="bowl:4" viewBox="0 0 200 200" role="img" aria-label="그릇 눈높이"></svg><figcaption><b>눈높이</b><span>4° · 입구가 거의 선으로 보인다</span></figcaption></figure>
+      <figure><svg data-draw="bowl:11" viewBox="0 0 200 200" role="img" aria-label="그릇 원본 높이"></svg><figcaption><b>원본 높이</b><span>11° · 지금 로고가 그려진 높이</span></figcaption></figure>
       <figure><svg data-draw="bowl:30" viewBox="0 0 200 200" role="img" aria-label="그릇 비스듬히"></svg><figcaption><b>비스듬히</b><span>30° · 안쪽 바닥이 보이기 시작</span></figcaption></figure>
       <figure><svg data-draw="bowl:60" viewBox="0 0 200 200" role="img" aria-label="그릇 높이서"></svg><figcaption><b>높이서</b><span>60° · 입구가 동그랗게 열린다</span></figcaption></figure>
       <figure><svg data-draw="bowl:90" viewBox="0 0 200 200" role="img" aria-label="그릇 위에서"></svg><figcaption><b>위에서</b><span>90° · 동심원 세 겹</span></figcaption></figure>
@@ -128,12 +126,12 @@ ol.todo li::marker { color: var(--muted); }
     <div class="eyebrow">05 · 조합</div>
     <h2>둘을 합치는 방법</h2>
     <div class="grid three">
-      <figure><svg data-draw="combo-34" viewBox="0 0 200 200" role="img" aria-label="비스듬히 본 로고"></svg><figcaption><b>비스듬히 얹힘</b><span>기본형을 30° 위에서. 공이 그릇에 반쯤 잠긴다</span></figcaption></figure>
-      <figure><svg data-draw="combo-bounce" viewBox="0 0 200 200" role="img" aria-label="그릇에서 튀어 오른 공"></svg><figcaption><b>튀어 오름</b><span>공이 떠 있고 그릇은 비었다. 불러오는 중·당겨서 새로고침 동작에</span></figcaption></figure>
+      <figure><svg data-draw="combo-34" viewBox="0 0 200 200" role="img" aria-label="비스듬히 본 로고"></svg><figcaption><b>비스듬히 얹힘</b><span>원본을 30° 위에서 본 모습</span></figcaption></figure>
+      <figure><svg data-draw="combo-bounce" viewBox="0 0 200 200" role="img" aria-label="그릇에서 튀어 오른 공"></svg><figcaption><b>튀어 오름</b><span>원본에서 공만 띄웠다. 불러오는 중·당겨서 새로고침 동작에</span></figcaption></figure>
       <figure><svg data-draw="combo-top" viewBox="0 0 200 200" role="img" aria-label="위에서 본 로고"></svg><figcaption><b>위에서</b><span>동그라미 안에 동그라미. 지도 마커·앱 아이콘 후보</span></figcaption></figure>
       <figure><svg data-draw="combo-roll" viewBox="0 0 200 200" role="img" aria-label="엎어진 그릇과 굴러 나온 공"></svg><figcaption><b>굴러 나옴</b><span>그릇이 쓰러지고 공이 굴러 나왔다. 빈 결과·404 자리</span></figcaption></figure>
       <figure><svg data-draw="combo-stack" viewBox="0 0 200 200" role="img" aria-label="공 두 개가 담긴 그릇"></svg><figcaption><b>수북이</b><span>공 셋이 담긴 그릇. 한솥밥(3팀 이상) 표현</span></figcaption></figure>
-      <figure><svg data-draw="combo-side" viewBox="0 0 200 200" role="img" aria-label="옆으로 돌린 공이 얹힌 로고"></svg><figcaption><b>공만 돌림</b><span>그릇은 그대로, 공만 90° 돌렸다. 회전 애니메이션의 중간 장면</span></figcaption></figure>
+      <figure><svg data-draw="combo-side" viewBox="0 0 200 200" role="img" aria-label="옆으로 돌린 공이 얹힌 로고"></svg><figcaption><b>공만 돌림</b><span>원본에서 공만 90° 돌렸다. 회전 애니메이션의 중간 장면</span></figcaption></figure>
     </div>
   </section>
 
@@ -145,9 +143,9 @@ ol.todo li::marker { color: var(--muted); }
       <div class="controls">
         <label for="yaw">공 좌우 회전 <output id="yawOut">0°</output><input id="yaw" type="range" min="-180" max="180" value="0"></label>
         <label for="pitch">공 위아래 회전 <output id="pitchOut">0°</output><input id="pitch" type="range" min="-90" max="90" value="0"></label>
-        <label for="elev">그릇 내려다보는 높이 <output id="elevOut">8°</output><input id="elev" type="range" min="0" max="90" value="8"></label>
+        <label for="elev">그릇 내려다보는 높이 <output id="elevOut">11°</output><input id="elev" type="range" min="0" max="90" value="11"></label>
         <label for="lift">공 띄우기 <output id="liftOut">0</output><input id="lift" type="range" min="0" max="60" value="0"></label>
-        <p class="lead" style="font-size:13px">마음에 드는 각도를 찾으면 숫자 네 개를 알려주면 된다. 그 각도로 SVG를 뽑는다.</p>
+        <p class="lead" style="font-size:13px">처음 값(0°, 0°, 11°, 0)이 원본이다. 필요한 각도를 찾으면 숫자 네 개를 알려주면 그 각도로 SVG를 뽑는다.</p>
       </div>
     </div>
   </section>
@@ -156,15 +154,15 @@ ol.todo li::marker { color: var(--muted); }
     <div class="eyebrow">07 · 크기와 색</div>
     <h2>작게, 한 색으로</h2>
     <div class="grid three">
-      <figure class="wide"><div class="sizes" id="sizes"></div><figcaption><b>작은 크기</b><span>24px 아래에서는 이음선을 두 줄로 줄이고 오돌토돌을 없앤 단순형을 쓴다</span></figcaption></figure>
-      <figure><svg data-draw="mono" viewBox="0 0 200 200" role="img" aria-label="한 색 로고"></svg><figcaption><b>한 색</b><span>도장·각인·흑백 인쇄용. 면은 갈색, 이음선은 빈 칸</span></figcaption></figure>
-      <figure><svg data-draw="on-yellow" viewBox="0 0 200 200" role="img" aria-label="옐로 바탕 위 로고"></svg><figcaption><b>옐로 바탕</b><span>브랜드 옐로 위. 공 가장자리에 얇은 갈색 테를 두른다</span></figcaption></figure>
+      <figure class="wide"><div class="sizes" id="sizes"></div><figcaption><b>작은 크기</b><span>원본을 그대로 줄였다. 작은 크기에서 이음선이 뭉개지는지 보는 용도</span></figcaption></figure>
+      <figure><svg data-draw="mono" viewBox="0 0 200 200" role="img" aria-label="한 색 로고"></svg><figcaption><b>한 색</b><span>원본 모양 그대로, 도장·각인·흑백 인쇄용. 면은 갈색, 이음선과 그릇 안쪽은 빈칸</span></figcaption></figure>
+      <figure><svg data-draw="on-yellow" viewBox="0 0 200 200" role="img" aria-label="옐로 바탕 위 로고"></svg><figcaption><b>옐로 바탕</b><span>원본 그대로 브랜드 옐로 위에 얹고, 공 가장자리에만 얇은 갈색 테를 둘렀다</span></figcaption></figure>
     </div>
     <div class="swatch-row">
       <span class="chip"><i style="background:#ede8e7"></i>누룽지(밥) <code>#EDE8E7</code></span>
       <span class="chip"><i style="background:#d7ae44"></i>이음선 <code>#D7AE44</code></span>
       <span class="chip"><i style="background:#b6774f"></i>그릇 <code>#B6774F</code></span>
-      <span class="chip"><i style="background:#7c4a30"></i>그릇 안 <code>#7C4A30</code></span>
+      <span class="chip"><i style="background:#925a39"></i>그릇 안 <code>#925A39</code></span>
     </div>
   </section>
 
@@ -172,25 +170,39 @@ ol.todo li::marker { color: var(--muted); }
     <div class="eyebrow">08 · 정할 것</div>
     <h2>고르면 다음 단계로</h2>
     <ol class="todo">
-      <li>기본 자세: 지금처럼 거의 눈높이(04 눈높이)로 둘지, 05 비스듬히 얹힘으로 바꿀지</li>
+      <li>원본에서 안 보이던 공 아래쪽·뒤쪽 무늬를 이대로 둘지(지금은 보이는 무늬를 반 바퀴 돌려 채움)</li>
       <li>앱 아이콘·지도 마커에 05 위에서 형을 쓸지</li>
       <li>쓸 조합: 튀어 오름(불러오는 중), 굴러 나옴(빈 결과), 수북이(한솥밥) 중 어디에 넣을지</li>
-      <li>고른 것은 <code>assets/logo/</code> 아래 SVG 파일로 뽑고, 원본 PNG(2048)도 다시 만든다</li>
+      <li>고른 것은 <code>assets/logo/</code> 아래 SVG 파일로 뽑는다. 기본 로고(원본)는 바꾸지 않는다</li>
     </ol>
   </section>
 </div>
 
 <script>
 (function () {
+  // Traced from assets/logo-512.png (512px space): seam centre lines, rice mound outline, bowl outline.
+  var ORIG = {"seams":[[[192.0,212.0],[200.3,193.0],[213.7,171.0],[225.1,157.0],[239.0,144.1],[261.0,129.3],[274.0,122.4],[287.0,117.4],[295.0,116.0],[310.9,119.3]],[[304.0,179.0],[321.5,206.0],[330.4,224.0],[338.2,248.0],[342.3,271.9]],[[192.0,213.0],[196.2,217.2],[201.0,220.0],[221.0,226.3],[231.0,227.9],[256.0,228.0]],[[118.6,225.3],[127.3,240.0],[138.0,250.9],[148.0,259.4],[159.0,265.1],[186.6,274.5]],[[257.0,227.0],[264.0,213.0],[277.1,196.0],[291.0,183.0],[303.0,178.0]],[[191.0,212.0],[182.0,209.4],[175.0,205.1],[154.6,185.0],[149.6,176.0],[146.7,158.1]],[[284.6,280.6],[274.9,268.9],[267.7,249.0],[257.0,228.0]],[[304.0,177.0],[311.0,170.4],[326.0,163.9],[340.0,159.9],[358.9,156.7]]],"mound":[[275.0,277.5],[268.0,276.5],[236.0,276.5],[231.0,275.5],[216.0,275.5],[180.8,271.9],[177.1,272.4],[147.7,266.8],[145.0,265.5],[141.5,262.2],[141.6,264.1],[135.7,262.8],[124.8,258.7],[118.3,255.2],[117.6,253.9],[117.6,250.1],[120.4,241.9],[118.8,232.3],[120.1,228.6],[122.0,226.5],[123.0,226.1],[124.9,226.8],[122.6,221.9],[122.6,215.1],[125.5,209.0],[130.2,205.7],[131.4,203.9],[131.5,193.0],[132.2,189.7],[135.5,184.0],[138.0,181.5],[146.1,176.6],[146.6,170.1],[147.5,167.0],[148.9,165.8],[149.3,161.8],[155.0,155.5],[162.9,151.4],[166.0,141.5],[167.5,139.0],[173.8,133.3],[185.2,130.7],[186.9,129.4],[189.5,125.0],[191.8,123.3],[201.4,120.9],[204.5,116.0],[209.5,112.0],[215.0,110.5],[226.9,111.4],[234.1,108.6],[239.9,109.4],[242.0,108.5],[246.8,104.3],[249.7,103.2],[258.9,102.6],[269.3,107.2],[280.0,106.5],[283.2,107.3],[287.4,109.9],[293.0,109.5],[296.3,110.2],[301.5,113.0],[303.9,116.6],[304.2,118.9],[314.0,118.5],[319.2,120.3],[323.9,123.6],[329.0,131.5],[339.0,135.5],[344.0,143.5],[349.2,145.3],[353.5,149.0],[354.2,150.9],[356.7,152.8],[357.9,155.0],[357.8,157.7],[359.1,162.0],[358.5,163.2],[356.5,164.2],[362.5,164.0],[367.0,166.5],[369.5,169.0],[372.8,174.7],[373.8,185.7],[378.7,191.8],[381.1,202.4],[384.9,205.6],[387.8,210.7],[388.5,218.0],[387.2,224.5],[391.4,231.1],[391.4,237.9],[390.1,242.6],[393.4,250.1],[392.9,255.4],[390.5,257.0],[375.3,262.8],[340.9,271.4],[332.0,271.5],[319.0,273.5],[301.0,274.5],[296.0,275.5],[285.0,275.5],[275.5,277.0]],"bowl":[[275.0,408.5],[239.0,408.5],[212.8,404.7],[195.1,399.4],[187.2,395.3],[182.0,390.5],[179.9,386.6],[179.4,378.1],[178.6,375.9],[166.4,368.1],[150.5,356.0],[136.0,341.5],[123.9,325.6],[116.6,313.9],[107.2,293.3],[103.1,280.4],[100.3,266.2],[98.6,253.9],[98.6,245.1],[99.5,241.0],[103.0,235.5],[114.9,227.4],[122.2,225.0],[122.4,226.0],[119.0,231.5],[120.1,241.7],[117.0,249.5],[116.6,252.9],[117.3,255.2],[120.1,257.4],[133.7,262.8],[151.6,267.9],[178.1,272.4],[206.1,275.4],[221.0,276.5],[240.0,276.5],[247.0,277.5],[265.0,277.5],[291.0,276.5],[324.9,273.4],[344.2,270.7],[374.3,263.8],[388.9,258.4],[392.8,256.3],[394.1,254.6],[393.9,249.6],[391.1,242.1],[392.4,233.1],[389.6,226.1],[389.8,225.0],[392.9,225.6],[398.9,228.6],[405.5,233.0],[410.3,238.2],[412.4,244.1],[412.4,254.9],[409.7,272.2],[406.8,284.3],[400.4,301.9],[394.0,314.5],[387.1,325.6],[375.0,341.5],[360.5,356.0],[341.6,370.1],[332.4,375.9],[331.6,378.1],[330.6,388.1],[323.8,395.3],[312.3,400.8],[301.5,404.0],[275.5,408.0]]};
+  // The original's geometry in that space. The mound is a sphere (centre, radius) sunk into the bowl;
+  // the bowl opening is an ellipse seen from about 11° above.
+  var O = { cx: 255.5, ballY: 240, ballR: 137, rimY: 248, R: 156.5, rimRy: 30, inRx: 150, seamW: 12.6 };
+  var E0 = Math.asin(O.rimRy / O.R);
+  // Bowl half-width per pixel row of the original, from the rim down to the foot.
+  var ROWS = [[248, 156.5], [254, 156.5], [258, 155.5], [262, 155.5], [266, 154.5], [270, 154], [274, 153.5], [278, 152.5],
+    [282, 151.5], [286, 150.5], [290, 148.5], [294, 147.5], [298, 145.5], [302, 144.5], [306, 142.5], [310, 140.5],
+    [314, 138.5], [318, 135.5], [322, 133.5], [326, 130.5], [330, 127.5], [334, 124.5], [338, 121.5], [342, 118.5],
+    [346, 114.5], [350, 110.5], [354, 106.5], [358, 101.5], [362, 96.5], [366, 91.5], [370, 85.5], [374, 79.5],
+    [378, 75.5], [382, 75.5], [386, 75.5], [390, 73.5]];
+  var PROFILE = ROWS.map(function (r) { return [r[1] / O.R, (r[0] - O.rimY) / (O.R * Math.cos(E0))]; });
+
   var C = {
-    rice: 'var(--rice)', riceShade: 'var(--rice-shade)', seam: 'var(--seam)',
-    bowl: 'var(--bowl)', bowlDark: 'var(--bowl-dark)', bowlIn: 'var(--bowl-in)', floor: 'var(--floor)', ground: 'var(--ground)'
+    rice: 'var(--rice)', seam: 'var(--seam)', bowl: 'var(--bowl)', bowlIn: 'var(--bowl-in)',
+    floor: 'var(--floor)', ground: 'var(--ground)'
   };
   var uid = 0;
   var rad = function (d) { return d * Math.PI / 180; };
   var f = function (n) { return Math.round(n * 100) / 100; };
 
-  // ---------- 3D helpers ----------
+  // ---------- 3D seams ----------
   function rotate(p, yaw, pitch, roll) {
     var x = p[0], y = p[1], z = p[2], c, s, t;
     c = Math.cos(yaw); s = Math.sin(yaw); t = x * c + z * s; z = -x * s + z * c; x = t;      // around Y
@@ -198,167 +210,195 @@ ol.todo li::marker { color: var(--muted); }
     c = Math.cos(roll); s = Math.sin(roll); t = x * c - y * s; y = x * s + y * c; x = t;     // around Z
     return [x, y, z];
   }
-  function norm(v) { var l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; }
-
-  // Volleyball seams: six cube faces (section borders), each split into three strips;
-  // strip direction rotates face to face so neighbouring sections interlock like a real ball.
-  var SEAMS = (function () {
-    var out = [], k = 0.33;
-    for (var a = 0; a < 3; a++) {
-      for (var s = -1; s <= 1; s += 2) {
-        var b = (a + 1) % 3, c = (a + 2) % 3;
-        [-1, -k, k, 1].forEach(function (off) {
-          var pts = [];
-          for (var i = 0; i <= 40; i++) {
-            var p = [0, 0, 0]; p[a] = s; p[b] = off; p[c] = -1 + 2 * i / 40;
-            pts.push(norm(p));
-          }
-          out.push(pts);
-        });
+  // Catmull-Rom through the traced points, so seams stay smooth curves.
+  function smoothLine(pts, n) {
+    var out = [];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
+      for (var j = 0; j < n; j++) {
+        var t = j / n, t2 = t * t, t3 = t2 * t;
+        out.push([0, 1].map(function (k) {
+          return 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3);
+        }));
       }
     }
+    out.push(pts[pts.length - 1]);
     return out;
-  })();
+  }
+  ORIG.seams = ORIG.seams.map(function (l) { return smoothLine(l, 8).map(function (p) { return [f(p[0]), f(p[1])]; }); });
+  // Lift the original's seams onto the front of the sphere: seen head-on they land exactly where they were drawn.
+  var FRONT = ORIG.seams.map(function (line) {
+    return line.map(function (p) {
+      var x = (p[0] - O.cx) / O.ballR, y = (p[1] - O.ballY) / O.ballR, q = x * x + y * y;
+      if (q > 0.995) { var k = Math.sqrt(0.995 / q); x *= k; y *= k; q = 0.995; }
+      return [x, y, Math.sqrt(1 - q)];
+    });
+  });
+  // The original only shows the upper front. The rest is filled with the same pattern turned half a turn
+  // (about the view axis for the lower front, about the vertical axis for the back).
+  var CUT = (288 - O.ballY) / O.ballR;
+  function copy(lines, map, keep) {
+    var out = [];
+    lines.forEach(function (line) {
+      var seg = [];
+      line.forEach(function (p) {
+        var q = map(p);
+        if (!keep || keep(q)) seg.push(q);
+        else { if (seg.length > 1) out.push(seg); seg = []; }
+      });
+      if (seg.length > 1) out.push(seg);
+    });
+    return out;
+  }
+  var lower = function (q) { return q[1] > CUT; };
+  var SEAMS = FRONT
+    .concat(copy(FRONT, function (p) { return [-p[0], -p[1], p[2]]; }, lower))
+    .concat(copy(FRONT, function (p) { return [-p[0], p[1], -p[2]]; }))
+    .concat(copy(FRONT, function (p) { return [p[0], -p[1], -p[2]]; }, lower));
+  // Densify so segments can be cut cleanly at the horizon.
+  SEAMS = SEAMS.map(function (line) {
+    var out = [];
+    for (var i = 0; i < line.length - 1; i++) {
+      for (var j = 0; j < 2; j++) {
+        var t = j / 2, a = line[i], b = line[i + 1];
+        var p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+        var l = Math.hypot(p[0], p[1], p[2]); out.push([p[0] / l, p[1] / l, p[2] / l]);
+      }
+    }
+    out.push(line[line.length - 1]);
+    return out;
+  });
 
   // ---------- ball ----------
-  // Resting pose: a Y-junction (three sections meeting) sits just right of centre, like the current logo.
-  var BASE = [rad(40), rad(-32), rad(-8)];
-  function circ(cx, cy, r) {
-    return 'M' + f(cx - r) + ' ' + f(cy) + 'a' + f(r) + ' ' + f(r) + ' 0 1 0 ' + f(2 * r) + ' 0a' + f(r) + ' ' + f(r) + ' 0 1 0 ' + f(-2 * r) + ' 0Z';
-  }
-  function scallop(cx, cy, r, n, amp) {
-    var d = '', step = Math.PI * 2 / n;
+  // Rice-mound edge: 40 bumps, base radius 131/137 of the sphere, peaks at the sphere radius (as in the original).
+  function scallop(cx, cy, r) {
+    var n = 40, base = r * 131 / 137, d = '', step = Math.PI * 2 / n, rc = base * 1.095;
     for (var i = 0; i < n; i++) {
       var a0 = i * step - Math.PI / 2, a1 = a0 + step, am = a0 + step / 2;
-      var x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
-      var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-      var rc = r * (1 + amp * 2.1);
-      if (i === 0) d += 'M' + f(x0) + ' ' + f(y0);
-      d += 'Q' + f(cx + rc * Math.cos(am)) + ' ' + f(cy + rc * Math.sin(am)) + ' ' + f(x1) + ' ' + f(y1);
+      if (i === 0) d += 'M' + f(cx + base * Math.cos(a0)) + ' ' + f(cy + base * Math.sin(a0));
+      d += 'Q' + f(cx + rc * Math.cos(am)) + ' ' + f(cy + rc * Math.sin(am)) + ' ' + f(cx + base * Math.cos(a1)) + ' ' + f(cy + base * Math.sin(a1));
     }
     return d + 'Z';
   }
   function ball(cx, cy, r, o) {
     o = o || {};
     var yaw = rad(o.yaw || 0), pitch = rad(o.pitch || 0), roll = rad(o.roll || 0);
-    var id = 'b' + (uid++);
-    var fill = o.mono ? C.bowl : C.rice;
-    var seam = o.mono ? 'var(--tile)' : C.seam;
-    var simple = r < 30 && o.simple;
-    var body = simple
-      ? '<circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(r) + '" fill="' + fill + '"/>'
-      : '<path d="' + scallop(cx, cy, r, 22, 0.035) + '" fill="' + fill + '"' + (o.outline ? ' stroke="var(--bowl-in)" stroke-width="' + f(r * 0.04) + '"' : o.mono ? ' stroke="var(--tile)" stroke-width="' + f(r * 0.07) + '"' : '') + '/>';
-    var shade = (o.mono || simple) ? '' :
-      '<path clip-path="url(#' + id + ')" fill-rule="evenodd" fill="' + C.riceShade + '" opacity="0.6" d="' +
-      circ(cx, cy, r) + circ(cx - r * 0.14, cy - r * 0.16, r * 1.02) + '"/>';
+    var id = 'b' + (uid++), edge = scallop(cx, cy, r);
+    var fill = o.mono ? C.bowl : C.rice, seam = o.mono ? 'var(--tile)' : C.seam;
     var lines = '';
-    var seams = simple ? SEAMS.filter(function (_, i) { return i % 2 === 0; }) : SEAMS;
-    seams.forEach(function (curve) {
+    SEAMS.forEach(function (curve) {
       var seg = [];
-      var flush = function () {
-        if (seg.length > 1) lines += '<polyline points="' + seg.join(' ') + '"/>';
-        seg = [];
-      };
+      var flush = function () { if (seg.length > 1) lines += '<polyline points="' + seg.join(' ') + '"/>'; seg = []; };
       curve.forEach(function (p) {
-        var q = rotate(rotate(p, BASE[0], BASE[1], BASE[2]), yaw, pitch, roll);
-        if (q[2] > 0.02) seg.push(f(cx + q[0] * r * 0.97) + ',' + f(cy + q[1] * r * 0.97));
+        var q = rotate(p, yaw, pitch, roll);
+        if (q[2] > 0) seg.push(f(cx + q[0] * r) + ',' + f(cy + q[1] * r));
         else flush();
       });
       flush();
     });
-    return '<defs><clipPath id="' + id + '"><circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(r * 0.97) + '"/></clipPath></defs>' +
-      body + shade +
-      '<g clip-path="url(#' + id + ')" fill="none" stroke="' + seam + '" stroke-width="' + f(r * (simple ? 0.14 : 0.068)) + '" stroke-linecap="round" stroke-linejoin="round">' + lines + '</g>';
+    return '<defs><clipPath id="' + id + '"><path d="' + edge + '"/></clipPath></defs>' +
+      '<path d="' + edge + '" fill="' + fill + '"' + (o.outline ? ' stroke="var(--bowl-in)" stroke-width="' + f(r * 0.04) + '"' : '') + '/>' +
+      '<g clip-path="url(#' + id + ')" fill="none" stroke="' + seam + '" stroke-width="' + f(r * O.seamW / O.ballR) + '" stroke-linecap="round" stroke-linejoin="round">' + lines + '</g>';
   }
 
   // ---------- bowl ----------
-  // Revolved shape seen from elevation e (0 = eye level, 90 = straight down).
-  // (cx, cy) is the rim centre. Returns {back, front}: draw back, then whatever sits in the bowl, then front.
+  // Revolved original profile seen from elevation e (0 = eye level, 90 = straight down). (cx, cy) is the rim centre.
+  // Returns {back, front}: draw back, then whatever sits in the bowl, then front.
   function bowl(cx, cy, R, e, o) {
     o = o || {};
     var E = rad(e), ce = Math.cos(E), se = Math.sin(E);
-    var H = R * 0.78, rb = R * 0.52, rf = R * 0.4, hf = R * 0.13;
-    var ry = Math.max(R * se, 0.6), yb = cy + H * ce, ybf = cy + (H + hf) * ce;
-    var col = o.mono ? C.bowl : C.bowl, inner = o.mono ? 'var(--tile)' : C.bowlIn;
-    var floorR = R * 0.5, floorY = cy + (H * 0.85) * ce;
+    var ry = Math.max(R * se, 0.6), inRx = R * O.inRx / O.R, inRy = Math.max(inRx * se, 0.6);
+    var col = C.bowl, inner = o.mono ? 'var(--tile)' : C.bowlIn;
     var id = 'w' + (uid++);
+    var floorR = R * 0.46, floorY = cy + R * 0.72 * ce;
     var back =
-      '<defs><clipPath id="' + id + '"><ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(R * 0.95) + '" ry="' + f(ry * 0.95) + '"/></clipPath></defs>' +
+      '<defs><clipPath id="' + id + '"><ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(inRx) + '" ry="' + f(inRy) + '"/></clipPath></defs>' +
       '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(R) + '" ry="' + f(ry) + '" fill="' + col + '"/>' +
-      '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(R * 0.95) + '" ry="' + f(ry * 0.95) + '" fill="' + inner + '"/>' +
-      (o.mono || e < 12 ? '' : '<ellipse clip-path="url(#' + id + ')" cx="' + f(cx) + '" cy="' + f(floorY) + '" rx="' + f(floorR) + '" ry="' + f(floorR * se) + '" fill="' + C.bowlDark + '" opacity="0.7"/>');
-    if (e >= 89) {
-      return { back: back + '<circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(floorR) + '" fill="' + C.bowlDark + '" opacity="0.7"/>', front: '' };
-    }
-    var foot =
-      '<path d="M' + f(cx - rf) + ' ' + f(yb) + 'L' + f(cx - rf * 1.06) + ' ' + f(ybf) +
-      'A' + f(rf * 1.06) + ' ' + f(Math.max(rf * 1.06 * se, 0.6)) + ' 0 0 0 ' + f(cx + rf * 1.06) + ' ' + f(ybf) +
-      'L' + f(cx + rf) + ' ' + f(yb) + 'Z" fill="' + (o.mono ? col : C.bowlDark) + '"/>';
-    var k = H * ce;
-    var bodyD =
-      'M' + f(cx - R) + ' ' + f(cy) +
-      'C' + f(cx - R) + ' ' + f(cy + k * 0.62) + ' ' + f(cx - rb * 1.25) + ' ' + f(yb) + ' ' + f(cx - rb) + ' ' + f(yb) +
-      'A' + f(rb) + ' ' + f(Math.max(rb * se, 0.6)) + ' 0 0 0 ' + f(cx + rb) + ' ' + f(yb) +
-      'C' + f(cx + rb * 1.25) + ' ' + f(yb) + ' ' + f(cx + R) + ' ' + f(cy + k * 0.62) + ' ' + f(cx + R) + ' ' + f(cy) +
-      'A' + f(R) + ' ' + f(ry) + ' 0 0 1 ' + f(cx - R) + ' ' + f(cy) + 'Z';
-    var front = foot + '<path d="' + bodyD + '" fill="' + col + '"/>';
-    return { back: back, front: front };
+      '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(inRx) + '" ry="' + f(inRy) + '" fill="' + inner + '"/>' +
+      (o.mono || e < 20 ? '' : '<ellipse clip-path="url(#' + id + ')" cx="' + f(cx) + '" cy="' + f(floorY) + '" rx="' + f(floorR) + '" ry="' + f(floorR * se) + '" fill="' + C.floor + '"/>');
+    if (e >= 89) return { back: back, front: '' };
+    var pts = PROFILE.map(function (p) { return [p[0] * R, cy + p[1] * R * ce]; });
+    var last = pts[pts.length - 1];
+    var d = 'M' + f(cx - R) + ' ' + f(cy);
+    pts.forEach(function (p) { d += 'L' + f(cx - p[0]) + ' ' + f(p[1]); });
+    d += 'A' + f(last[0]) + ' ' + f(Math.max(last[0] * se, 0.6)) + ' 0 0 0 ' + f(cx + last[0]) + ' ' + f(last[1]);
+    pts.slice().reverse().forEach(function (p) { d += 'L' + f(cx + p[0]) + ' ' + f(p[1]); });
+    d += 'L' + f(cx + R) + ' ' + f(cy) + 'A' + f(R) + ' ' + f(ry) + ' 0 0 1 ' + f(cx - R) + ' ' + f(cy) + 'Z';
+    return { back: back, front: '<path d="' + d + '" fill="' + col + '"/>' };
   }
   function groundShadow(cx, cy, rx) {
     return '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(rx) + '" ry="' + f(rx * 0.16) + '" fill="' + C.ground + '"/>';
   }
 
+  // ---------- the original, as traced ----------
+  var K = 200 / 512;
+  function original(o) {
+    o = o || {};
+    var id = 'o' + (uid++);
+    var path = function (pts) { return 'M' + pts.map(function (p) { return p[0] + ' ' + p[1]; }).join('L') + 'Z'; };
+    var mound = path(ORIG.mound);
+    var lines = ORIG.seams.map(function (l) { return '<polyline points="' + l.map(function (p) { return p.join(','); }).join(' ') + '"/>'; }).join('');
+    return '<g transform="scale(' + K + ')">' +
+      '<defs><clipPath id="' + id + '"><path d="' + mound + '"/></clipPath>' +
+      '<clipPath id="' + id + 'r"><rect x="0" y="0" width="512" height="252"/></clipPath></defs>' +
+      '<path d="' + path(ORIG.bowl) + '" fill="' + C.bowl + '"/>' +
+      '<ellipse clip-path="url(#' + id + 'r)" cx="' + O.cx + '" cy="' + O.rimY + '" rx="' + O.inRx + '" ry="' + O.rimRy + '" fill="' + (o.mono ? 'var(--tile)' : C.bowlIn) + '"/>' +
+      '<path d="' + mound + '" fill="' + (o.mono ? C.bowl : C.rice) + '"' + (o.outline ? ' stroke="var(--bowl-in)" stroke-width="5"' : o.mono ? ' stroke="var(--tile)" stroke-width="9"' : '') + '/>' +
+      '<g clip-path="url(#' + id + ')" fill="none" stroke="' + (o.mono ? 'var(--tile)' : C.seam) + '" stroke-width="' + O.seamW + '" stroke-linecap="round" stroke-linejoin="round">' + lines + '</g>' +
+      '</g>';
+  }
+
   // ---------- scenes ----------
+  // Same proportions as the original, any angle. Default angle = the original's.
   function lockup(o) {
     o = o || {};
-    var e = o.elev == null ? 8 : o.elev, lift = o.lift || 0;
-    var R = 64, rimY = 120 - (e > 60 ? 20 : 0) + (lift ? 18 : 0);
-    var b = bowl(100, rimY, R, e, o);
-    var br = 50;
-    var by = rimY - br * 0.38 * Math.cos(rad(e)) - lift;
-    if (e >= 89) by = rimY;
+    var e = o.elev == null ? E0 * 180 / Math.PI : o.elev, lift = o.lift || 0;
+    var R = O.R * K, br = O.ballR * K, cx = O.cx * K;
+    var rimY = O.rimY * K + (e > 50 ? -12 : 0) + (lift ? lift * 0.4 : 0);
+    var b = bowl(cx, rimY, R, e, o);
+    var h = (O.rimY - O.ballY) / Math.cos(E0) * K;
+    var by = rimY - h * Math.cos(rad(e)) - lift;
+    var bl = ball(cx, by, br, { yaw: o.yaw || 0, pitch: (o.pitch || 0) - (e - E0 * 180 / Math.PI), mono: o.mono, outline: o.outline });
     var s = '';
-    if (e < 89) s += groundShadow(100, rimY + (R * 0.91) * Math.cos(rad(e)) + 2, R * 0.75);
-    s += b.back;
     if (lift > 0) {
-      s += '<ellipse cx="100" cy="' + f(rimY + 2) + '" rx="' + f(br * 0.6) + '" ry="' + f(Math.max(br * 0.6 * Math.sin(rad(e)), 2)) + '" fill="#000" opacity="0.18"/>';
-      s += b.front + ball(100, by, br, { yaw: o.yaw || 0, pitch: (o.pitch || 0) - e, mono: o.mono, outline: o.outline });
+      s += groundShadow(cx, rimY + R * 0.95 * Math.cos(rad(e)), R * 0.7) + b.back + b.front +
+        '<ellipse cx="' + f(cx) + '" cy="' + f(rimY) + '" rx="' + f(br * 0.55) + '" ry="' + f(Math.max(br * 0.55 * Math.sin(rad(e)), 2)) + '" fill="#000" opacity="0.18"/>' + bl;
     } else {
-      s += ball(100, by, br, { yaw: o.yaw || 0, pitch: (o.pitch || 0) - e, mono: o.mono, outline: o.outline }) + b.front;
+      s += b.back + bl + b.front;
     }
     return s;
   }
 
   var SCENES = {
-    'lockup': function () { return lockup(); },
-    'ball-front': function () { return groundShadow(100, 172, 50) + ball(100, 98, 64); },
-    'bowl-front': function () { var b = bowl(100, 82, 72, 6); return groundShadow(100, 152, 56) + b.back + b.front; },
-    'bowl-open': function () { var b = bowl(100, 78, 72, 32); return groundShadow(100, 150, 56) + b.back + b.front; },
+    'lockup': function () { return original(); },
+    'ball-front': function () { return ball(100, 100, 74); },
+    'bowl-front': function () { var b = bowl(100, 70, 80, E0 * 180 / Math.PI); return b.back + b.front; },
+    'bowl-open': function () { var b = bowl(100, 72, 78, 32); return b.back + b.front; },
     'apart': function () {
-      var b = bowl(132, 112, 46, 12);
-      return groundShadow(132, 160, 36) + groundShadow(58, 160, 30) + b.back + b.front + ball(58, 120, 36);
+      var b = bowl(136, 104, 52, E0 * 180 / Math.PI);
+      return b.back + b.front + ball(54, 112, 42);
     },
     'combo-34': function () { return lockup({ elev: 30 }); },
-    'combo-bounce': function () { return lockup({ elev: 22, lift: 46, yaw: 25, pitch: 15 }); },
+    'combo-bounce': function () { return lockup({ elev: 22, lift: 40 }); },
     'combo-top': function () {
-      var b = bowl(100, 100, 82, 90);
-      return b.back + ball(100, 100, 62, { pitch: -90, roll: 0 });
+      var b = bowl(100, 100, 86, 90);
+      return b.back + ball(100, 100, 75, { pitch: -90 });
     },
     'combo-roll': function () {
-      var b = bowl(0, 0, 54, 18);
-      return groundShadow(78, 158, 52) + groundShadow(156, 162, 26) +
-        '<g transform="translate(70 112) rotate(-68)">' + b.back + b.front + '</g>' +
-        ball(156, 138, 26, { yaw: 70, pitch: -10, roll: 40 });
+      var b = bowl(0, 0, 58, 18);
+      return groundShadow(78, 160, 54) + groundShadow(156, 164, 26) +
+        '<g transform="translate(66 114) rotate(-68)">' + b.back + b.front + '</g>' +
+        ball(156, 138, 28, { yaw: 70, pitch: -10, roll: 40 });
     },
     'combo-stack': function () {
-      var R = 66, rimY = 128, b = bowl(100, rimY, R, 14);
-      return groundShadow(100, rimY + R * 0.9, R * 0.75) + b.back +
-        ball(70, rimY - 18, 30, { yaw: -30, pitch: 10 }) + ball(130, rimY - 18, 30, { yaw: 50, pitch: -20 }) +
-        ball(100, rimY - 50, 32, { yaw: 10, pitch: -15 }) + b.front;
+      var R = 66, rimY = 120, b = bowl(100, rimY, R, 14);
+      return b.back +
+        ball(70, rimY - 14, 32, { yaw: -40, pitch: 10 }) + ball(130, rimY - 14, 32, { yaw: 50, pitch: -20 }) +
+        ball(100, rimY - 46, 34, { yaw: 10, pitch: -15 }) + b.front;
     },
     'combo-side': function () { return lockup({ yaw: 90 }); },
-    'mono': function () { return lockup({ mono: true }); },
-    'on-yellow': function () { return '<rect x="0" y="0" width="200" height="200" rx="28" fill="var(--accent)"/>' + lockup({ outline: true }); }
+    'mono': function () { return original({ mono: true }); },
+    'on-yellow': function () { return '<rect x="0" y="0" width="200" height="200" rx="28" fill="var(--accent)"/>' + original({ outline: true }); }
   };
 
   function drawAll() {
@@ -368,35 +408,21 @@ ol.todo li::marker { color: var(--muted); }
       if (SCENES[key]) html = SCENES[key]();
       else if (key.indexOf('ball:') === 0) {
         var p = key.split(':').map(Number);
-        html = groundShadow(100, 172, 50) + ball(100, 98, 64, { yaw: p[1], pitch: p[2] });
+        html = ball(100, 100, 74, { yaw: p[1], pitch: p[2] });
       } else if (key.indexOf('bowl:') === 0) {
-        var e = Number(key.split(':')[1]), b = bowl(100, 70 + (e > 60 ? 30 : 0), 72, e);
-        html = (e < 89 ? groundShadow(100, 70 + 72 * 0.91 * Math.cos(rad(e)) + 2 + (e > 60 ? 30 : 0), 56) : '') + b.back + b.front;
+        var e = Number(key.split(':')[1]), b = bowl(100, 64 + (e > 50 ? 30 : 0) + (e >= 89 ? 6 : 0), 80, e);
+        html = b.back + b.front;
       }
       svg.innerHTML = html;
     });
-
     var sizes = document.getElementById('sizes');
     sizes.innerHTML = '';
     [96, 48, 32, 24, 16].forEach(function (px) {
       var d = document.createElement('div');
-      var simple = px <= 24;
-      var R = 64, b = bowl(100, 120, R, 8);
-      var inner = groundShadow(100, 120 + R * 0.91 + 2, R * 0.75) + b.back +
-        ball(100, 120 - 50 * 0.38, 50, { simple: simple, pitch: -5 }) + b.front;
-      if (simple) inner = inner.replace(/scallop/, '');
-      d.innerHTML = '<svg viewBox="0 0 200 200" width="' + px + '" height="' + px + '" aria-hidden="true">' +
-        (simple ? simpleLogo() : inner) + '</svg>' + px + 'px';
+      d.innerHTML = '<svg viewBox="0 0 200 200" width="' + px + '" height="' + px + '" aria-hidden="true">' + original() + '</svg>' + px + 'px';
       sizes.appendChild(d);
     });
     drawPlay();
-  }
-  function simpleLogo() {
-    var R = 70, rimY = 118, b = bowl(100, rimY, R, 0, {});
-    var bl = '<circle cx="100" cy="' + (rimY - 18) + '" r="56" fill="' + C.rice + '"/>' +
-      '<g fill="none" stroke="' + C.seam + '" stroke-width="12" stroke-linecap="round">' +
-      '<path d="M58 70 Q100 52 140 74"/><path d="M84 46 Q72 90 96 120"/></g>';
-    return bl + b.front.replace(/<path d="M[^"]*" fill="none"[^>]*\/>/, '');
   }
 
   // ---------- playground ----------
@@ -404,14 +430,14 @@ ol.todo li::marker { color: var(--muted); }
   function drawPlay() {
     var v = {};
     ids.forEach(function (k) {
-      var el = document.getElementById(k);
-      v[k] = Number(el.value);
+      v[k] = Number(document.getElementById(k).value);
       document.getElementById(k + 'Out').textContent = v[k] + (k === 'lift' ? '' : '°');
     });
     uid = 9000;
     document.getElementById('playSvg').innerHTML = lockup({ yaw: v.yaw, pitch: v.pitch, elev: v.elev, lift: v.lift });
   }
   ids.forEach(function (k) { document.getElementById(k).addEventListener('input', drawPlay); });
+  window.__logo = { original: original, lockup: lockup };
   drawAll();
 })();
 </script>
