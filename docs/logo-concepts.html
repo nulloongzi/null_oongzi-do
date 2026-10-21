@@ -77,7 +77,7 @@ ol.todo li::marker { color: var(--muted); }
   <header>
     <div class="eyebrow">NULLOONGZI-DO · LOGO PARTS · 초안</div>
     <h1>누룽지도 로고 시트</h1>
-    <p class="lead">기준은 지금 로고다. 원본 PNG에서 그릇 윤곽·누룽지 윤곽·이음선을 그대로 따내 벡터로 옮겼고, 정면 모습은 원본과 같다. 다른 각도는 3D로 계산했다. 공은 로고 이음선의 바탕이 된 배구공 아이콘 구조(가운데 Y자, 세 조각, 조각마다 이음선 하나)를 실제 구에 감은 모델이고, 원본 이음선과 평균 3px 안에서 겹친다. 그릇은 원본 윤곽을 줄마다 재서 회전체로 돌렸다.</p>
+    <p class="lead">기준은 지금 로고다. 원본 PNG에서 그릇 윤곽·누룽지 윤곽·이음선을 그대로 따내 벡터로 옮겼고, 정면 모습은 원본과 같다. 다른 각도는 3D로 계산했다. 공은 로고 이음선의 바탕이 된 배구공 아이콘 구조(가운데 Y자, 세 조각, 조각마다 이음선 하나)를 실제 구에 감은 모델이고, 원본 이음선과 평균 3~4px 안에서 겹친다. 그릇은 원본 윤곽을 줄마다 재서 회전체로 돌렸다.</p>
   </header>
 
   <section>
@@ -103,7 +103,7 @@ ol.todo li::marker { color: var(--muted); }
   <section>
     <div class="eyebrow">03 · 각도 — 누룽지 공</div>
     <h2>공을 돌려 본 모습</h2>
-    <p class="lead">정육면체처럼 놓인 여섯 조각, 조각마다 테두리 둘과 이음선 하나. 모서리 하나(Y자)가 정면을 보고, 그 축을 따라 조금 비틀려 있다. 참고 아이콘과 로고 선에 맞춰 구한 값이다.</p>
+    <p class="lead">정육면체처럼 놓인 여섯 조각, 조각마다 테두리 둘과 이음선 하나. 모서리 하나(Y자)가 정면을 보고, 그 축을 따라 조금 비틀려 있다. 참고 아이콘처럼 테두리는 구의 끝선보다 앞에 있어서, 이음선이 테두리를 따라 돌지 않고 가로질러 끝난다. 값은 참고 아이콘과 로고 선에 맞춰 구했다.</p>
     <div class="grid">
       <figure><svg data-draw="ball:0:0" viewBox="0 0 200 200" role="img" aria-label="공 정면"></svg><figcaption><b>정면</b><span>원본 로고와 같은 자세</span></figcaption></figure>
       <figure><svg data-draw="ball:-45:0" viewBox="0 0 200 200" role="img" aria-label="공 왼쪽으로 45도"></svg><figcaption><b>왼쪽으로 45°</b><span>원본 자세에서 좌우로 45° 돌린 모습</span></figcaption></figure>
@@ -171,7 +171,7 @@ ol.todo li::marker { color: var(--muted); }
     <div class="eyebrow">08 · 정할 것</div>
     <h2>고르면 다음 단계로</h2>
     <ol class="todo">
-      <li>3D 모델에서 나오는 선 중 원본에 없던 것(공 가장자리를 따라 도는 테두리)은 지금처럼 가장자리에서 잘라 둘지</li>
+      <li>공 테두리 처리: 참고 아이콘처럼 테두리를 구의 끝선보다 조금 앞에 둬서 이음선이 테두리를 가로질러 끝나게 했다. 이 방식으로 갈지</li>
       <li>앱 아이콘·지도 마커에 05 위에서 형을 쓸지</li>
       <li>쓸 조합: 튀어 오름(불러오는 중), 굴러 나옴(빈 결과), 수북이(한솥밥) 중 어디에 넣을지</li>
       <li>고른 것은 <code>assets/logo/</code> 아래 SVG 파일로 뽑는다. 기본 로고(원본)는 바꾸지 않는다</li>
@@ -185,7 +185,7 @@ ol.todo li::marker { color: var(--muted); }
   var ORIG = {"seams":[[[192.0,212.0],[200.3,193.0],[213.7,171.0],[225.1,157.0],[239.0,144.1],[261.0,129.3],[274.0,122.4],[287.0,117.4],[295.0,116.0],[310.9,119.3]],[[304.0,179.0],[321.5,206.0],[330.4,224.0],[338.2,248.0],[342.3,271.9]],[[192.0,213.0],[196.2,217.2],[201.0,220.0],[221.0,226.3],[231.0,227.9],[256.0,228.0]],[[118.6,225.3],[127.3,240.0],[138.0,250.9],[148.0,259.4],[159.0,265.1],[186.6,274.5]],[[257.0,227.0],[264.0,213.0],[277.1,196.0],[291.0,183.0],[303.0,178.0]],[[191.0,212.0],[182.0,209.4],[175.0,205.1],[154.6,185.0],[149.6,176.0],[146.7,158.1]],[[284.6,280.6],[274.9,268.9],[267.7,249.0],[257.0,228.0]],[[304.0,177.0],[311.0,170.4],[326.0,163.9],[340.0,159.9],[358.9,156.7]]],"mound":[[275.0,277.5],[268.0,276.5],[236.0,276.5],[231.0,275.5],[216.0,275.5],[180.8,271.9],[177.1,272.4],[147.7,266.8],[145.0,265.5],[141.5,262.2],[141.6,264.1],[135.7,262.8],[124.8,258.7],[118.3,255.2],[117.6,253.9],[117.6,250.1],[120.4,241.9],[118.8,232.3],[120.1,228.6],[122.0,226.5],[123.0,226.1],[124.9,226.8],[122.6,221.9],[122.6,215.1],[125.5,209.0],[130.2,205.7],[131.4,203.9],[131.5,193.0],[132.2,189.7],[135.5,184.0],[138.0,181.5],[146.1,176.6],[146.6,170.1],[147.5,167.0],[148.9,165.8],[149.3,161.8],[155.0,155.5],[162.9,151.4],[166.0,141.5],[167.5,139.0],[173.8,133.3],[185.2,130.7],[186.9,129.4],[189.5,125.0],[191.8,123.3],[201.4,120.9],[204.5,116.0],[209.5,112.0],[215.0,110.5],[226.9,111.4],[234.1,108.6],[239.9,109.4],[242.0,108.5],[246.8,104.3],[249.7,103.2],[258.9,102.6],[269.3,107.2],[280.0,106.5],[283.2,107.3],[287.4,109.9],[293.0,109.5],[296.3,110.2],[301.5,113.0],[303.9,116.6],[304.2,118.9],[314.0,118.5],[319.2,120.3],[323.9,123.6],[329.0,131.5],[339.0,135.5],[344.0,143.5],[349.2,145.3],[353.5,149.0],[354.2,150.9],[356.7,152.8],[357.9,155.0],[357.8,157.7],[359.1,162.0],[358.5,163.2],[356.5,164.2],[362.5,164.0],[367.0,166.5],[369.5,169.0],[372.8,174.7],[373.8,185.7],[378.7,191.8],[381.1,202.4],[384.9,205.6],[387.8,210.7],[388.5,218.0],[387.2,224.5],[391.4,231.1],[391.4,237.9],[390.1,242.6],[393.4,250.1],[392.9,255.4],[390.5,257.0],[375.3,262.8],[340.9,271.4],[332.0,271.5],[319.0,273.5],[301.0,274.5],[296.0,275.5],[285.0,275.5],[275.5,277.0]],"bowl":[[275.0,408.5],[239.0,408.5],[212.8,404.7],[195.1,399.4],[187.2,395.3],[182.0,390.5],[179.9,386.6],[179.4,378.1],[178.6,375.9],[166.4,368.1],[150.5,356.0],[136.0,341.5],[123.9,325.6],[116.6,313.9],[107.2,293.3],[103.1,280.4],[100.3,266.2],[98.6,253.9],[98.6,245.1],[99.5,241.0],[103.0,235.5],[114.9,227.4],[122.2,225.0],[122.4,226.0],[119.0,231.5],[120.1,241.7],[117.0,249.5],[116.6,252.9],[117.3,255.2],[120.1,257.4],[133.7,262.8],[151.6,267.9],[178.1,272.4],[206.1,275.4],[221.0,276.5],[240.0,276.5],[247.0,277.5],[265.0,277.5],[291.0,276.5],[324.9,273.4],[344.2,270.7],[374.3,263.8],[388.9,258.4],[392.8,256.3],[394.1,254.6],[393.9,249.6],[391.1,242.1],[392.4,233.1],[389.6,226.1],[389.8,225.0],[392.9,225.6],[398.9,228.6],[405.5,233.0],[410.3,238.2],[412.4,244.1],[412.4,254.9],[409.7,272.2],[406.8,284.3],[400.4,301.9],[394.0,314.5],[387.1,325.6],[375.0,341.5],[360.5,356.0],[341.6,370.1],[332.4,375.9],[331.6,378.1],[330.6,388.1],[323.8,395.3],[312.3,400.8],[301.5,404.0],[275.5,408.0]]};
   // The original's geometry in that space. The mound is a sphere (centre, radius) sunk into the bowl;
   // the bowl opening is an ellipse seen from about 11° above.
-  var O = { cx: 255.5, ballY: 229.6, ballR: 135.3, rimY: 248, R: 156.5, rimRy: 30, inRx: 150, seamW: 12.6 };
+  var O = { cx: 255.5, ballY: 228, ballR: 137, rimY: 248, R: 156.5, rimRy: 30, inRx: 150, seamW: 12.6 };
   var E0 = Math.asin(O.rimRy / O.R);
   // Bowl half-width per pixel row of the original, from the rim down to the foot.
   var ROWS = [[248, 156.5], [254, 156.5], [258, 155.5], [262, 155.5], [266, 154.5], [270, 154], [274, 153.5], [278, 152.5],
@@ -231,8 +231,10 @@ ol.todo li::marker { color: var(--muted); }
   // Six sections laid out like cube faces; each has its two borders plus one strip seam at offset ±k.
   // A cube corner faces the viewer (the Y in the middle), the pattern is twisted about that corner by
   // twist·θ (θ = angle from the corner), then turned by `turn`. `mix` blends orthographic with equidistant
-  // projection, which is how the icon's lines spread toward the rim. Fit error vs the original: ~3px.
-  var BALL = { k: 0.1241, twist: 0.423, turn: 2.3437, mix: 0.1829 };
+  // projection. As in the icon, the outline sits in front of the horizon (`scale` > 1: only the part of the
+  // sphere within ~60° of the viewer shows), so seams cross the edge instead of wrapping along it.
+  // Fit error vs the original seams: ~3–4px.
+  var BALL = { k: 0.2713, twist: 0.4999, turn: 2.3379, mix: 0.2536, scale: 1.2 };
   var SEAMS = (function () {
     var s3 = 1 / Math.sqrt(3);
     // Rodrigues rotation taking the (1,1,1) corner to +z.
@@ -274,9 +276,9 @@ ol.todo li::marker { color: var(--muted); }
   }
 
   // ---------- ball ----------
-  // Rice-mound edge: 40 bumps whose peaks touch the sphere radius (as in the original).
+  // Rice-mound edge: 46 small bumps whose peaks touch the sphere radius (as in the original).
   function scallop(cx, cy, r) {
-    var n = 40, base = r * 0.955, d = '', step = Math.PI * 2 / n, rc = base * 1.09;
+    var n = 46, base = r * 0.975, d = '', step = Math.PI * 2 / n, rc = base * 1.055;
     for (var i = 0; i < n; i++) {
       var a0 = i * step - Math.PI / 2, a1 = a0 + step, am = a0 + step / 2;
       if (i === 0) d += 'M' + f(cx + base * Math.cos(a0)) + ' ' + f(cy + base * Math.sin(a0));
@@ -291,17 +293,16 @@ ol.todo li::marker { color: var(--muted); }
     var fill = o.mono ? C.bowl : C.rice, seam = o.mono ? 'var(--tile)' : C.seam;
     var lines = '';
     SEAMS.forEach(function (curve) {
+      var pts = curve.map(function (p) { var q = rotate(p, yaw, pitch, roll); return q[2] > 0 ? project(q) : null; });
       var seg = [];
       var flush = function () { if (seg.length > 1) lines += '<polyline points="' + seg.join(' ') + '"/>'; seg = []; };
-      curve.forEach(function (p) {
-        var q = rotate(p, yaw, pitch, roll);
-        if (q[2] > 0) { var xy = project(q); seg.push(f(cx + xy[0] * r) + ',' + f(cy + xy[1] * r)); }
+      pts.forEach(function (xy) {
+        if (xy) seg.push(f(cx + xy[0] * r * BALL.scale) + ',' + f(cy + xy[1] * r * BALL.scale));
         else flush();
       });
       flush();
     });
-    // Seams stop just inside the bumps, so borders running along the horizon don't trace the outline.
-    return '<defs><clipPath id="' + id + '"><circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(r * 0.93) + '"/></clipPath></defs>' +
+    return '<defs><clipPath id="' + id + '"><path d="' + edge + '"/></clipPath></defs>' +
       '<path d="' + edge + '" fill="' + fill + '"' + (o.outline ? ' stroke="var(--bowl-in)" stroke-width="' + f(r * 0.04) + '"' : '') + '/>' +
       '<g clip-path="url(#' + id + ')" fill="none" stroke="' + seam + '" stroke-width="' + f(r * O.seamW / O.ballR) + '" stroke-linecap="round" stroke-linejoin="round">' + lines + '</g>';
   }
@@ -442,7 +443,7 @@ ol.todo li::marker { color: var(--muted); }
     document.getElementById('playSvg').innerHTML = lockup({ yaw: v.yaw, pitch: v.pitch, elev: v.elev, lift: v.lift });
   }
   ids.forEach(function (k) { document.getElementById(k).addEventListener('input', drawPlay); });
-  window.__logo = { original: original, lockup: lockup };
+  window.__logo = { original: original, lockup: lockup, ball: ball };
   drawAll();
 })();
 </script>
