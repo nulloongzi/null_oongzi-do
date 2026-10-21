@@ -1,0 +1,417 @@
+<title>누룽지도 로고 시트</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 레이아웃: 위에서 아래로 '부품 → 각도 → 조합 → 크기' 순서. 각 칸은 같은 크기의 판(tile) 위에 그림 하나 + 이름표 */
+:root {
+  --bg: #fff8e1;        /* 앱 크림 */
+  --tile: #fffdf6;
+  --line: #eadfc4;
+  --fg: #4e342e;        /* 누룽지 다크 */
+  --muted: #84675d;     /* 누룽지 브라운 */
+  --accent: #fac710;    /* 누룽지 옐로 */
+  --rice: #ede8e7;
+  --rice-shade: #ddd5d0;
+  --seam: #d7ae44;
+  --bowl: #b6774f;
+  --bowl-dark: #94593a;
+  --bowl-in: #7c4a30;
+  --floor: #c98f68;
+  --ground: rgba(93, 64, 55, 0.14);
+  --font-display: "Jua", "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #241b17; --tile: #30251f; --line: #46372e; --fg: #f3e7dc; --muted: #c2ab9c;
+    --ground: rgba(0, 0, 0, 0.35); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #241b17; --tile: #30251f; --line: #46372e; --fg: #f3e7dc; --muted: #c2ab9c;
+  --ground: rgba(0, 0, 0, 0.35); color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 48px; }
+header { display: grid; gap: 8px; }
+h1, h2 { font-family: var(--font-display); font-weight: 400; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: 40px; line-height: 1.15; }
+h2 { font-size: 26px; line-height: 1.2; }
+p { margin: 0; max-width: 62ch; }
+.lead { color: var(--muted); }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+section { display: grid; gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+figure { margin: 0; background: var(--tile); border: 1px solid var(--line); border-radius: 16px; padding: 12px 12px 14px; display: grid; gap: 8px; min-width: 0; }
+figure svg { width: 100%; height: auto; aspect-ratio: 1; display: block; max-width: 100%; }
+figure img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+figcaption { display: grid; gap: 2px; }
+figcaption b { font-weight: 700; font-size: 14px; }
+figcaption span { font-size: 13px; color: var(--muted); line-height: 1.45; }
+.sizes { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px; padding: 20px; }
+.sizes div { display: grid; justify-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.swatch-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.chip { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--tile); font-size: 13px; }
+.chip i { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); }
+.chip code { color: var(--muted); font-size: 12px; }
+.play { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 20px; align-items: center; background: var(--tile); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.play svg { width: 100%; max-width: 320px; aspect-ratio: 1; justify-self: center; }
+.controls { display: grid; gap: 14px; }
+.controls label { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
+.controls output { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 400; }
+input[type=range] { width: 100%; accent-color: var(--seam); }
+input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+ol.todo { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+ol.todo li::marker { color: var(--muted); }
+@media (max-width: 760px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid.three > .wide { grid-column: 1 / -1; }
+  .play { grid-template-columns: 1fr; }
+  h1 { font-size: 32px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">NULLOONGZI-DO · LOGO PARTS · 초안</div>
+    <h1>누룽지도 로고 시트</h1>
+    <p class="lead">지금 로고는 밥그릇 위에 누룽지 공이 얹힌 한 장뿐이다. 둘을 떼어 각각 그리고, 정면·비스듬히·위·옆에서 본 모습과 조합을 한 장에 모았다. 모든 그림은 같은 3D 규칙(공의 이음선은 구 위의 곡선, 그릇은 회전체)으로 그려서 각도가 바뀌어도 같은 물건으로 보인다.</p>
+  </header>
+
+  <section>
+    <div class="eyebrow">01 · 원본과 다시 그린 것</div>
+    <h2>지금 로고를 벡터로</h2>
+    <div class="grid two">
+      <figure><img src="../assets/logo-512.png" alt="지금 쓰는 로고 비트맵"><figcaption><b>지금 로고</b><span>assets/logo-512.png (비트맵)</span></figcaption></figure>
+      <figure><svg data-draw="lockup" viewBox="0 0 200 200" role="img" aria-label="다시 그린 기본 로고"></svg><figcaption><b>다시 그린 기본형</b><span>같은 색·같은 구도. 아래 부품을 합친 것이다</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">02 · 부품</div>
+    <h2>떼어 놓은 두 부품</h2>
+    <div class="grid">
+      <figure><svg data-draw="ball-front" viewBox="0 0 200 200" role="img" aria-label="누룽지 공 단독"></svg><figcaption><b>누룽지 공</b><span>가장자리 오돌토돌 = 바삭한 누룽지, 금색 선 = 배구공 이음선</span></figcaption></figure>
+      <figure><svg data-draw="bowl-front" viewBox="0 0 200 200" role="img" aria-label="밥그릇 단독 정면"></svg><figcaption><b>밥그릇</b><span>정면. 굽(받침)까지 포함</span></figcaption></figure>
+      <figure><svg data-draw="bowl-open" viewBox="0 0 200 200" role="img" aria-label="빈 밥그릇 비스듬히"></svg><figcaption><b>빈 그릇</b><span>안쪽이 보이게 비스듬히. 합석 단계(밥 차오름)의 바탕</span></figcaption></figure>
+      <figure><svg data-draw="apart" viewBox="0 0 200 200" role="img" aria-label="공과 그릇을 나란히"></svg><figcaption><b>나란히</b><span>둘을 떨어뜨려 놓은 기본 배치</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">03 · 각도 — 누룽지 공</div>
+    <h2>공을 돌려 본 모습</h2>
+    <div class="grid">
+      <figure><svg data-draw="ball:0:0" viewBox="0 0 200 200" role="img" aria-label="공 기본 자세"></svg><figcaption><b>기본 자세</b><span>세 조각이 만나는 Y자가 가운데 조금 오른쪽. 지금 로고와 같은 자세</span></figcaption></figure>
+      <figure><svg data-draw="ball:-45:0" viewBox="0 0 200 200" role="img" aria-label="공 왼쪽으로 45도"></svg><figcaption><b>왼쪽으로 45°</b><span>기본 자세에서 좌우로 45° 돌린 모습</span></figcaption></figure>
+      <figure><svg data-draw="ball:0:-90" viewBox="0 0 200 200" role="img" aria-label="공 위에서"></svg><figcaption><b>위에서</b><span>기본 자세를 위에서 내려다본 모습</span></figcaption></figure>
+      <figure><svg data-draw="ball:180:0" viewBox="0 0 200 200" role="img" aria-label="공 뒤에서"></svg><figcaption><b>뒤에서</b><span>반 바퀴 돌린 모습</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">04 · 각도 — 밥그릇</div>
+    <h2>그릇을 내려다보는 높이별</h2>
+    <div class="grid">
+      <figure><svg data-draw="bowl:4" viewBox="0 0 200 200" role="img" aria-label="그릇 눈높이"></svg><figcaption><b>눈높이</b><span>4° · 입구가 거의 선으로 보인다</span></figcaption></figure>
+      <figure><svg data-draw="bowl:30" viewBox="0 0 200 200" role="img" aria-label="그릇 비스듬히"></svg><figcaption><b>비스듬히</b><span>30° · 안쪽 바닥이 보이기 시작</span></figcaption></figure>
+      <figure><svg data-draw="bowl:60" viewBox="0 0 200 200" role="img" aria-label="그릇 높이서"></svg><figcaption><b>높이서</b><span>60° · 입구가 동그랗게 열린다</span></figcaption></figure>
+      <figure><svg data-draw="bowl:90" viewBox="0 0 200 200" role="img" aria-label="그릇 위에서"></svg><figcaption><b>위에서</b><span>90° · 동심원 세 겹</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">05 · 조합</div>
+    <h2>둘을 합치는 방법</h2>
+    <div class="grid three">
+      <figure><svg data-draw="combo-34" viewBox="0 0 200 200" role="img" aria-label="비스듬히 본 로고"></svg><figcaption><b>비스듬히 얹힘</b><span>기본형을 30° 위에서. 공이 그릇에 반쯤 잠긴다</span></figcaption></figure>
+      <figure><svg data-draw="combo-bounce" viewBox="0 0 200 200" role="img" aria-label="그릇에서 튀어 오른 공"></svg><figcaption><b>튀어 오름</b><span>공이 떠 있고 그릇은 비었다. 불러오는 중·당겨서 새로고침 동작에</span></figcaption></figure>
+      <figure><svg data-draw="combo-top" viewBox="0 0 200 200" role="img" aria-label="위에서 본 로고"></svg><figcaption><b>위에서</b><span>동그라미 안에 동그라미. 지도 마커·앱 아이콘 후보</span></figcaption></figure>
+      <figure><svg data-draw="combo-roll" viewBox="0 0 200 200" role="img" aria-label="엎어진 그릇과 굴러 나온 공"></svg><figcaption><b>굴러 나옴</b><span>그릇이 쓰러지고 공이 굴러 나왔다. 빈 결과·404 자리</span></figcaption></figure>
+      <figure><svg data-draw="combo-stack" viewBox="0 0 200 200" role="img" aria-label="공 두 개가 담긴 그릇"></svg><figcaption><b>수북이</b><span>공 셋이 담긴 그릇. 한솥밥(3팀 이상) 표현</span></figcaption></figure>
+      <figure><svg data-draw="combo-side" viewBox="0 0 200 200" role="img" aria-label="옆으로 돌린 공이 얹힌 로고"></svg><figcaption><b>공만 돌림</b><span>그릇은 그대로, 공만 90° 돌렸다. 회전 애니메이션의 중간 장면</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">06 · 직접 돌려 보기</div>
+    <h2>각도 정하기</h2>
+    <div class="play">
+      <svg id="playSvg" viewBox="0 0 200 200" role="img" aria-label="각도를 바꿔 볼 수 있는 로고"></svg>
+      <div class="controls">
+        <label for="yaw">공 좌우 회전 <output id="yawOut">0°</output><input id="yaw" type="range" min="-180" max="180" value="0"></label>
+        <label for="pitch">공 위아래 회전 <output id="pitchOut">0°</output><input id="pitch" type="range" min="-90" max="90" value="0"></label>
+        <label for="elev">그릇 내려다보는 높이 <output id="elevOut">8°</output><input id="elev" type="range" min="0" max="90" value="8"></label>
+        <label for="lift">공 띄우기 <output id="liftOut">0</output><input id="lift" type="range" min="0" max="60" value="0"></label>
+        <p class="lead" style="font-size:13px">마음에 드는 각도를 찾으면 숫자 네 개를 알려주면 된다. 그 각도로 SVG를 뽑는다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">07 · 크기와 색</div>
+    <h2>작게, 한 색으로</h2>
+    <div class="grid three">
+      <figure class="wide"><div class="sizes" id="sizes"></div><figcaption><b>작은 크기</b><span>24px 아래에서는 이음선을 두 줄로 줄이고 오돌토돌을 없앤 단순형을 쓴다</span></figcaption></figure>
+      <figure><svg data-draw="mono" viewBox="0 0 200 200" role="img" aria-label="한 색 로고"></svg><figcaption><b>한 색</b><span>도장·각인·흑백 인쇄용. 면은 갈색, 이음선은 빈 칸</span></figcaption></figure>
+      <figure><svg data-draw="on-yellow" viewBox="0 0 200 200" role="img" aria-label="옐로 바탕 위 로고"></svg><figcaption><b>옐로 바탕</b><span>브랜드 옐로 위. 공 가장자리에 얇은 갈색 테를 두른다</span></figcaption></figure>
+    </div>
+    <div class="swatch-row">
+      <span class="chip"><i style="background:#ede8e7"></i>누룽지(밥) <code>#EDE8E7</code></span>
+      <span class="chip"><i style="background:#d7ae44"></i>이음선 <code>#D7AE44</code></span>
+      <span class="chip"><i style="background:#b6774f"></i>그릇 <code>#B6774F</code></span>
+      <span class="chip"><i style="background:#7c4a30"></i>그릇 안 <code>#7C4A30</code></span>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">08 · 정할 것</div>
+    <h2>고르면 다음 단계로</h2>
+    <ol class="todo">
+      <li>기본 자세: 지금처럼 거의 눈높이(04 눈높이)로 둘지, 05 비스듬히 얹힘으로 바꿀지</li>
+      <li>앱 아이콘·지도 마커에 05 위에서 형을 쓸지</li>
+      <li>쓸 조합: 튀어 오름(불러오는 중), 굴러 나옴(빈 결과), 수북이(한솥밥) 중 어디에 넣을지</li>
+      <li>고른 것은 <code>assets/logo/</code> 아래 SVG 파일로 뽑고, 원본 PNG(2048)도 다시 만든다</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+(function () {
+  var C = {
+    rice: 'var(--rice)', riceShade: 'var(--rice-shade)', seam: 'var(--seam)',
+    bowl: 'var(--bowl)', bowlDark: 'var(--bowl-dark)', bowlIn: 'var(--bowl-in)', floor: 'var(--floor)', ground: 'var(--ground)'
+  };
+  var uid = 0;
+  var rad = function (d) { return d * Math.PI / 180; };
+  var f = function (n) { return Math.round(n * 100) / 100; };
+
+  // ---------- 3D helpers ----------
+  function rotate(p, yaw, pitch, roll) {
+    var x = p[0], y = p[1], z = p[2], c, s, t;
+    c = Math.cos(yaw); s = Math.sin(yaw); t = x * c + z * s; z = -x * s + z * c; x = t;      // around Y
+    c = Math.cos(pitch); s = Math.sin(pitch); t = y * c - z * s; z = y * s + z * c; y = t;   // around X
+    c = Math.cos(roll); s = Math.sin(roll); t = x * c - y * s; y = x * s + y * c; x = t;     // around Z
+    return [x, y, z];
+  }
+  function norm(v) { var l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; }
+
+  // Volleyball seams: six cube faces (section borders), each split into three strips;
+  // strip direction rotates face to face so neighbouring sections interlock like a real ball.
+  var SEAMS = (function () {
+    var out = [], k = 0.33;
+    for (var a = 0; a < 3; a++) {
+      for (var s = -1; s <= 1; s += 2) {
+        var b = (a + 1) % 3, c = (a + 2) % 3;
+        [-1, -k, k, 1].forEach(function (off) {
+          var pts = [];
+          for (var i = 0; i <= 40; i++) {
+            var p = [0, 0, 0]; p[a] = s; p[b] = off; p[c] = -1 + 2 * i / 40;
+            pts.push(norm(p));
+          }
+          out.push(pts);
+        });
+      }
+    }
+    return out;
+  })();
+
+  // ---------- ball ----------
+  // Resting pose: a Y-junction (three sections meeting) sits just right of centre, like the current logo.
+  var BASE = [rad(40), rad(-32), rad(-8)];
+  function circ(cx, cy, r) {
+    return 'M' + f(cx - r) + ' ' + f(cy) + 'a' + f(r) + ' ' + f(r) + ' 0 1 0 ' + f(2 * r) + ' 0a' + f(r) + ' ' + f(r) + ' 0 1 0 ' + f(-2 * r) + ' 0Z';
+  }
+  function scallop(cx, cy, r, n, amp) {
+    var d = '', step = Math.PI * 2 / n;
+    for (var i = 0; i < n; i++) {
+      var a0 = i * step - Math.PI / 2, a1 = a0 + step, am = a0 + step / 2;
+      var x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+      var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      var rc = r * (1 + amp * 2.1);
+      if (i === 0) d += 'M' + f(x0) + ' ' + f(y0);
+      d += 'Q' + f(cx + rc * Math.cos(am)) + ' ' + f(cy + rc * Math.sin(am)) + ' ' + f(x1) + ' ' + f(y1);
+    }
+    return d + 'Z';
+  }
+  function ball(cx, cy, r, o) {
+    o = o || {};
+    var yaw = rad(o.yaw || 0), pitch = rad(o.pitch || 0), roll = rad(o.roll || 0);
+    var id = 'b' + (uid++);
+    var fill = o.mono ? C.bowl : C.rice;
+    var seam = o.mono ? 'var(--tile)' : C.seam;
+    var simple = r < 30 && o.simple;
+    var body = simple
+      ? '<circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(r) + '" fill="' + fill + '"/>'
+      : '<path d="' + scallop(cx, cy, r, 22, 0.035) + '" fill="' + fill + '"' + (o.outline ? ' stroke="var(--bowl-in)" stroke-width="' + f(r * 0.04) + '"' : o.mono ? ' stroke="var(--tile)" stroke-width="' + f(r * 0.07) + '"' : '') + '/>';
+    var shade = (o.mono || simple) ? '' :
+      '<path clip-path="url(#' + id + ')" fill-rule="evenodd" fill="' + C.riceShade + '" opacity="0.6" d="' +
+      circ(cx, cy, r) + circ(cx - r * 0.14, cy - r * 0.16, r * 1.02) + '"/>';
+    var lines = '';
+    var seams = simple ? SEAMS.filter(function (_, i) { return i % 2 === 0; }) : SEAMS;
+    seams.forEach(function (curve) {
+      var seg = [];
+      var flush = function () {
+        if (seg.length > 1) lines += '<polyline points="' + seg.join(' ') + '"/>';
+        seg = [];
+      };
+      curve.forEach(function (p) {
+        var q = rotate(rotate(p, BASE[0], BASE[1], BASE[2]), yaw, pitch, roll);
+        if (q[2] > 0.02) seg.push(f(cx + q[0] * r * 0.97) + ',' + f(cy + q[1] * r * 0.97));
+        else flush();
+      });
+      flush();
+    });
+    return '<defs><clipPath id="' + id + '"><circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(r * 0.97) + '"/></clipPath></defs>' +
+      body + shade +
+      '<g clip-path="url(#' + id + ')" fill="none" stroke="' + seam + '" stroke-width="' + f(r * (simple ? 0.14 : 0.068)) + '" stroke-linecap="round" stroke-linejoin="round">' + lines + '</g>';
+  }
+
+  // ---------- bowl ----------
+  // Revolved shape seen from elevation e (0 = eye level, 90 = straight down).
+  // (cx, cy) is the rim centre. Returns {back, front}: draw back, then whatever sits in the bowl, then front.
+  function bowl(cx, cy, R, e, o) {
+    o = o || {};
+    var E = rad(e), ce = Math.cos(E), se = Math.sin(E);
+    var H = R * 0.78, rb = R * 0.52, rf = R * 0.4, hf = R * 0.13;
+    var ry = Math.max(R * se, 0.6), yb = cy + H * ce, ybf = cy + (H + hf) * ce;
+    var col = o.mono ? C.bowl : C.bowl, inner = o.mono ? 'var(--tile)' : C.bowlIn;
+    var floorR = R * 0.5, floorY = cy + (H * 0.85) * ce;
+    var id = 'w' + (uid++);
+    var back =
+      '<defs><clipPath id="' + id + '"><ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(R * 0.95) + '" ry="' + f(ry * 0.95) + '"/></clipPath></defs>' +
+      '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(R) + '" ry="' + f(ry) + '" fill="' + col + '"/>' +
+      '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(R * 0.95) + '" ry="' + f(ry * 0.95) + '" fill="' + inner + '"/>' +
+      (o.mono || e < 12 ? '' : '<ellipse clip-path="url(#' + id + ')" cx="' + f(cx) + '" cy="' + f(floorY) + '" rx="' + f(floorR) + '" ry="' + f(floorR * se) + '" fill="' + C.bowlDark + '" opacity="0.7"/>');
+    if (e >= 89) {
+      return { back: back + '<circle cx="' + f(cx) + '" cy="' + f(cy) + '" r="' + f(floorR) + '" fill="' + C.bowlDark + '" opacity="0.7"/>', front: '' };
+    }
+    var foot =
+      '<path d="M' + f(cx - rf) + ' ' + f(yb) + 'L' + f(cx - rf * 1.06) + ' ' + f(ybf) +
+      'A' + f(rf * 1.06) + ' ' + f(Math.max(rf * 1.06 * se, 0.6)) + ' 0 0 0 ' + f(cx + rf * 1.06) + ' ' + f(ybf) +
+      'L' + f(cx + rf) + ' ' + f(yb) + 'Z" fill="' + (o.mono ? col : C.bowlDark) + '"/>';
+    var k = H * ce;
+    var bodyD =
+      'M' + f(cx - R) + ' ' + f(cy) +
+      'C' + f(cx - R) + ' ' + f(cy + k * 0.62) + ' ' + f(cx - rb * 1.25) + ' ' + f(yb) + ' ' + f(cx - rb) + ' ' + f(yb) +
+      'A' + f(rb) + ' ' + f(Math.max(rb * se, 0.6)) + ' 0 0 0 ' + f(cx + rb) + ' ' + f(yb) +
+      'C' + f(cx + rb * 1.25) + ' ' + f(yb) + ' ' + f(cx + R) + ' ' + f(cy + k * 0.62) + ' ' + f(cx + R) + ' ' + f(cy) +
+      'A' + f(R) + ' ' + f(ry) + ' 0 0 1 ' + f(cx - R) + ' ' + f(cy) + 'Z';
+    var front = foot + '<path d="' + bodyD + '" fill="' + col + '"/>';
+    return { back: back, front: front };
+  }
+  function groundShadow(cx, cy, rx) {
+    return '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(rx) + '" ry="' + f(rx * 0.16) + '" fill="' + C.ground + '"/>';
+  }
+
+  // ---------- scenes ----------
+  function lockup(o) {
+    o = o || {};
+    var e = o.elev == null ? 8 : o.elev, lift = o.lift || 0;
+    var R = 64, rimY = 120 - (e > 60 ? 20 : 0) + (lift ? 18 : 0);
+    var b = bowl(100, rimY, R, e, o);
+    var br = 50;
+    var by = rimY - br * 0.38 * Math.cos(rad(e)) - lift;
+    if (e >= 89) by = rimY;
+    var s = '';
+    if (e < 89) s += groundShadow(100, rimY + (R * 0.91) * Math.cos(rad(e)) + 2, R * 0.75);
+    s += b.back;
+    if (lift > 0) {
+      s += '<ellipse cx="100" cy="' + f(rimY + 2) + '" rx="' + f(br * 0.6) + '" ry="' + f(Math.max(br * 0.6 * Math.sin(rad(e)), 2)) + '" fill="#000" opacity="0.18"/>';
+      s += b.front + ball(100, by, br, { yaw: o.yaw || 0, pitch: (o.pitch || 0) - e, mono: o.mono, outline: o.outline });
+    } else {
+      s += ball(100, by, br, { yaw: o.yaw || 0, pitch: (o.pitch || 0) - e, mono: o.mono, outline: o.outline }) + b.front;
+    }
+    return s;
+  }
+
+  var SCENES = {
+    'lockup': function () { return lockup(); },
+    'ball-front': function () { return groundShadow(100, 172, 50) + ball(100, 98, 64); },
+    'bowl-front': function () { var b = bowl(100, 82, 72, 6); return groundShadow(100, 152, 56) + b.back + b.front; },
+    'bowl-open': function () { var b = bowl(100, 78, 72, 32); return groundShadow(100, 150, 56) + b.back + b.front; },
+    'apart': function () {
+      var b = bowl(132, 112, 46, 12);
+      return groundShadow(132, 160, 36) + groundShadow(58, 160, 30) + b.back + b.front + ball(58, 120, 36);
+    },
+    'combo-34': function () { return lockup({ elev: 30 }); },
+    'combo-bounce': function () { return lockup({ elev: 22, lift: 46, yaw: 25, pitch: 15 }); },
+    'combo-top': function () {
+      var b = bowl(100, 100, 82, 90);
+      return b.back + ball(100, 100, 62, { pitch: -90, roll: 0 });
+    },
+    'combo-roll': function () {
+      var b = bowl(0, 0, 54, 18);
+      return groundShadow(78, 158, 52) + groundShadow(156, 162, 26) +
+        '<g transform="translate(70 112) rotate(-68)">' + b.back + b.front + '</g>' +
+        ball(156, 138, 26, { yaw: 70, pitch: -10, roll: 40 });
+    },
+    'combo-stack': function () {
+      var R = 66, rimY = 128, b = bowl(100, rimY, R, 14);
+      return groundShadow(100, rimY + R * 0.9, R * 0.75) + b.back +
+        ball(70, rimY - 18, 30, { yaw: -30, pitch: 10 }) + ball(130, rimY - 18, 30, { yaw: 50, pitch: -20 }) +
+        ball(100, rimY - 50, 32, { yaw: 10, pitch: -15 }) + b.front;
+    },
+    'combo-side': function () { return lockup({ yaw: 90 }); },
+    'mono': function () { return lockup({ mono: true }); },
+    'on-yellow': function () { return '<rect x="0" y="0" width="200" height="200" rx="28" fill="var(--accent)"/>' + lockup({ outline: true }); }
+  };
+
+  function drawAll() {
+    uid = 0;
+    document.querySelectorAll('svg[data-draw]').forEach(function (svg) {
+      var key = svg.getAttribute('data-draw'), html;
+      if (SCENES[key]) html = SCENES[key]();
+      else if (key.indexOf('ball:') === 0) {
+        var p = key.split(':').map(Number);
+        html = groundShadow(100, 172, 50) + ball(100, 98, 64, { yaw: p[1], pitch: p[2] });
+      } else if (key.indexOf('bowl:') === 0) {
+        var e = Number(key.split(':')[1]), b = bowl(100, 70 + (e > 60 ? 30 : 0), 72, e);
+        html = (e < 89 ? groundShadow(100, 70 + 72 * 0.91 * Math.cos(rad(e)) + 2 + (e > 60 ? 30 : 0), 56) : '') + b.back + b.front;
+      }
+      svg.innerHTML = html;
+    });
+
+    var sizes = document.getElementById('sizes');
+    sizes.innerHTML = '';
+    [96, 48, 32, 24, 16].forEach(function (px) {
+      var d = document.createElement('div');
+      var simple = px <= 24;
+      var R = 64, b = bowl(100, 120, R, 8);
+      var inner = groundShadow(100, 120 + R * 0.91 + 2, R * 0.75) + b.back +
+        ball(100, 120 - 50 * 0.38, 50, { simple: simple, pitch: -5 }) + b.front;
+      if (simple) inner = inner.replace(/scallop/, '');
+      d.innerHTML = '<svg viewBox="0 0 200 200" width="' + px + '" height="' + px + '" aria-hidden="true">' +
+        (simple ? simpleLogo() : inner) + '</svg>' + px + 'px';
+      sizes.appendChild(d);
+    });
+    drawPlay();
+  }
+  function simpleLogo() {
+    var R = 70, rimY = 118, b = bowl(100, rimY, R, 0, {});
+    var bl = '<circle cx="100" cy="' + (rimY - 18) + '" r="56" fill="' + C.rice + '"/>' +
+      '<g fill="none" stroke="' + C.seam + '" stroke-width="12" stroke-linecap="round">' +
+      '<path d="M58 70 Q100 52 140 74"/><path d="M84 46 Q72 90 96 120"/></g>';
+    return bl + b.front.replace(/<path d="M[^"]*" fill="none"[^>]*\/>/, '');
+  }
+
+  // ---------- playground ----------
+  var ids = ['yaw', 'pitch', 'elev', 'lift'];
+  function drawPlay() {
+    var v = {};
+    ids.forEach(function (k) {
+      var el = document.getElementById(k);
+      v[k] = Number(el.value);
+      document.getElementById(k + 'Out').textContent = v[k] + (k === 'lift' ? '' : '°');
+    });
+    uid = 9000;
+    document.getElementById('playSvg').innerHTML = lockup({ yaw: v.yaw, pitch: v.pitch, elev: v.elev, lift: v.lift });
+  }
+  ids.forEach(function (k) { document.getElementById(k).addEventListener('input', drawPlay); });
+  drawAll();
+})();
+</script>
