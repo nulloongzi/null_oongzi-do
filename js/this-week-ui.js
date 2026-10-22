@@ -154,9 +154,17 @@
     // ── 시트 ──
     function isSheetOpen() { var o = $('thisWeekOverlay'); return !!(o && !o.hidden); }
 
+    // 내려가는 모션(css .tw-overlay.closing, --motion-modal-exit) 뒤에 숨긴다
+    var closingTimer = null;
     function hideSheet() {
         var o = $('thisWeekOverlay');
-        if (o) o.hidden = true;
+        if (!o || o.hidden) return;
+        var ms = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion-modal-exit')) || 0;
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!ms || reduce) { o.hidden = true; return; }
+        o.classList.add('closing');
+        clearTimeout(closingTimer);
+        closingTimer = setTimeout(function () { o.hidden = true; o.classList.remove('closing'); }, ms);
     }
     window.closeThisWeek = function () {
         hideSheet();
@@ -170,6 +178,8 @@
         sheetDay = null;
         items = computeItems(); // 띠를 그린 뒤 시간이 흘렀을 수 있다
         renderStrip();
+        clearTimeout(closingTimer);
+        o.classList.remove('closing');
         o.hidden = false;
         renderSheet();
         var body = $('twBody');

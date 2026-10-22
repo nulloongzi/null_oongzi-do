@@ -215,6 +215,11 @@ var PEEK_HEIGHT = 390;
 var SHEET_CLOSE_RATIO = 0.6;
 var EXPANDED_HEIGHT = window.innerHeight * 0.9;
 var BUBBLE_HEIGHT = 60;
+// 빠르게 튕기면(px/ms) 위치와 상관없이 그 방향으로 간다. 앱 map_detail_panel.dart kSheetFlingVelocity 와 같은 값(800px/s)
+var SHEET_FLING_VELOCITY = 0.8;
+// 시트 모션은 토큰(--motion-sheet-* · --ease-sheet*, tokens/design-tokens.json)에서 온다 — 앱과 같은 값. docs/motion-spec.md §2 M01·M02
+var SHEET_MOVE = 'height var(--motion-sheet-enter) var(--ease-sheet)';
+var SHEET_CLOSE_MOVE = 'height var(--motion-sheet-exit) var(--ease-sheet-exit)';
 
 function updateSheetState(newState, animation) {
     if (animation === undefined) animation = true;
@@ -226,7 +231,7 @@ function updateSheetState(newState, animation) {
     if (newState === 'CLOSED') { sheet.setAttribute('inert', ''); sheet.setAttribute('aria-hidden', 'true'); }
     else { sheet.removeAttribute('inert'); sheet.removeAttribute('aria-hidden'); }
 
-    if (animation) sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    if (animation) sheet.style.transition = newState === 'CLOSED' ? SHEET_CLOSE_MOVE : SHEET_MOVE;
     else sheet.style.transition = 'none';
 
     if (newState === 'CLOSED') {
@@ -234,12 +239,31 @@ function updateSheetState(newState, animation) {
     } else if (newState === 'PEEK') {
         sheet.style.height = PEEK_HEIGHT + 'px';
         hint.innerText = window.t('expand_hint');
-        interpolateMorph(0);
     } else if (newState === 'EXPANDED') {
         sheet.style.height = EXPANDED_HEIGHT + 'px';
         hint.innerText = window.t('collapse_hint');
-        interpolateMorph(1);
     }
+    if (newState === 'CLOSED') return;
+    if (animation) followMorph(newState === 'EXPANDED' ? 1 : 0);
+    else interpolateMorph(newState === 'EXPANDED' ? 1 : 0);
+}
+
+// 시간표 모프를 시트 높이에 묶는다 — 끌 때뿐 아니라 붙기·탭으로 높이가 움직이는 동안에도
+// 매 프레임 실제 높이로 요약↔시간표를 섞는다(앱 map_detail_panel.dart 와 같은 방식). docs/motion-spec.md M03
+var morphFrame = null;
+function sheetRatio(h) { return (h - PEEK_HEIGHT) / (EXPANDED_HEIGHT - PEEK_HEIGHT); }
+function followMorph(finalRatio) {
+    var sheet = document.getElementById('bottomSheet');
+    var container = document.getElementById('timeMorphContainer');
+    if (morphFrame) cancelAnimationFrame(morphFrame);
+    container.style.transition = 'none';
+    var until = Date.now() + 450; // 시트 전환(300ms)보다 넉넉히
+    (function step() {
+        interpolateMorph(sheetRatio(sheet.offsetHeight));
+        if (Date.now() < until) { morphFrame = requestAnimationFrame(step); return; }
+        morphFrame = null;
+        interpolateMorph(finalRatio);
+    })();
 }
 
 function interpolateMorph(ratio) {
@@ -1208,10 +1232,13 @@ window.closeClubRecruiting = async function (club) {
     var sheet = document.getElementById('bottomSheet');
     var handleArea = document.getElementById('sheetHandle');
     var startY = 0, currentY = 0, isDragging = false, startHeight = 0;
+    var lastY = 0, lastT = 0, velocity = 0; // 아래가 + (px/ms)
 
     function bHandleStart(e) {
         startY = e.touches ? e.touches[0].clientY : e.clientY;
+        lastY = startY; lastT = Date.now(); velocity = 0;
         isDragging = true;
+        if (morphFrame) { cancelAnimationFrame(morphFrame); morphFrame = null; }
         sheet.style.transition = 'none';
         document.getElementById('timeMorphContainer').style.transition = 'none';
         startHeight = sheet.offsetHeight;
@@ -1221,21 +1248,27 @@ window.closeClubRecruiting = async function (club) {
         if (!isDragging) return;
         if (e.cancelable && e.type.indexOf('touch') === 0) e.preventDefault();
         currentY = e.touches ? e.touches[0].clientY : e.clientY;
+        var now = Date.now();
+        if (now > lastT) velocity = 0.7 * ((currentY - lastY) / (now - lastT)) + 0.3 * velocity;
+        lastY = currentY; lastT = now;
         var deltaY = currentY - startY;
         var newHeight = startHeight - deltaY;
         if (newHeight > EXPANDED_HEIGHT) newHeight = EXPANDED_HEIGHT;
         sheet.style.height = newHeight + 'px';
-        var ratio = (newHeight - PEEK_HEIGHT) / (EXPANDED_HEIGHT - PEEK_HEIGHT);
-        interpolateMorph(ratio);
+        interpolateMorph(sheetRatio(newHeight));
     }
 
     function bHandleEnd() {
         if (!isDragging) return;
         isDragging = false;
-        sheet.style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        document.getElementById('timeMorphContainer').style.transition = 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        if (Date.now() - lastT > 100) velocity = 0; // 멈췄다 놓으면 튕김이 아니다
         var currentH = sheet.offsetHeight;
-        if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
+        // 빠르게 튕기면 그 방향으로: 위 → 펼침, 아래 → 펼침에서는 접힘·접힘 근처에서는 닫힘
+        if (velocity < -SHEET_FLING_VELOCITY) updateSheetState('EXPANDED');
+        else if (velocity > SHEET_FLING_VELOCITY) {
+            if (currentH > PEEK_HEIGHT) updateSheetState('PEEK');
+            else window.closeBottomSheet();
+        } else if (currentH > (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
             updateSheetState('EXPANDED');
         } else {
             if (currentH < PEEK_HEIGHT * SHEET_CLOSE_RATIO) window.closeBottomSheet(); // 아래로 쓸어내려 닫기
