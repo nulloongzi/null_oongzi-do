@@ -2371,6 +2371,22 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.8);
         }
 
+        /* 필터 탑시트 뒤 딤 — 다른 모달 시트처럼 어두워지고, 누르면 닫힌다(앱 showTopSheet 와 같음) */
+        .filter-dim {
+            position: fixed;
+            inset: 0;
+            z-index: 299;
+            background: var(--dim);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--motion-modal-exit) var(--ease-modal);
+        }
+        .filter-dim.on {
+            opacity: 1;
+            pointer-events: auto;
+            transition-duration: var(--motion-modal-enter);
+        }
+
         .filter-sheet.active {
             transform: translateY(0);
         }

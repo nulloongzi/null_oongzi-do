@@ -167,6 +167,7 @@ window.openFilterSheet = function () {
     // 모달 시트 시간·곡선(토큰) — 앱 필터 시트·웹 🍚 시트와 같다. 웹만 위에서 내려온다(검색바에 붙은 시트). M01
     sheet.style.transition = 'transform var(--motion-modal-enter) var(--ease-modal)';
     sheet.style.transform = "translateY(0)";
+    document.getElementById('filterDim').classList.add('on');
     if (window.backNav) window.backNav.open('filter', hideFilterSheet); // 폰 뒤로가기로 닫기
 };
 
@@ -174,6 +175,7 @@ function hideFilterSheet() {
     var sheet = document.getElementById('filterSheet');
     sheet.style.transition = 'transform var(--motion-modal-exit) var(--ease-modal)';
     sheet.style.transform = "translateY(-100%)";
+    document.getElementById('filterDim').classList.remove('on');
 }
 
 window.closeFilterSheet = function () {
@@ -196,9 +198,11 @@ window.toggleFilterSheet = function () {
     var filterSheet = document.getElementById('filterSheet');
     var filterHandle = document.getElementById('filterHandle');
     var fStartY = 0, fCurrentY = 0, fIsDragging = false;
+    var fLastY = 0, fLastT = 0, fVelocity = 0; // 아래가 + (px/ms)
 
     function fHandleStart(e) {
         fStartY = e.touches ? e.touches[0].clientY : e.clientY;
+        fLastY = fStartY; fLastT = Date.now(); fVelocity = 0;
         fIsDragging = true;
         filterSheet.style.transition = 'none';
     }
@@ -207,6 +211,9 @@ window.toggleFilterSheet = function () {
         if (!fIsDragging) return;
         if (e.cancelable && e.type.indexOf('touch') === 0) e.preventDefault();
         fCurrentY = e.touches ? e.touches[0].clientY : e.clientY;
+        var now = Date.now();
+        if (now > fLastT) fVelocity = 0.7 * ((fCurrentY - fLastY) / (now - fLastT)) + 0.3 * fVelocity;
+        fLastY = fCurrentY; fLastT = now;
         var deltaY = fCurrentY - fStartY;
         if (deltaY < 0) {
             filterSheet.style.transform = 'translateY(' + deltaY + 'px)';
@@ -220,7 +227,9 @@ window.toggleFilterSheet = function () {
         if (!e.touches && fCurrentY === 0) endY = fStartY;
         var deltaY = endY - fStartY;
         filterSheet.style.transition = 'transform var(--motion-modal-enter) var(--ease-modal)';
-        if (deltaY < -50) {
+        if (Date.now() - fLastT > 100) fVelocity = 0; // 멈췄다 놓으면 튕김이 아니다
+        // 50px 넘게 올리거나 위로 빠르게 튕기면 닫힘(앱 showTopSheet 와 같은 기준)
+        if (deltaY < -50 || fVelocity < -0.8) {
             window.closeFilterSheet();
         } else {
             filterSheet.style.transform = "translateY(0)";
