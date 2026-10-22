@@ -47,10 +47,19 @@
         close.setAttribute('title', t('app_banner_dismiss'));
     }
 
+    // 배너가 오르내리는 동안만 FAB·픽업 패널에 bottom 전환을 건다(css body.app-banner-moving)
+    var movingTimer = null;
+    function setBannerOn(on) {
+        document.body.classList.add('app-banner-moving');
+        document.body.classList.toggle('app-banner-on', on);
+        clearTimeout(movingTimer);
+        movingTimer = setTimeout(function () { document.body.classList.remove('app-banner-moving'); }, 400);
+    }
+
     function dismiss() {
         try { localStorage.setItem(LS_KEY, String(Date.now())); } catch (e) { /* ignore */ }
         if (bannerEl) bannerEl.classList.remove('show');
-        document.body.classList.remove('app-banner-on');
+        setBannerOn(false);
         if (window.track) window.track('app_banner_dismiss', {});
     }
 
@@ -82,7 +91,7 @@
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
                 el.classList.add('show');
-                document.body.classList.add('app-banner-on');
+                setBannerOn(true);
             });
         });
 
