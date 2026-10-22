@@ -10,6 +10,7 @@
 | 알고 싶은 것 | 볼 문서 |
 |---|---|
 | 화면 구성·상태·문구·흐름 (이 문서) | `docs/ui-ux-spec.md` |
+| 화면이 어떻게 움직이나(모션 이름·시간·곡선, 기능별 모션) | `docs/motion-spec.md` |
 | 색·글꼴·모서리·그림자 숫자, 공유 카드 규격 | `docs/design-system.md` (숫자의 원본은 `tokens/design-tokens.json`) |
 | 문구 말투 | `docs/voice-and-tone.md` |
 | 기능이 양쪽에 다 있는가 | 앱 저장소 `docs/feature-parity.md` |

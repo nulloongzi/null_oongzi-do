@@ -30,7 +30,7 @@ js/                 ← 기능별 JS 모듈
 functions/          ← Cloud Functions (인증 알림, 카카오 챗봇, 관리 스크립트)
 assets/             ← 이미지 에셋
 tokens/             ← 디자인 토큰 원본(design-tokens.json) → npm run tokens 로 css :root·앱 Dart 생성
-docs/               ← 기능별 문서 (화면 정의는 docs/ui-ux-spec.md, 디자인 규칙은 docs/design-system.md)
+docs/               ← 기능별 문서 (화면 정의는 docs/ui-ux-spec.md, 모션은 docs/motion-spec.md, 디자인 규칙은 docs/design-system.md)
 ```
 
 ## 주의사항
