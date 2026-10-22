@@ -31,5 +31,16 @@
     { "css": "--radius-toast", "dart": "toast", "value": 12, "note": "토스트(웹 showToast · 앱 SnackBar)" },
     { "css": "--radius-fab", "dart": "fab", "value": 20, "note": "지도 위 버튼 50px" },
     { "css": "--radius-fab-profile", "dart": "fabProfile", "value": 24, "note": "🍚 버튼 55px" }
+  ],
+  "motion": [
+    { "css": "--motion-sheet-enter", "dart": "sheetEnter", "ms": 300, "note": "상세 시트(비모달)가 올라오기 · 손을 놓았을 때 접힘/펼침으로 붙기" },
+    { "css": "--motion-sheet-exit", "dart": "sheetExit", "ms": 250, "note": "상세 시트가 내려가며 닫히기" },
+    { "css": "--motion-modal-enter", "dart": "modalEnter", "ms": 250, "note": "모달 바텀시트 올라오기(Flutter 기본과 같은 값)" },
+    { "css": "--motion-modal-exit", "dart": "modalExit", "ms": 200, "note": "모달 바텀시트 내려가기(Flutter 기본과 같은 값)" }
+  ],
+  "easing": [
+    { "css": "--ease-sheet", "dart": "sheet", "bezier": [0.2, 0.8, 0.2, 1], "note": "감속 — 상세 시트 올라오기·붙기" },
+    { "css": "--ease-sheet-exit", "dart": "sheetExit", "bezier": [0.4, 0, 1, 1], "note": "가속 — 상세 시트 닫기(점점 빨라지며 화면 밖으로)" },
+    { "css": "--ease-modal", "dart": "modal", "bezier": [0, 0, 0.2, 1], "note": "모달 시트 열고 닫기(Flutter Easing.legacyDecelerate)" }
   ]
 }

@@ -18,12 +18,12 @@ describe('디자인 토큰', () => {
 
     test('생성 블록 밖에서 토큰 변수를 다시 정의하지 않는다', () => {
         const outside = replaceCssBlock(css, '');
-        const names = [].concat(tokens.color, tokens.shadow, tokens.radius).map((x) => x.css);
+        const names = [].concat(tokens.color, tokens.shadow, tokens.radius, tokens.motion, tokens.easing).map((x) => x.css);
         names.forEach((n) => assert.ok(!outside.includes(n + ':'), n + ' 이 생성 블록 밖에서 정의됐다'));
     });
 
     test('CSS 변수·Dart 이름이 겹치지 않는다', () => {
-        const all = [].concat(tokens.color, tokens.shadow, tokens.radius);
+        const all = [].concat(tokens.color, tokens.shadow, tokens.radius, tokens.motion, tokens.easing);
         const cssNames = all.map((x) => x.css);
         assert.strictEqual(new Set(cssNames).size, cssNames.length);
         const dartColors = tokens.color.filter((c) => c.dart).map((c) => c.dart)
@@ -46,5 +46,19 @@ describe('디자인 토큰', () => {
         const dart = renderDart(tokens);
         tokens.color.filter((c) => c.dart).forEach((c) => assert.ok(dart.includes('static const ' + c.dart + ' = '), c.dart));
         tokens.radius.forEach((r) => assert.ok(dart.includes('static const ' + r.dart + ' = ' + r.value.toFixed(1)), r.dart));
+    });
+
+    test('모션 시간·곡선이 웹 CSS 와 앱 Dart 에 같은 값으로 들어간다', () => {
+        const dart = renderDart(tokens);
+        const block = renderCss(tokens);
+        tokens.motion.forEach((m) => {
+            assert.ok(block.includes(m.css + ': ' + m.ms + 'ms;'), m.css);
+            assert.ok(dart.includes('static const ' + m.dart + ' = Duration(milliseconds: ' + m.ms + ');'), m.dart);
+        });
+        tokens.easing.forEach((e) => {
+            assert.strictEqual(e.bezier.length, 4, e.css);
+            assert.ok(block.includes(e.css + ': cubic-bezier(' + e.bezier.join(', ') + ');'), e.css);
+            assert.ok(dart.includes('static const ' + e.dart + 'Curve = Cubic('), e.dart);
+        });
     });
 });

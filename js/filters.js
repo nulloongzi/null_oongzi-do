@@ -163,12 +163,17 @@ window.openFilterSheet = function () {
     // 시트 키워드를 상단 검색바 값으로 프리필(앱 패리티 W6)
     var fsKw = document.getElementById('fsKeyword');
     if (fsKw) fsKw.value = document.getElementById('topSearchInput').value;
-    document.getElementById('filterSheet').style.transform = "translateY(0)";
+    var sheet = document.getElementById('filterSheet');
+    // 모달 시트 시간·곡선(토큰) — 앱 필터 시트·웹 🍚 시트와 같다. 웹만 위에서 내려온다(검색바에 붙은 시트). M01
+    sheet.style.transition = 'transform var(--motion-modal-enter) var(--ease-modal)';
+    sheet.style.transform = "translateY(0)";
     if (window.backNav) window.backNav.open('filter', hideFilterSheet); // 폰 뒤로가기로 닫기
 };
 
 function hideFilterSheet() {
-    document.getElementById('filterSheet').style.transform = "translateY(-100%)";
+    var sheet = document.getElementById('filterSheet');
+    sheet.style.transition = 'transform var(--motion-modal-exit) var(--ease-modal)';
+    sheet.style.transform = "translateY(-100%)";
 }
 
 window.closeFilterSheet = function () {
@@ -214,7 +219,7 @@ window.toggleFilterSheet = function () {
         var endY = e.changedTouches ? e.changedTouches[0].clientY : fCurrentY;
         if (!e.touches && fCurrentY === 0) endY = fStartY;
         var deltaY = endY - fStartY;
-        filterSheet.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        filterSheet.style.transition = 'transform var(--motion-modal-enter) var(--ease-modal)';
         if (deltaY < -50) {
             window.closeFilterSheet();
         } else {

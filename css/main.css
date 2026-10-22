@@ -46,6 +46,13 @@
             --radius-toast: 12px; /* 토스트(웹 showToast · 앱 SnackBar) */
             --radius-fab: 20px; /* 지도 위 버튼 50px */
             --radius-fab-profile: 24px; /* 🍚 버튼 55px */
+            --motion-sheet-enter: 300ms; /* 상세 시트(비모달)가 올라오기 · 손을 놓았을 때 접힘/펼침으로 붙기 */
+            --motion-sheet-exit: 250ms; /* 상세 시트가 내려가며 닫히기 */
+            --motion-modal-enter: 250ms; /* 모달 바텀시트 올라오기(Flutter 기본과 같은 값) */
+            --motion-modal-exit: 200ms; /* 모달 바텀시트 내려가기(Flutter 기본과 같은 값) */
+            --ease-sheet: cubic-bezier(0.2, 0.8, 0.2, 1); /* 감속 — 상세 시트 올라오기·붙기 */
+            --ease-sheet-exit: cubic-bezier(0.4, 0, 1, 1); /* 가속 — 상세 시트 닫기(점점 빨라지며 화면 밖으로) */
+            --ease-modal: cubic-bezier(0, 0, 0.2, 1); /* 모달 시트 열고 닫기(Flutter Easing.legacyDecelerate) */
         }
         /* </design-tokens> */
 
@@ -1763,7 +1770,7 @@
             box-shadow: 0 -6px 28px rgba(93, 64, 55, 0.15);
             display: flex;
             flex-direction: column;
-            transition: height 0.1s linear;
+            transition: height var(--motion-sheet-enter) var(--ease-sheet); /* 실제 값은 js/club-detail.js 가 상태마다 정한다 */
             height: 0;
             overflow: hidden;
             border-top: 1px solid rgba(255, 255, 255, 0.8);
@@ -1897,6 +1904,15 @@
             justify-content: center;
         }
         .tw-overlay[hidden] { display: none; }
+        /* 모달 바텀시트(M01): 아래에서 끝까지 올라오고, 닫을 땐 내려간다 — 앱 showModalBottomSheet 와 같은 시간·곡선(토큰) */
+        .tw-overlay { animation: twDimIn var(--motion-modal-enter) var(--ease-modal); }
+        .tw-overlay.closing { animation: twDimOut var(--motion-modal-exit) var(--ease-modal) forwards; }
+        .tw-overlay.closing .tw-sheet { animation: twSheetOut var(--motion-modal-exit) var(--ease-modal) forwards; }
+        @keyframes twDimIn { from { background: transparent; } }
+        @keyframes twDimOut { to { background: transparent; } }
+        @keyframes twSheetIn { from { transform: translateY(100%); } }
+        @keyframes twSheetOut { to { transform: translateY(100%); } }
+        @media (prefers-reduced-motion: reduce) { .tw-overlay, .tw-sheet, .tw-overlay.closing, .tw-overlay.closing .tw-sheet { animation: none; } }
         .tw-sheet {
             width: 100%;
             max-width: 560px;
@@ -1909,7 +1925,7 @@
             border-top-right-radius: var(--radius-sheet);
             box-shadow: 0 -6px 28px rgba(93, 64, 55, 0.15);
             padding: 18px 16px 0;
-            animation: slideUp 0.25s ease-out;
+            animation: twSheetIn var(--motion-modal-enter) var(--ease-modal);
         }
         .tw-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
         .tw-head h3 { margin: 0; font-size: 18px; color: var(--nurungji-dark); }
@@ -2348,7 +2364,7 @@
             box-shadow: 0 10px 40px rgba(93, 64, 55, 0.12);
             padding: 0;
             transform: translateY(-100%);
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: transform var(--motion-modal-enter) var(--ease-modal); /* js/filters.js 가 열기·닫기마다 정한다 */
             display: flex;
             flex-direction: column;
             will-change: transform;

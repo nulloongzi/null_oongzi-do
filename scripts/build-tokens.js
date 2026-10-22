@@ -39,6 +39,8 @@ function renderCss(t) {
     t.color.forEach((c) => lines.push(pad + c.css + ': ' + c.value + '; /* ' + c.note + ' */'));
     t.shadow.forEach((s) => lines.push(pad + s.css + ': 0 ' + s.y + 'px ' + s.blur + 'px ' + s.color + '; /* ' + s.note + ' */'));
     t.radius.forEach((r) => lines.push(pad + r.css + ': ' + r.value + 'px; /* ' + r.note + ' */'));
+    (t.motion || []).forEach((m) => lines.push(pad + m.css + ': ' + m.ms + 'ms; /* ' + m.note + ' */'));
+    (t.easing || []).forEach((e) => lines.push(pad + e.css + ': cubic-bezier(' + e.bezier.join(', ') + '); /* ' + e.note + ' */'));
     return ['        ' + BEGIN, '        :root {'].concat(lines, ['        }', '        ' + END]).join('\n');
 }
 
@@ -49,6 +51,7 @@ function renderDart(t) {
         '// 다시 만들기(웹 저장소에서):',
         '//   npm run tokens -- --dart ../null_oongzi-do-app/lib/design_tokens.g.dart',
         '// 규칙과 쓰임: 웹 docs/design-system.md · CI: .github/workflows/design-tokens.yml',
+        "import 'package:flutter/animation.dart';",
         "import 'package:flutter/painting.dart';",
         '',
         '/// 누룽지 색 — 웹 css/main.css :root 와 같은 값.',
@@ -76,6 +79,18 @@ function renderDart(t) {
         out.push('  static const ' + r.dart + ' = ' + r.value.toFixed(1) + '; // ' + r.css + ' · ' + r.note);
     });
     out.push('}', '');
+    if ((t.motion || []).length || (t.easing || []).length) {
+        out.push('/// 모션 — 웹 --motion-* · --ease-* 와 같은 값(docs/motion-spec.md).', 'class NurungjiMotion {');
+        // 설명은 위 줄에 — 한 줄에 붙이면 dart format 이 선언을 여러 줄로 쪼개 생성물과 달라진다
+        (t.motion || []).forEach((m) => {
+            out.push('  // ' + m.css + ': ' + m.note, '  static const ' + m.dart + ' = Duration(milliseconds: ' + m.ms + ');');
+        });
+        (t.easing || []).forEach((e) => {
+            out.push('  // ' + e.css + ': ' + e.note,
+                '  static const ' + e.dart + 'Curve = Cubic(' + e.bezier.map((n) => Number(n).toFixed(1)).join(', ') + ');');
+        });
+        out.push('}', '');
+    }
     return out.join('\n');
 }
 

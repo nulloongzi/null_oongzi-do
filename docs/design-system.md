@@ -9,16 +9,16 @@
 > 다음에 무엇을 고칠지 고를 재료(UI/UX·브랜드 참고자료, 지금 찾은 개선 후보)는 `docs/design-references.md`.
 
 ## 0. 토큰 파일 (값의 원본)
-색·그림자·모서리 **숫자**는 `tokens/design-tokens.json` 하나에만 적는다. 웹·앱 코드는 거기서 생성한다.
+색·그림자·모서리·모션(시간·곡선) **숫자**는 `tokens/design-tokens.json` 하나에만 적는다. 웹·앱 코드는 거기서 생성한다.
 
 | 생성물 | 만드는 법 | 어긋나면 |
 |---|---|---|
 | 웹 `css/main.css` 의 `:root` (표시 `<design-tokens>` 사이) | `npm run tokens` | 웹 CI `tests/design-tokens.test.js` 실패 |
-| 앱 `lib/design_tokens.g.dart` (`NurungjiColors` · `NurungjiShadows` · `NurungjiRadius`, `theme.dart` 가 export) | `npm run tokens -- --dart ../null_oongzi-do-app/lib/design_tokens.g.dart` | 앱 CI `design-tokens.yml` 실패 (주 1회도 돈다) |
+| 앱 `lib/design_tokens.g.dart` (`NurungjiColors` · `NurungjiShadows` · `NurungjiRadius` · `NurungjiMotion`, `theme.dart` 가 export) | `npm run tokens -- --dart ../null_oongzi-do-app/lib/design_tokens.g.dart` | 앱 CI `design-tokens.yml` 실패 (주 1회도 돈다) |
 
 바꾸는 순서: ① 이 문서의 규칙 → ② JSON 값 → ③ 위 두 명령 → ④ 웹·앱 PR 을 **같은 브랜치 이름**으로 올린다
 (앱 CI 가 같은 이름의 웹 브랜치와 맞춰 본다. 없으면 웹 main 과 비교). 생성된 두 파일은 손으로 고치지 않는다.
-아래 표의 HEX 는 읽기 편하라고 옮겨 둔 것 — 다르면 JSON 이 맞다.
+아래 표의 HEX 는 읽기 편하라고 옮겨 둔 것 — 다르면 JSON 이 맞다. 모션 값의 쓰임은 `docs/motion-spec.md` §5.
 
 코드로 잴 수 있는 규칙(검정 그림자 금지 등)은 `tests/design-rules.test.js` · 앱 `test/design_rules_test.dart` 가 매 CI 에서 보고,
 사람 눈이 필요한 것은 `docs/visual-parity.md` 로 반기마다 검수한다.
