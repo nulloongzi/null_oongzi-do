@@ -83,9 +83,6 @@ const PAIRS = {
     lb_add_btn: 'lb_add_btn',
     lb_remove: 'lb_remove_btn',
     // 안내·상태 문구(웹 <br> 은 앱 \n 과 같게 본다)
-    sticker_hint: 'sk_hint',
-    sticker_urgent: 'sk_urgent',
-    sticker_foot_qr: 'sk_foot_qr',
     login_cancelled: 'au_login_cancelled',
     nickname_reserved: 'nickname_reserved',
     f_reel_invalid: 'insta_reel_invalid',

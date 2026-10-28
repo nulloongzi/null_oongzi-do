@@ -19,9 +19,7 @@ window.closePreview = function () {
     hidePreviewShape();
 
     // 메모리 절약을 위해 기존 이미지 삭제
-    var box = document.getElementById('previewImgBox');
-    box.innerHTML = "";
-    box.classList.remove('is-sticker');
+    document.getElementById('previewImgBox').innerHTML = "";
 };
 
 window.downloadImage = function () {
@@ -59,7 +57,7 @@ window.buildSpotShareUrl = function (id) {
 
 // 공유 링크 출처 표시(UTM). 링크를 받은 사람이 들어오면 GA 기본 측정기준(세션 소스/매체,
 // 첫 사용자 소스/매체)에 'share / <medium>' 으로 잡힌다 → "건네준 링크·카드로 새로 들어온 사람"을
-// 맞춤 측정기준 없이 센다. medium: card_qr · ig_story · reel_sticker · kakao · copy · os_sheet.
+// 맞춤 측정기준 없이 센다. medium: card_qr · ig_story · kakao · copy · os_sheet.
 // 앱 ShareService.withUtm 과 같은 값. 카드에 인쇄되는 글자는 건드리지 않는다(QR 에만 싣는다).
 window.withShareUtm = function (url, medium) {
     return url + (url.indexOf('?') === -1 ? '?' : '&') + 'utm_source=share&utm_medium=' + medium;
@@ -766,7 +764,6 @@ function showStoryCardPreview(dataUrl) {
         return;
     }
     hidePreviewShape();
-    if (previewBox.classList && previewBox.classList.remove) previewBox.classList.remove('is-sticker');
     previewBox.innerHTML = '';
     var img = document.createElement('img');
     img.src = dataUrl;
@@ -837,282 +834,6 @@ window.shareFeedCard = function (kind, item) {
         return 'feed_card';
     }).catch(function (e) {
         console.error('피드 카드 생성 실패:', e);
-        window.showToast(window.t('sh_run_fail'));
-        return 'fallback';
-    });
-};
-
-// ── 릴스 스티커 (배경 투명 PNG) ───────────────────────────────────────────
-// 팀 정보를 상세 바텀시트처럼 생긴 카드 한 장으로 그리고, 바깥은 투명하게 둔다.
-// 릴스·스토리 편집기에서 '스티커/이미지'로 영상 위에 얹는 용도 — 예전엔 운영자가 시트를
-// 캡처해서 누끼를 땄다. 높이는 내용만큼(고정 규격 없음). 규격은 docs/design-system.md §7-6,
-// 앱 lib/widgets/sticker_card.dart 와 같은 숫자.
-var STICKER = {
-    EDGE: 48,                   // 카드 바깥 투명 여백(그림자 자리)
-    PAD: 56,                    // 카드 안 좌우 여백 → 본문 폭 872
-    R: 48,                      // 카드 모서리
-    titleFs: 64, titleLh: 76,
-    chipH: 56, chipFs: 30, chipPad: 24, chipGap: 12,
-    slotH: 132, slotGap: 20,
-    rowIcon: 36, rowFs: 32, rowLh: 44, rowGap: 14,
-    qr: 132,
-    TONES: {
-        urgent: { bg: '#FFF3E0', line: '#FFCC80', ink: '#BF360C', badge: '#BF360C', badgeInk: '#FFFFFF' },
-        recruit: { bg: '#FFFBE6', line: 'rgba(250,199,16,0.6)', ink: '#4E342E', badge: '#FAC710', badgeInk: '#3D2C22' }
-    }
-};
-STICKER.W = CARD.W;
-STICKER.CW = CARD.W - STICKER.EDGE * 2;
-STICKER.IW = STICKER.CW - STICKER.PAD * 2;
-
-// 일정 글 → 요일 묶음 타일 [{ day, time }]. 같은 시간인 요일은 한 장('화·목').
-// 못 읽거나 4장을 넘으면 [] — 그땐 달력 줄 하나로 원문을 쓴다.
-function stickerSlots(text) {
-    if (!text || !window.parseScheduleText) return [];
-    var map = window.parseScheduleText(text);
-    var DAYS = ['월', '화', '수', '목', '금', '토', '일'];
-    var groups = [], byTime = {};
-    DAYS.forEach(function (d) {
-        if (!map[d]) return;
-        var key = map[d].text;
-        if (!byTime[key]) { byTime[key] = { days: [], time: key }; groups.push(byTime[key]); }
-        byTime[key].days.push(d);
-    });
-    if (!groups.length || groups.length > 4) return [];
-    var en = window.currentLang === 'en';
-    var dayName = function (d) { return window.i18nDay ? window.i18nDay(d) : d; };
-    return groups.map(function (g) {
-        var day = g.days.map(dayName).join('·');
-        if (!en && g.days.length === 1) day += '요일';
-        return { day: day, time: g.time };
-    });
-}
-
-// 맨 위 띠: 급구 > 식구 모집 > (픽업) 이번주. 문구가 없으면 풀이 한 줄.
-function stickerBanner(item, kind) {
-    var T = window.t || function (k) { return k; };
-    if (kind === 'club') {
-        if (window.isUrgentActive && window.isUrgentActive(item) && item.urgent_msg) {
-            return { tone: 'urgent', badge: T('sk_urgent'), msg: storyStripEmoji(item.urgent_msg) };
-        }
-        if (window.isRecruitingActive && window.isRecruitingActive(item)) {
-            var m = typeof item.recruit_msg === 'string' ? storyStripEmoji(item.recruit_msg) : '';
-            return { tone: 'recruit', badge: storyStripEmoji(T('rc_badge')), msg: m || T('rc_badge_desc') };
-        }
-        return null;
-    }
-    if (item.this_week) return { tone: 'recruit', badge: T('pk_thisweek_badge'), msg: storyStripEmoji(item.this_week) };
-    return null;
-}
-
-// 팀·픽업 → 스티커 data. tags 는 공유 카드와 같은 정규화를 쓴다.
-function stickerData(kind, item) {
-    var base = kind === 'club' ? storyClubData(item) : storySpotData(item);
-    var sched = kind === 'club' ? item.schedule : (item.schedule || item.schedule_text);
-    return {
-        title: base.title, url: base.url, verified: !!base.verified, tags: base.tags,
-        banner: stickerBanner(item, kind),
-        slots: stickerSlots(sched), schedule: sched || '',
-        fee: kind === 'club' ? (window.i18nPrice ? window.i18nPrice(base.fee) : base.fee) : base.fee,
-        region: storyRegion(base.address)
-    };
-}
-window.stickerData = stickerData;
-
-// 측정과 그리기를 한 함수로 — 같은 값으로 높이를 재고 그린다. draw=false 면 높이만.
-// 반환: { h, title, chips, slots, rows } (테스트가 줄 수·높이를 본다).
-function stickerPaint(ctx, d, logo, draw) {
-    var S = STICKER, C = CARD.C, x = S.EDGE + S.PAD, iw = S.IW;
-    var y = S.EDGE + 24;                                   // 손잡이
-    if (draw) {
-        storyRoundRect(ctx, (S.W - 112) / 2, y, 112, 12, 6);
-        ctx.fillStyle = 'rgba(141,110,99,0.28)'; ctx.fill();
-    }
-    y += 12 + 40;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-
-    var b = d.banner;
-    if (b) {
-        var tone = S.TONES[b.tone] || S.TONES.recruit;
-        ctx.font = cardFont(36, 800);
-        var msgLines = storyWrapLines(ctx, b.msg, iw - 56, 2);
-        var bh = 24 + 44 + 14 + msgLines.length * 46 + 22;
-        if (draw) {
-            storyRoundRect(ctx, x, y, iw, bh, 24);
-            ctx.fillStyle = tone.bg; ctx.fill();
-            ctx.strokeStyle = tone.line; ctx.lineWidth = 3; ctx.stroke();
-            ctx.font = cardFont(26, 800);
-            var bw = ctx.measureText(b.badge).width + 36;
-            storyRoundRect(ctx, x + 28, y + 24, bw, 44, 22);
-            ctx.fillStyle = tone.badge; ctx.fill();
-            ctx.fillStyle = tone.badgeInk; ctx.textBaseline = 'middle';
-            ctx.fillText(b.badge, x + 46, y + 24 + 23); ctx.textBaseline = 'top';
-            ctx.font = cardFont(36, 800); ctx.fillStyle = tone.ink;
-            for (var i = 0; i < msgLines.length; i++) ctx.fillText(msgLines[i], x + 28, y + 24 + 44 + 14 + i * 46);
-        }
-        y += bh + 32;
-    }
-
-    ctx.font = cardFont(S.titleFs, 800);
-    var title = storyWrapLines(ctx, d.title || (window.t ? window.t('sh_club_fallback') : ''), iw - (d.verified ? 64 : 0), 2);
-    if (draw) {
-        ctx.fillStyle = C.ink;
-        for (var ti = 0; ti < title.length; ti++) {
-            ctx.fillText(title[ti], x, y + ti * S.titleLh + 4);
-            if (ti === 0 && d.verified) cardCheckBadge(ctx, x + ctx.measureText(title[0]).width + 36, y + S.titleLh / 2, 24);
-        }
-    }
-    y += title.length * S.titleLh;
-
-    // 대상 칩: 최대 두 줄, 넘치는 칩은 뺀다
-    ctx.font = cardFont(S.chipFs, 700);
-    var chips = [], cx = 0, row = 0;
-    for (var c = 0; c < (d.tags || []).length; c++) {
-        var tag = d.tags[c];
-        var w = Math.min(iw, ctx.measureText(tag.t).width + S.chipPad * 2);
-        if (cx + w > iw && cx > 0) { row++; cx = 0; }
-        if (row >= 2) break;
-        chips.push({ tag: tag, x: cx, row: row, w: w });
-        cx += w + S.chipGap;
-    }
-    var chipRows = chips.length ? chips[chips.length - 1].row + 1 : 0;
-    if (chipRows) {
-        y += 20;
-        if (draw) {
-            ctx.textBaseline = 'middle';
-            chips.forEach(function (ch) {
-                var cy = y + ch.row * (S.chipH + S.chipGap);
-                storyRoundRect(ctx, x + ch.x, cy, ch.w, S.chipH, S.chipH / 2);
-                ctx.fillStyle = ch.tag.bg || '#F4ECDB'; ctx.fill();
-                ctx.fillStyle = ch.tag.fg || C.brown;
-                ctx.fillText(storyWrapLines(ctx, ch.tag.t, ch.w - S.chipPad * 2, 1)[0] || '', x + ch.x + S.chipPad, cy + S.chipH / 2 + 1);
-            });
-            ctx.textBaseline = 'top';
-        }
-        y += chipRows * S.chipH + (chipRows - 1) * S.chipGap;
-    }
-
-    // 시간 타일: 노란 테두리 칸(예전 캡처 스티커에서 가장 눈에 띄던 부분). 두 칸씩.
-    var slots = d.slots || [];
-    if (slots.length) {
-        y += 28;
-        var sw = (iw - S.slotGap) / 2;
-        if (draw) {
-            slots.forEach(function (s, i) {
-                var sx = x + (i % 2) * (sw + S.slotGap), sy = y + Math.floor(i / 2) * (S.slotH + S.slotGap);
-                storyRoundRect(ctx, sx, sy, sw, S.slotH, 28);
-                ctx.fillStyle = '#fff'; ctx.fill();
-                ctx.strokeStyle = C.yellow; ctx.lineWidth = 5; ctx.stroke();
-                ctx.textAlign = 'center';
-                ctx.font = cardFont(28, 800); ctx.fillStyle = '#B7791F';
-                ctx.fillText(storyWrapLines(ctx, s.day, sw - 40, 1)[0] || '', sx + sw / 2, sy + 22);
-                var fs = 40;
-                ctx.font = cardFont(fs, 800);
-                while (fs > 30 && ctx.measureText(s.time).width > sw - 40) { fs -= 2; ctx.font = cardFont(fs, 800); }
-                ctx.fillStyle = C.ink;
-                ctx.fillText(storyWrapLines(ctx, s.time, sw - 40, 1)[0] || '', sx + sw / 2, sy + 64);
-                ctx.textAlign = 'left';
-            });
-        }
-        y += Math.ceil(slots.length / 2) * (S.slotH + S.slotGap) - S.slotGap;
-    }
-
-    // 정보 줄: (일정을 타일로 못 그렸을 때만) 달력 · 회비 · 지역
-    var defs = [];
-    if (!slots.length && d.schedule) defs.push(['cal', d.schedule]);
-    if (d.fee) defs.push(['won', d.fee]);
-    if (d.region) defs.push(['pin', d.region]);
-    ctx.font = cardFont(S.rowFs, 600);
-    var rows = defs.map(function (r) {
-        var ln = storyWrapLines(ctx, r[1], iw - S.rowIcon - 20, 2);
-        return { icon: r[0], lines: ln, h: Math.max(S.rowIcon, ln.length * S.rowLh) };
-    });
-    if (rows.length) {
-        y += 28;
-        rows.forEach(function (r, k) {
-            if (k) y += S.rowGap;
-            if (draw) {
-                var ico = r.icon === 'cal' ? cardIcoCal : (r.icon === 'won' ? cardIcoWon : cardIcoPin);
-                ico(ctx, x, y + (S.rowLh - S.rowIcon) / 2, S.rowIcon, C.brown);
-                ctx.font = cardFont(S.rowFs, 600); ctx.fillStyle = C.dark; ctx.textBaseline = 'middle';
-                for (var l = 0; l < r.lines.length; l++) ctx.fillText(r.lines[l], x + S.rowIcon + 20, y + S.rowLh / 2 + l * S.rowLh);
-                ctx.textBaseline = 'top';
-            }
-            y += r.h;
-        });
-    }
-
-    // 꼬리: 헤어라인 + 로고·워드마크·안내 + QR(영상엔 링크가 안 걸린다 — QR 이 유일한 길)
-    y += 36;
-    if (draw) {
-        ctx.fillStyle = C.hair; ctx.fillRect(x, y, iw, 2);
-    }
-    y += 2 + 28;
-    var qrUrl = window.withShareUtm ? window.withShareUtm(d.url, 'reel_sticker') : d.url;
-    var haveQR = !!window.qrcode;
-    var footH = haveQR ? S.qr : 104;
-    if (draw) {
-        if (haveQR) haveQR = storyDrawQR(ctx, qrUrl, x + iw - S.qr, y, S.qr);
-        var tw = iw - (haveQR ? S.qr + 32 : 0);
-        var by = y + (footH - 104) / 2;                    // 로고 줄 56 + 안내 줄 = 104
-        if (logo) {
-            ctx.save(); ctx.beginPath(); ctx.arc(x + 28, by + 28, 28, 0, Math.PI * 2); ctx.clip();
-            ctx.drawImage(logo, x, by, 56, 56); ctx.restore();
-        } else {
-            cardVolley(ctx, x + 28, by + 28, 20, C.yellow);
-        }
-        ctx.textBaseline = 'middle';
-        ctx.font = cardFont(30, 800); ctx.fillStyle = C.ink;
-        ctx.fillText(window.t ? window.t('brand') : '누룽지도', x + 72, by + 29);
-        ctx.font = cardFont(24, 600); ctx.fillStyle = C.brown;
-        var cap = window.t ? window.t(haveQR ? 'sk_foot_qr' : 'sk_foot') : '';
-        ctx.fillText(storyWrapLines(ctx, cap, tw, 1)[0] || '', x, by + 86);
-        ctx.textBaseline = 'top';
-    }
-    y += footH + 48;
-    return { h: y + S.EDGE, title: title, chips: chips, slots: slots, rows: rows };
-}
-
-// 스티커 높이·배치만 계산(테스트용). canvas 없이 ctx 만 있으면 된다.
-window.stickerLayout = function (ctx, d) { return stickerPaint(ctx, d, null, false); };
-
-// 팀·픽업 → 투명 스티커 PNG (Promise<dataURL>). kind: 'club' | 'spot'.
-window.generateSticker = function (kind, item) {
-    var d = stickerData(kind, item);
-    var canvas = document.createElement('canvas');
-    canvas.width = STICKER.W; canvas.height = 10;
-    var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-    return fontsReady.catch(function () { }).then(function () {
-        return storyLoadImage('./assets/logo-512.png');
-    }).then(function (logo) {
-        var h = stickerPaint(canvas.getContext('2d'), d, logo, false).h;
-        canvas.height = h;                                 // 크기를 바꾸면 ctx 상태가 초기화된다 — 다시 받는다
-        var ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, STICKER.W, h);
-        storyRoundRect(ctx, STICKER.EDGE, STICKER.EDGE, STICKER.CW, h - STICKER.EDGE * 2, STICKER.R);
-        ctx.fillStyle = CARD.C.card; cardShadow(ctx, false); ctx.fill(); cardNoShadow(ctx);
-        stickerPaint(ctx, d, logo, true);
-        ctx.textBaseline = 'alphabetic';
-        return canvas.toDataURL('image/png');
-    });
-};
-
-// 메뉴 → 스티커 미리보기(저장). 투명이라 미리보기 칸은 체크무늬 위에 보인다(.is-sticker).
-window.shareSticker = function (kind, item) {
-    if (!item || !item.id) return Promise.resolve();
-    return window.generateSticker(kind, item).then(function (dataUrl) {
-        showStoryCardPreview(dataUrl);
-        var box = document.getElementById('previewImgBox');
-        if (box && box.classList && box.classList.add) box.classList.add('is-sticker');
-        window.showToast(window.t('sk_hint'));
-        if (window.track) {
-            var p = { method: 'reel_sticker' };
-            p[kind === 'club' ? 'club_id' : 'spot_id'] = item.id;
-            window.track('share', p);
-        }
-        return 'reel_sticker';
-    }).catch(function (e) {
-        console.error('스티커 생성 실패:', e);
         window.showToast(window.t('sh_run_fail'));
         return 'fallback';
     });
@@ -1201,10 +922,6 @@ window.openShareMenu = function (kind, item) {
     // 🖼 피드 이미지 (3:4) — 인스타 피드·카톡에 이미지로 올리는 용도. 미리보기에서 저장.
     addItem(T('sh_menu_feed'), false, function () {
         window.shareFeedCard(kind, item);
-    });
-    // 🎬 릴스 스티커 — 배경 투명 PNG. 릴스·스토리 편집기에서 영상 위에 이미지로 얹는다.
-    addItem(T('sh_menu_sticker'), false, function () {
-        window.shareSticker(kind, item);
     });
     // 💬 카카오톡 (기존 카카오 우선 폴백 체인)
     addItem(T('sh_menu_kakao'), false, function () {

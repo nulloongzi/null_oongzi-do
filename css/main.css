@@ -2583,12 +2583,6 @@
         }
 
 
-        /* 릴스 스티커: 배경이 투명이라 체크무늬 위에 보여 준다(어디까지가 그림인지 보이게) */
-        .preview-img-box.is-sticker img {
-            background: repeating-conic-gradient(#e9e2d6 0% 25%, #fffdf8 0% 50%) 50% / 24px 24px;
-            box-shadow: none;
-        }
-
         .preview-img-box.is-loading img {
             opacity: 0.45;
             transition: opacity 0.15s;
