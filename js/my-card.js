@@ -679,6 +679,7 @@
             // 칩을 빠르게 번갈아 누르면 늦게 끝난 렌더가 최신 선택을 덮는다 — 마지막 것만 쓴다.
             if (seq !== shapeRenderSeq) return;
             box.innerHTML = '';
+            box.classList.remove('is-sticker');
             var img = document.createElement('img');
             img.src = url;
             img.alt = window.t(mode === 'diet' ? 'mc_mode_diet' : 'mc_mode_card');

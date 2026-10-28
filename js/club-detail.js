@@ -1296,7 +1296,9 @@ window.closeClubRecruiting = async function (club) {
 window.closePreview = function () {
     var overlay = document.getElementById('previewOverlay');
     overlay.style.display = 'none';
-    document.getElementById('previewImgBox').innerHTML = "";
+    var box = document.getElementById('previewImgBox');
+    box.innerHTML = "";
+    box.classList.remove('is-sticker');
 };
 
 window.downloadImage = function () {
