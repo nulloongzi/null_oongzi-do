@@ -808,6 +808,19 @@
         .fr-row.static:hover { background: transparent; }
         .fr-chev { color: #a99a8c; font-size: 20px; }
 
+        /* 빈 화면의 단색 로고 — 연한 갈색 밥그릇+공(assets/logo 작은 크기용 단색). 앱 EmptyMark 와 같은 모양 */
+        .empty-mark {
+            display: block;
+            width: 64px;
+            height: 58px;
+            margin: 0 auto 12px;
+            background: var(--nurungji-brown);
+            opacity: 0.32;
+            -webkit-mask: url(../assets/logo/nulloongzido-mono-small-black.svg) center / contain no-repeat;
+            mask: url(../assets/logo/nulloongzido-mono-small-black.svg) center / contain no-repeat;
+        }
+        .empty-result .empty-mark { display: inline-block; flex: none; width: 22px; height: 20px; margin: 0; opacity: 0.6; }
+
         .fr-empty-box {
             display: flex;
             flex-direction: column;

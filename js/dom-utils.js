@@ -136,6 +136,14 @@
 //
 // 이 세 함수는 functions/lib/pure.js 와 **같은 규칙**이어야 한다
 // (tests/club-admins.test.js 가 대조한다).
+// 빈 화면의 단색 로고(연한 갈색 밥그릇+공). 모양은 css .empty-mark — 글자 앞에 붙여 쓴다.
+window.emptyMark = function () {
+    var s = document.createElement('span');
+    s.className = 'empty-mark';
+    s.setAttribute('aria-hidden', 'true');
+    return s;
+};
+
 window.AREA_GRID_DIVISOR = 200; // 1/0.005° ≈ 위도 550m
 
 window.roundToAreaGrid = function (v) {

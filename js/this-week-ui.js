@@ -267,7 +267,10 @@
         body.innerHTML = '';
         var shown = window.twFilterItems(items, sheetKinds, sheetDay);
         if (!shown.length) {
-            body.appendChild(el('div', 'tw-empty', window.t('tw_empty')));
+            var none = el('div', 'tw-empty');
+            none.appendChild(window.emptyMark());
+            none.appendChild(document.createTextNode(window.t('tw_empty')));
+            body.appendChild(none);
             return;
         }
         window.twGroupByDay(shown).forEach(function (g) {
