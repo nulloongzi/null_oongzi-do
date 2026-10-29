@@ -295,7 +295,8 @@
         if (spots.length === 0) {
             var empty = document.createElement('div');
             empty.className = 'pl-empty';
-            empty.textContent = window.t('pk_empty');
+            empty.appendChild(window.emptyMark());
+            empty.appendChild(document.createTextNode(window.t('pk_empty')));
             body.appendChild(empty);
             return;
         }

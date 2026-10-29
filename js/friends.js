@@ -604,6 +604,7 @@
 
         if (!state.friends.length) {
             var empty = el('div', 'fr-empty-box');
+            empty.appendChild(window.emptyMark());
             empty.appendChild(el('b', null, T('fr_empty_title')));
             empty.appendChild(el('p', null, T('fr_empty_body')));
             empty.appendChild(btn(T('fr_add_btn'), 'yellow', function () { window.openFriendsAdd(); }));
