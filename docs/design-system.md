@@ -92,6 +92,12 @@
   만든 과정과 각도·조합은 `docs/logo-concepts.html`. 2026-10 공 이음선을 조각 크기가 같은 배구공으로 바꿨다(그릇·누룽지 윤곽·색은 그대로).
 - 로고 비트맵은 모두 이 SVG에서 뽑는다: 공유 카드는 두 저장소의 `assets/logo-512.png`(투명, 같은 파일),
   앱 `assets/nulloongzido logo_without bg.png`·`assets/icon.png`(2048, 투명), 웹 PWA 아이콘은 흰 바탕에 얹은 `assets/icon-192.png` · `icon-512.png`.
+- 단색 로고(1도): 같은 폴더 `nulloongzido-mono-black.svg` · `-mono-white.svg`(투명 바탕). 그릇 몸통과 공을 한 색으로
+  칠하고 그릇 안쪽·공과 그릇 사이 틈·이음선은 비운다(바탕이 비친다). 작은 크기(대략 48px 이하)에는 틈과 이음선을
+  굵힌 `-mono-small-black.svg` · `-mono-small-white.svg`. 쓰는 곳: 인쇄·도장·굿즈(검정), 어두운 바탕(흰색),
+  앱 안드로이드 테마 아이콘(`ic_launcher_monochrome`, 작은 크기용), 웹 PWA `monochrome` 아이콘(`assets/icon-mono-512.png`).
+- 빈 화면(필터 결과 없음 알림·이번 주 자리 목록·밥친구·픽업)은 문구 위에 작은 크기용 단색 로고를 연한 갈색(브라운 32%)으로 —
+  웹 `.empty-mark`(`window.emptyMark()`), 앱 `EmptyMark`. 필터 결과 알약 안에선 22px·60%로 문구 앞에.
 
 ## 4. 보이스 & 톤
 - **이름**: 서비스는 **누룽지도 / Nulloongzi-do**(영어는 이 표기 하나 — 2026-10 결정, 규칙 테스트가 지킨다). 사람·브랜드는 **누룽지 / Nulloongzi**(인스타·틱톡 @null_oongzi).
