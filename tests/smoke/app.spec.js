@@ -537,7 +537,10 @@ test('밥친구 3단계: 합석 줄 · 합석 단계 · 🍚 버블', async ({ p
     await expect(strip).toHaveCount(1);
     await expect(strip.first()).toContainText('팥밥-q7');
     // 같은 팀 2개(잠실·강동) → 한 그릇: 밥그릇이 2/3 차오른 아바타
-    await expect(strip.first().locator('.fr-av.warm-2 svg clipPath')).toHaveCount(1);
+    const mark = strip.first().locator('.fr-av.warm-2 .fr-av-mark');
+    await expect(mark).toHaveCount(1);
+    // 단색 로고가 아래부터 2/3(67%) 단계 색으로 차오른다
+    expect(await mark.evaluate((e) => e.style.background)).toContain('67%');
     // 효과 없이 단계 색 테두리만
     await expect(strip.first().locator('.fr-steam, .fr-crumb')).toHaveCount(0);
     const anim = await strip.first().locator('.fr-av').evaluate((e) => window.getComputedStyle(e).animationName);
