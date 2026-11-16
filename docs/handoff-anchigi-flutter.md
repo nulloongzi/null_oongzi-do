@@ -277,11 +277,14 @@ int maxRounds() {
 키 패턴: `anchigi.{name}.v1` (이전 `gvt.{name}.v1`에서 마이그레이션 포함)
 
 키: `players` `stat` `round` `past` `ngames` `mode` `tpl` `schedule`
-`sport` `prio` `flex` `meets` `compact` (옛 `feel` · `priority` 는 읽기 전용 마이그레이션)
+`sport` `prio` `flex` `meets` `compact` `days` `day` (옛 `feel` · `priority` 는 읽기 전용 마이그레이션)
 
 ### 모임 보관 · 백업
 
-- **모임 보관**: 누적 기록 · 확정 라운드를 `meets` 로 옮기고 1R부터 새로 시작. 명단은 남는다.
+- **날짜별 안치기**: `days` = `[{id, date:'YYYY-MM-DD'|'', title, players, stat, round, past}]`, `day` = 지금 연 날짜 id.
+  전역 `players` · `stat` · `round` · `past` 는 지금 연 날짜의 작업본이고 저장할 때 그 날짜 칸에 되돌려 쓴다
+  (옛 키도 계속 써서 예전 버전으로 돌아가도 안 깨진다). `days` 가 없으면 쓰던 명단을 '날짜 미정' 하나로 옮긴다.
+- **모임 보관**(옛 기능): 날짜 기능으로 대체. 이미 `meets` 에 있는 것만 기록 탭에 보이고 지울 수 있다.
 - **백업**: 명단 · 기록 · 모임 · 설정을 한 JSON 으로 내보내고 불러온다.
   웹은 파일 다운로드/업로드, 앱은 공유 시트/붙여넣기.
 

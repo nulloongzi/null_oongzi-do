@@ -218,6 +218,7 @@
 
     input[type=text],
     input[type=time],
+    input[type=date],
     select {
       border: 1px solid var(--line);
       border-radius: 11px;
@@ -231,6 +232,7 @@
 
     input[type=text]:focus,
     input[type=time]:focus,
+    input[type=date]:focus,
     select:focus {
       border-color: var(--nurungji-yellow);
     }
@@ -366,6 +368,64 @@
 
     .prow.off {
       opacity: .42;
+    }
+
+    /* 이름 바꾸기 — ✎ 를 누르면 그 자리에서 입력칸으로 바뀐다 */
+    .prow .ren {
+      border: 0;
+      background: transparent;
+      color: var(--nurungji-brown);
+      font-size: 13px;
+      padding: 2px 4px;
+      cursor: pointer;
+      opacity: .7;
+    }
+
+    .prow input.ren-input {
+      padding: 6px 9px;
+      font-size: 14.5px;
+      font-weight: 800;
+      width: 128px;
+    }
+
+    /* 날짜 막대 — 어떤 날의 안치기를 열어 두었는지. 탭 위에 늘 보인다 */
+    .daybar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 11px;
+    }
+
+    .daybar select {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 11px 8px;
+    }
+
+    .daybar .btn {
+      flex: 0 0 44px;
+      height: 44px;
+      padding: 0;
+      font-size: 16px;
+    }
+
+    .dayform label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--nurungji-brown);
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .dayform label.chkline {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
     }
 
     .chk {
@@ -1126,6 +1186,8 @@
         온 사람만 체크하고 <b>뽑기</b>를 누르세요.</div>
     </header>
 
+    <div id="dayBar"></div>
+
     <div class="tabs" role="tablist">
       <button class="tab" type="button" aria-selected="true" data-t="0" data-i18n="tab_lineup">배치</button>
       <button class="tab" type="button" aria-selected="false" data-t="1" data-i18n="tab_roster">명단</button>
@@ -1155,13 +1217,16 @@
       v9: ['S9', 'QK', 'L9', 'R9', 'CH', 'BK']
     };
     var ALL_POS = POS_BY_SPORT.v6.concat(POS_BY_SPORT.v9);
+    /* 6인제 자리는 한국어 화면에서도 공식 약어(S · OP · OH · MB · Lib)로 쓴다.
+       '센터 · 라이트 · 레프트'는 동호회마다 가리키는 자리가 갈려 헷갈린다.
+       9인제 역할(속공 · 차 · 백…)은 우리말 이름 말고는 통하는 약어가 없어 그대로 둔다. */
     var POS_KO = {
-      S: '세터', OP: '라이트', OH: '레프트', MB: '센터', Li: '리베로',
+      S: 'S', OP: 'OP', OH: 'OH', MB: 'MB', Li: 'Lib',
       S9: '세터', QK: '속공', L9: '레프트', R9: '라이트', CH: '차', BK: '백'
     };
     /* 명단 칩처럼 좁은 자리에 쓰는 짧은 이름 */
     var POS_SHORT_KO = {
-      S: '세터', OP: '라이트', OH: '레프트', MB: '센터', Li: '리베로',
+      S: 'S', OP: 'OP', OH: 'OH', MB: 'MB', Li: 'Lib',
       S9: '세터', QK: '속공', L9: '레프트', R9: '라이트', CH: '차', BK: '백'
     };
     var POS_EN = {
@@ -1232,7 +1297,7 @@
         draw_hint: '명단 탭에서 <b>온 사람만 체크</b>하고 뽑으세요. 마음에 안 들면 다시 뽑으면 돼요.',
         ok_abc: 'A · B · C 코어를 정하고 안 뛰는 팀에서 차출해 채웠어요. <b>차출</b> 표시가 붙은 사람은 원래 다른 팀이에요.',
         ok_free: '매 경기 두 팀을 새로 짰어요.',
-        ok_done_pre: '✓ ', ok_done_mid: 'R 배치 완료 — ', ok_done_suf: ' 모든 자리가 가능 포지션 안이고, 팀마다 세터 1명 · 대각 배치를 만족해요.',
+        ok_done_pre: '✓ ', ok_done_mid: 'R 배치 완료 — ', ok_done_suf: ' 모든 자리가 가능 포지션 안이고, 팀마다 S 1명 · 대각 배치를 만족해요.',
         core_title: '이번 라운드 코어', core_none: '없음 (전원 차출)',
         no_c_core: '참석 인원이 팀 인원의 정확히 2배라 <b>C 코어가 없어요.</b> C는 안 뛰는 팀에서 전원 차출되므로 세 경기 모두 같은 두 팀이 붙어요. 경기마다 상대를 섞으려면 <b>자유 편성</b>으로 바꿔 주세요.',
         timeline: '타임라인', warmup: '몸풀기', game_word: '경기', leave_word: '퇴장',
@@ -1246,7 +1311,7 @@
         infeasible: '이 인원 · 설정으로는 배치를 만들 수 없어요.',
         drawing: '뽑는 중…',
         court_zone: '존', bench_label: '대기',
-        borrowed: '차출', team_swap: '후위 센터와 교대', team_word: 'TEAM',
+        borrowed: '차출', team_swap: '후위 MB와 교대', team_word: 'TEAM',
         roster: '명단', roster_attend: '참석', roster_total: '전체',
         add_person: '사람 추가', name_ph: '이름', add_btn: '추가',
         add_hint: '자리를 고르고 추가하세요. 처음 고른 자리가 주가 돼요. 안 고르면 <b>어디든</b> 설 수 있는 사람으로 들어가요 — 나중에 칩을 눌러 정하면 돼요.',
@@ -1260,15 +1325,15 @@
         rounds_confirmed_suf: '개 라운드 확정',
         stat_empty: '아직 확정한 라운드가 없어요. 배치를 뽑고 <b>확정</b>을 누르면 여기에 쌓여요.',
         stat_hint: '이 기록을 보고 다음 라운드에서 출전 · 대기 · 포지션을 고르게 나눠요.',
-        tpl_mb2: 'MB 2', tpl_mb2_desc: '리베로 없음',
-        tpl_mb1li: 'MB 1 + Li 1', tpl_mb1li_desc: '센터 1 · 리베로 1',
-        tpl_mb2li: 'MB 2 + Li 1', tpl_mb2li_desc: '리베로가 후위 센터와 교대',
+        tpl_mb2: 'MB 2', tpl_mb2_desc: 'Lib 없음',
+        tpl_mb1li: 'MB 1 + Lib 1', tpl_mb1li_desc: 'MB 1 · Lib 1',
+        tpl_mb2li: 'MB 2 + Lib 1', tpl_mb2li_desc: 'Lib이 후위 MB와 교대',
         tpl_person: '인',
         sport_title: '종목',
         tactic_title: '전술',
-        tactic_51: '5-1', tactic_51_sub: '세터 1명',
-        tactic_62: '6-2', tactic_62_sub: '세터 2명 · 전위는 라이트',
-        tactic_hint: '5-1 은 세터 한 명이 여섯 자리를 다 돌고, 6-2 는 세터 둘이 후위에서 번갈아 토스해요. 6-2 의 전위 세터는 라이트 자리에서 공격해요.',
+        tactic_51: '5-1', tactic_51_sub: 'S 1명',
+        tactic_62: '6-2', tactic_62_sub: 'S 2명 · 전위는 OP 자리',
+        tactic_hint: '5-1 은 S 한 명이 여섯 자리를 다 돌고, 6-2 는 S 둘이 후위에서 번갈아 토스해요. 6-2 의 전위 S는 OP 자리에서 공격해요.',
         form_title: '포메이션', form_hint: '(속공 수에 따라 리시브 줄이 갈려요)',
         tpl_q1: '속공 1 · 2-4-3', tpl_q1_desc: '앞 2 · 가운데 4 · 뒤 3',
         tpl_q2: '속공 2 · 3-4-2', tpl_q2_desc: '앞 3 · 가운데 4 · 뒤 2',
@@ -1280,7 +1345,7 @@
         seat_l9: '레프트', seat_r9: '라이트',
         seat_ch: '차', seat_fch: '앞차', seat_bch: '빽차',
         seat_lb: '레프트백', seat_cb: '백센터', seat_cb2: '센터백', seat_rb: '라이트백',
-        seat_s_front: '세터 · 라이트',
+        seat_s_front: 'S · OP',
         sport_v6: '6인제', sport_v6_sub: '로테이션 · 대각',
         sport_v9: '9인제', sport_v9_sub: '속공 수로 줄 구성',
         prio_custom: '맞춘 자리 우선', prio_custom_sub: '고정 · 주 자리부터',
@@ -1305,19 +1370,26 @@
         bulk_btn: '한 번에 추가',
         compact_title: '보기', compact_court: '코트', compact_list: '간단히',
         ok_done_suf9: ' 모든 자리가 그 사람 가능 역할 안이고, 포메이션의 아홉 자리를 모두 채웠어요.',
-        meet_title: '지난 모임', meet_none: '보관한 모임이 없어요.',
-        meet_archive: '이번 모임 보관하고 새로 시작',
-        meet_archive_confirm: '이번 모임 기록을 보관하고 1R부터 새로 시작해요. 명단은 그대로 남아요.',
-        meet_archive_empty: '보관할 기록이 없어요. 라운드를 확정한 뒤에 눌러 주세요.',
+        meet_title: '지난 모임',
         meet_rounds_suf: '개 라운드', meet_del_confirm: '이 모임 기록을 지울까요?',
-        meet_hint: '모임을 보관해 두면 누적 기록은 새로 시작하고, 지난 모임은 여기 남아요.',
+        meet_hint: '날짜 기능이 생기기 전에 보관해 둔 모임이에요. 이제는 위 날짜 칸의 <b>＋</b>로 날짜마다 따로 기록해요.',
+        day_undated: '날짜 미정', day_edit: '날짜 · 이름 바꾸기', day_pick: '안치기 날짜',
+        day_new_title: '새 안치기 날짜', day_edit_title: '이 날짜 고치기',
+        day_date: '날짜', day_title: '이름 (선택)', day_title_ph: '예: 정기 픽업',
+        day_copy: '지금 명단 그대로 가져오기 (자리 · 고정 포함)',
+        day_save: '저장', day_cancel: '취소', day_del: '이 날짜 지우기',
+        day_del_confirm: '이 날짜의 명단과 기록을 지워요. 계속할까요?',
+        day_need_date: '날짜를 골라 주세요.',
+        day_hint: '날짜마다 명단 · 참석 · 기록이 따로 저장돼요. 픽업 날짜별로 미리 명단을 받아 두세요.',
+        day_wd: ['일', '월', '화', '수', '목', '금', '토'],
+        rename_title: '이름 바꾸기',
         backup_title: '백업', backup_export: '내보내기', backup_import: '불러오기',
-        backup_import_confirm: '지금 명단 · 기록을 파일 내용으로 덮어써요. 계속할까요?',
+        backup_import_confirm: '지금 명단 · 기록(모든 날짜)을 파일 내용으로 덮어써요. 계속할까요?',
         backup_bad: '읽을 수 없는 파일이에요.',
         backup_hint: '기기를 바꾸거나 브라우저 저장소를 지우기 전에 내보내 두세요. 불러오면 지금 내용은 사라져요.',
         dg_short: function (mc, n) { return '지금 설정으로는 한 경기에 <b>' + mc + '명</b>이 필요해요. 참석 ' + n + '명 — <b>' + (mc - n) + '명 부족</b>해요.'; },
-        dg_only: function (P, cnt, names, maxs, bench) { return '<b>' + P + '(' + POS_KO[P] + ') 전용이 ' + cnt + '명</b>(' + names + ')인데, 코트에 ' + P + ' 자리는 최대 ' + maxs + '개이고 대기는 ' + bench + '명뿐이에요.'; },
-        dg_few: function (P, able, mins) { return '<b>' + P + '(' + POS_KO[P] + ')</b>를 볼 수 있는 사람이 ' + able + '명뿐이에요. 한 경기에 최소 ' + mins + '명이 필요해요.'; },
+        dg_only: function (P, cnt, names, maxs, bench) { return '<b>' + POSCHIP(P) + ' 전용이 ' + cnt + '명</b>(' + names + ')인데, 코트에 ' + POSCHIP(P) + ' 자리는 최대 ' + maxs + '개이고 대기는 ' + bench + '명뿐이에요.'; },
+        dg_few: function (P, able, mins) { return '<b>' + POSCHIP(P) + '</b>를 볼 수 있는 사람이 ' + able + '명뿐이에요. 한 경기에 최소 ' + mins + '명이 필요해요.'; },
         dg_abc: function (ranges, n) { return 'A · B · C 는 참석이 팀 인원의 <b>2배 이상 3배 이하</b>일 때만 돼요. ' + ranges + ' — 지금 ' + n + '명이에요. 이대로 뽑으면 <b>자유 편성</b>으로 짜요.'; },
         dg_range: function (T, lo, hi) { return T + '인 팀이면 ' + lo + '~' + hi + '명'; },
         dg_generic: '포지션 조합이 맞아떨어지지 않아요. 가능 포지션을 늘리거나 팀 구성 · 인원을 조정해 주세요.'
@@ -1371,7 +1443,7 @@
         infeasible: 'Can\'t build a lineup with these players and settings.',
         drawing: 'Drawing…',
         court_zone: 'Zone', bench_label: 'Bench',
-        borrowed: 'borrowed', team_swap: 'swaps with back-row center', team_word: 'TEAM',
+        borrowed: 'borrowed', team_swap: 'swaps with back-row MB', team_word: 'TEAM',
         roster: 'Roster', roster_attend: 'Present', roster_total: 'total',
         add_person: 'Add player', name_ph: 'Name', add_btn: 'Add',
         add_hint: 'Pick seats and add. Your first pick is the main. Pick none and they join as <b>able to play anywhere</b> — set it later by tapping the chips.',
@@ -1386,8 +1458,8 @@
         stat_empty: 'No rounds confirmed yet. Draw a lineup and hit <b>Confirm</b> to log it here.',
         stat_hint: 'This record spreads play, bench, and positions evenly across next rounds.',
         tpl_mb2: 'MB 2', tpl_mb2_desc: 'no libero',
-        tpl_mb1li: 'MB 1 + Li 1', tpl_mb1li_desc: '1 center · 1 libero',
-        tpl_mb2li: 'MB 2 + Li 1', tpl_mb2li_desc: 'libero swaps with back-row center',
+        tpl_mb1li: 'MB 1 + Lib 1', tpl_mb1li_desc: '1 MB · 1 libero',
+        tpl_mb2li: 'MB 2 + Lib 1', tpl_mb2li_desc: 'libero swaps with back-row MB',
         tpl_person: '-person',
         sport_title: 'Format',
         tactic_title: 'System',
@@ -1430,19 +1502,27 @@
         bulk_btn: 'Add all',
         compact_title: 'View', compact_court: 'Court', compact_list: 'Compact',
         ok_done_suf9: ' Every seat is within a player\'s roles, and all nine seats of the formation are filled.',
-        meet_title: 'Past meetups', meet_none: 'No meetups archived yet.',
-        meet_archive: 'Archive this meetup · start fresh',
-        meet_archive_confirm: 'Archive this meetup\'s record and restart from R1. The roster stays.',
-        meet_archive_empty: 'Nothing to archive yet — confirm a round first.',
+        meet_title: 'Past meetups',
         meet_rounds_suf: ' rounds', meet_del_confirm: 'Delete this archived meetup?',
-        meet_hint: 'Archiving resets the cumulative record while keeping the meetup here.',
+        meet_hint: 'Meetups archived before dates existed. Use <b>+</b> next to the date above to keep each day separately now.',
+        day_undated: 'No date', day_edit: 'Edit date · name', day_pick: 'Session date',
+        day_new_title: 'New session date', day_edit_title: 'Edit this date',
+        day_date: 'Date', day_title: 'Name (optional)', day_title_ph: 'e.g. Weekly pickup',
+        day_copy: 'Copy the current roster (positions · pins included)',
+        day_save: 'Save', day_cancel: 'Cancel', day_del: 'Delete this date',
+        day_del_confirm: 'This deletes the roster and record for this date. Continue?',
+        day_need_date: 'Pick a date.',
+        day_hint: 'Each date keeps its own roster, attendance and record. Collect sign-ups per pickup date ahead of time.',
+        day_wd: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        day_mon: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        rename_title: 'Rename',
         backup_title: 'Backup', backup_export: 'Export', backup_import: 'Import',
-        backup_import_confirm: 'This overwrites the current roster and record with the file. Continue?',
+        backup_import_confirm: 'This overwrites the roster and record (every date) with the file. Continue?',
         backup_bad: 'Could not read that file.',
         backup_hint: 'Export before switching devices or clearing site data. Importing replaces what you have now.',
         dg_short: function (mc, n) { return 'This setup needs <b>' + mc + '</b> on court per game. Present: ' + n + ' — <b>' + (mc - n) + ' short</b>.'; },
-        dg_only: function (P, cnt, names, maxs, bench) { return '<b>' + cnt + ' players are ' + P + '-only</b> (' + names + '), but there are at most ' + maxs + ' ' + P + ' slots on court and only ' + bench + ' bench spots.'; },
-        dg_few: function (P, able, mins) { return 'Only ' + able + ' players can play <b>' + P + '</b>. Each game needs at least ' + mins + '.'; },
+        dg_only: function (P, cnt, names, maxs, bench) { return '<b>' + cnt + ' players are ' + POSCHIP(P) + '-only</b> (' + names + '), but there are at most ' + maxs + ' ' + POSCHIP(P) + ' slots on court and only ' + bench + ' bench spots.'; },
+        dg_few: function (P, able, mins) { return 'Only ' + able + ' players can play <b>' + POSCHIP(P) + '</b>. Each game needs at least ' + mins + '.'; },
         dg_abc: function (ranges, n) { return 'A · B · C needs attendance <b>2×–3×</b> a team size. ' + ranges + ' — currently ' + n + '. Drawing now falls back to a <b>free draft</b>.'; },
         dg_range: function (T, lo, hi) { return 'team of ' + T + ' → ' + lo + '–' + hi; },
         dg_generic: 'The position mix doesn\'t work out. Add more eligible positions, or adjust team format / headcount.'
@@ -1451,7 +1531,7 @@
     function L(k) { return (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.ko[k] || k); }
     function POSNAME(p) { return lang === 'en' ? (POS_EN[p] || p) : (POS_KO[p] || p); }
     /* 칩처럼 좁은 자리용 — 6인제는 키(S · OP…)가 이미 짧아 그대로 쓴다 */
-    function POSCHIP(p) { return lang === 'en' ? p : (POS_SHORT_KO[p] || p); }
+    function POSCHIP(p) { return lang === 'en' ? (p === 'Li' ? 'Lib' : p) : (POS_SHORT_KO[p] || p); }
     function HELP_HTML() {
       if (lang === 'en') {
         return '<div class="card"><h3>How lineups are decided</h3>' +
@@ -1491,7 +1571,7 @@
       return '<div class="card"><h3>배치가 정해지는 순서</h3>' +
         '<ol class="muted" style="margin:0;padding-left:18px">' +
         '<li>먼저 <b>종목</b>을 골라요.<ul style="padding-left:16px;margin:4px 0">' +
-        '<li><b>6인제</b> — 로테이션이 있어 존(1~6)으로 서요. <b>5-1</b>은 세터 한 명이 여섯 자리를 다 돌고, <b>6-2</b>는 세터 둘이 후위에서 번갈아 토스하며 전위 세터는 라이트 자리에서 공격해요.</li>' +
+        '<li><b>6인제</b> — 로테이션이 있어 존(1~6)으로 서요. <b>5-1</b>은 S 한 명이 여섯 자리를 다 돌고, <b>6-2</b>는 S 둘이 후위에서 번갈아 토스하며 전위 S는 OP 자리에서 공격해요. 자리 이름은 공식 약어 <b>S</b>(세터) · <b>OP</b>(아포짓) · <b>OH</b>(아웃사이드 히터) · <b>MB</b>(미들 블로커) · <b>Lib</b>(리베로)로 써요.</li>' +
         '<li><b>9인제</b> — 로테이션이 없고 <b>속공 수</b>로 리시브 줄이 갈려요. 속공 1명이면 <b>2-4-3</b>(속공 · 세터 / 레프트 · 앞차 · 빽차 · 라이트 / 레프트백 · 백센터 · 라이트백), 2명이면 <b>3-4-2</b>, 3명이면 <b>4-3-2</b>예요. 명단에서는 자리 이름 대신 <b>역할 6종</b>(세터 · 속공 · 레프트 · 라이트 · 차 · 백)만 고르면 되고, 구체적인 자리는 코트에 표시돼요.</li></ul></li>' +
         '<li><b>참석자</b> 중 경기 시작 전에 퇴장하는 사람을 빼요.</li>' +
         '<li>모드에 따라 팀을 짜요.<ul style="padding-left:16px;margin:4px 0">' +
@@ -1511,14 +1591,14 @@
         '<ul class="muted" style="margin:0;padding-left:18px">' +
         '<li><b>출전 횟수</b>가 적을수록 먼저.</li>' +
         '<li><b>대기 횟수</b>가 많을수록 먼저. 특히 <b>연달아 두 번</b> 쉬지 않게 큰 벌점을 걸어요.</li>' +
-        '<li><b>가능 자리가 적은 사람</b>이 먼저. 세터만 되는 사람은 세터 자리에 우선 들어가요. 그래야 그 사람이 대기로 밀리지 않아요.</li>' +
+        '<li><b>가능 자리가 적은 사람</b>이 먼저. S만 되는 사람은 S 자리에 우선 들어가요. 그래야 그 사람이 대기로 밀리지 않아요.</li>' +
         '<li><b>같은 자리 반복</b>은 피해요. 단, 자리를 고를 수 있는 사람에게만 적용되고, 한 자리만 되는 사람은 반복해도 벌점이 없어요.</li>' +
         '<li><b>운동 종료 전에 가는 사람</b>은 있는 동안 거의 무조건 출전해요. 어차피 뒤 경기를 못 뛰기 때문이에요.</li>' +
         '<li><b>고정(📌)한 사람</b>은 대기보다 출전 쪽으로 밀어 둬요 — 고정이 뜻을 가지려면요.</li>' +
         '</ul></div>' +
         '<div class="card"><h3>자주 묻는 것</h3>' +
-        '<p class="muted" style="margin:0 0 8px"><b>인원이 모자라면 어떻게 돼요?</b><br>그래도 뽑아요. 못 채운 자리가 <b>(필요)</b> 로 자리 이름과 함께 뜨니, 세터가 필요한지 센터가 필요한지 보고 단톡방에 올리면 돼요.</p>' +
-        '<p class="muted" style="margin:0 0 8px"><b>세터 전용이 있으면 다른 사람 S를 꺼야 해요?</b><br>아니요. 세터 전용이 있으면 어차피 그 사람이 세터 자리를 먼저 가져가요. S를 켜둬야 세터 전용이 대기 중이거나 일찍 갔을 때 대신 들어갈 수 있어요.</p>' +
+        '<p class="muted" style="margin:0 0 8px"><b>인원이 모자라면 어떻게 돼요?</b><br>그래도 뽑아요. 못 채운 자리가 <b>(필요)</b> 로 자리 이름과 함께 뜨니, S가 필요한지 MB가 필요한지 보고 단톡방에 올리면 돼요.</p>' +
+        '<p class="muted" style="margin:0 0 8px"><b>S 전용이 있으면 다른 사람 S를 꺼야 해요?</b><br>아니요. S 전용이 있으면 어차피 그 사람이 S 자리를 먼저 가져가요. S를 켜둬야 S 전용이 대기 중이거나 일찍 갔을 때 대신 들어갈 수 있어요.</p>' +
         '<p class="muted" style="margin:0 0 8px"><b>C 코어가 없다고 나와요.</b><br>참석이 팀 인원의 정확히 2배일 때예요. C는 전원 차출이라 세 경기 모두 같은 두 팀이 붙어요. 상대를 섞으려면 자유 편성을 쓰세요.</p>' +
         '<p class="muted" style="margin:0 0 8px"><b>확정은 언제 눌러요?</b><br>그 라운드를 실제로 뛰고 나서요. 확정해야 기록에 쌓이고 다음 라운드 공정성에 반영돼요. 마음에 안 들면 확정 전에 다시 뽑으면 돼요.</p>' +
         '<p class="muted" style="margin:0"><b>다음 모임은?</b><br>기록 탭에서 <b>이번 모임 보관하고 새로 시작</b>을 누르면 누적 기록은 1R부터 다시 시작하고 지난 모임은 목록에 남아요. 기기를 바꾸기 전에는 <b>백업 내보내기</b>를 하세요 — 모든 자료가 이 브라우저에만 있어요.</p>' +
@@ -1723,7 +1803,66 @@
       });
       if (legacy) { pastRounds = []; try { save(K('past'), pastRounds); } catch (e) { } }
     })();
-    var meets = load(K('meets'), null) || [];            /* 보관해 둔 지난 모임 */
+    var meets = load(K('meets'), null) || [];            /* 날짜 기능 전에 보관해 둔 지난 모임 */
+
+    /* ===== 날짜별 안치기 =====
+       픽업은 날짜마다 오는 사람이 다르고, 명단을 몇 주 전부터 받아 둔다(11/21 · 12/27 …).
+       그래서 명단 · 참석 · 기록 · 라운드를 날짜(day) 하나에 묶어 따로 저장한다.
+       전역 players · stat · round · pastRounds 는 '지금 연 날짜'의 작업본이고,
+       persist() 가 그 날짜 칸에 되돌려 쓴다. 설정(종목 · 모드 · 시간)은 모든 날짜가 같이 쓴다. */
+    var days = load(K('days'), null);
+    var dayId = load(K('day'), null);
+    function dayById(id) {
+      for (var i = 0; i < days.length; i++) if (days[i].id === id) return days[i];
+      return null;
+    }
+    function openDayData(d) {
+      players = (d.players || []).map(normalizePlayer);
+      stat = d.stat || {};
+      round = d.round || 1;
+      pastRounds = d.past || [];
+    }
+    function syncDay() {
+      var d = dayById(dayId);
+      if (!d) return;
+      d.players = players; d.stat = stat; d.round = round; d.past = pastRounds;
+    }
+    function newDay(date, title, ps) {
+      return { id: genId(), date: date || '', title: title || '', players: ps || [], stat: {}, round: 1, past: [] };
+    }
+    (function initDays() {
+      if (!Array.isArray(days) || !days.length) {
+        /* 날짜 기능 전의 저장본 — 쓰던 명단 · 기록을 '날짜 미정' 하나로 옮긴다.
+           처음 쓰는 사람은 오늘 날짜로 시작한다. */
+        var had = players.length || pastRounds.length || round > 1;
+        var d = newDay(had ? '' : todayStr(), '', players);
+        d.stat = stat; d.round = round; d.past = pastRounds;
+        days = [d];
+        dayId = d.id;
+        return;
+      }
+      var cur = dayById(dayId) || days[0];
+      dayId = cur.id;
+      openDayData(cur);
+    })();
+    /* 날짜순(가까운 날 먼저), 날짜 미정은 맨 뒤 */
+    function sortedDays() {
+      return days.slice().sort(function (a, b) {
+        if (!a.date !== !b.date) return a.date ? -1 : 1;
+        return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+      });
+    }
+    function dayLabel(d) {
+      var t = d.title ? ' · ' + d.title : '';
+      if (!d.date) return L('day_undated') + t;
+      var p = d.date.split('-'), y = +p[0], m = +p[1], dd = +p[2];
+      var wd = L('day_wd')[new Date(y, m - 1, dd).getDay()];
+      var yr = y !== new Date().getFullYear() ? y + (lang === 'en' ? ' ' : '. ') : '';
+      var main = lang === 'en'
+        ? wd + ', ' + L('day_mon')[m - 1] + ' ' + dd + (yr ? ', ' + y : '')
+        : yr + m + '월 ' + dd + '일 (' + wd + ')';
+      return main + t;
+    }
     var compact = !!load(K('compact'), null);            /* 결과를 코트 대신 목록으로 */
     var nGames = load(K('ngames'), null) || 3;
     var mode = load(K('mode'), null) || 'abc';           /* 'abc' | 'free' */
@@ -1779,6 +1918,7 @@
       save(K('sport'), sport); save(K('meets'), meets); save(K('compact'), compact);
       save(K('schedule'), schedule);
       save(K('past'), pastRounds);
+      syncDay(); save(K('days'), days); save(K('day'), dayId);
     }
     function tpls() {
       var mine = tplsOfSport();
@@ -2939,8 +3079,116 @@
     }
 
     /* ============================================================
+       날짜 막대 — 어떤 날의 안치기를 열어 둘지
+       ============================================================ */
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    var dayForm = null;   /* null | 'new' | 'edit' */
+    function renderDayBar() {
+      var el = document.getElementById('dayBar');
+      if (!el) return;
+      var cur = dayById(dayId);
+      var s = '<div class="daybar">' +
+        '<select id="daySel" aria-label="' + L('day_pick') + '">' +
+        sortedDays().map(function (d) {
+          var n = (d.id === dayId ? players : (d.players || [])).length;
+          return '<option value="' + d.id + '"' + (d.id === dayId ? ' selected' : '') + '>' +
+            esc(dayLabel(d)) + ' · ' + n + L('people') + '</option>';
+        }).join('') + '</select>' +
+        '<button class="btn ghost" type="button" id="dayEdit" title="' + L('day_edit') + '" aria-label="' + L('day_edit') + '">✎</button>' +
+        '<button class="btn ghost" type="button" id="dayNew" title="' + L('day_new_title') + '" aria-label="' + L('day_new_title') + '">＋</button></div>';
+      if (dayForm) {
+        var isNew = dayForm === 'new';
+        s += '<div class="card dayform"><h3>' + L(isNew ? 'day_new_title' : 'day_edit_title') + '</h3>' +
+          '<div class="row">' +
+          '<label>' + L('day_date') + '<input type="date" id="dfDate" value="' + (isNew ? '' : esc(cur.date)) + '"></label>' +
+          '<label>' + L('day_title') + '<input type="text" id="dfTitle" maxlength="30" placeholder="' + L('day_title_ph') +
+          '" value="' + (isNew ? '' : esc(cur.title)) + '"></label></div>' +
+          (isNew && players.length
+            ? '<label class="chkline"><input type="checkbox" id="dfCopy">' + L('day_copy') + '</label>' : '') +
+          '<div class="row" style="margin-top:12px">' +
+          '<button class="btn" type="button" id="dfSave">' + L('day_save') + '</button>' +
+          '<button class="btn ghost" type="button" id="dfCancel">' + L('day_cancel') + '</button>' +
+          (!isNew && days.length > 1
+            ? '<button class="btn ghost" type="button" id="dfDel" style="margin-left:auto;color:var(--urgent-color)">' + L('day_del') + '</button>' : '') +
+          '</div><p class="muted" style="margin:10px 0 0">' + L('day_hint') + '</p></div>';
+      }
+      el.innerHTML = s;
+
+      document.getElementById('daySel').onchange = function () { switchDay(this.value); };
+      document.getElementById('dayNew').onclick = function () {
+        dayForm = dayForm === 'new' ? null : 'new'; renderDayBar();
+        var di = document.getElementById('dfDate'); if (di) di.focus();
+      };
+      document.getElementById('dayEdit').onclick = function () {
+        dayForm = dayForm === 'edit' ? null : 'edit'; renderDayBar();
+      };
+      if (!dayForm) return;
+      document.getElementById('dfCancel').onclick = function () { dayForm = null; renderDayBar(); };
+      document.getElementById('dfSave').onclick = function () {
+        var date = document.getElementById('dfDate').value || '';
+        var title = document.getElementById('dfTitle').value.trim();
+        if (dayForm === 'new') {
+          if (!date) { alert(L('day_need_date')); return; }
+          var cp = document.getElementById('dfCopy');
+          var ps = (cp && cp.checked) ? players.map(function (p) {
+            /* 자리 · 고정은 그대로, 참석 · 일찍 가는 시간은 그날 다시 정한다 */
+            var q = JSON.parse(JSON.stringify(p));
+            q.here = true; q.leave = null;
+            return q;
+          }) : [];
+          var d = newDay(date, title, ps);
+          days.push(d);
+          dayForm = null;
+          switchDay(d.id);
+          return;
+        }
+        var cur2 = dayById(dayId);
+        cur2.date = date; cur2.title = title;
+        dayForm = null; persist(); renderDayBar();
+      };
+      var del = document.getElementById('dfDel');
+      if (del) del.onclick = function () {
+        if (days.length <= 1 || !confirm(L('day_del_confirm'))) return;
+        days = days.filter(function (d) { return d.id !== dayId; });
+        dayId = null;
+        dayForm = null;
+        switchDay(sortedDays()[0].id);
+      };
+    }
+    function switchDay(id) {
+      var d = dayById(id);
+      if (!d) return;
+      syncDay();
+      dayId = id;
+      openDayData(d);
+      current = null; gameTab = 0; picked = null; renaming = -1;
+      persist();
+      renderDayBar(); renderPlay(); renderRoster(); renderStat();
+    }
+
+    /* 이름을 바꾸면 이미 뽑은 배치 · 지난 라운드에 찍힌 이름도 같이 고친다(기록은 id 로 묶여 있다) */
+    function renameInRecords(id, nm) {
+      function fix(x) { if (x && x.id === id) x.n = nm; }
+      function walk(games) {
+        (games || []).forEach(function (g) {
+          (g.teams || []).forEach(function (t) { t.forEach(fix); });
+          (g.bench || []).forEach(fix);
+          (g.left || []).forEach(fix);
+          (g.cores || []).forEach(function (c) { (c || []).forEach(fix); });
+        });
+      }
+      pastRounds.forEach(function (R) { walk(R.games); });
+      if (current) walk(current.games);
+    }
+
+    /* ============================================================
        화면 2 — 명단
        ============================================================ */
+    var renaming = -1;   /* 이름을 고치고 있는 사람 인덱스 */
     var newPos = {};   /* 추가 폼: {포지션: 'main'|'sub'|'want'} — 로스터와 같은 티어 모델 */
     function renderRoster() {
       var rows = players.length ? players.map(function (p, i) {
@@ -2955,7 +3203,12 @@
           : '';
         return '<div class="prow' + (p.here ? '' : ' off') + '">' +
           '<div class="who"><button class="chk" type="button" data-i="' + i + '" data-act="here" aria-pressed="' +
-          (p.here ? 'true' : 'false') + '">✓</button><span class="nm" data-p="' + p.id + '">' + p.name + '</span></div>' +
+          (p.here ? 'true' : 'false') + '">✓</button>' +
+          (renaming === i
+            ? '<input type="text" class="ren-input" id="renIn" data-i="' + i + '" maxlength="20" value="' + esc(p.name) + '" aria-label="' + L('rename_title') + '">'
+            : '<span class="nm" data-p="' + p.id + '">' + p.name + '</span>' +
+            '<button class="ren" type="button" data-i="' + i + '" data-act="rename" title="' + L('rename_title') + '" aria-label="' + L('rename_title') + '">✎</button>') +
+          '</div>' +
           '<div class="ptoggle">' + POS.map(function (P) {
             /* '어디든'인 사람은 아직 아무것도 안 고른 상태 — 칩을 눌러 고르기 시작한다 */
             var t = rawTier(p, P);
@@ -2984,7 +3237,7 @@
             : (t ? '<span class="star" data-act="npromote" data-p="' + P + '" title="' + L('set_main') + '">☆</span>' : '');
           return '<button type="button" data-act="npos" data-p="' + P +
             '" data-tier="' + (t || '') + '" aria-pressed="' + (t ? 'true' : 'false') + '">' +
-            P + (lang === 'en' ? '' : ' ' + POS_KO[P]) + (t ? '<i>' + L('tier_' + t) + '</i>' : '') + star + '</button>';
+            POSCHIP(P) + (t ? '<i>' + L('tier_' + t) + '</i>' : '') + star + '</button>';
         }).join('') + '</div>' +
         '<p class="muted" style="margin:10px 0 0">' + L('add_hint') + '</p></div>' +
         '<div class="card"><h3>' + L('bulk_add') + '</h3>' +
@@ -3049,6 +3302,28 @@
           current = null; persist(); renderPlay();
         };
       });
+      var renIn = renaming >= 0 && document.getElementById('renIn');
+      if (renIn) {
+        var done = false;
+        var finish = function (save) {
+          if (done) return;
+          done = true;
+          var idx = +renIn.getAttribute('data-i'), v = renIn.value.trim(), pl = players[idx];
+          renaming = -1;
+          if (save && pl && v && v !== pl.name) {
+            pl.name = v;
+            renameInRecords(pl.id, v);
+            persist(); renderRoster(); renderPlay(); renderStat();
+          } else renderRoster();
+        };
+        renIn.onkeydown = function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+          else if (e.key === 'Escape') finish(false);
+        };
+        renIn.onblur = function () { finish(true); };
+        renIn.focus();
+        renIn.select();
+      }
       applyHL();
     }
 
@@ -3056,6 +3331,7 @@
       var b = e.target.closest('[data-act]'); if (!b) return;
       var act = b.getAttribute('data-act'), i = +b.getAttribute('data-i'), P = b.getAttribute('data-p');
       if (act === 'here') players[i].here = !players[i].here;
+      else if (act === 'rename') { renaming = i; renderRoster(); return; }
       else if (act === 'pos') {
         /* 첫 자리 = 주, 이후 = 가능. 켠 뒤엔 가능 → 도전 → 해제로 순환.
            주 변경은 ☆(promote). 주를 끄면 남은 자리 중 하나가 자동으로 주가 된다. */
@@ -3146,20 +3422,19 @@
           : '<p class="muted">' + L('stat_empty') + '</p>') +
         '<p class="muted" style="margin:10px 0 0">' + L('stat_hint') + '</p></div>' +
 
-        /* 모임 단위로 끊어 보관한다 — 기록이 한 모임에 영영 묶이지 않게 */
-        '<div class="card"><h3>' + L('meet_title') + '<span class="n">' + meets.length + '</span></h3>' +
+        /* 날짜 기능 전에 보관해 둔 모임 — 남아 있을 때만 보여 준다. 새로 보관하는 길은
+           날짜 막대(＋)가 대신한다. */
         (meets.length
-          ? '<div>' + meets.map(function (mt, mi) {
+          ? '<div class="card"><h3>' + L('meet_title') + '<span class="n">' + meets.length + '</span></h3>' +
+          '<div>' + meets.map(function (mt, mi) {
             return '<div class="row" style="justify-content:space-between;padding:7px 0;border-top:' +
               (mi ? '1px solid var(--line)' : '0') + '">' +
               '<span><b>' + mt.date + '</b> <span class="muted">' + mt.rounds + L('meet_rounds_suf') + ' · ' +
               L('sport_' + (mt.sport || 'v6')) + '</span></span>' +
               '<button class="btn ghost" data-mi="' + mi + '" data-act="delmeet" style="padding:6px 11px;font-size:12.5px">✕</button></div>';
-          }).join('') + '</div>'
-          : '<p class="muted" style="margin:0">' + L('meet_none') + '</p>') +
-        '<div class="row" style="margin-top:11px">' +
-        '<button class="btn ghost" id="arch">' + L('meet_archive') + '</button></div>' +
-        '<p class="muted" style="margin:10px 0 0">' + L('meet_hint') + '</p></div>' +
+          }).join('') + '</div>' +
+          '<p class="muted" style="margin:10px 0 0">' + L('meet_hint') + '</p></div>'
+          : '') +
 
         '<div class="card"><h3>' + L('backup_title') + '</h3><div class="row">' +
         '<button class="btn ghost" id="exp">⬇ ' + L('backup_export') + '</button>' +
@@ -3174,16 +3449,6 @@
       document.getElementById('rst').onclick = function () {
         if (!confirm(L('reset_confirm'))) return;
         stat = {}; round = 1; current = null; pastRounds = []; persist(); renderStat(); renderPlay();
-      };
-      document.getElementById('arch').onclick = function () {
-        if (round <= 1 && !pastRounds.length) { alert(L('meet_archive_empty')); return; }
-        if (!confirm(L('meet_archive_confirm'))) return;
-        meets.unshift({
-          date: todayStr(), rounds: Math.max(0, round - 1), sport: sport,
-          stat: stat, past: pastRounds
-        });
-        stat = {}; round = 1; pastRounds = []; current = null;
-        persist(); renderStat(); renderPlay();
       };
       document.getElementById('p2').onclick = function (e) {
         var b = e.target.closest('[data-act="delmeet"]'); if (!b) return;
@@ -3211,6 +3476,7 @@
       var data = {
         app: 'anchigi', v: 1, exportedAt: new Date().toISOString(),
         players: players, stat: stat, round: round, past: pastRounds, meets: meets,
+        days: (syncDay(), days), day: dayId,
         settings: {
           sport: sport, tactic: tactic, mode: mode, prio: prio, flex: flexSlots,
           tpl: allowed, ngames: nGames, compact: compact, schedule: schedule
@@ -3235,11 +3501,20 @@
         if (sg.tactic === '5-1' || sg.tactic === '6-2') tactic = sg.tactic;
         if (typeof sg.compact === 'boolean') compact = sg.compact;
         POS = POS_BY_SPORT[sport];
-        players = d.players.map(normalizePlayer);
-        stat = d.stat || {};
-        round = d.round || 1;
-        pastRounds = d.past || [];
         meets = d.meets || [];
+        if (Array.isArray(d.days) && d.days.length) {
+          days = d.days;
+          var dd = dayById(d.day) || days[0];
+          dayId = dd.id;
+          openDayData(dd);
+        } else {
+          /* 날짜 기능 전의 백업 — 그 명단 · 기록을 '날짜 미정' 하나로 */
+          var nd = newDay('', '', d.players);
+          nd.stat = d.stat || {}; nd.round = d.round || 1; nd.past = d.past || [];
+          days = [nd]; dayId = nd.id;
+          openDayData(nd);
+        }
+        dayForm = null; renaming = -1;
         if (sg.mode === 'abc' || sg.mode === 'free') mode = sg.mode;
         if (PRIOS.indexOf(sg.prio) >= 0) prio = sg.prio;
         flexSlots = typeof sg.flex === 'number' ? sg.flex : null;
@@ -3281,7 +3556,7 @@
     }
     function applyLang() {
       applyStaticLang();
-      renderPlay(); renderRoster(); renderStat();
+      renderDayBar(); renderPlay(); renderRoster(); renderStat();
     }
     /* 같은 사이트에서 넘어왔으면 뒤로가기 — 픽업 탭의 지역·레벨 필터가 URL에 실려 있어
        그대로 복원된다(js/pickup-ui.js syncPickupUrl → js/app.js openPickupListLink).
@@ -3316,7 +3591,7 @@
     });
 
     applyStaticLang();
-    renderPlay(); renderRoster(); renderStat();
+    renderDayBar(); renderPlay(); renderRoster(); renderStat();
   </script>
 </body>
 
