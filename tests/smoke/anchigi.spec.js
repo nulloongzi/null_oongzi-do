@@ -138,7 +138,7 @@ test('인원이 모자라면 막지 않고 빈 자리를 (필요)로 남긴다',
     expect(Math.abs(perSide[0] - perSide[1])).toBeLessThanOrEqual(2);
 });
 
-test('6인제 6-2: 코트에 세터가 둘, 하나는 라이트 자리', async ({ page }) => {
+test('6인제 6-2: 코트에 세터가 둘, 하나는 OP 자리', async ({ page }) => {
     await page.goto('/anchigi.html');
     await seedRoster(page, 12);
     await page.click('.tab[data-t="0"]');
@@ -148,7 +148,34 @@ test('6인제 6-2: 코트에 세터가 둘, 하나는 라이트 자리', async (
 
     const setters = page.locator('.side').first().locator('.pos.S');
     await expect(setters).toHaveCount(2);
-    await expect(page.locator('.side').first()).toContainText('세터 · 라이트');
+    await expect(page.locator('.side').first()).toContainText('S · OP');
+});
+
+test('6인제 자리는 한국어 화면에서도 공식 약어(S · OP · OH · MB · Lib)', async ({ page }) => {
+    await page.goto('/anchigi.html');
+    await seedRoster(page, 1);
+    const chips = await page.locator('.prow .ptoggle button').allInnerTexts();
+    expect(chips.map((t) => t.trim())).toEqual(['S', 'OP', 'OH', 'MB', 'Lib']);
+    await expect(page.locator('#p1')).not.toContainText(/센터|레프트|라이트|리베로/);
+});
+
+test('명단: ✎ 로 이름을 바꾸면 지난 라운드 이름도 같이 바뀐다', async ({ page }) => {
+    await page.goto('/anchigi.html');
+    await seedRoster(page, 12);
+    await page.click('.tab[data-t="0"]');
+    await draw(page);
+    await page.locator('.action-bar #fix').click();
+
+    await page.click('.tab[data-t="1"]');
+    await page.locator('.prow').first().locator('[data-act="rename"]').click();
+    await page.fill('#renIn', '누룽이');
+    await page.press('#renIn', 'Enter');
+    await expect(page.locator('.prow').first().locator('.nm')).toHaveText('누룽이');
+
+    await page.click('.tab[data-t="0"]');
+    await page.locator('.past-round > summary').first().click();
+    await expect(page.locator('.past-round').first()).toContainText('누룽이');
+    await expect(page.locator('.past-round').first()).not.toContainText(/선수1(?!\d)/);
 });
 
 test('9인제: 포메이션 셋 + 자리 이름이 코트에 나온다', async ({ page }) => {
@@ -199,20 +226,93 @@ test('확정: 기록에 쌓이고 지난 라운드로 넘어간다', async ({ pa
     expect(played.every((x) => Number(x) > 0)).toBe(true);
 });
 
-test('모임 보관: 기록만 새로 시작하고 명단은 남는다', async ({ page }) => {
+test('날짜별 안치기: 날짜마다 명단 · 기록이 따로 남고 새로고침해도 이어진다', async ({ page }) => {
     await page.goto('/anchigi.html');
     await seedRoster(page, 12);
     await page.click('.tab[data-t="0"]');
     await draw(page);
     await page.locator('.action-bar #fix').click();
 
-    await page.click('.tab[data-t="2"]');
-    page.once('dialog', (d) => d.accept());
-    await page.click('#arch');
+    // 첫 날짜에 이름을 붙인다
+    await page.click('#dayEdit');
+    await page.fill('#dfDate', '2026-11-21');
+    await page.fill('#dfTitle', '정기 픽업');
+    await page.click('#dfSave');
+    await expect(page.locator('#daySel option:checked')).toContainText('11월 21일 (토) · 정기 픽업 · 12명');
 
-    // 보관한 모임 줄(날짜 + 라운드 수). 해가 바뀌어도 깨지지 않게 형태로 본다.
-    await expect(page.locator('#p2')).toContainText(/\d{4}-\d{2}-\d{2}/);
-    await expect(page.locator('#p2 tbody tr')).toHaveCount(0); // 누적 기록은 비었다
+    // 새 날짜 — 빈 명단으로 시작
+    await page.click('#dayNew');
+    await page.fill('#dfDate', '2026-12-27');
+    await page.click('#dfSave');
+    await expect(page.locator('#daySel option:checked')).toContainText('12월 27일 (일)');
     await page.click('.tab[data-t="1"]');
-    await expect(page.locator('.prow')).toHaveCount(12);       // 명단은 그대로
+    await expect(page.locator('.prow')).toHaveCount(0);
+    await seedRoster(page, 3);
+    await page.click('.tab[data-t="2"]');
+    await expect(page.locator('#p2 tbody tr')).toHaveCount(0);
+
+    // 날짜순 정렬, 새로고침 뒤에도 마지막에 연 날짜가 열린다
+    await page.reload();
+    await expect(page.locator('#daySel option')).toHaveCount(2);
+    await expect(page.locator('#daySel option').first()).toContainText('11월 21일');
+    await expect(page.locator('#daySel option:checked')).toContainText('12월 27일');
+
+    // 11/21 로 돌아가면 그날 명단 · 기록 그대로
+    await page.selectOption('#daySel', { label: await page.locator('#daySel option').first().innerText() });
+    await page.click('.tab[data-t="1"]');
+    await expect(page.locator('.prow')).toHaveCount(12);
+    await page.click('.tab[data-t="0"]');
+    await expect(page.locator('#go')).toContainText('2R');
+
+    // 지우기 — 남은 날짜로 넘어간다
+    await page.click('#dayEdit');
+    page.once('dialog', (d) => d.accept());
+    await page.click('#dfDel');
+    await expect(page.locator('#daySel option')).toHaveCount(1);
+    await expect(page.locator('#daySel option:checked')).toContainText('12월 27일');
+});
+
+test('날짜 기능 전 저장본은 날짜 미정 하나로 이어진다', async ({ page }) => {
+    await page.addInitScript(() => {
+        if (localStorage.getItem('anchigi.days.v1')) return;
+        localStorage.setItem('anchigi.players.v1', JSON.stringify([
+            { id: 'pa', name: '옛사람', tier: { S: 'main' }, here: true },
+        ]));
+        localStorage.setItem('anchigi.round.v1', '3');
+    });
+    await page.goto('/anchigi.html');
+    await expect(page.locator('#daySel option:checked')).toContainText('날짜 미정 · 1명');
+    await expect(page.locator('#go')).toContainText('3R');
+});
+
+
+test('뽑아 둔 배치는 새로고침해도 남고, 확정하면 기록에 쌓인다', async ({ page }) => {
+    await page.goto('/anchigi.html');
+    await seedRoster(page, 12);
+    await page.click('.tab[data-t="0"]');
+    await draw(page);
+    const before = await page.locator('.game').first().innerText();
+
+    // 캡처해 단톡에 보내는 사이 창이 닫힌 셈
+    await page.reload();
+    await expect(page.locator('.action-bar')).toBeVisible();
+    expect(await page.locator('.game').first().innerText()).toBe(before);
+
+    await page.locator('.action-bar #fix').click();
+    await page.click('.tab[data-t="2"]');
+    await expect(page.locator('#p2 tbody tr')).toHaveCount(12);
+});
+
+test('☕ 첫 경기 쉬기: 켜면 첫 경기 대기에 ☕ 로 보인다', async ({ page }) => {
+    await page.goto('/anchigi.html');
+    await seedRoster(page, 14);
+    await page.locator('.prow').first().locator('[data-act="rest"]').click();
+    await expect(page.locator('.prow').first().locator('[data-act="rest"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.click('.tab[data-t="0"]');
+    await openSettings(page);
+    await page.click('#mode button[data-m="free"]');
+    await draw(page);
+    // 첫 경기 탭(기본)에서 대기 줄에 ☕ 선수1
+    await page.locator('#gsel button[data-g="0"]').click().catch(() => {});
+    await expect(page.locator('.game').first().locator('.bench').first()).toContainText('☕ 선수1');
 });

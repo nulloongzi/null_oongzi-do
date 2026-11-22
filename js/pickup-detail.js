@@ -4,6 +4,18 @@
 // Depends on: pickup-data.js, pickup-ui.js, pickup-host.js, i18n.js, dom-utils.js (sanitizeUrl)
 
 (function () {
+    /* 픽업 장소 표시 줄: 같거나 한쪽이 다른 쪽을 품으면 한 줄, 다르면 [장소 이름, 주소] */
+    window.pickupWhereLines = function (venue, address) {
+        var v = String(venue || '').trim(), a = String(address || '').trim();
+        if (!v) return a ? [a] : [];
+        if (!a) return [v];
+        var n = function (x) { return x.replace(/\s+/g, '').toLowerCase(); };
+        var nv = n(v), na = n(a);
+        if (nv === na || na.indexOf(nv) !== -1) return [a];
+        if (nv.indexOf(na) !== -1) return [v];
+        return [v, a];
+    };
+
     var t = window.t;
     window.currentPickupId = null;
 
@@ -114,8 +126,15 @@
         // 장소 + 주소 복사. 셋 다 없으면(장소 유동적인 크루) 행 자체를 생략한다.
         if (spot.venue_name || spot.address || spot.region) {
             var where = el('span', 'ps-where-text');
-            if (spot.venue_name) { where.appendChild(el('b', null, spot.venue_name)); where.appendChild(document.createElement('br')); }
-            where.appendChild(document.createTextNode(spot.address || spot.region || ''));
+            // 장소 이름과 주소를 같은 걸로 적는 일이 많다(둘 다 '서울광남초등학교') —
+            // 같거나 주소가 이름을 품으면 한 번만 보인다. 앱 detail_sheet.dart pickupWhereLines 와 같은 규칙.
+            var lines = window.pickupWhereLines(spot.venue_name, spot.address);
+            if (lines.length === 2) {
+                where.appendChild(el('b', null, lines[0])); where.appendChild(document.createElement('br'));
+                where.appendChild(document.createTextNode(lines[1]));
+            } else {
+                where.appendChild(document.createTextNode(lines[0] || spot.region || ''));
+            }
             var whereRow = infoRow('📍', where);
             if (spot.address) {
                 var copyBtn = el('button', 'ps-mini-btn', t('btn_copy'));
