@@ -285,3 +285,34 @@ test('날짜 기능 전 저장본은 날짜 미정 하나로 이어진다', asyn
     await expect(page.locator('#go')).toContainText('3R');
 });
 
+
+test('뽑아 둔 배치는 새로고침해도 남고, 확정하면 기록에 쌓인다', async ({ page }) => {
+    await page.goto('/anchigi.html');
+    await seedRoster(page, 12);
+    await page.click('.tab[data-t="0"]');
+    await draw(page);
+    const before = await page.locator('.game').first().innerText();
+
+    // 캡처해 단톡에 보내는 사이 창이 닫힌 셈
+    await page.reload();
+    await expect(page.locator('.action-bar')).toBeVisible();
+    expect(await page.locator('.game').first().innerText()).toBe(before);
+
+    await page.locator('.action-bar #fix').click();
+    await page.click('.tab[data-t="2"]');
+    await expect(page.locator('#p2 tbody tr')).toHaveCount(12);
+});
+
+test('☕ 첫 경기 쉬기: 켜면 첫 경기 대기에 ☕ 로 보인다', async ({ page }) => {
+    await page.goto('/anchigi.html');
+    await seedRoster(page, 14);
+    await page.locator('.prow').first().locator('[data-act="rest"]').click();
+    await expect(page.locator('.prow').first().locator('[data-act="rest"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.click('.tab[data-t="0"]');
+    await openSettings(page);
+    await page.click('#mode button[data-m="free"]');
+    await draw(page);
+    // 첫 경기 탭(기본)에서 대기 줄에 ☕ 선수1
+    await page.locator('#gsel button[data-g="0"]').click().catch(() => {});
+    await expect(page.locator('.game').first().locator('.bench').first()).toContainText('☕ 선수1');
+});

@@ -461,3 +461,69 @@ describe('공정성', () => {
         assert.ok(gap <= 3, '출전 편차가 3경기를 넘지 않아야 한다 (실제 ' + gap + ')');
     });
 });
+
+describe('☕ 라운드 첫 경기 쉬기', () => {
+    for (const mode of ['free', 'abc']) {
+        test('대기 자리가 있으면 첫 경기는 쉰다 — ' + mode, () => {
+            for (let k = 0; k < 10; k++) {
+                const people = roster(15).map((p, i) => Object.assign(p, { restFirst: i < 3 }));
+                const games = draw(box, people, { mode });
+                box.allowed = ['mb2'];
+                const g2 = box.solveRound(box.players.filter((p) => p.here), 3);
+                assert.ok(games && g2);
+                for (const p of box.players.slice(0, 3)) {
+                    assert.ok(g2[0].bench.some((b) => b.id === p.id), p.name + ' 첫 경기 대기');
+                }
+            }
+        });
+    }
+
+    test('그 사람 없이는 자리가 비면 들어간다', () => {
+        const people = roster(12).map((p, i) => Object.assign(p, { restFirst: i === 0 }));
+        draw(box, people, { mode: 'free' });
+        box.allowed = ['mb2'];
+        const games = box.solveRound(box.players, 3);
+        assert.strictEqual(games[0].need[0].length + games[0].need[1].length, 0);
+        assert.ok(!games[0].bench.some((b) => b.id === box.players[0].id));
+    });
+});
+
+describe('같이 뛴 사람 섞기', () => {
+    function regularPairs(games, reg) {
+        let n = 0;
+        games.forEach((g) => g.teams.forEach((t) => {
+            const ids = t.filter((x) => !x.empty).map((x) => x.id);
+            for (let i = 0; i < ids.length; i++) {
+                for (let j = i + 1; j < ids.length; j++) if (reg.has(ids[i]) && reg.has(ids[j])) n++;
+            }
+        }));
+        return n;
+    }
+    test('늘 같이 뛴 여섯은 덜 묶인다 — free', () => {
+        let plain = 0, mixed = 0;
+        for (let k = 0; k < 10; k++) {
+            for (const withMates of [false, true]) {
+                draw(box, roster(18), { mode: 'free', prio: 'variety' });
+                box.allowed = ['mb2'];
+                const reg = new Set(box.players.slice(0, 6).map((p) => p.id));
+                box.players.forEach((p) => {
+                    const s = box.st(p.id);
+                    s.play = 6;
+                    if (withMates && reg.has(p.id)) reg.forEach((o) => { if (o !== p.id) s.mates[o] = 9; });
+                });
+                const n = regularPairs(box.solveRound(box.players, 3), reg);
+                if (withMates) mixed += n; else plain += n;
+            }
+        }
+        assert.ok(mixed < plain * 0.6, 'plain=' + plain + ' mixed=' + mixed);
+    });
+
+    test('확정하면 같은 팀으로 뛴 횟수가 쌓인다', () => {
+        draw(box, roster(12), { mode: 'free' });
+        const games = box.solveRound(box.players, 3);
+        box.current = { round: 1, games: games, mode: 'free', sport: 'v6' };
+        const a = games[0].teams[0][0].id, b = games[0].teams[0][1].id;
+        box.commit();
+        assert.ok(box.st(a).mates[b] >= 1);
+    });
+});
